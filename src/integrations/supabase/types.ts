@@ -14,7 +14,151 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      content: {
+        Row: {
+          content_type: string
+          created_at: string | null
+          description: string | null
+          duration: number | null
+          genre: string | null
+          id: string
+          is_premium: boolean | null
+          rating: string | null
+          thumbnail_url: string | null
+          title: string
+          tmdb_id: number | null
+          updated_at: string | null
+          video_url: string | null
+          year: number | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          is_premium?: boolean | null
+          rating?: string | null
+          thumbnail_url?: string | null
+          title: string
+          tmdb_id?: number | null
+          updated_at?: string | null
+          video_url?: string | null
+          year?: number | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          is_premium?: boolean | null
+          rating?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          tmdb_id?: number | null
+          updated_at?: string | null
+          video_url?: string | null
+          year?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          country: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          is_subscribed: boolean | null
+          subscription_expiry: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id: string
+          is_subscribed?: boolean | null
+          subscription_expiry?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          is_subscribed?: boolean | null
+          subscription_expiry?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      watch_history: {
+        Row: {
+          content_id: string
+          id: string
+          last_watched: string | null
+          progress: number | null
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          id?: string
+          last_watched?: string | null
+          progress?: number | null
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          id?: string
+          last_watched?: string | null
+          progress?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_history_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist: {
+        Row: {
+          content_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
