@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { User, Content, ViewState, ToastState } from "@/types";
-import { mockContent, featuredContent } from "@/data/mockContent";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
+import { Content, ViewState } from "@/types";
 import { LandingPage } from "@/components/LandingPage";
-import { AuthForm } from "@/components/AuthForm";
 import { Sidebar } from "@/components/Sidebar";
 import { HeroBanner } from "@/components/HeroBanner";
 import { ContentRow } from "@/components/ContentRow";
@@ -10,64 +11,57 @@ import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { Search, X } from "lucide-react";
+import { Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 const Index = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [showAuth, setShowAuth] = useState(false);
-  const [initialEmail, setInitialEmail] = useState("");
+  const navigate = useNavigate();
+  const { user, loading: authLoading, signOut } = useAuth();
   
+  const { data: content = [], isLoading: contentLoading } = useContent();
+  const { data: watchlistIds = [] } = useWatchlist();
+  const { data: profile } = useProfile();
+  
+  const addToWatchlist = useAddToWatchlist();
+  const removeFromWatchlist = useRemoveFromWatchlist();
+
   const [currentView, setCurrentView] = useState<ViewState>("home");
-  const [content, setContent] = useState<Content[]>(mockContent);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [playingContent, setPlayingContent] = useState<{ content: Content; progress: number } | null>(null);
-  
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
-  // Check for stored user on mount
+  // Redirect to auth if not logged in (handled in LandingPage)
   useEffect(() => {
-    const storedUser = localStorage.getItem("hoyeeh_user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    if (!authLoading && user) {
+      setCurrentView("home");
     }
-  }, []);
+  }, [user, authLoading]);
 
-  const handleLogin = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem("hoyeeh_user", JSON.stringify(userData));
-    setShowAuth(false);
-    toast.success(`Welcome to Hoyeeh, ${userData.name || "User"}!`);
-  };
+  const handleToggleList = async (item: Content) => {
+    if (!user) {
+      toast.error("Please sign in to add to your list");
+      return;
+    }
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem("hoyeeh_user");
-    setShowAuth(false);
-    setCurrentView("home");
-    setPlayingContent(null);
-    setSelectedContent(null);
-    toast.info("You have been signed out");
-  };
-
-  const handleToggleList = (item: Content) => {
-    if (!user) return;
+    const isInList = watchlistIds.includes(item.id);
     
-    const isInList = user.myList?.includes(item.id);
-    const updatedList = isInList
-      ? user.myList.filter((id) => id !== item.id)
-      : [...(user.myList || []), item.id];
-    
-    const updatedUser = { ...user, myList: updatedList };
-    setUser(updatedUser);
-    localStorage.setItem("hoyeeh_user", JSON.stringify(updatedUser));
-    
-    toast.success(isInList ? "Removed from My List" : "Added to My List");
+    try {
+      if (isInList) {
+        await removeFromWatchlist.mutateAsync(item.id);
+        toast.success("Removed from My List");
+      } else {
+        await addToWatchlist.mutateAsync(item.id);
+        toast.success("Added to My List");
+      }
+    } catch (error) {
+      toast.error("Failed to update watchlist");
+    }
   };
 
   const handlePlay = (item: Content) => {
-    if (item.isPremium && !user?.isSubscribed) {
+    if (item.isPremium && !profile?.is_subscribed) {
       toast.error("This content requires a premium subscription");
       return;
     }
@@ -77,6 +71,11 @@ const Index = () => {
 
   const handleDetails = (item: Content) => {
     setSelectedContent(item);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    toast.info("You have been signed out");
   };
 
   const getDisplayContent = () => {
@@ -97,7 +96,7 @@ const Index = () => {
     } else if (currentView === "shows") {
       filtered = filtered.filter((c) => c.contentType === "series");
     } else if (currentView === "mylist") {
-      filtered = filtered.filter((c) => user?.myList?.includes(c.id));
+      filtered = filtered.filter((c) => watchlistIds.includes(c.id));
     }
     
     return filtered;
@@ -106,6 +105,16 @@ const Index = () => {
   const displayContent = getDisplayContent();
   const movies = content.filter((c) => c.contentType === "movie");
   const shows = content.filter((c) => c.contentType === "series");
+  const featuredContent = content[0];
+
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-brand" />
+      </div>
+    );
+  }
 
   // Video Player View
   if (playingContent) {
@@ -122,23 +131,10 @@ const Index = () => {
 
   // Landing Page (not logged in)
   if (!user) {
-    if (showAuth) {
-      return (
-        <AuthForm
-          onSuccess={handleLogin}
-          onBack={() => setShowAuth(false)}
-          initialEmail={initialEmail}
-        />
-      );
-    }
-    
     return (
       <LandingPage
-        onSignIn={() => setShowAuth(true)}
-        onGetStarted={(email) => {
-          setInitialEmail(email || "");
-          setShowAuth(true);
-        }}
+        onSignIn={() => navigate("/auth")}
+        onGetStarted={() => navigate("/auth")}
       />
     );
   }
@@ -150,7 +146,7 @@ const Index = () => {
         currentView={currentView}
         onNavigate={setCurrentView}
         onLogout={handleLogout}
-        userName={user.name}
+        userName={profile?.display_name || user.email?.split("@")[0]}
       />
 
       {/* Main Content */}
@@ -187,96 +183,93 @@ const Index = () => {
           )}
         </div>
 
-        {/* Content */}
-        <div className="pb-8">
-          {currentView === "home" && !searchQuery && (
-            <>
-              <HeroBanner
-                content={featuredContent}
-                onPlay={handlePlay}
-                onDetails={handleDetails}
-                onToggleList={handleToggleList}
-                isInList={user?.myList?.includes(featuredContent.id) || false}
-              />
-              
-              <div className="mt-8">
-                <ContentRow
-                  title="Popular Movies"
-                  content={movies}
+        {/* Content Loading State */}
+        {contentLoading ? (
+          <div className="flex items-center justify-center h-[50vh]">
+            <Loader2 className="h-12 w-12 animate-spin text-brand" />
+          </div>
+        ) : (
+          <div className="pb-8">
+            {currentView === "home" && !searchQuery && (
+              <>
+                <HeroBanner
+                  content={featuredContent}
                   onPlay={handlePlay}
-                  onToggleList={handleToggleList}
                   onDetails={handleDetails}
-                  userList={user?.myList}
+                  onToggleList={handleToggleList}
+                  isInList={featuredContent ? watchlistIds.includes(featuredContent.id) : false}
                 />
                 
-                <ContentRow
-                  title="TV Shows"
-                  content={shows}
-                  onPlay={handlePlay}
-                  onToggleList={handleToggleList}
-                  onDetails={handleDetails}
-                  userList={user?.myList}
-                />
-                
-                <ContentRow
-                  title="Continue Watching"
-                  content={movies.slice(0, 3)}
-                  onPlay={handlePlay}
-                  onToggleList={handleToggleList}
-                  onDetails={handleDetails}
-                  userList={user?.myList}
-                />
-              </div>
-            </>
-          )}
-
-          {(currentView === "movies" || currentView === "shows" || currentView === "mylist" || searchQuery) && (
-            <div className="px-4 md:px-12 pt-4">
-              <h1 className="font-display text-3xl md:text-4xl mb-6">
-                {searchQuery
-                  ? `Search results for "${searchQuery}"`
-                  : currentView === "movies"
-                  ? "Movies"
-                  : currentView === "shows"
-                  ? "TV Shows"
-                  : "My List"}
-              </h1>
-              
-              {displayContent.length === 0 ? (
-                <p className="text-muted-foreground text-lg">
-                  {currentView === "mylist"
-                    ? "Your list is empty. Add some titles to get started!"
-                    : "No content found"}
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {displayContent.map((item) => (
-                    <div
-                      key={item.id}
-                      className="cursor-pointer group"
-                      onClick={() => handleDetails(item)}
-                    >
-                      <div className="aspect-[2/3] rounded-lg overflow-hidden bg-secondary relative">
-                        <img
-                          src={item.thumbnailUrl}
-                          alt={item.title}
-                          className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
-                        />
-                        {item.isPremium && (
-                          <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                            PREMIUM
-                          </div>
-                        )}
-                      </div>
-                      <h3 className="mt-2 font-medium truncate">{item.title}</h3>
-                      <p className="text-sm text-muted-foreground">{item.year}</p>
-                    </div>
-                  ))}
+                <div className="mt-8">
+                  <ContentRow
+                    title="Popular Movies"
+                    content={movies}
+                    onPlay={handlePlay}
+                    onToggleList={handleToggleList}
+                    onDetails={handleDetails}
+                    userList={watchlistIds}
+                  />
+                  
+                  <ContentRow
+                    title="TV Shows"
+                    content={shows}
+                    onPlay={handlePlay}
+                    onToggleList={handleToggleList}
+                    onDetails={handleDetails}
+                    userList={watchlistIds}
+                  />
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </>
+            )}
+
+            {(currentView === "movies" || currentView === "shows" || currentView === "mylist" || searchQuery) && (
+              <div className="px-4 md:px-12 pt-4">
+                <h1 className="font-display text-3xl md:text-4xl mb-6">
+                  {searchQuery
+                    ? `Search results for "${searchQuery}"`
+                    : currentView === "movies"
+                    ? "Movies"
+                    : currentView === "shows"
+                    ? "TV Shows"
+                    : "My List"}
+                </h1>
+                
+                {displayContent.length === 0 ? (
+                  <p className="text-muted-foreground text-lg">
+                    {currentView === "mylist"
+                      ? "Your list is empty. Add some titles to get started!"
+                      : "No content found"}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {displayContent.map((item) => (
+                      <div
+                        key={item.id}
+                        className="cursor-pointer group"
+                        onClick={() => handleDetails(item)}
+                      >
+                        <div className="aspect-[2/3] rounded-lg overflow-hidden bg-secondary relative">
+                          <img
+                            src={item.thumbnailUrl}
+                            alt={item.title}
+                            className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                          />
+                          {item.isPremium && (
+                            <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
+                              PREMIUM
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="mt-2 font-medium truncate">{item.title}</h3>
+                        <p className="text-sm text-muted-foreground">{item.year}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Content Details Modal */}
@@ -286,7 +279,7 @@ const Index = () => {
           onClose={() => setSelectedContent(null)}
           onPlay={handlePlay}
           onToggleList={handleToggleList}
-          isInList={user?.myList?.includes(selectedContent.id) || false}
+          isInList={watchlistIds.includes(selectedContent.id)}
         />
       )}
 
