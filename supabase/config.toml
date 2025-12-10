@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.transcode-video]
 verify_jwt = false
+
+[functions.mux-video]
+verify_jwt = false

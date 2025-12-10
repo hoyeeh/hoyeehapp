@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2, Upload } from "lucide-react";
+import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2, Upload, Settings2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoUploadField } from "./VideoUploadField";
 import { BatchVideoUpload } from "./BatchVideoUpload";
+import { BulkEpisodeEdit } from "./BulkEpisodeEdit";
 import { SortableEpisodeList } from "./SortableEpisodeList";
 import { 
   useSeasons, 
@@ -312,6 +313,7 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
 
   const [showEpisodeForm, setShowEpisodeForm] = useState(false);
   const [showBatchUpload, setShowBatchUpload] = useState(false);
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
   const [episodeForm, setEpisodeForm] = useState({
     episode_number: 1,
@@ -417,7 +419,19 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
         
         <CollapsibleContent>
           <div className="p-4 space-y-4 bg-background">
-            {showBatchUpload && episodes ? (
+            {showBulkEdit && episodes ? (
+              <BulkEpisodeEdit
+                episodes={episodes.map(ep => ({
+                  id: ep.id,
+                  episode_number: ep.episode_number,
+                  title: ep.title,
+                  duration: ep.duration,
+                  is_premium: ep.is_premium,
+                }))}
+                onComplete={() => refetch()}
+                onClose={() => setShowBulkEdit(false)}
+              />
+            ) : showBatchUpload && episodes ? (
               <BatchVideoUpload
                 seasonId={season.id}
                 seasonNumber={season.season_number}
@@ -437,17 +451,28 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
               <>
             <div className="flex justify-between items-center flex-wrap gap-2">
               <h4 className="text-sm font-medium">Episodes</h4>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {episodes && episodes.length > 0 && (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => setShowBatchUpload(true)}
-                    className="gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Batch Upload Videos
-                  </Button>
+                  <>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setShowBulkEdit(true)}
+                      className="gap-2"
+                    >
+                      <Settings2 className="h-4 w-4" />
+                      Bulk Edit
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setShowBatchUpload(true)}
+                      className="gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Batch Upload
+                    </Button>
+                  </>
                 )}
                 <Button 
                   size="sm" 
