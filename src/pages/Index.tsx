@@ -432,11 +432,7 @@ const Index = () => {
                           title={newReleasesSection?.title || "New Releases"}
                           maxItems={newReleasesSection?.max_items || 20}
                           contentTypeFilter={
-                            newReleasesSection?.title?.toLowerCase().includes("movie") 
-                              ? "movie" 
-                              : newReleasesSection?.title?.toLowerCase().includes("show") || newReleasesSection?.title?.toLowerCase().includes("series")
-                              ? "series"
-                              : "all"
+                            (newReleasesSection?.content_type_filter as "all" | "movie" | "series") || "all"
                           }
                         />
                       );

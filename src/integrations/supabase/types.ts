@@ -383,6 +383,7 @@ export type Database = {
       home_sections: {
         Row: {
           card_style: string
+          content_type_filter: string | null
           created_at: string
           display_order: number
           genre_id: string | null
@@ -395,6 +396,7 @@ export type Database = {
         }
         Insert: {
           card_style?: string
+          content_type_filter?: string | null
           created_at?: string
           display_order?: number
           genre_id?: string | null
@@ -407,6 +409,7 @@ export type Database = {
         }
         Update: {
           card_style?: string
+          content_type_filter?: string | null
           created_at?: string
           display_order?: number
           genre_id?: string | null
