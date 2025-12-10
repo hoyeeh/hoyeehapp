@@ -10,8 +10,29 @@ const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Monthly price in XAF
-const MONTHLY_PRICE_XAF = 2500;
+// Helper to send confirmation email
+async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, expiryDate: string) {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/send-subscription-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: userEmail,
+        type: "payment_confirmation",
+        data: {
+          userName,
+          amount,
+          currency: "XAF",
+          planType: "Monthly",
+          expiryDate,
+        },
+      }),
+    });
+    console.log("Confirmation email sent to:", userEmail);
+  } catch (e) {
+    console.error("Failed to send confirmation email:", e);
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -34,7 +55,16 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { action } = await req.json();
+    const { action, sessionId } = await req.json();
+
+    // Fetch current pricing from subscription_settings
+    const { data: settings } = await supabase
+      .from("subscription_settings")
+      .select("base_price")
+      .eq("plan_type", "monthly")
+      .single();
+
+    const monthlyPrice = settings?.base_price || 2000;
 
     if (action === "create-checkout") {
       console.log("Creating Stripe checkout session for user:", user.id);
@@ -51,7 +81,7 @@ serve(async (req) => {
           "success_url": `${req.headers.get("origin")}/subscription?success=true`,
           "cancel_url": `${req.headers.get("origin")}/subscription?canceled=true`,
           "line_items[0][price_data][currency]": "xaf",
-          "line_items[0][price_data][unit_amount]": String(MONTHLY_PRICE_XAF),
+          "line_items[0][price_data][unit_amount]": String(monthlyPrice),
           "line_items[0][price_data][recurring][interval]": "month",
           "line_items[0][price_data][product_data][name]": "Hoyeeh Premium Monthly",
           "line_items[0][price_data][product_data][description]": "Unlimited access to all premium content",
@@ -74,7 +104,7 @@ serve(async (req) => {
         plan_type: "monthly",
         payment_provider: "stripe",
         payment_reference: session.id,
-        amount: MONTHLY_PRICE_XAF,
+        amount: monthlyPrice,
         currency: "XAF",
         status: "pending",
       });
@@ -91,8 +121,6 @@ serve(async (req) => {
     }
 
     if (action === "verify-payment") {
-      const { sessionId } = await req.json();
-      
       // Retrieve session from Stripe
       const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
         headers: {
@@ -124,6 +152,23 @@ serve(async (req) => {
             subscription_expiry: expiresAt.toISOString(),
           })
           .eq("id", user.id);
+
+        // Get user profile for email
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .single();
+
+        // Send confirmation email
+        if (user.email) {
+          await sendConfirmationEmail(
+            user.email,
+            profile?.display_name || user.email.split("@")[0],
+            monthlyPrice,
+            expiresAt.toLocaleDateString()
+          );
+        }
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

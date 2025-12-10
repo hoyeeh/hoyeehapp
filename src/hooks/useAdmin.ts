@@ -138,6 +138,7 @@ export const useCreateContent = () => {
       duration?: number;
       year?: number;
       rating?: string;
+      tmdb_id?: number | null;
     }) => {
       const { data, error } = await supabase
         .from("content")
