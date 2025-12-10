@@ -1,4 +1,4 @@
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -7,14 +7,15 @@ import { useIsAdmin } from "@/hooks/useAdmin";
 import NotificationBell from "./NotificationBell";
 
 interface SidebarProps {
-  currentView: ViewState | 'dashboard' | 'downloads';
-  onNavigate: (view: ViewState | 'dashboard' | 'downloads') => void;
+  currentView: ViewState | 'dashboard' | 'downloads' | 'search';
+  onNavigate: (view: ViewState | 'dashboard' | 'downloads' | 'search') => void;
   onLogout: () => void;
   userName?: string;
 }
 
 const navItems = [
   { icon: Home, label: "Home", view: "home" as ViewState },
+  { icon: Search, label: "Search", view: "search" as const },
   { icon: LayoutDashboard, label: "Dashboard", view: "dashboard" as const },
   { icon: Film, label: "Movies", view: "movies" as ViewState },
   { icon: Tv, label: "TV Shows", view: "shows" as ViewState },
@@ -47,6 +48,8 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
                       navigate("/my-list");
                     } else if (item.view === "downloads") {
                       navigate("/downloads");
+                    } else if (item.view === "search") {
+                      navigate("/search");
                     } else {
                       onNavigate(item.view);
                     }

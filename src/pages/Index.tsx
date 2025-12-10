@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
@@ -10,6 +10,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { HeroBanner } from "@/components/HeroBanner";
 import { ContentRow } from "@/components/ContentRow";
 import { Top10Row } from "@/components/Top10Row";
+import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
@@ -20,7 +21,7 @@ import { Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { subDays } from "date-fns";
 
-export type ExtendedViewState = ViewState | 'dashboard' | 'downloads';
+export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -376,7 +377,13 @@ const Index = () => {
                 />
                 
                 <div className="mt-8 space-y-2">
-                  {/* Render sections from database config */}
+                  {/* Continue Watching Row - Always first */}
+                  <ContinueWatchingRow
+                    onPlay={(c, progress) => setPlayingContent({ content: c, progress })}
+                    onDetails={handleDetails}
+                  />
+
+                  {/* Render sections from database config - all with wide 16:9 cards */}
                   {homeSections.map((section: any) => {
                     if (section.section_type === "top10") {
                       return top10Content.length > 0 ? (
@@ -399,7 +406,7 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
-                          cardStyle={section.card_style}
+                          cardStyle="wide"
                         />
                       ) : null;
                     }
@@ -416,23 +423,10 @@ const Index = () => {
                         onToggleList={handleToggleList}
                         onDetails={handleDetails}
                         userList={watchlistIds}
-                        cardStyle={section.card_style}
+                        cardStyle="wide"
                       />
                     );
                   })}
-
-                  {/* Top TV Shows - Wide Section */}
-                  {shows.length > 0 && (
-                    <ContentRow
-                      title="Top TV Shows"
-                      content={shows.slice(0, 10)}
-                      onPlay={handlePlay}
-                      onToggleList={handleToggleList}
-                      onDetails={handleDetails}
-                      userList={watchlistIds}
-                      cardStyle="wide"
-                    />
-                  )}
                 </div>
               </>
             )}
