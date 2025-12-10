@@ -6,6 +6,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to verify admin authentication
+async function verifyAdminAuth(req: Request, supabase: any): Promise<{ user: any; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Missing authorization header' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  
+  if (authError || !user) {
+    return { user: null, error: 'Invalid token' };
+  }
+
+  // Verify admin role
+  const { data: isAdmin } = await supabase.rpc('has_role', { 
+    _user_id: user.id, 
+    _role: 'admin' 
+  });
+
+  if (!isAdmin) {
+    return { user: null, error: 'Forbidden - admin access required' };
+  }
+
+  return { user };
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -17,10 +44,20 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, episodeId, sourceUrl, format = 'hls' } = await req.json();
+    const body = await req.json();
+    const { action, episodeId, sourceUrl, format = 'hls', jobId, status, outputUrl, progress, error: transcodeError } = body;
 
+    // Actions that require admin authentication
     if (action === 'queue') {
-      // Queue a new transcoding job
+      const { user, error: authError } = await verifyAdminAuth(req, supabase);
+      if (authError) {
+        console.error('Auth error:', authError);
+        return new Response(
+          JSON.stringify({ error: authError }),
+          { status: authError === 'Forbidden - admin access required' ? 403 : 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       if (!episodeId || !sourceUrl) {
         return new Response(
           JSON.stringify({ error: 'episodeId and sourceUrl are required' }),
@@ -60,17 +97,7 @@ serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      console.log(`Transcoding job queued: ${job.id} for episode ${episodeId}`);
-
-      // NOTE: In production, you would trigger an external transcoding service here
-      // Options include:
-      // 1. AWS MediaConvert - trigger via AWS SDK
-      // 2. Mux Video - upload to Mux API
-      // 3. Cloudflare Stream - upload to Stream API
-      // 4. Self-hosted FFmpeg worker - send to your worker service
-      
-      // For now, we just queue the job and return
-      // The actual transcoding would be handled by a separate worker
+      console.log(`Transcoding job queued by admin ${user.id}: ${job.id} for episode ${episodeId}`);
 
       return new Response(
         JSON.stringify({ 
@@ -83,7 +110,15 @@ serve(async (req) => {
     }
 
     if (action === 'status') {
-      // Get status of a transcoding job
+      // Status check requires admin auth
+      const { error: authError } = await verifyAdminAuth(req, supabase);
+      if (authError) {
+        return new Response(
+          JSON.stringify({ error: authError }),
+          { status: authError === 'Forbidden - admin access required' ? 403 : 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { data: jobs, error } = await supabase
         .from('transcoding_jobs')
         .select('*')
@@ -100,8 +135,17 @@ serve(async (req) => {
     }
 
     if (action === 'webhook') {
-      // Handle webhook from external transcoding service
-      const { jobId, status, outputUrl, progress, error: transcodeError } = await req.json();
+      // Webhook action - verify with shared secret
+      const webhookSecret = Deno.env.get('TRANSCODING_WEBHOOK_SECRET');
+      const providedSecret = req.headers.get('x-webhook-secret');
+      
+      if (webhookSecret && providedSecret !== webhookSecret) {
+        console.error('Invalid webhook secret');
+        return new Response(
+          JSON.stringify({ error: 'Invalid webhook secret' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       const updateData: any = { 
         status,
@@ -142,6 +186,8 @@ serve(async (req) => {
             .eq('id', job.episode_id);
         }
       }
+
+      console.log(`Webhook processed for job ${jobId}: status=${status}`);
 
       return new Response(
         JSON.stringify({ success: true }),
