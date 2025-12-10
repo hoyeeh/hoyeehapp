@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import NotificationBell from "./NotificationBell";
+import { ProfileSwitcher } from "./ProfileSwitcher";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 interface SidebarProps {
   currentView: ViewState | 'dashboard' | 'downloads' | 'search';
@@ -27,6 +29,7 @@ const navItems = [
 export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: SidebarProps) => {
   const navigate = useNavigate();
   const { data: isAdmin } = useIsAdmin();
+  const { setCurrentProfile } = useProfileContext();
 
   return (
     <aside className="fixed left-0 top-0 h-full w-16 md:w-64 bg-sidebar border-r border-sidebar-border z-50 flex flex-col">
@@ -110,12 +113,15 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
           </button>
         )}
 
-        {/* User Info */}
-        <div className="hidden md:flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-primary-foreground font-semibold text-sm">
-            {userName?.charAt(0).toUpperCase() || "U"}
-          </div>
-          <span className="text-sm font-medium truncate">{userName || "User"}</span>
+        {/* Profile Switcher */}
+        <div className="px-1 py-2">
+          <ProfileSwitcher 
+            onManageProfiles={() => {
+              localStorage.removeItem("hoyeeh_current_profile");
+              setCurrentProfile(null as any);
+              navigate("/");
+            }}
+          />
         </div>
         
         <button

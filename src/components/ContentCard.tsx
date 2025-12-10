@@ -1,6 +1,7 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Info } from "lucide-react";
+import { Play, Plus, Check, Info, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ContentRatingBadge } from "./ContentRatingBadge";
 
 interface ContentCardProps {
   content: Content;
@@ -10,6 +11,7 @@ interface ContentCardProps {
   isInList?: boolean;
   size?: "sm" | "md" | "lg";
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  isRestricted?: boolean;
 }
 
 export const ContentCard = ({
@@ -20,6 +22,7 @@ export const ContentCard = ({
   isInList = false,
   size = "md",
   cardStyle = "poster",
+  isRestricted = false,
 }: ContentCardProps) => {
   const sizeClasses = {
     sm: "w-32 md:w-40",
@@ -116,10 +119,20 @@ export const ContentCard = ({
           loading="lazy"
         />
         
-        {/* Premium Badge */}
-        {content.isPremium && (
-          <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground shadow-lg">
-            PREMIUM
+        {/* Badges */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {content.isPremium && (
+            <div className="bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground shadow-lg">
+              PREMIUM
+            </div>
+          )}
+          <ContentRatingBadge rating={(content as any).contentRating} size="sm" />
+        </div>
+
+        {/* Restricted Overlay */}
+        {isRestricted && (
+          <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+            <Lock className="h-8 w-8 text-muted-foreground" />
           </div>
         )}
 
