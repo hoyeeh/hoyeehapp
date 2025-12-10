@@ -177,7 +177,7 @@ const Auth = () => {
               type="submit"
               variant="brand"
               size="lg"
-              className="w-full h-12 text-lg font-semibold"
+              className="w-full h-12 text-base sm:text-lg font-semibold"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -187,7 +187,17 @@ const Auth = () => {
               ) : (
                 "Sign In"
               )}
-            </Button>
+             </Button>
+
+            {!isRegistering && (
+              <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground mt-2"
+              >
+                Forgot your password?
+              </button>
+            )}
           </form>
 
           <p className="mt-8 text-muted-foreground text-center">
