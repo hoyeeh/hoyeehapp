@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { CastQueuePanel } from "@/components/CastQueuePanel";
+import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
-import { Loader2, ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Cast } from "lucide-react";
+import { Loader2, ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo } from "lucide-react";
 import { toast } from "sonner";
 
 interface CastMember {
@@ -289,15 +290,12 @@ const ContentDetail = () => {
                 {isInList ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                 {isInList ? "In My List" : "My List"}
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2"
-                onClick={handleAddToQueue}
-              >
-                <Cast className="h-5 w-5" />
-                Add to Queue
-              </Button>
+              <UniversalCastButton
+                videoUrl={content.videoUrl}
+                videoTitle={content.title}
+                thumbnail={content.thumbnailUrl}
+                duration={content.duration}
+              />
             </div>
           </div>
         </div>
