@@ -178,3 +178,29 @@ export const useDeleteEpisode = () => {
     },
   });
 };
+
+export const useReorderEpisodes = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (updates: { id: string; episode_number: number }[]) => {
+      // Update all episodes in parallel
+      const promises = updates.map(({ id, episode_number }) =>
+        supabase
+          .from('episodes')
+          .update({ episode_number })
+          .eq('id', id)
+      );
+      
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+      
+      if (errors.length > 0) {
+        throw new Error('Failed to reorder some episodes');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['episodes'] });
+    },
+  });
+};

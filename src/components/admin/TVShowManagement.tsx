@@ -10,6 +10,7 @@ import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, L
 import { supabase } from "@/integrations/supabase/client";
 import { VideoUploadField } from "./VideoUploadField";
 import { BatchVideoUpload } from "./BatchVideoUpload";
+import { SortableEpisodeList } from "./SortableEpisodeList";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -19,6 +20,7 @@ import {
   useCreateEpisode,
   useUpdateEpisode,
   useDeleteEpisode,
+  useReorderEpisodes,
   Season,
   Episode
 } from "@/hooks/useSeasons";
@@ -306,6 +308,7 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
   const createEpisode = useCreateEpisode();
   const updateEpisode = useUpdateEpisode();
   const deleteEpisode = useDeleteEpisode();
+  const reorderEpisodes = useReorderEpisodes();
 
   const [showEpisodeForm, setShowEpisodeForm] = useState(false);
   const [showBatchUpload, setShowBatchUpload] = useState(false);
@@ -319,6 +322,15 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
     duration: 0,
     is_premium: false,
   });
+
+  const handleReorderEpisodes = async (updates: { id: string; episode_number: number }[]) => {
+    try {
+      await reorderEpisodes.mutateAsync(updates);
+      toast({ title: "Episode order updated" });
+    } catch (error) {
+      toast({ title: "Failed to reorder episodes", variant: "destructive" });
+    }
+  };
 
   const handleEpisodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -531,7 +543,6 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
               </DialogContent>
             </Dialog>
 
-            {/* Episodes List */}
             {isLoading ? (
               <div className="text-center py-4 text-muted-foreground text-sm">Loading episodes...</div>
             ) : episodes?.length === 0 ? (
@@ -539,44 +550,21 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
                 No episodes yet. Add episodes or import from TMDB.
               </div>
             ) : (
-              <div className="space-y-2">
-                {episodes?.map(episode => (
-                  <div 
-                    key={episode.id}
-                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-primary/20 rounded flex items-center justify-center">
-                        <Play className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">
-                          E{episode.episode_number}: {episode.title}
-                        </div>
-                        <div className="text-xs text-muted-foreground flex flex-wrap gap-2">
-                          <span>{episode.duration} min</span>
-                          {episode.is_premium && (
-                            <span className="text-primary">Premium</span>
-                          )}
-                          {episode.video_url ? (
-                            <span className="text-green-500">✓ Video</span>
-                          ) : (
-                            <span className="text-yellow-500">No Video</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => startEditEpisode(episode)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeleteEpisode(episode.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <SortableEpisodeList
+                episodes={episodes.map(ep => ({
+                  id: ep.id,
+                  episode_number: ep.episode_number,
+                  title: ep.title,
+                  duration: ep.duration,
+                  is_premium: ep.is_premium,
+                  video_url: ep.video_url,
+                  description: ep.description,
+                  thumbnail_url: ep.thumbnail_url,
+                }))}
+                onEdit={startEditEpisode}
+                onDelete={handleDeleteEpisode}
+                onReorder={handleReorderEpisodes}
+              />
             )}
               </>
             )}
