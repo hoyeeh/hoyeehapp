@@ -126,7 +126,7 @@ export const ContentCard = ({
               PREMIUM
             </div>
           )}
-          <ContentRatingBadge rating={(content as any).contentRating} size="sm" />
+          <ContentRatingBadge rating={content.contentRating} size="sm" />
         </div>
 
         {/* Restricted Overlay */}

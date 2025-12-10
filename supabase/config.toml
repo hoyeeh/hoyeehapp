@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.notify-coming-soon-release]
 verify_jwt = false
+
+[functions.ai-recommendations]
+verify_jwt = false
+
+[functions.transcoding-notification]
+verify_jwt = false

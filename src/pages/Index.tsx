@@ -14,6 +14,7 @@ import { Top10Row } from "@/components/Top10Row";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { ComingSoonRow } from "@/components/ComingSoonRow";
 import { RecommendationsRow } from "@/components/RecommendationsRow";
+import { AIRecommendationsRow } from "@/components/AIRecommendationsRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
@@ -195,14 +196,14 @@ const Index = () => {
 
   const handlePlay = (item: Content) => {
     // Check kids profile restrictions
-    if (currentProfile?.is_kids && isRestrictedForKids((item as any).contentRating)) {
+    if (currentProfile?.is_kids && isRestrictedForKids(item.contentRating)) {
       toast.error("This content is not available for Kids profiles");
       return;
     }
     
     // Check parental controls
     if (profile?.parental_controls_enabled && profile?.parental_pin) {
-      if (isRestrictedByParentalControls((item as any).contentRating, profile?.parental_rating_limit)) {
+      if (isRestrictedByParentalControls(item.contentRating, profile?.parental_rating_limit)) {
         setPinModalContent(item);
         return;
       }
@@ -430,12 +431,20 @@ const Index = () => {
                   {homeSections.map((section: any) => {
                     if (section.section_type === "top10") {
                       return top10Content.length > 0 ? (
-                        <Top10Row
-                          key={section.id}
-                          content={top10Content}
-                          onPlay={handlePlay}
-                          onDetails={handleDetails}
-                        />
+                        <div key={section.id}>
+                          <Top10Row
+                            content={top10Content}
+                            onPlay={handlePlay}
+                            onDetails={handleDetails}
+                          />
+                          {/* AI Hoyeeh Picks - Right after Top 10 */}
+                          <AIRecommendationsRow
+                            onPlay={handlePlay}
+                            onToggleList={handleToggleList}
+                            onDetails={handleDetails}
+                            userList={watchlistIds}
+                          />
+                        </div>
                       ) : null;
                     }
 
@@ -540,6 +549,20 @@ const Index = () => {
           onPlay={handlePlay}
           onToggleList={handleToggleList}
           isInList={watchlistIds.includes(selectedContent.id)}
+        />
+      )}
+
+      {/* Parental Pin Modal */}
+      {pinModalContent && profile?.parental_pin && (
+        <ParentalPinModal
+          isOpen={!!pinModalContent}
+          onClose={() => setPinModalContent(null)}
+          onSuccess={() => {
+            setPlayingContent({ content: pinModalContent, progress: 0 });
+            setPinModalContent(null);
+          }}
+          correctPin={profile.parental_pin}
+          contentTitle={pinModalContent.title}
         />
       )}
 

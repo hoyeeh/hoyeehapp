@@ -5,6 +5,7 @@ import { DownloadButton } from "./DownloadButton";
 import { ContentReviews } from "./ContentReviews";
 import { SocialShare } from "./SocialShare";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ContentRatingBadge } from "./ContentRatingBadge";
 
 interface ContentDetailsModalProps {
   content: Content;
@@ -55,11 +56,14 @@ export const ContentDetailsModal = ({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
             
-            {content.isPremium && (
-              <div className="absolute top-4 left-4 bg-brand px-3 py-1 rounded text-sm font-semibold text-primary-foreground">
-                PREMIUM
-              </div>
-            )}
+            <div className="absolute top-4 left-4 flex gap-2">
+              {content.isPremium && (
+                <div className="bg-brand px-3 py-1 rounded text-sm font-semibold text-primary-foreground">
+                  PREMIUM
+                </div>
+              )}
+              <ContentRatingBadge rating={content.contentRating} size="md" />
+            </div>
           </div>
 
           {/* Content */}
