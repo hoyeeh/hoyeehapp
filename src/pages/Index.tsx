@@ -416,27 +416,27 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
-                          cardStyle="wide"
-                        />
-                      ) : null;
-                    }
-
-                    const sectionContent = getSectionContent(section);
-                    if (sectionContent.length === 0) return null;
-
-                    return (
-                      <ContentRow
-                        key={section.id}
-                        title={section.title}
-                        content={sectionContent}
-                        onPlay={handlePlay}
-                        onToggleList={handleToggleList}
-                        onDetails={handleDetails}
-                        userList={watchlistIds}
-                        cardStyle="wide"
+                        cardStyle="poster"
                       />
-                    );
-                  })}
+                    ) : null;
+                  }
+
+                  const sectionContent = getSectionContent(section);
+                  if (sectionContent.length === 0) return null;
+
+                  return (
+                    <ContentRow
+                      key={section.id}
+                      title={section.title}
+                      content={sectionContent}
+                      onPlay={handlePlay}
+                      onToggleList={handleToggleList}
+                      onDetails={handleDetails}
+                      userList={watchlistIds}
+                      cardStyle="poster"
+                    />
+                  );
+                })}
                 </div>
               </>
             )}

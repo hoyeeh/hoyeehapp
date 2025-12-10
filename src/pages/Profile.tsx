@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 const COUNTRIES = [
   { code: 'CM', name: 'Cameroon' },
@@ -272,6 +273,17 @@ const Profile = () => {
                 {profile?.is_subscribed ? "Manage" : "Upgrade"}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card className="bg-card mb-6">
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Manage your notification preferences</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PushNotificationToggle />
           </CardContent>
         </Card>
 
