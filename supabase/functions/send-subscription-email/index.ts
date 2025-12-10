@@ -155,7 +155,7 @@ serve(async (req: Request): Promise<Response> => {
     const { subject, html } = await getEmailContent(type, data);
 
     const emailResponse = await resend.emails.send({
-      from: "Hoyeeh <onboarding@resend.dev>",
+      from: "Hoyeeh <info@hoyeeh.com>",
       to: [to],
       subject,
       html,

@@ -28,9 +28,9 @@ export const BaseEmail = ({ previewText, children }: BaseEmailProps) => (
         {/* Logo Header */}
         <Section style={logoSection}>
           <Img
-            src="https://astugmzoxhxcyipxsojl.supabase.co/storage/v1/object/public/videos/logo.png"
-            width="120"
-            height="40"
+            src="https://hoyeeh.sgp1.cdn.digitaloceanspaces.com/logo/hoyeeh-logo.png"
+            width="80"
+            height="80"
             alt="Hoyeeh"
             style={logo}
           />
