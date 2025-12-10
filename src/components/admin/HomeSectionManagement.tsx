@@ -1,0 +1,434 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Plus, Trash2, Edit2, Save, X, GripVertical, Loader2, LayoutGrid, Eye, EyeOff } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+interface HomeSection {
+  id: string;
+  title: string;
+  section_type: string;
+  genre_id: string | null;
+  card_style: string;
+  display_order: number;
+  is_active: boolean;
+  max_items: number | null;
+}
+
+interface Genre {
+  id: string;
+  name: string;
+}
+
+const SECTION_TYPES = [
+  { value: "top10", label: "Top 10" },
+  { value: "recently_added", label: "Recently Added" },
+  { value: "trending", label: "Trending" },
+  { value: "genre", label: "Genre-based" },
+  { value: "custom", label: "Custom (All content)" },
+  { value: "my_list", label: "My List" },
+  { value: "continue_watching", label: "Continue Watching" },
+];
+
+const CARD_STYLES = [
+  { value: "poster", label: "Poster (2:3)" },
+  { value: "backdrop", label: "Backdrop (16:9)" },
+  { value: "wide", label: "Wide (4:3)" },
+  { value: "square", label: "Square (1:1)" },
+  { value: "minimal", label: "Minimal (text only)" },
+];
+
+interface SortableItemProps {
+  section: HomeSection;
+  onEdit: (section: HomeSection) => void;
+  onDelete: (id: string) => void;
+  onToggleActive: (id: string, active: boolean) => void;
+}
+
+const SortableItem = ({ section, onEdit, onDelete, onToggleActive }: SortableItemProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 p-3 bg-secondary/30 rounded-lg ${!section.is_active ? 'opacity-50' : ''}`}
+    >
+      <button {...attributes} {...listeners} className="cursor-grab hover:text-brand">
+        <GripVertical className="h-5 w-5" />
+      </button>
+      <div className="w-8 h-8 rounded bg-brand/20 flex items-center justify-center text-sm font-medium">
+        {section.display_order}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h4 className="font-medium truncate">{section.title}</h4>
+        <p className="text-xs text-muted-foreground">
+          {SECTION_TYPES.find(t => t.value === section.section_type)?.label} • {CARD_STYLES.find(s => s.value === section.card_style)?.label}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onToggleActive(section.id, !section.is_active)}
+          title={section.is_active ? "Hide section" : "Show section"}
+        >
+          {section.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => onEdit(section)}>
+          <Edit2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => onDelete(section.id)}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export const HomeSectionManagement = () => {
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editingSection, setEditingSection] = useState<HomeSection | null>(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    section_type: "genre",
+    genre_id: "",
+    card_style: "poster",
+    max_items: 15,
+    is_active: true,
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const { data: sections = [], isLoading } = useQuery({
+    queryKey: ["home-sections"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("home_sections")
+        .select("*")
+        .order("display_order");
+      if (error) throw error;
+      return data as HomeSection[];
+    },
+  });
+
+  const { data: genres = [] } = useQuery({
+    queryKey: ["genres"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("genres").select("*").order("name");
+      if (error) throw error;
+      return data as Genre[];
+    },
+  });
+
+  const createSection = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const maxOrder = sections.length > 0 ? Math.max(...sections.map(s => s.display_order)) : 0;
+      const { error } = await supabase.from("home_sections").insert({
+        title: data.title,
+        section_type: data.section_type,
+        genre_id: data.genre_id || null,
+        card_style: data.card_style,
+        max_items: data.max_items,
+        is_active: data.is_active,
+        display_order: maxOrder + 1,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      resetForm();
+      toast.success("Section added");
+    },
+    onError: () => toast.error("Failed to add section"),
+  });
+
+  const updateSection = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & typeof formData) => {
+      const { error } = await supabase.from("home_sections").update({
+        title: data.title,
+        section_type: data.section_type,
+        genre_id: data.genre_id || null,
+        card_style: data.card_style,
+        max_items: data.max_items,
+        is_active: data.is_active,
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      resetForm();
+      toast.success("Section updated");
+    },
+    onError: () => toast.error("Failed to update section"),
+  });
+
+  const deleteSection = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("home_sections").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      toast.success("Section deleted");
+    },
+    onError: () => toast.error("Failed to delete section"),
+  });
+
+  const reorderSections = useMutation({
+    mutationFn: async (updates: { id: string; display_order: number }[]) => {
+      for (const update of updates) {
+        await supabase.from("home_sections").update({ display_order: update.display_order }).eq("id", update.id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+    },
+    onError: () => toast.error("Failed to reorder sections"),
+  });
+
+  const toggleActive = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase.from("home_sections").update({ is_active }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+    },
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sections.findIndex(s => s.id === active.id);
+    const newIndex = sections.findIndex(s => s.id === over.id);
+    const newOrder = arrayMove(sections, oldIndex, newIndex);
+
+    const updates = newOrder.map((section, index) => ({
+      id: section.id,
+      display_order: index + 1,
+    }));
+
+    reorderSections.mutate(updates);
+  };
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingSection(null);
+    setFormData({
+      title: "",
+      section_type: "genre",
+      genre_id: "",
+      card_style: "poster",
+      max_items: 15,
+      is_active: true,
+    });
+  };
+
+  const handleEdit = (section: HomeSection) => {
+    setEditingSection(section);
+    setFormData({
+      title: section.title,
+      section_type: section.section_type,
+      genre_id: section.genre_id || "",
+      card_style: section.card_style,
+      max_items: section.max_items || 15,
+      is_active: section.is_active,
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title.trim()) {
+      toast.error("Please enter a section title");
+      return;
+    }
+    if (editingSection) {
+      updateSection.mutate({ id: editingSection.id, ...formData });
+    } else {
+      createSection.mutate(formData);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Delete this section?")) {
+      deleteSection.mutate(id);
+    }
+  };
+
+  return (
+    <Card className="bg-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <LayoutGrid className="h-5 w-5 text-brand" />
+          Home Page Sections
+        </CardTitle>
+        <CardDescription>
+          Manage and reorder sections displayed on the home page. Drag to reorder.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Add Section
+        </Button>
+
+        {/* Section Form Dialog */}
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingSection ? "Edit Section" : "Add Section"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Section title..."
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Section Type</Label>
+                  <Select value={formData.section_type} onValueChange={(v) => setFormData({ ...formData, section_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SECTION_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Card Style</Label>
+                  <Select value={formData.card_style} onValueChange={(v) => setFormData({ ...formData, card_style: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CARD_STYLES.map((style) => (
+                        <SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {formData.section_type === "genre" && (
+                <div className="space-y-2">
+                  <Label>Genre</Label>
+                  <Select value={formData.genre_id} onValueChange={(v) => setFormData({ ...formData, genre_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select genre..." /></SelectTrigger>
+                    <SelectContent>
+                      {genres.map((genre) => (
+                        <SelectItem key={genre.id} value={genre.id}>{genre.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Max Items</Label>
+                <Input
+                  type="number"
+                  value={formData.max_items}
+                  onChange={(e) => setFormData({ ...formData, max_items: parseInt(e.target.value) || 15 })}
+                  min={1}
+                  max={50}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                />
+                <Label>Active</Label>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
+                <Button type="submit" disabled={createSection.isPending || updateSection.isPending}>
+                  {(createSection.isPending || updateSection.isPending) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  {editingSection ? "Update" : "Add"} Section
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sections List */}
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-brand" />
+          </div>
+        ) : sections.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No sections yet. Add your first section above.
+          </div>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {sections.map((section) => (
+                  <SortableItem
+                    key={section.id}
+                    section={section}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onToggleActive={(id, active) => toggleActive.mutate({ id, is_active: active })}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

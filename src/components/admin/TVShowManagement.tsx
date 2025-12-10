@@ -539,6 +539,7 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
                   <VideoUploadField
                     value={episodeForm.video_url}
                     onChange={(url) => setEpisodeForm(prev => ({ ...prev, video_url: url }))}
+                    onDurationDetected={(duration) => setEpisodeForm(prev => ({ ...prev, duration: Math.floor(duration / 60) }))}
                     label="Episode Video"
                     folder={`episodes/s${season.season_number}`}
                   />

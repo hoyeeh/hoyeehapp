@@ -19,6 +19,7 @@ import TVShowManagement from "@/components/admin/TVShowManagement";
 import { TranscodingDashboard } from "@/components/admin/TranscodingDashboard";
 import { GenreManagement } from "@/components/admin/GenreManagement";
 import { Top10Management } from "@/components/admin/Top10Management";
+import { HomeSectionManagement } from "@/components/admin/HomeSectionManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -223,6 +224,14 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Top 10 Management</h2>
             <Top10Management />
+          </div>
+        );
+      
+      case "homepage":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Home Page Management</h2>
+            <HomeSectionManagement />
           </div>
         );
       
