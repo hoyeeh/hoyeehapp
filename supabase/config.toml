@@ -19,7 +19,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.send-subscription-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.check-expiring-subscriptions]
 verify_jwt = false
@@ -31,10 +31,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.transcode-video]
-verify_jwt = false
+verify_jwt = true
 
 [functions.mux-video]
-verify_jwt = false
+verify_jwt = true
 
 [functions.mux-webhook]
 verify_jwt = false
