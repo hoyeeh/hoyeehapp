@@ -157,11 +157,6 @@ export const ContentCardWithPreview = ({
                 {content.rating && <span>⭐ {content.rating}</span>}
               </div>
               <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{content.description}</p>
-              {content.isPremium && (
-                <span className="inline-block mt-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                  PREMIUM
-                </span>
-              )}
             </div>
           </div>
           <div className="flex gap-2 mt-3">
@@ -239,11 +234,6 @@ export const ContentCardWithPreview = ({
 
           {/* Badges - Top Right */}
           <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-            {content.isPremium && (
-              <div className="bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground shadow-lg">
-                PREMIUM
-              </div>
-            )}
             <ContentRatingBadge rating={content.contentRating} size="sm" />
           </div>
 
@@ -254,9 +244,9 @@ export const ContentCardWithPreview = ({
             </div>
           )}
 
-          {/* Just Added Badge - Bottom Full Width */}
+          {/* Just Added Badge - Centered with rounded edges */}
           {shouldShowJustAdded && !showTop10Badge && (
-            <div className="absolute bottom-0 left-0 right-0 bg-destructive text-destructive-foreground py-1 text-xs font-bold text-center">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
               JUST ADDED
             </div>
           )}

@@ -12,6 +12,9 @@ interface NewReleasesRowProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   userList?: string[];
+  title?: string;
+  maxItems?: number;
+  contentTypeFilter?: "all" | "movie" | "series";
 }
 
 export const NewReleasesRow = ({
@@ -19,6 +22,9 @@ export const NewReleasesRow = ({
   onToggleList,
   onDetails,
   userList = [],
+  title = "New Releases",
+  maxItems = 20,
+  contentTypeFilter = "all",
 }: NewReleasesRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -26,15 +32,22 @@ export const NewReleasesRow = ({
 
   // Fetch content from last 2 weeks
   const { data: newReleases = [] } = useQuery({
-    queryKey: ["new-releases-2-weeks"],
+    queryKey: ["new-releases-2-weeks", contentTypeFilter, maxItems],
     queryFn: async () => {
       const twoWeeksAgo = subDays(new Date(), 14).toISOString();
-      const { data, error } = await supabase
+      let query = supabase
         .from("content")
         .select("*")
         .gte("created_at", twoWeeksAgo)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(maxItems);
+      
+      // Apply content type filter if not "all"
+      if (contentTypeFilter !== "all") {
+        query = query.eq("content_type", contentTypeFilter);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
@@ -83,7 +96,7 @@ export const NewReleasesRow = ({
       {/* Section Title */}
       <div className="px-4 md:px-12 mb-3 flex items-baseline gap-3">
         <h2 className="font-display text-lg md:text-xl lg:text-2xl text-foreground tracking-wide">
-          New Releases
+          {title}
         </h2>
         <span className="text-brand text-sm font-medium opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer hover:underline">
           Explore All →
