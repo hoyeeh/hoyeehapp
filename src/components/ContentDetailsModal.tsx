@@ -3,6 +3,7 @@ import { X, Play, Plus, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DownloadButton } from "./DownloadButton";
 import { ContentReviews } from "./ContentReviews";
+import { SocialShare } from "./SocialShare";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ContentDetailsModalProps {
@@ -115,6 +116,8 @@ export const ContentDetailsModal = ({
               </Button>
 
               <DownloadButton content={content} />
+              
+              <SocialShare content={content} />
             </div>
 
             {/* Reviews Section */}

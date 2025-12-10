@@ -1,7 +1,8 @@
 import { Content } from "@/types";
 import { ContentCard } from "./ContentCard";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface ContentRowProps {
   title: string;
@@ -11,6 +12,7 @@ interface ContentRowProps {
   onDetails: (content: Content) => void;
   userList?: string[];
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  showRank?: boolean;
 }
 
 export const ContentRow = ({
@@ -21,12 +23,15 @@ export const ContentRow = ({
   onDetails,
   userList = [],
   cardStyle = "poster",
+  showRank = false,
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = 400;
+      const scrollAmount = scrollRef.current.clientWidth * 0.8;
       scrollRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
@@ -34,44 +39,87 @@ export const ContentRow = ({
     }
   };
 
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setShowLeftArrow(scrollLeft > 20);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 20);
+    }
+  };
+
   if (!content.length) return null;
 
   return (
-    <section className="mb-8">
-      <h2 className="font-display text-xl md:text-2xl mb-4 px-4 md:px-12">{title}</h2>
+    <section className="group/section relative py-4 transition-all duration-300 hover:z-10">
+      {/* Section Title - Netflix Style */}
+      <div className="px-4 md:px-12 mb-3 flex items-baseline gap-3">
+        <h2 className="font-display text-lg md:text-xl lg:text-2xl text-foreground tracking-wide">
+          {title}
+        </h2>
+        <span className="text-brand text-sm font-medium opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer hover:underline">
+          Explore All →
+        </span>
+      </div>
       
-      <div className="relative group/row">
-        {/* Scroll Buttons */}
+      <div className="relative">
+        {/* Left Scroll Button - Netflix style */}
         <button
           onClick={() => scroll("left")}
-          className="absolute left-0 top-0 bottom-8 z-10 w-12 bg-gradient-to-r from-background to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+          className={cn(
+            "absolute left-0 top-0 bottom-0 z-20 w-12 md:w-16 flex items-center justify-center",
+            "bg-gradient-to-r from-background via-background/90 to-transparent",
+            "transition-all duration-300",
+            showLeftArrow ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
         >
-          <ChevronLeft className="h-8 w-8" />
+          <div className="w-10 h-10 rounded-full bg-secondary/80 backdrop-blur flex items-center justify-center hover:bg-secondary hover:scale-110 transition-all">
+            <ChevronLeft className="h-6 w-6" />
+          </div>
         </button>
         
+        {/* Right Scroll Button - Netflix style */}
         <button
           onClick={() => scroll("right")}
-          className="absolute right-0 top-0 bottom-8 z-10 w-12 bg-gradient-to-l from-background to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+          className={cn(
+            "absolute right-0 top-0 bottom-0 z-20 w-12 md:w-16 flex items-center justify-center",
+            "bg-gradient-to-l from-background via-background/90 to-transparent",
+            "transition-all duration-300",
+            showRightArrow ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
         >
-          <ChevronRight className="h-8 w-8" />
+          <div className="w-10 h-10 rounded-full bg-secondary/80 backdrop-blur flex items-center justify-center hover:bg-secondary hover:scale-110 transition-all">
+            <ChevronRight className="h-6 w-6" />
+          </div>
         </button>
 
-        {/* Content Scroll */}
+        {/* Content Scroll Container */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto scrollbar-hide px-4 md:px-12 pb-4"
+          onScroll={handleScroll}
+          className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide px-4 md:px-12 pb-2 scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {content.map((item) => (
-            <ContentCard
-              key={item.id}
-              content={item}
-              onPlay={onPlay}
-              onToggleList={onToggleList}
-              onDetails={onDetails}
-              isInList={userList.includes(item.id)}
-              cardStyle={cardStyle}
-            />
+          {content.map((item, index) => (
+            <div key={item.id} className="relative flex-shrink-0">
+              {/* Rank Number for Top 10 style */}
+              {showRank && (
+                <div className="absolute -left-4 bottom-0 z-10 font-display text-[80px] md:text-[120px] leading-none text-transparent font-bold" 
+                     style={{ 
+                       WebkitTextStroke: '2px hsl(var(--muted-foreground))',
+                       textShadow: '4px 4px 0 hsl(var(--background))'
+                     }}>
+                  {index + 1}
+                </div>
+              )}
+              <ContentCard
+                content={item}
+                onPlay={onPlay}
+                onToggleList={onToggleList}
+                onDetails={onDetails}
+                isInList={userList.includes(item.id)}
+                cardStyle={cardStyle}
+              />
+            </div>
           ))}
         </div>
       </div>
