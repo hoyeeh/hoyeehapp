@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,10 @@ import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
 import { ContentFilter, FilterState } from "@/components/ContentFilter";
+import { ProfilePicker } from "@/components/ProfilePicker";
+import { KidsInterface } from "@/components/KidsInterface";
+import { ParentalPinModal } from "@/components/ParentalPinModal";
+import { isRestrictedForKids, isRestrictedByParentalControls } from "@/components/ContentRatingBadge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Search, X, Loader2 } from "lucide-react";
@@ -25,9 +30,12 @@ import { subDays } from "date-fns";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search';
 
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
+  
+  const { profiles, currentProfile, setCurrentProfile, loading: profilesLoading } = useProfileContext();
   
   const { data: content = [], isLoading: contentLoading } = useContent();
   const { data: watchlistIds = [] } = useWatchlist();
@@ -41,6 +49,7 @@ const Index = () => {
   const [playingContent, setPlayingContent] = useState<{ content: Content; progress: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [pinModalContent, setPinModalContent] = useState<Content | null>(null);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     genre: null,
     year: null,
@@ -185,6 +194,20 @@ const Index = () => {
   };
 
   const handlePlay = (item: Content) => {
+    // Check kids profile restrictions
+    if (currentProfile?.is_kids && isRestrictedForKids((item as any).contentRating)) {
+      toast.error("This content is not available for Kids profiles");
+      return;
+    }
+    
+    // Check parental controls
+    if (profile?.parental_controls_enabled && profile?.parental_pin) {
+      if (isRestrictedByParentalControls((item as any).contentRating, profile?.parental_rating_limit)) {
+        setPinModalContent(item);
+        return;
+      }
+    }
+    
     if (item.isPremium && !profile?.is_subscribed) {
       toast.error("This content requires a premium subscription");
       return;
@@ -310,6 +333,16 @@ const Index = () => {
         onGetStarted={() => navigate("/auth")}
       />
     );
+  }
+
+  // Profile Picker (logged in but no profile selected)
+  if (user && profiles.length > 0 && !currentProfile) {
+    return <ProfilePicker onProfileSelected={setCurrentProfile} />;
+  }
+
+  // No profiles yet - auto-create first profile
+  if (user && profiles.length === 0 && !profilesLoading) {
+    return <ProfilePicker onProfileSelected={setCurrentProfile} />;
   }
 
   // Main App (logged in)
