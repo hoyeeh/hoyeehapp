@@ -39,7 +39,13 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
             return (
               <li key={item.view}>
                 <button
-                  onClick={() => onNavigate(item.view)}
+                  onClick={() => {
+                    if (item.view === "mylist") {
+                      navigate("/my-list");
+                    } else {
+                      onNavigate(item.view);
+                    }
+                  }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors",
                     isActive
