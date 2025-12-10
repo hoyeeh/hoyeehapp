@@ -75,6 +75,7 @@ export const useVideoUploadSpaces = () => {
 
         xhr.open('PUT', presignedUrl);
         xhr.setRequestHeader('Content-Type', file.type);
+        xhr.setRequestHeader('x-amz-acl', 'public-read');
         xhr.send(file);
       });
 
