@@ -5,26 +5,28 @@ import { Content } from "@/types";
 import { Play, Info, Plus, Check, Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
+import { toast } from "sonner";
 
 interface EnhancedHeroBannerProps {
   fallbackContent?: Content;
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
-  onToggleList: (content: Content) => void;
-  isInList: boolean;
 }
 
 export const EnhancedHeroBanner = ({
   fallbackContent,
   onPlay,
   onDetails,
-  onToggleList,
-  isInList,
 }: EnhancedHeroBannerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  
+  const { data: watchlistIds = [] } = useWatchlist();
+  const addToWatchlist = useAddToWatchlist();
+  const removeFromWatchlist = useRemoveFromWatchlist();
 
   // Fetch active hero banners
   const { data: banners = [] } = useQuery({
@@ -111,6 +113,23 @@ export const EnhancedHeroBanner = ({
   };
 
   if (!content && !activeBanner) return null;
+
+  const isInList = content ? watchlistIds.includes(content.id) : false;
+
+  const handleToggleList = async () => {
+    if (!content) return;
+    try {
+      if (isInList) {
+        await removeFromWatchlist.mutateAsync(content.id);
+        toast.success("Removed from My List");
+      } else {
+        await addToWatchlist.mutateAsync(content.id);
+        toast.success("Added to My List");
+      }
+    } catch (error) {
+      toast.error("Failed to update watchlist");
+    }
+  };
 
   const displayTitle = activeBanner?.title || content?.title;
   const displaySubtitle = activeBanner?.subtitle;
@@ -214,7 +233,7 @@ export const EnhancedHeroBanner = ({
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => onToggleList(content)}
+                  onClick={handleToggleList}
                   className="gap-2"
                 >
                   {isInList ? (
