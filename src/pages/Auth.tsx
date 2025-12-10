@@ -213,6 +213,15 @@ const Auth = () => {
               </>
             )}
           </p>
+
+          <div className="mt-6 pt-6 border-t border-border text-center">
+            <button
+              onClick={() => navigate("/pin-auth")}
+              className="text-brand hover:underline font-medium"
+            >
+              Sign in with PIN instead
+            </button>
+          </div>
         </div>
       </div>
     </div>

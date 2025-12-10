@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.send-subscription-email]
 verify_jwt = false
+
+[functions.check-expiring-subscriptions]
+verify_jwt = false
