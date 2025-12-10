@@ -6,10 +6,67 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, mux-signature',
 };
 
-// Helper function to send transcoding notification
+// Verify Mux webhook signature using HMAC-SHA256
+async function verifyMuxSignature(rawBody: string, signature: string | null, secret: string): Promise<boolean> {
+  if (!signature) {
+    console.error('Missing Mux signature header');
+    return false;
+  }
+
+  // Parse the signature header (format: t=timestamp,v1=signature)
+  const parts: Record<string, string> = {};
+  signature.split(',').forEach(part => {
+    const [key, value] = part.split('=');
+    if (key && value) parts[key] = value;
+  });
+
+  const timestamp = parts['t'];
+  const providedSig = parts['v1'];
+
+  if (!timestamp || !providedSig) {
+    console.error('Invalid signature format');
+    return false;
+  }
+
+  // Check timestamp to prevent replay attacks (5 minute window)
+  const webhookTime = parseInt(timestamp);
+  const currentTime = Math.floor(Date.now() / 1000);
+  if (Math.abs(currentTime - webhookTime) > 300) {
+    console.error('Webhook timestamp expired:', { webhookTime, currentTime });
+    return false;
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const payload = `${timestamp}.${rawBody}`;
+    const sigBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+    const expectedSig = Array.from(new Uint8Array(sigBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    if (expectedSig !== providedSig) {
+      console.error('Signature mismatch');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Signature verification error:', error);
+    return false;
+  }
+}
+
+// Send transcoding notification
 async function sendTranscodingNotification(
   supabaseUrl: string,
-  anonKey: string,
+  serviceKey: string,
   jobId: string,
   status: "completed" | "failed",
   episodeTitle?: string,
@@ -21,12 +78,11 @@ async function sendTranscodingNotification(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${anonKey}`,
+        "Authorization": `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({ jobId, status, episodeTitle, showTitle, errorMessage }),
     });
-    const result = await response.json();
-    console.log("Notification sent:", result);
+    console.log("Notification sent:", await response.json());
   } catch (err) {
     console.error("Failed to send notification:", err);
   }
@@ -40,15 +96,31 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const muxWebhookSecret = Deno.env.get('MUX_WEBHOOK_SECRET');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const payload = await req.json();
-    const { type, data } = payload;
-    
-    console.log('Mux webhook received:', type, JSON.stringify(data, null, 2));
+    // Get raw body for signature verification
+    const rawBody = await req.text();
+    const muxSignature = req.headers.get('mux-signature');
 
-    // Handle different Mux webhook events
+    // Verify webhook signature if secret is configured
+    if (muxWebhookSecret) {
+      const isValid = await verifyMuxSignature(rawBody, muxSignature, muxWebhookSecret);
+      if (!isValid) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid webhook signature' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log('Mux signature verified successfully');
+    } else {
+      console.warn('MUX_WEBHOOK_SECRET not configured - skipping signature verification');
+    }
+
+    const payload = JSON.parse(rawBody);
+    const { type, data } = payload;
+    console.log('Mux webhook received:', type);
+
     switch (type) {
       case 'video.asset.ready': {
         const passthrough = JSON.parse(data.passthrough || '{}');
@@ -61,14 +133,14 @@ serve(async (req) => {
 
         const playbackId = data.playback_ids?.[0]?.id;
         if (!playbackId) {
-          console.error('No playback ID found in asset');
+          console.error('No playback ID found');
           break;
         }
 
         const hlsUrl = `https://stream.mux.com/${playbackId}.m3u8`;
         const thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg`;
 
-        // Get episode and show info for notification
+        // Get episode and show info
         const { data: episodeData } = await supabase
           .from('episodes')
           .select('title, season_id')
@@ -93,24 +165,15 @@ serve(async (req) => {
           }
         }
 
-        // Update episode with HLS URL and thumbnail
-        const { error: episodeError } = await supabase
+        // Update episode
+        await supabase
           .from('episodes')
-          .update({ 
-            video_url: hlsUrl,
-            thumbnail_url: thumbnailUrl,
-          })
+          .update({ video_url: hlsUrl, thumbnail_url: thumbnailUrl })
           .eq('id', episodeId);
-
-        if (episodeError) {
-          console.error('Error updating episode:', episodeError);
-        } else {
-          console.log(`Episode ${episodeId} updated with HLS URL: ${hlsUrl}`);
-        }
 
         // Update transcoding job
         if (jobId) {
-          const { error: jobError } = await supabase
+          await supabase
             .from('transcoding_jobs')
             .update({ 
               status: 'completed',
@@ -120,22 +183,9 @@ serve(async (req) => {
             })
             .eq('id', jobId);
 
-          if (jobError) {
-            console.error('Error updating transcoding job:', jobError);
-          } else {
-            console.log(`Transcoding job ${jobId} marked as completed`);
-            
-            // Send notification email
-            await sendTranscodingNotification(
-              supabaseUrl, 
-              anonKey, 
-              jobId, 
-              "completed", 
-              episodeData?.title,
-              showTitle
-            );
-          }
+          await sendTranscodingNotification(supabaseUrl, supabaseServiceKey, jobId, "completed", episodeData?.title, showTitle);
         }
+        console.log(`Episode ${episodeId} updated with HLS URL`);
         break;
       }
 
@@ -154,20 +204,10 @@ serve(async (req) => {
             .single();
           
           episodeTitle = episodeData?.title || '';
-          
           if (episodeData?.season_id) {
-            const { data: seasonData } = await supabase
-              .from('seasons')
-              .select('content_id')
-              .eq('id', episodeData.season_id)
-              .single();
-            
+            const { data: seasonData } = await supabase.from('seasons').select('content_id').eq('id', episodeData.season_id).single();
             if (seasonData?.content_id) {
-              const { data: contentData } = await supabase
-                .from('content')
-                .select('title')
-                .eq('id', seasonData.content_id)
-                .single();
+              const { data: contentData } = await supabase.from('content').select('title').eq('id', seasonData.content_id).single();
               showTitle = contentData?.title || '';
             }
           }
@@ -175,28 +215,12 @@ serve(async (req) => {
 
         if (jobId) {
           const errorMessage = data.errors?.messages?.join(', ') || 'Transcoding failed';
-          
           await supabase
             .from('transcoding_jobs')
-            .update({ 
-              status: 'failed',
-              error_message: errorMessage,
-              completed_at: new Date().toISOString(),
-            })
+            .update({ status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString() })
             .eq('id', jobId);
 
-          console.log(`Transcoding job ${jobId} failed: ${errorMessage}`);
-          
-          // Send failure notification email
-          await sendTranscodingNotification(
-            supabaseUrl, 
-            anonKey, 
-            jobId, 
-            "failed", 
-            episodeTitle,
-            showTitle,
-            errorMessage
-          );
+          await sendTranscodingNotification(supabaseUrl, supabaseServiceKey, jobId, "failed", episodeTitle, showTitle, errorMessage);
         }
         break;
       }
@@ -204,55 +228,33 @@ serve(async (req) => {
       case 'video.asset.created': {
         const passthrough = JSON.parse(data.passthrough || '{}');
         const { jobId } = passthrough;
-
         if (jobId) {
-          await supabase
-            .from('transcoding_jobs')
-            .update({ 
-              status: 'processing',
-              progress: 10,
-            })
-            .eq('id', jobId);
-
-          console.log(`Transcoding job ${jobId} started processing`);
+          await supabase.from('transcoding_jobs').update({ status: 'processing', progress: 10 }).eq('id', jobId);
         }
         break;
       }
 
-      case 'video.asset.live_stream_completed':
       case 'video.upload.asset_created': {
-        // Asset was created from upload
         const passthrough = JSON.parse(data.passthrough || '{}');
         const { jobId } = passthrough;
-
         if (jobId) {
-          await supabase
-            .from('transcoding_jobs')
-            .update({ 
-              status: 'processing',
-              progress: 50,
-            })
-            .eq('id', jobId);
-
-          console.log(`Transcoding job ${jobId} upload complete, processing`);
+          await supabase.from('transcoding_jobs').update({ status: 'processing', progress: 50 }).eq('id', jobId);
         }
         break;
       }
 
       default:
-        console.log(`Unhandled webhook event type: ${type}`);
+        console.log(`Unhandled webhook type: ${type}`);
     }
 
-    return new Response(
-      JSON.stringify({ received: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ received: true }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
 
   } catch (err) {
     console.error('Webhook error:', err);
-    const message = err instanceof Error ? err.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
