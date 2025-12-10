@@ -9,11 +9,14 @@ import { HeroBanner } from "@/components/HeroBanner";
 import { ContentRow } from "@/components/ContentRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { UserDashboard } from "@/components/UserDashboard";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+
+export type ExtendedViewState = ViewState | 'dashboard';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -26,7 +29,7 @@ const Index = () => {
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
 
-  const [currentView, setCurrentView] = useState<ViewState>("home");
+  const [currentView, setCurrentView] = useState<ExtendedViewState>("home");
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [playingContent, setPlayingContent] = useState<{ content: Content; progress: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,6 +193,11 @@ const Index = () => {
           </div>
         ) : (
           <div className="pb-8">
+            {/* Dashboard View */}
+            {currentView === "dashboard" && (
+              <UserDashboard onPlay={handlePlay} />
+            )}
+
             {currentView === "home" && !searchQuery && (
               <>
                 <HeroBanner
