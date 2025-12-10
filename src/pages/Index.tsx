@@ -2,11 +2,14 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Content, ViewState } from "@/types";
 import { LandingPage } from "@/components/LandingPage";
 import { Sidebar } from "@/components/Sidebar";
 import { HeroBanner } from "@/components/HeroBanner";
 import { ContentRow } from "@/components/ContentRow";
+import { Top10Row } from "@/components/Top10Row";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
@@ -15,6 +18,7 @@ import { toast } from "sonner";
 import { Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { subDays } from "date-fns";
 
 export type ExtendedViewState = ViewState | 'dashboard';
 
@@ -34,6 +38,96 @@ const Index = () => {
   const [playingContent, setPlayingContent] = useState<{ content: Content; progress: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+
+  // Fetch Top 10 content
+  const { data: top10Data = [] } = useQuery({
+    queryKey: ["top-10-display"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("top_10")
+        .select(`
+          id,
+          rank,
+          content:content_id (
+            id,
+            title,
+            description,
+            thumbnail_url,
+            video_url,
+            genre,
+            content_type,
+            is_premium,
+            duration,
+            year
+          )
+        `)
+        .order("rank");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch recently added content
+  const { data: recentlyAdded = [] } = useQuery({
+    queryKey: ["recently-added-home"],
+    queryFn: async () => {
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const { data, error } = await supabase
+        .from("content")
+        .select("*")
+        .gte("created_at", sevenDaysAgo)
+        .order("created_at", { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch genres for content grouping
+  const { data: genres = [] } = useQuery({
+    queryKey: ["genres"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("genres")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Transform top 10 data to match Content type
+  const top10Content = top10Data
+    .filter((item: any) => item.content)
+    .map((item: any) => ({
+      rank: item.rank,
+      content: {
+        id: item.content.id,
+        title: item.content.title,
+        description: item.content.description || "",
+        thumbnailUrl: item.content.thumbnail_url || "",
+        videoUrl: item.content.video_url || "",
+        genre: item.content.genre || "",
+        contentType: item.content.content_type as "movie" | "series",
+        isPremium: item.content.is_premium || false,
+        duration: item.content.duration || 0,
+        year: item.content.year,
+      } as Content,
+    }));
+
+  // Transform recently added to Content type
+  const recentlyAddedContent: Content[] = recentlyAdded.map((item: any) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description || "",
+    thumbnailUrl: item.thumbnail_url || "",
+    videoUrl: item.video_url || "",
+    genre: item.genre || "",
+    contentType: item.content_type as "movie" | "series",
+    isPremium: item.is_premium || false,
+    duration: item.duration || 0,
+    year: item.year,
+  }));
 
   // Redirect to auth if not logged in (handled in LandingPage)
   useEffect(() => {
@@ -109,6 +203,13 @@ const Index = () => {
   const movies = content.filter((c) => c.contentType === "movie");
   const shows = content.filter((c) => c.contentType === "series");
   const featuredContent = content[0];
+
+  // Get content by genre
+  const getContentByGenre = (genreName: string) => {
+    return content.filter((c) => 
+      c.genre.toLowerCase().includes(genreName.toLowerCase())
+    ).slice(0, 15);
+  };
 
   // Loading state
   if (authLoading) {
@@ -195,7 +296,7 @@ const Index = () => {
           <div className="pb-8">
             {/* Dashboard View */}
             {currentView === "dashboard" && (
-              <UserDashboard onPlay={handlePlay} />
+              <UserDashboard onPlay={handlePlay} onDetails={handleDetails} />
             )}
 
             {currentView === "home" && !searchQuery && (
@@ -208,7 +309,29 @@ const Index = () => {
                   isInList={featuredContent ? watchlistIds.includes(featuredContent.id) : false}
                 />
                 
-                <div className="mt-8">
+                <div className="mt-8 space-y-2">
+                  {/* Top 10 Section */}
+                  {top10Content.length > 0 && (
+                    <Top10Row
+                      content={top10Content}
+                      onPlay={handlePlay}
+                      onDetails={handleDetails}
+                    />
+                  )}
+
+                  {/* Recently Added */}
+                  {recentlyAddedContent.length > 0 && (
+                    <ContentRow
+                      title="🆕 Recently Added"
+                      content={recentlyAddedContent}
+                      onPlay={handlePlay}
+                      onToggleList={handleToggleList}
+                      onDetails={handleDetails}
+                      userList={watchlistIds}
+                    />
+                  )}
+
+                  {/* Popular Movies */}
                   <ContentRow
                     title="Popular Movies"
                     content={movies}
@@ -218,6 +341,7 @@ const Index = () => {
                     userList={watchlistIds}
                   />
                   
+                  {/* TV Shows */}
                   <ContentRow
                     title="TV Shows"
                     content={shows}
@@ -226,6 +350,35 @@ const Index = () => {
                     onDetails={handleDetails}
                     userList={watchlistIds}
                   />
+
+                  {/* Genre-based rows */}
+                  {genres.slice(0, 6).map((genre: any) => {
+                    const genreContent = getContentByGenre(genre.name);
+                    if (genreContent.length === 0) return null;
+                    return (
+                      <ContentRow
+                        key={genre.id}
+                        title={genre.name}
+                        content={genreContent}
+                        onPlay={handlePlay}
+                        onToggleList={handleToggleList}
+                        onDetails={handleDetails}
+                        userList={watchlistIds}
+                      />
+                    );
+                  })}
+
+                  {/* My List Preview */}
+                  {watchlistIds.length > 0 && (
+                    <ContentRow
+                      title="My List"
+                      content={content.filter((c) => watchlistIds.includes(c.id))}
+                      onPlay={handlePlay}
+                      onToggleList={handleToggleList}
+                      onDetails={handleDetails}
+                      userList={watchlistIds}
+                    />
+                  )}
                 </div>
               </>
             )}

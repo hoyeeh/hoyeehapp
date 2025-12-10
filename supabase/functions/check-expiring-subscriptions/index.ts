@@ -124,6 +124,22 @@ serve(async (req: Request): Promise<Response> => {
         if (emailResponse.ok) {
           console.log(`Sent ${emailType} email to ${userEmail} (${daysUntilExpiry} days until expiry)`);
           emailsSent.push(userEmail);
+
+          // Also send push notification
+          try {
+            await supabase.functions.invoke('send-push-notification', {
+              body: {
+                userId: subscription.user_id,
+                title: daysUntilExpiry === 1 
+                  ? "⚠️ Subscription expires tomorrow!" 
+                  : `Subscription expires in ${daysUntilExpiry} days`,
+                body: `Your premium access expires on ${expiryDate.toLocaleDateString()}. Renew now to keep watching!`,
+                type: "subscription_warning",
+              }
+            });
+          } catch (pushError) {
+            console.error("Failed to send push notification:", pushError);
+          }
         } else {
           const errorText = await emailResponse.text();
           console.error(`Failed to send email to ${userEmail}:`, errorText);
