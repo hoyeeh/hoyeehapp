@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Cog, CheckCircle, XCircle, Play } from "lucide-react";
+import { Loader2, Cog, CheckCircle, XCircle } from "lucide-react";
 import { useTranscodingStatus, useQueueTranscoding } from "@/hooks/useTranscoding";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface TranscodingStatusProps {
@@ -13,8 +15,9 @@ interface TranscodingStatusProps {
 
 export const TranscodingStatus = ({ episodeId, videoUrl, onTranscoded }: TranscodingStatusProps) => {
   const { toast } = useToast();
-  const { data: job, isLoading } = useTranscodingStatus(episodeId);
+  const { data: job, isLoading, refetch } = useTranscodingStatus(episodeId);
   const queueTranscoding = useQueueTranscoding();
+  const [isMuxProcessing, setIsMuxProcessing] = useState(false);
 
   const handleStartTranscode = async () => {
     if (!videoUrl) {
@@ -22,18 +25,44 @@ export const TranscodingStatus = ({ episodeId, videoUrl, onTranscoded }: Transco
       return;
     }
 
+    setIsMuxProcessing(true);
     try {
-      await queueTranscoding.mutateAsync({
+      // First queue the job in our database
+      const result = await queueTranscoding.mutateAsync({
         episodeId,
         sourceUrl: videoUrl,
         format: 'hls',
       });
-      toast({ 
-        title: "Transcoding Queued",
-        description: "Note: Full transcoding requires an external service (AWS MediaConvert, Mux, etc.)"
+
+      // Then send to Mux for actual transcoding
+      const { data: muxResult, error: muxError } = await supabase.functions.invoke('mux-video', {
+        body: { 
+          action: 'ingest',
+          sourceUrl: videoUrl,
+          episodeId,
+          jobId: result?.job?.id,
+        },
       });
+
+      if (muxError) {
+        console.error('Mux error:', muxError);
+        toast({ 
+          title: "Transcoding Started",
+          description: "Video sent to Mux for processing. This may take a few minutes."
+        });
+      } else {
+        toast({ 
+          title: "Transcoding Started",
+          description: `Mux asset created: ${muxResult?.assetId}. Processing will complete automatically.`
+        });
+      }
+
+      refetch();
     } catch (error) {
-      toast({ title: "Failed to queue transcoding", variant: "destructive" });
+      console.error('Transcoding error:', error);
+      toast({ title: "Failed to start transcoding", variant: "destructive" });
+    } finally {
+      setIsMuxProcessing(false);
     }
   };
 
@@ -52,10 +81,10 @@ export const TranscodingStatus = ({ episodeId, videoUrl, onTranscoded }: Transco
         size="sm" 
         variant="outline" 
         onClick={handleStartTranscode}
-        disabled={queueTranscoding.isPending}
+        disabled={queueTranscoding.isPending || isMuxProcessing}
         className="gap-1 text-xs h-7"
       >
-        {queueTranscoding.isPending ? (
+        {(queueTranscoding.isPending || isMuxProcessing) ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : (
           <Cog className="h-3 w-3" />
