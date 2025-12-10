@@ -436,7 +436,7 @@ export const EnhancedHomeSectionManagement = () => {
                   <Select value={formData.genre_id} onValueChange={(v) => setFormData({ ...formData, genre_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Select genre..." /></SelectTrigger>
                     <SelectContent>
-                      {genres.map((genre: any) => (
+                      {genres.filter((genre: any) => genre.id).map((genre: any) => (
                         <SelectItem key={genre.id} value={genre.id}>{genre.name}</SelectItem>
                       ))}
                     </SelectContent>
