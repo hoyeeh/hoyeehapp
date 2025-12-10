@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hoyeeh TV Receiver</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: white;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .logo {
+      font-size: 48px;
+      font-weight: bold;
+      color: #ff6300;
+      margin-bottom: 20px;
+    }
+
+    .pairing-screen {
+      text-align: center;
+    }
+
+    .pairing-code {
+      font-size: 120px;
+      font-weight: bold;
+      letter-spacing: 20px;
+      color: #ff6300;
+      margin: 40px 0;
+      font-family: 'Courier New', monospace;
+    }
+
+    .instructions {
+      font-size: 24px;
+      color: #aaa;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .status {
+      margin-top: 30px;
+      font-size: 18px;
+      color: #666;
+    }
+
+    .status.connected {
+      color: #4ade80;
+    }
+
+    .expires {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #666;
+    }
+
+    /* Video Player */
+    .player-container {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: black;
+    }
+
+    .player-container.active {
+      display: block;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .player-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
+      padding: 40px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .player-container:hover .player-overlay,
+    .player-overlay.visible {
+      opacity: 1;
+    }
+
+    .video-title {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #ff6300;
+      border-radius: 4px;
+      transition: width 0.1s;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .time-display {
+      font-size: 18px;
+      color: #aaa;
+    }
+
+    .now-playing-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #ff6300;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255,99,0,0.2);
+      border-top-color: #ff6300;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      color: #ef4444;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+
+    /* Idle screen */
+    .idle-screen {
+      display: none;
+      text-align: center;
+    }
+
+    .idle-screen.active {
+      display: block;
+    }
+
+    .idle-screen h2 {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+
+    .idle-screen p {
+      font-size: 20px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="pairingScreen">
+    <div class="pairing-screen">
+      <div class="logo">HOYEEH</div>
+      <h1>Link with TV Code</h1>
+      <div class="pairing-code" id="pairingCode">------</div>
+      <p class="instructions">
+        Open the Hoyeeh app on your phone or computer.<br>
+        Go to Cast → "Link with TV code" and enter the code above.
+      </p>
+      <p class="status" id="status">Waiting for connection...</p>
+      <p class="expires" id="expires"></p>
+      <div class="spinner" id="spinner" style="display: none;"></div>
+      <p class="error-message" id="errorMessage"></p>
+    </div>
+  </div>
+
+  <div class="container idle-screen" id="idleScreen">
+    <div class="logo">HOYEEH</div>
+    <h2>Ready to Cast</h2>
+    <p>Select content from your phone or computer to start watching</p>
+    <p class="status connected">Connected</p>
+  </div>
+
+  <div class="player-container" id="playerContainer">
+    <video id="videoPlayer" playsinline></video>
+    <div class="now-playing-badge">Now Playing</div>
+    <div class="player-overlay" id="playerOverlay">
+      <h2 class="video-title" id="videoTitle">Video Title</h2>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="controls">
+        <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const SUPABASE_URL = 'https://astugmzoxhxcyipxsojl.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdHVnbXpveGh4Y3lpcHhzb2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzIzNDIsImV4cCI6MjA4MDY0ODM0Mn0.gYQzgVqNwvHe2dO5tfk0S2sy4EPVybh9C8alpi7LhCE';
+
+    let sessionId = null;
+    let receiverId = null;
+    let pairingCode = null;
+    let pollInterval = null;
+    let heartbeatInterval = null;
+    let hls = null;
+
+    const video = document.getElementById('videoPlayer');
+    const pairingScreen = document.getElementById('pairingScreen');
+    const idleScreen = document.getElementById('idleScreen');
+    const playerContainer = document.getElementById('playerContainer');
+
+    // Format time
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // Call edge function
+    async function callSignaling(action, body = {}) {
+      const url = `${SUPABASE_URL}/functions/v1/cast-signaling?action=${action}`;
+      const response = await fetch(url, {
+        method: body ? 'POST' : 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
+      });
+      return response.json();
+    }
+
+    // Generate pairing code
+    async function generatePairingCode() {
+      try {
+        document.getElementById('spinner').style.display = 'block';
+        document.getElementById('errorMessage').textContent = '';
+
+        const result = await callSignaling('generate-code', {
+          deviceName: 'Smart TV',
+          deviceType: 'smart_tv',
+        });
+
+        if (result.success) {
+          sessionId = result.sessionId;
+          receiverId = result.receiverId;
+          pairingCode = result.pairingCode;
+
+          document.getElementById('pairingCode').textContent = pairingCode;
+          document.getElementById('status').textContent = 'Waiting for connection...';
+
+          // Show expiration countdown
+          const expiresAt = new Date(result.expiresAt);
+          updateExpiry(expiresAt);
+
+          // Start polling for pairing
+          startPolling();
+        } else {
+          throw new Error(result.error || 'Failed to generate code');
+        }
+      } catch (error) {
+        console.error('Error generating code:', error);
+        document.getElementById('errorMessage').textContent = 'Error: ' + error.message;
+      } finally {
+        document.getElementById('spinner').style.display = 'none';
+      }
+    }
+
+    // Update expiry countdown
+    function updateExpiry(expiresAt) {
+      const updateCountdown = () => {
+        const now = new Date();
+        const diff = Math.max(0, Math.floor((expiresAt - now) / 1000));
+        
+        if (diff <= 0) {
+          document.getElementById('expires').textContent = 'Code expired. Generating new code...';
+          generatePairingCode();
+          return;
+        }
+
+        const mins = Math.floor(diff / 60);
+        const secs = diff % 60;
+        document.getElementById('expires').textContent = 
+          `Code expires in ${mins}:${secs.toString().padStart(2, '0')}`;
+      };
+
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    }
+
+    // Start polling for session updates
+    function startPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+
+      pollInterval = setInterval(async () => {
+        try {
+          const result = await callSignaling('status', {}, `&sessionId=${sessionId}`);
+          
+          if (result.success) {
+            handleSessionUpdate(result.session);
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, 1000);
+    }
+
+    // Handle session updates
+    function handleSessionUpdate(session) {
+      if (session.status === 'paired' || session.status === 'active') {
+        document.getElementById('status').textContent = 'Connected!';
+        document.getElementById('status').classList.add('connected');
+
+        if (session.videoUrl) {
+          showPlayer(session);
+        } else {
+          showIdleScreen();
+        }
+
+        // Start heartbeat
+        startHeartbeat();
+      }
+
+      if (session.status === 'active' && session.videoUrl) {
+        // Update playback if needed
+        updatePlaybackState(session);
+      }
+
+      if (session.status === 'disconnected') {
+        // Show pairing screen again
+        showPairingScreen();
+        generatePairingCode();
+      }
+    }
+
+    // Show player
+    function showPlayer(session) {
+      pairingScreen.style.display = 'none';
+      idleScreen.classList.remove('active');
+      playerContainer.classList.add('active');
+
+      document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
+
+      // Load video
+      loadVideo(session.videoUrl, session.playbackTime);
+    }
+
+    // Load video
+    function loadVideo(url, startTime = 0) {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+
+      if (url.includes('.m3u8') && Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.currentTime = startTime;
+          video.play();
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+        video.currentTime = startTime;
+        video.play();
+      } else {
+        video.src = url;
+        video.currentTime = startTime;
+        video.play();
+      }
+    }
+
+    // Update playback state from controller
+    function updatePlaybackState(session) {
+      if (Math.abs(video.currentTime - session.playbackTime) > 3) {
+        video.currentTime = session.playbackTime;
+      }
+
+      if (session.isPlaying && video.paused) {
+        video.play();
+      } else if (!session.isPlaying && !video.paused) {
+        video.pause();
+      }
+
+      if (session.volume !== undefined) {
+        video.volume = session.volume / 100;
+      }
+    }
+
+    // Show idle screen
+    function showIdleScreen() {
+      pairingScreen.style.display = 'none';
+      playerContainer.classList.remove('active');
+      idleScreen.classList.add('active');
+    }
+
+    // Show pairing screen
+    function showPairingScreen() {
+      playerContainer.classList.remove('active');
+      idleScreen.classList.remove('active');
+      pairingScreen.style.display = 'flex';
+    }
+
+    // Start heartbeat
+    function startHeartbeat() {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+
+      heartbeatInterval = setInterval(async () => {
+        try {
+          await callSignaling('heartbeat', {
+            sessionId,
+            playbackTime: video.currentTime,
+            isPlaying: !video.paused,
+          });
+        } catch (error) {
+          console.error('Heartbeat error:', error);
+        }
+      }, 2000);
+    }
+
+    // Update progress bar
+    video.addEventListener('timeupdate', () => {
+      const progress = (video.currentTime / video.duration) * 100;
+      document.getElementById('progressFill').style.width = `${progress}%`;
+      document.getElementById('timeDisplay').textContent = 
+        `${formatTime(video.currentTime)} / ${formatTime(video.duration || 0)}`;
+    });
+
+    // Show overlay on interaction
+    let overlayTimeout;
+    playerContainer.addEventListener('mousemove', () => {
+      document.getElementById('playerOverlay').classList.add('visible');
+      clearTimeout(overlayTimeout);
+      overlayTimeout = setTimeout(() => {
+        document.getElementById('playerOverlay').classList.remove('visible');
+      }, 3000);
+    });
+
+    // Override status endpoint call to include query param
+    async function checkStatus() {
+      const url = `${SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${sessionId}`;
+      const response = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+        },
+      });
+      return response.json();
+    }
+
+    // Modified polling to use GET request
+    function startPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+
+      pollInterval = setInterval(async () => {
+        try {
+          const result = await checkStatus();
+          
+          if (result.success) {
+            handleSessionUpdate(result.session);
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, 1000);
+    }
+
+    // Initialize
+    generatePairingCode();
+  </script>
+</body>
+</html>

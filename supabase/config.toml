@@ -1,5 +1,8 @@
 project_id = "astugmzoxhxcyipxsojl"
 
+[functions.cast-signaling]
+verify_jwt = false
+
 [functions.tmdb-search]
 verify_jwt = false
 

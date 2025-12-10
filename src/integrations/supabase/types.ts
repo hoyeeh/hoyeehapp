@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      cast_receivers: {
+        Row: {
+          created_at: string | null
+          device_name: string
+          device_type: string | null
+          id: string
+          last_active: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_name: string
+          device_type?: string | null
+          id?: string
+          last_active?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_name?: string
+          device_type?: string | null
+          id?: string
+          last_active?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      cast_sessions: {
+        Row: {
+          controller_user_id: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_playing: boolean | null
+          last_heartbeat: string | null
+          pairing_code: string
+          playback_time: number | null
+          queue: Json | null
+          receiver_id: string | null
+          status: string | null
+          video_duration: number | null
+          video_thumbnail: string | null
+          video_title: string | null
+          video_url: string | null
+          volume_level: number | null
+        }
+        Insert: {
+          controller_user_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_playing?: boolean | null
+          last_heartbeat?: string | null
+          pairing_code: string
+          playback_time?: number | null
+          queue?: Json | null
+          receiver_id?: string | null
+          status?: string | null
+          video_duration?: number | null
+          video_thumbnail?: string | null
+          video_title?: string | null
+          video_url?: string | null
+          volume_level?: number | null
+        }
+        Update: {
+          controller_user_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_playing?: boolean | null
+          last_heartbeat?: string | null
+          pairing_code?: string
+          playback_time?: number | null
+          queue?: Json | null
+          receiver_id?: string | null
+          status?: string | null
+          video_duration?: number | null
+          video_thumbnail?: string | null
+          video_title?: string | null
+          video_url?: string | null
+          volume_level?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cast_sessions_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "cast_receivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coming_soon: {
         Row: {
           content_type: string
