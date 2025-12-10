@@ -10,7 +10,7 @@ interface TVShowsListProps {
 }
 
 export const TVShowsList = ({ content, onDelete }: TVShowsListProps) => {
-  const [managingShow, setManagingShow] = useState<{ id: string; title: string } | null>(null);
+  const [managingShow, setManagingShow] = useState<{ id: string; title: string; tmdbId?: number | null } | null>(null);
   
   const tvShows = content.filter(c => c.content_type === "series");
 
@@ -19,6 +19,7 @@ export const TVShowsList = ({ content, onDelete }: TVShowsListProps) => {
       <TVShowManagement
         contentId={managingShow.id}
         contentTitle={managingShow.title}
+        tmdbId={managingShow.tmdbId}
         onClose={() => setManagingShow(null)}
       />
     );
@@ -70,7 +71,7 @@ export const TVShowsList = ({ content, onDelete }: TVShowsListProps) => {
                 <div className="flex flex-col gap-2">
                   <Button
                     variant="default"
-                    onClick={() => setManagingShow({ id: show.id, title: show.title })}
+                    onClick={() => setManagingShow({ id: show.id, title: show.title, tmdbId: show.tmdb_id })}
                     className="gap-2"
                   >
                     <Layers className="h-4 w-4" />
