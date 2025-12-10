@@ -62,12 +62,22 @@ export const ContentCardWithPreview = ({
     minimal: "aspect-[3/2]",
   };
 
+  // Backdrop should span roughly 2.5 poster widths and match poster height
   const cardWidths = {
     poster: sizeClasses[size],
-    backdrop: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
+    backdrop: size === "sm" ? "w-[20rem] md:w-[26rem]" : size === "md" ? "w-[26rem] md:w-[32rem]" : "w-[32rem] md:w-[40rem]",
     wide: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
     square: size === "sm" ? "w-32 md:w-40" : size === "md" ? "w-40 md:w-48" : "w-48 md:w-56",
     minimal: size === "sm" ? "w-48 md:w-56" : size === "md" ? "w-56 md:w-64" : "w-64 md:w-80",
+  };
+
+  // Use poster aspect ratio height for backdrop cards to match heights
+  const aspectRatioClasses = {
+    poster: aspectRatios[cardStyle],
+    backdrop: "aspect-[2/1]", // Wider but same visual height as poster when displayed side by side
+    wide: aspectRatios[cardStyle],
+    square: aspectRatios[cardStyle],
+    minimal: aspectRatios[cardStyle],
   };
 
   // Start time at 25 minutes (1500 seconds)
@@ -201,7 +211,7 @@ export const ContentCardWithPreview = ({
         <div 
           className={cn(
             "relative overflow-hidden bg-secondary",
-            aspectRatios[cardStyle]
+            aspectRatioClasses[cardStyle]
           )}
           onClick={() => onDetails(content)}
         >
@@ -351,7 +361,7 @@ export const ContentCardWithPreview = ({
       <div 
         className={cn(
           "relative rounded-md overflow-hidden bg-secondary shadow-lg invisible",
-          aspectRatios[cardStyle]
+          aspectRatioClasses[cardStyle]
         )}
       >
         <img

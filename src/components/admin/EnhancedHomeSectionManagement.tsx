@@ -146,6 +146,7 @@ export const EnhancedHomeSectionManagement = () => {
     card_style: "poster",
     max_items: 15,
     is_active: true,
+    content_type_filter: "all" as "all" | "movie" | "series",
   });
 
   const sensors = useSensors(
@@ -332,11 +333,17 @@ export const EnhancedHomeSectionManagement = () => {
       card_style: "poster",
       max_items: 15,
       is_active: true,
+      content_type_filter: "all",
     });
   };
 
   const handleEdit = (section: HomeSection) => {
     setEditingSection(section);
+    // Parse content_type_filter from title if it contains "Movies" or "Series"
+    let contentTypeFilter: "all" | "movie" | "series" = "all";
+    if (section.title.toLowerCase().includes("movie")) contentTypeFilter = "movie";
+    else if (section.title.toLowerCase().includes("series") || section.title.toLowerCase().includes("show")) contentTypeFilter = "series";
+    
     setFormData({
       title: section.title,
       section_type: section.section_type,
@@ -344,6 +351,7 @@ export const EnhancedHomeSectionManagement = () => {
       card_style: section.card_style,
       max_items: section.max_items || 15,
       is_active: section.is_active,
+      content_type_filter: contentTypeFilter,
     });
     setShowForm(true);
   };
@@ -440,6 +448,22 @@ export const EnhancedHomeSectionManagement = () => {
                       {genres.filter((genre: any) => genre.id).map((genre: any) => (
                         <SelectItem key={genre.id} value={genre.id}>{genre.name}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {formData.section_type === "new_releases" && (
+                <div className="space-y-2">
+                  <Label>Content Type Filter</Label>
+                  <Select 
+                    value={formData.content_type_filter} 
+                    onValueChange={(v) => setFormData({ ...formData, content_type_filter: v as "all" | "movie" | "series" })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Content</SelectItem>
+                      <SelectItem value="movie">Movies Only</SelectItem>
+                      <SelectItem value="series">TV Shows Only</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
