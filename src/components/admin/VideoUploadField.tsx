@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,35 +26,63 @@ export const VideoUploadField = ({
   const { uploadVideo, uploading, progress, error, resetProgress } = useVideoUploadSpaces();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const processFile = async (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      alert('Please select a video file');
+      return;
+    }
+    // Max 2GB
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      alert('File size must be less than 2GB');
+      return;
+    }
+    setSelectedFile(file);
+    resetProgress();
+    
+    // Auto-detect video duration
+    if (onDurationDetected) {
+      try {
+        const duration = await getVideoDuration(file);
+        onDurationDetected(duration);
+      } catch (error) {
+        console.error("Failed to detect video duration:", error);
+      }
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('video/')) {
-        alert('Please select a video file');
-        return;
-      }
-      // Max 2GB
-      if (file.size > 2 * 1024 * 1024 * 1024) {
-        alert('File size must be less than 2GB');
-        return;
-      }
-      setSelectedFile(file);
-      resetProgress();
-      
-      // Auto-detect video duration
-      if (onDurationDetected) {
-        try {
-          const duration = await getVideoDuration(file);
-          onDurationDetected(duration);
-        } catch (error) {
-          console.error("Failed to detect video duration:", error);
-        }
-      }
+      processFile(file);
     }
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('video/')) {
+      processFile(file);
+    }
+  }, [onDurationDetected]);
 
   const handleUpload = async () => {
     if (!selectedFile) return;
@@ -135,14 +163,19 @@ export const VideoUploadField = ({
             </div>
           )}
 
-          {/* File selection */}
+          {/* File selection with drag-and-drop */}
           {!selectedFile && !uploading && (
             <div
               className={cn(
                 "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-                "hover:border-primary hover:bg-primary/5"
+                isDragging 
+                  ? "border-primary bg-primary/10" 
+                  : "hover:border-primary hover:bg-primary/5"
               )}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               <input
                 ref={fileInputRef}
@@ -152,7 +185,9 @@ export const VideoUploadField = ({
                 className="hidden"
               />
               <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm font-medium">Click to select video</p>
+              <p className="text-sm font-medium">
+                {isDragging ? "Drop video here" : "Drag & drop or click to select"}
+              </p>
               <p className="text-xs text-muted-foreground">MP4, MOV, AVI up to 2GB</p>
             </div>
           )}

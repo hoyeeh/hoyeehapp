@@ -1,11 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useVideoUploadSpaces } from "@/hooks/useVideoUploadSpaces";
-import { Upload, X, Check, Image, AlertCircle } from "lucide-react";
+import { Upload, X, Check, Image, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { compressImage, getCompressionStats } from "@/utils/imageCompression";
 
 interface ThumbnailUploadFieldProps {
   value: string;
@@ -24,29 +25,82 @@ export const ThumbnailUploadField = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
+  const [compressionStats, setCompressionStats] = useState<{ savings: number; percentage: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const processFile = async (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+    // Max 10MB for original file
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    setCompressing(true);
+    resetProgress();
+
+    try {
+      // Compress the image
+      const compressedFile = await compressImage(file, {
+        maxWidth: 1280,
+        maxHeight: 720,
+        quality: 0.85,
+        mimeType: 'image/webp'
+      });
+
+      const stats = getCompressionStats(file.size, compressedFile.size);
+      setCompressionStats(stats);
+      setSelectedFile(compressedFile);
+
+      // Create preview URL
+      const preview = URL.createObjectURL(compressedFile);
+      setPreviewUrl(preview);
+    } catch (err) {
+      console.error('Compression failed:', err);
+      // Fallback to original file if compression fails
+      setSelectedFile(file);
+      const preview = URL.createObjectURL(file);
+      setPreviewUrl(preview);
+    } finally {
+      setCompressing(false);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
-        return;
-      }
-      // Max 10MB for thumbnails
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
-        return;
-      }
-      setSelectedFile(file);
-      resetProgress();
-      
-      // Create preview URL
-      const preview = URL.createObjectURL(file);
-      setPreviewUrl(preview);
+      processFile(file);
     }
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      processFile(file);
+    }
+  }, []);
 
   const handleUpload = async () => {
     if (!selectedFile) return;
@@ -55,6 +109,7 @@ export const ThumbnailUploadField = ({
     if (result) {
       onChange(result.publicUrl);
       setSelectedFile(null);
+      setCompressionStats(null);
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
@@ -64,6 +119,7 @@ export const ThumbnailUploadField = ({
 
   const handleCancel = () => {
     setSelectedFile(null);
+    setCompressionStats(null);
     resetProgress();
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -131,7 +187,7 @@ export const ThumbnailUploadField = ({
       ) : (
         <div className="space-y-3">
           {/* Current thumbnail preview */}
-          {value && !selectedFile && (
+          {value && !selectedFile && !compressing && (
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
               <div className="relative w-16 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
                 <img 
@@ -155,14 +211,27 @@ export const ThumbnailUploadField = ({
             </div>
           )}
 
-          {/* File selection */}
-          {!selectedFile && !uploading && (
+          {/* Compressing state */}
+          {compressing && (
+            <div className="flex items-center gap-3 p-6 bg-muted/50 rounded-lg justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm">Optimizing image...</span>
+            </div>
+          )}
+
+          {/* File selection with drag-and-drop */}
+          {!selectedFile && !uploading && !compressing && (
             <div
               className={cn(
                 "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-                "hover:border-primary hover:bg-primary/5"
+                isDragging 
+                  ? "border-primary bg-primary/10" 
+                  : "hover:border-primary hover:bg-primary/5"
               )}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               <input
                 ref={fileInputRef}
@@ -172,13 +241,17 @@ export const ThumbnailUploadField = ({
                 className="hidden"
               />
               <Image className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm font-medium">Click to select image</p>
-              <p className="text-xs text-muted-foreground">JPG, PNG, WebP up to 10MB</p>
+              <p className="text-sm font-medium">
+                {isDragging ? "Drop image here" : "Drag & drop or click to select"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                JPG, PNG, WebP up to 10MB • Auto-optimized to WebP
+              </p>
             </div>
           )}
 
           {/* Selected file / uploading */}
-          {selectedFile && (
+          {selectedFile && !compressing && (
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                 {previewUrl && (
@@ -194,6 +267,11 @@ export const ThumbnailUploadField = ({
                   <p className="text-sm font-medium truncate">{selectedFile.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {formatBytes(selectedFile.size)}
+                    {compressionStats && compressionStats.percentage > 0 && (
+                      <span className="text-green-500 ml-2">
+                        ({compressionStats.percentage}% smaller)
+                      </span>
+                    )}
                   </p>
                 </div>
                 {!uploading && (
