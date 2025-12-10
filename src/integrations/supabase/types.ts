@@ -420,12 +420,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_session_id: string | null
           avatar_url: string | null
           country: string | null
           created_at: string | null
           display_name: string | null
           id: string
           is_subscribed: boolean | null
+          last_login_at: string | null
           mobile_number: string | null
           parental_controls_enabled: boolean | null
           parental_pin: string | null
@@ -438,12 +440,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          active_session_id?: string | null
           avatar_url?: string | null
           country?: string | null
           created_at?: string | null
           display_name?: string | null
           id: string
           is_subscribed?: boolean | null
+          last_login_at?: string | null
           mobile_number?: string | null
           parental_controls_enabled?: boolean | null
           parental_pin?: string | null
@@ -456,12 +460,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          active_session_id?: string | null
           avatar_url?: string | null
           country?: string | null
           created_at?: string | null
           display_name?: string | null
           id?: string
           is_subscribed?: boolean | null
+          last_login_at?: string | null
           mobile_number?: string | null
           parental_controls_enabled?: boolean | null
           parental_pin?: string | null
@@ -939,6 +945,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reset_pin_secure: {
+        Args: { input_secret: string; new_pin: string; user_mobile: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
       }
       verify_parental_pin: {
         Args: { input_pin: string; user_uuid: string }

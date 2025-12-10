@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { S3Client, PutObjectCommand } from "https://esm.sh/@aws-sdk/client-s3@3.485.0";
 import { getSignedUrl } from "https://esm.sh/@aws-sdk/s3-request-presigner@3.485.0";
 
@@ -13,6 +14,44 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify the caller is authenticated and is an admin
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Invalid token:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user is an admin
+    const { data: isAdmin, error: roleError } = await supabase
+      .rpc('has_role', { _user_id: user.id, _role: 'admin' });
+
+    if (roleError || !isAdmin) {
+      console.error('User is not an admin:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const spacesKey = Deno.env.get('DO_SPACES_KEY');
     const spacesSecret = Deno.env.get('DO_SPACES_SECRET');
     const spacesEndpoint = Deno.env.get('DO_SPACES_ENDPOINT');
@@ -36,7 +75,17 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating presigned URL for: ${folder}/${fileName}`);
+    // Validate file type (only allow video files)
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+    if (!allowedTypes.some(type => fileType.startsWith('video/') || allowedTypes.includes(fileType))) {
+      console.error('Invalid file type:', fileType);
+      return new Response(
+        JSON.stringify({ error: 'Only video files are allowed' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Admin ${user.id} generating presigned URL for: ${folder}/${fileName}`);
 
     // Create S3 client for DigitalOcean Spaces
     const s3Client = new S3Client({
