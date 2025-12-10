@@ -6,9 +6,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limiting for pairing attempts (in-memory, resets on function restart)
+const pairingAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(identifier: string, maxAttempts = 10, windowMs = 60000): boolean {
+  const now = Date.now();
+  const record = pairingAttempts.get(identifier);
+  
+  if (!record || now > record.resetAt) {
+    pairingAttempts.set(identifier, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxAttempts) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
+
 // Generate a random 6-character pairing code
 function generatePairingCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Avoid ambiguous chars
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -16,8 +36,17 @@ function generatePairingCode(): string {
   return code;
 }
 
+// Get authenticated user from request
+async function getAuthUser(req: Request, supabase: any) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) return null;
+  
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user } } = await supabase.auth.getUser(token);
+  return user;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -29,30 +58,22 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
+    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
 
-    // ACTION: Generate pairing code for TV receiver
+    // Generate pairing code for TV receiver (no auth needed)
     if (action === 'generate-code') {
       const { deviceName, deviceType } = await req.json();
       
-      // Create receiver record
       const { data: receiver, error: receiverError } = await supabase
         .from('cast_receivers')
-        .insert({
-          device_name: deviceName || 'Smart TV',
-          device_type: deviceType || 'smart_tv',
-        })
+        .insert({ device_name: deviceName || 'Smart TV', device_type: deviceType || 'smart_tv' })
         .select()
         .single();
 
-      if (receiverError) {
-        console.error('Error creating receiver:', receiverError);
-        throw receiverError;
-      }
+      if (receiverError) throw receiverError;
 
-      // Generate unique pairing code
       let pairingCode = generatePairingCode();
       let attempts = 0;
-      
       while (attempts < 10) {
         const { data: existing } = await supabase
           .from('cast_sessions')
@@ -60,13 +81,11 @@ serve(async (req) => {
           .eq('pairing_code', pairingCode)
           .eq('status', 'pending')
           .single();
-        
         if (!existing) break;
         pairingCode = generatePairingCode();
         attempts++;
       }
 
-      // Create session with pairing code
       const { data: session, error: sessionError } = await supabase
         .from('cast_sessions')
         .insert({
@@ -78,29 +97,39 @@ serve(async (req) => {
         .select()
         .single();
 
-      if (sessionError) {
-        console.error('Error creating session:', sessionError);
-        throw sessionError;
-      }
+      if (sessionError) throw sessionError;
 
-      console.log('Generated pairing code:', pairingCode, 'for receiver:', receiver.id);
-
+      console.log('Generated pairing code:', pairingCode);
       return new Response(JSON.stringify({
         success: true,
         pairingCode,
         sessionId: session.id,
         receiverId: receiver.id,
         expiresAt: session.expires_at,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ACTION: Validate pairing code and connect controller
+    // Pair controller with receiver - REQUIRES AUTH + RATE LIMITING
     if (action === 'pair') {
-      const { pairingCode, userId } = await req.json();
+      // Rate limit by IP
+      if (!checkRateLimit(clientIp, 10, 60000)) {
+        console.warn(`Rate limit exceeded for IP: ${clientIp}`);
+        return new Response(JSON.stringify({ success: false, error: 'Too many attempts. Try again in a minute.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-      // Find pending session with this code
+      const user = await getAuthUser(req, supabase);
+      if (!user) {
+        return new Response(JSON.stringify({ success: false, error: 'Authentication required' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { pairingCode } = await req.json();
+
       const { data: session, error: sessionError } = await supabase
         .from('cast_sessions')
         .select('*, cast_receivers(*)')
@@ -110,215 +139,150 @@ serve(async (req) => {
         .single();
 
       if (sessionError || !session) {
-        console.log('Invalid or expired pairing code:', pairingCode);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Invalid or expired pairing code',
-        }), {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid or expired pairing code' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Update session to paired status
-      const { error: updateError } = await supabase
+      await supabase
         .from('cast_sessions')
-        .update({
-          status: 'paired',
-          controller_user_id: userId || null,
-          last_heartbeat: new Date().toISOString(),
-        })
+        .update({ status: 'paired', controller_user_id: user.id, last_heartbeat: new Date().toISOString() })
         .eq('id', session.id);
 
-      if (updateError) {
-        console.error('Error updating session:', updateError);
-        throw updateError;
-      }
-
-      console.log('Paired session:', session.id, 'with controller:', userId);
-
+      console.log('Paired session:', session.id, 'with user:', user.id);
       return new Response(JSON.stringify({
         success: true,
         sessionId: session.id,
         receiverId: session.receiver_id,
         deviceName: session.cast_receivers?.device_name,
         deviceType: session.cast_receivers?.device_type,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ACTION: Send command to session
+    // Send command - REQUIRES AUTH + SESSION OWNERSHIP
     if (action === 'command') {
+      const user = await getAuthUser(req, supabase);
+      if (!user) {
+        return new Response(JSON.stringify({ success: false, error: 'Authentication required' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const { sessionId, command, payload } = await req.json();
 
-      // Get current session
+      // Verify session ownership
       const { data: session, error: sessionError } = await supabase
         .from('cast_sessions')
-        .select('*')
+        .select('controller_user_id')
         .eq('id', sessionId)
         .single();
 
       if (sessionError || !session) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Session not found',
-        }), {
+        return new Response(JSON.stringify({ success: false, error: 'Session not found' }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Update session based on command
-      let updateData: Record<string, unknown> = {
-        last_heartbeat: new Date().toISOString(),
-      };
+      if (session.controller_user_id !== user.id) {
+        console.warn(`Unauthorized command by ${user.id} on session ${sessionId}`);
+        return new Response(JSON.stringify({ success: false, error: 'Not authorized to control this session' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let updateData: Record<string, unknown> = { last_heartbeat: new Date().toISOString() };
 
       switch (command) {
         case 'LOAD':
-          updateData = {
-            ...updateData,
-            video_url: payload.videoUrl,
-            video_title: payload.title,
-            video_thumbnail: payload.thumbnail,
-            playback_time: payload.startTime || 0,
-            video_duration: payload.duration || 0,
-            is_playing: true,
-            status: 'active',
-          };
+          updateData = { ...updateData, video_url: payload.videoUrl, video_title: payload.title, video_thumbnail: payload.thumbnail, playback_time: payload.startTime || 0, video_duration: payload.duration || 0, is_playing: true, status: 'active' };
           break;
-        case 'PLAY':
-          updateData.is_playing = true;
-          break;
-        case 'PAUSE':
-          updateData.is_playing = false;
-          break;
-        case 'SEEK':
-          updateData.playback_time = payload.time;
-          break;
-        case 'VOLUME':
-          updateData.volume_level = payload.volume;
-          break;
-        case 'STOP':
-          updateData = {
-            ...updateData,
-            is_playing: false,
-            video_url: null,
-            video_title: null,
-            playback_time: 0,
-          };
-          break;
-        case 'UPDATE_TIME':
-          updateData.playback_time = payload.time;
-          if (payload.duration) updateData.video_duration = payload.duration;
-          break;
-        case 'UPDATE_QUEUE':
-          updateData.queue = payload.queue;
-          break;
+        case 'PLAY': updateData.is_playing = true; break;
+        case 'PAUSE': updateData.is_playing = false; break;
+        case 'SEEK': updateData.playback_time = payload.time; break;
+        case 'VOLUME': updateData.volume_level = payload.volume; break;
+        case 'STOP': updateData = { ...updateData, is_playing: false, video_url: null, video_title: null, playback_time: 0 }; break;
+        case 'UPDATE_TIME': updateData.playback_time = payload.time; if (payload.duration) updateData.video_duration = payload.duration; break;
+        case 'UPDATE_QUEUE': updateData.queue = payload.queue; break;
       }
 
-      const { error: updateError } = await supabase
-        .from('cast_sessions')
-        .update(updateData)
-        .eq('id', sessionId);
-
-      if (updateError) {
-        console.error('Error updating session:', updateError);
-        throw updateError;
-      }
-
-      console.log('Command sent:', command, 'to session:', sessionId);
-
-      return new Response(JSON.stringify({
-        success: true,
-        command,
-        sessionId,
-      }), {
+      await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
+      return new Response(JSON.stringify({ success: true, command, sessionId }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // ACTION: Get session status
+    // Get session status - receiver polling (no strict auth for pending sessions)
     if (action === 'status') {
       const sessionId = url.searchParams.get('sessionId');
-
-      const { data: session, error: sessionError } = await supabase
+      const { data: session, error } = await supabase
         .from('cast_sessions')
         .select('*, cast_receivers(*)')
         .eq('id', sessionId)
         .single();
 
-      if (sessionError || !session) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Session not found',
-        }), {
+      if (error || !session) {
+        return new Response(JSON.stringify({ success: false, error: 'Session not found' }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
+      // For active sessions, verify ownership if user is authenticated
+      if (session.status !== 'pending') {
+        const user = await getAuthUser(req, supabase);
+        if (user && session.controller_user_id && session.controller_user_id !== user.id) {
+          return new Response(JSON.stringify({ success: false, error: 'Not authorized' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
       return new Response(JSON.stringify({
         success: true,
         session: {
-          id: session.id,
-          status: session.status,
-          videoUrl: session.video_url,
-          videoTitle: session.video_title,
-          videoThumbnail: session.video_thumbnail,
-          playbackTime: session.playback_time,
-          duration: session.video_duration,
-          isPlaying: session.is_playing,
-          volume: session.volume_level,
-          queue: session.queue,
-          deviceName: session.cast_receivers?.device_name,
-          lastHeartbeat: session.last_heartbeat,
+          id: session.id, status: session.status, videoUrl: session.video_url,
+          videoTitle: session.video_title, videoThumbnail: session.video_thumbnail,
+          playbackTime: session.playback_time, duration: session.video_duration,
+          isPlaying: session.is_playing, volume: session.volume_level, queue: session.queue,
+          deviceName: session.cast_receivers?.device_name, lastHeartbeat: session.last_heartbeat,
         },
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ACTION: Heartbeat to keep session alive
+    // Heartbeat (receiver only, no auth needed)
     if (action === 'heartbeat') {
       const { sessionId, playbackTime, isPlaying } = await req.json();
-
-      const updateData: Record<string, unknown> = {
-        last_heartbeat: new Date().toISOString(),
-      };
-
+      const updateData: Record<string, unknown> = { last_heartbeat: new Date().toISOString() };
       if (playbackTime !== undefined) updateData.playback_time = playbackTime;
       if (isPlaying !== undefined) updateData.is_playing = isPlaying;
 
-      const { error } = await supabase
-        .from('cast_sessions')
-        .update(updateData)
-        .eq('id', sessionId);
-
-      if (error) {
-        console.error('Heartbeat error:', error);
-      }
-
+      await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // ACTION: Disconnect session
+    // Disconnect - REQUIRES AUTH for owned sessions
     if (action === 'disconnect') {
       const { sessionId } = await req.json();
+      const user = await getAuthUser(req, supabase);
 
-      const { error } = await supabase
-        .from('cast_sessions')
-        .update({ status: 'disconnected' })
-        .eq('id', sessionId);
+      const { data: session } = await supabase.from('cast_sessions').select('controller_user_id').eq('id', sessionId).single();
 
-      if (error) {
-        console.error('Disconnect error:', error);
+      // Allow disconnect if owner or receiver (no controller yet)
+      if (session?.controller_user_id && user?.id !== session.controller_user_id) {
+        return new Response(JSON.stringify({ success: false, error: 'Not authorized' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
-      console.log('Session disconnected:', sessionId);
-
+      await supabase.from('cast_sessions').update({ status: 'disconnected' }).eq('id', sessionId);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -331,11 +295,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Cast signaling error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: errorMessage 
-    }), {
+    return new Response(JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
