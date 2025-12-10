@@ -2,3 +2,12 @@ project_id = "astugmzoxhxcyipxsojl"
 
 [functions.tmdb-search]
 verify_jwt = false
+
+[functions.tmdb-details]
+verify_jwt = false
+
+[functions.stripe-payment]
+verify_jwt = false
+
+[functions.flutterwave-payment]
+verify_jwt = false

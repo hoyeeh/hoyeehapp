@@ -1,4 +1,4 @@
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,15 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
 
       {/* Bottom Section */}
       <div className="p-2 md:p-4 border-t border-sidebar-border space-y-1">
+        {/* Profile Link */}
+        <button
+          onClick={() => navigate("/profile")}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        >
+          <User className="h-5 w-5 flex-shrink-0" />
+          <span className="hidden md:inline font-medium">Profile</span>
+        </button>
+
         {/* Subscription Link */}
         <button
           onClick={() => navigate("/subscription")}

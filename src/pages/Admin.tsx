@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsAdmin, useAllUsers, useAllSubscriptions, useUserRoles, useAdminContent, useDeleteContent } from "@/hooks/useAdmin";
+import { useIsAdmin, useAllUsers, useAllSubscriptions, useAdminContent, useDeleteContent } from "@/hooks/useAdmin";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2, Edit } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2 } from "lucide-react";
 import { ContentUploadForm } from "@/components/admin/ContentUploadForm";
 import { UserManagement } from "@/components/admin/UserManagement";
+import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -139,6 +140,10 @@ const Admin = () => {
               <Users className="h-4 w-4" />
               Users
             </TabsTrigger>
+            <TabsTrigger value="subscriptions" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              Subscriptions
+            </TabsTrigger>
             <TabsTrigger value="roles" className="gap-2">
               <Shield className="h-4 w-4" />
               Roles
@@ -210,6 +215,11 @@ const Admin = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="subscriptions" className="space-y-4">
+            <h2 className="text-2xl font-display">Subscription Management</h2>
+            <SubscriptionManagement users={users} subscriptions={subscriptions as any} />
           </TabsContent>
 
           <TabsContent value="roles" className="space-y-4">
