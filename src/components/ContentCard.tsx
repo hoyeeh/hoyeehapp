@@ -1,5 +1,5 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Star } from "lucide-react";
+import { Play, Plus, Check, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ContentCardProps {
@@ -30,7 +30,7 @@ export const ContentCard = ({
   const aspectRatios = {
     poster: "aspect-[2/3]",
     backdrop: "aspect-video",
-    wide: "aspect-video", // 16:9 for wide cards
+    wide: "aspect-video",
     square: "aspect-square",
     minimal: "aspect-[3/2]",
   };
@@ -38,7 +38,7 @@ export const ContentCard = ({
   const cardWidths = {
     poster: sizeClasses[size],
     backdrop: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
-    wide: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96", // Wider for 16:9
+    wide: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
     square: size === "sm" ? "w-32 md:w-40" : size === "md" ? "w-40 md:w-48" : "w-48 md:w-56",
     minimal: size === "sm" ? "w-48 md:w-56" : size === "md" ? "w-56 md:w-64" : "w-64 md:w-80",
   };
@@ -96,79 +96,107 @@ export const ContentCard = ({
   return (
     <div
       className={cn(
-        "group relative flex-shrink-0 cursor-pointer transition-transform duration-300 hover:scale-105 hover:z-10",
+        "netflix-card group relative flex-shrink-0 cursor-pointer",
         cardWidths[cardStyle]
       )}
     >
       {/* Thumbnail */}
       <div 
-        className={cn("relative rounded-lg overflow-hidden bg-secondary", aspectRatios[cardStyle])}
+        className={cn(
+          "relative rounded-md overflow-hidden bg-secondary shadow-lg",
+          "ring-0 group-hover:ring-2 ring-foreground/20 transition-all duration-300",
+          aspectRatios[cardStyle]
+        )}
         onClick={() => onDetails(content)}
       >
         <img
           src={content.thumbnailUrl}
           alt={content.title}
-          className="w-full h-full object-cover transition-opacity group-hover:opacity-75"
+          className="w-full h-full object-cover"
           loading="lazy"
         />
         
         {/* Premium Badge */}
         {content.isPremium && (
-          <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
+          <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground shadow-lg">
             PREMIUM
           </div>
         )}
 
-        {/* Info overlay for backdrop and wide styles */}
-        {(cardStyle === "backdrop" || cardStyle === "wide") && (
-          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-background via-background/80 to-transparent">
-            <h3 className="font-semibold text-sm">{content.title}</h3>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-              {content.year && <span>{content.year}</span>}
-              {content.rating && <span>⭐ {content.rating}</span>}
-              {content.genre && <span>{content.genre}</span>}
-            </div>
+        {/* Netflix-style gradient overlay on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Hover Info Panel - Netflix Style */}
+        <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlay(content);
+              }}
+              className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-all hover:scale-110 shadow-lg"
+            >
+              <Play className="h-4 w-4 ml-0.5" fill="currentColor" />
+            </button>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleList(content);
+              }}
+              className={cn(
+                "w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
+                isInList 
+                  ? "border-brand bg-brand/20 text-brand" 
+                  : "border-muted-foreground/50 text-foreground hover:border-foreground"
+              )}
+            >
+              {isInList ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDetails(content);
+              }}
+              className="w-9 h-9 rounded-full border-2 border-muted-foreground/50 text-foreground flex items-center justify-center hover:border-foreground transition-all hover:scale-110 ml-auto"
+            >
+              <Info className="h-4 w-4" />
+            </button>
           </div>
-        )}
 
-        {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-        {/* Hover Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPlay(content);
-            }}
-            className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-colors"
-          >
-            <Play className="h-5 w-5 ml-0.5" fill="currentColor" />
-          </button>
-          
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleList(content);
-            }}
-            className="w-10 h-10 rounded-full border-2 border-muted-foreground/50 text-foreground flex items-center justify-center hover:border-foreground transition-colors"
-          >
-            {isInList ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-          </button>
+          {/* Title & Meta */}
+          <h3 className="font-semibold text-sm line-clamp-1 text-shadow-netflix">{content.title}</h3>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+            {content.rating && (
+              <span className="text-green-500 font-semibold">{content.rating}</span>
+            )}
+            {content.year && <span>{content.year}</span>}
+            {content.duration && content.duration > 0 && (
+              <span>
+                {Math.floor(content.duration / 3600) > 0 
+                  ? `${Math.floor(content.duration / 3600)}h ${Math.floor((content.duration % 3600) / 60)}m`
+                  : `${Math.floor(content.duration / 60)}m`}
+              </span>
+            )}
+          </div>
+          {content.genre && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {content.genre.split(',').slice(0, 2).map((g, i) => (
+                <span key={i} className="text-xs text-muted-foreground">{g.trim()}</span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Title & Info - not shown on backdrop/wide styles (already in overlay) */}
+      {/* Title below card - for non-hover state */}
       {cardStyle !== "backdrop" && cardStyle !== "wide" && (
-        <div className="mt-2 px-1">
+        <div className="mt-2 px-0.5 group-hover:opacity-0 transition-opacity">
           <h3 className="font-medium text-sm truncate">{content.title}</h3>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
             {content.year && <span>{content.year}</span>}
-            {content.rating && (
-              <span className="border border-muted-foreground/30 px-1 rounded">
-                {content.rating}
-              </span>
-            )}
             <span className="capitalize">{content.contentType}</span>
           </div>
         </div>

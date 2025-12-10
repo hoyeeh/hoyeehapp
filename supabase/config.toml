@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.get-recommendations]
 verify_jwt = false
+
+[functions.notify-coming-soon-release]
+verify_jwt = false

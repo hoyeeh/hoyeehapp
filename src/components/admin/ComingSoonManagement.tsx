@@ -29,7 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Calendar, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Calendar, Loader2, Bell, Send } from "lucide-react";
 import { format } from "date-fns";
 
 export const ComingSoonManagement = () => {
@@ -113,6 +113,27 @@ export const ComingSoonManagement = () => {
     },
     onError: () => {
       toast.error("Failed to delete item");
+    },
+  });
+
+  // Release notification mutation
+  const sendReleaseNotification = useMutation({
+    mutationFn: async (item: any) => {
+      const { data, error } = await supabase.functions.invoke("notify-coming-soon-release", {
+        body: {
+          comingSoonId: item.id,
+          contentId: null, // Can be linked to actual content when released
+          title: item.title,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Notified ${data.notifiedUsers} users about the release!`);
+    },
+    onError: () => {
+      toast.error("Failed to send release notifications");
     },
   });
 
@@ -343,6 +364,15 @@ export const ComingSoonManagement = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => sendReleaseNotification.mutate(item)}
+                      title="Send release notification"
+                      disabled={sendReleaseNotification.isPending}
+                    >
+                      <Send className="h-4 w-4 text-brand" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
