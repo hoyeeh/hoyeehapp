@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Edit2, Trash2, GripVertical, X } from "lucide-react";
+import { Play, Edit2, Trash2, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TranscodingStatus } from "./TranscodingStatus";
 
 interface Episode {
   id: string;
@@ -72,7 +73,7 @@ const SortableEpisode = ({ episode, onEdit, onDelete, onPreview }: SortableEpiso
       style={style}
       className="flex items-center justify-between p-3 bg-muted/30 rounded-lg group"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
           className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
           {...attributes}
@@ -85,7 +86,7 @@ const SortableEpisode = ({ episode, onEdit, onDelete, onPreview }: SortableEpiso
         <button
           onClick={episode.video_url ? onPreview : undefined}
           disabled={!episode.video_url}
-          className={`w-16 h-10 rounded flex items-center justify-center relative overflow-hidden ${
+          className={`w-16 h-10 rounded flex items-center justify-center relative overflow-hidden shrink-0 ${
             episode.video_url 
               ? 'bg-primary/20 hover:bg-primary/30 cursor-pointer' 
               : 'bg-muted cursor-not-allowed'
@@ -103,11 +104,11 @@ const SortableEpisode = ({ episode, onEdit, onDelete, onPreview }: SortableEpiso
           </div>
         </button>
         
-        <div>
-          <div className="font-medium text-sm">
+        <div className="flex-1 min-w-0">
+          <div className="font-medium text-sm truncate">
             E{episode.episode_number}: {episode.title}
           </div>
-          <div className="text-xs text-muted-foreground flex flex-wrap gap-2">
+          <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
             <span>{episode.duration} min</span>
             {episode.is_premium && (
               <span className="text-primary">Premium</span>
@@ -121,7 +122,12 @@ const SortableEpisode = ({ episode, onEdit, onDelete, onPreview }: SortableEpiso
         </div>
       </div>
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Transcoding Status */}
+        <TranscodingStatus 
+          episodeId={episode.id} 
+          videoUrl={episode.video_url} 
+        />
         <Button size="sm" variant="ghost" onClick={onEdit}>
           <Edit2 className="h-4 w-4" />
         </Button>

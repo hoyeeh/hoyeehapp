@@ -383,6 +383,56 @@ export type Database = {
         }
         Relationships: []
       }
+      transcoding_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          episode_id: string
+          error_message: string | null
+          format: string
+          id: string
+          output_url: string | null
+          progress: number | null
+          source_url: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          episode_id: string
+          error_message?: string | null
+          format?: string
+          id?: string
+          output_url?: string | null
+          progress?: number | null
+          source_url: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          episode_id?: string
+          error_message?: string | null
+          format?: string
+          id?: string
+          output_url?: string | null
+          progress?: number | null
+          source_url?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcoding_jobs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
