@@ -28,7 +28,7 @@ export const ContentCardWithPreview = ({
 }: ContentCardWithPreviewProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const previewDurationRef = useRef<NodeJS.Timeout | null>(null);
@@ -295,7 +295,14 @@ export const ContentCardWithPreview = ({
           </div>
 
           {/* Title & Meta */}
-          <h3 className="font-semibold text-sm line-clamp-1">{content.title}</h3>
+          <h3 className="font-bold text-sm line-clamp-1 text-primary">{content.title}</h3>
+          {content.genre && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {content.genre.split(',').slice(0, 3).map((g, i) => (
+                <span key={i} className="text-xs text-foreground">{g.trim()}{i < Math.min(content.genre!.split(',').length, 3) - 1 ? ' •' : ''}</span>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
             {content.rating && (
               <span className="text-green-500 font-semibold">{content.rating}</span>
@@ -309,13 +316,6 @@ export const ContentCardWithPreview = ({
               </span>
             )}
           </div>
-          {content.genre && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {content.genre.split(',').slice(0, 2).map((g, i) => (
-                <span key={i} className="text-xs text-muted-foreground">{g.trim()}</span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
