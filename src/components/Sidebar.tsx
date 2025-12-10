@@ -1,4 +1,4 @@
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ const navItems = [
   { icon: Home, label: "Home", view: "home" as ViewState },
   { icon: Search, label: "Search", view: "search" as const },
   { icon: LayoutDashboard, label: "Dashboard", view: "dashboard" as const },
+  { icon: Layers, label: "Genres", view: "genres" as const },
   { icon: Film, label: "Movies", view: "movies" as ViewState },
   { icon: Tv, label: "TV Shows", view: "shows" as ViewState },
   { icon: List, label: "My List", view: "mylist" as ViewState },
@@ -36,7 +37,7 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 md:p-4">
+      <nav className="flex-1 p-2 md:p-4 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item) => {
             const isActive = currentView === item.view;
@@ -50,6 +51,8 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
                       navigate("/downloads");
                     } else if (item.view === "search") {
                       navigate("/search");
+                    } else if (item.view === "genres") {
+                      navigate("/genres");
                     } else {
                       onNavigate(item.view);
                     }

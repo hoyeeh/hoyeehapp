@@ -18,6 +18,7 @@ import MyList from "./pages/MyList";
 import Downloads from "./pages/Downloads";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
+import Genres from "./pages/Genres";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/my-list" element={<MyList />} />
             <Route path="/downloads" element={<Downloads />} />
             <Route path="/search" element={<Search />} />
+            <Route path="/genres" element={<Genres />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
