@@ -419,12 +419,30 @@ const Index = () => {
                   />
 
                   {/* New Releases Row - Shows content from last 2 weeks */}
-                  <NewReleasesRow
-                    onPlay={handlePlay}
-                    onToggleList={handleToggleList}
-                    onDetails={handleDetails}
-                    userList={watchlistIds}
-                  />
+                  {(() => {
+                    const newReleasesSection = homeSections.find((s: any) => s.section_type === "new_releases");
+                    // Show by default if no section exists, or if section is active
+                    if (newReleasesSection === undefined || newReleasesSection) {
+                      return (
+                        <NewReleasesRow
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                          title={newReleasesSection?.title || "New Releases"}
+                          maxItems={newReleasesSection?.max_items || 20}
+                          contentTypeFilter={
+                            newReleasesSection?.title?.toLowerCase().includes("movie") 
+                              ? "movie" 
+                              : newReleasesSection?.title?.toLowerCase().includes("show") || newReleasesSection?.title?.toLowerCase().includes("series")
+                              ? "series"
+                              : "all"
+                          }
+                        />
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* AI Recommendations Row */}
                   <RecommendationsRow
