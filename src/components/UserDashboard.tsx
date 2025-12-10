@@ -275,32 +275,46 @@ export const UserDashboard = ({ onPlay, onDetails }: UserDashboardProps) => {
         </section>
       )}
 
-      {/* Subscription Section */}
+      {/* Subscription Status Indicator */}
       <section>
         <h2 className="font-display text-2xl md:text-3xl mb-6 flex items-center gap-2">
           <Crown className="h-7 w-7 text-brand" />
-          Subscription
+          Subscription Status
         </h2>
 
         <Card className={`bg-card ${profile?.is_subscribed ? 'border-brand/30' : ''}`}>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl flex items-center gap-2">
-                  {profile?.is_subscribed ? (
-                    <>
-                      <Crown className="h-5 w-5 text-brand" />
-                      Premium Member
-                    </>
-                  ) : (
-                    "Free Plan"
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  {profile?.is_subscribed 
-                    ? "Enjoy unlimited access to all content" 
-                    : "Upgrade to access premium content"}
-                </CardDescription>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
+                  profile?.is_subscribed ? 'bg-brand/20' : 'bg-secondary'
+                }`}>
+                  <Crown className={`h-7 w-7 ${profile?.is_subscribed ? 'text-brand' : 'text-muted-foreground'}`} />
+                </div>
+                <div>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    {profile?.is_subscribed ? (
+                      <>
+                        Premium Member
+                        <span className="px-2 py-0.5 bg-brand/20 text-brand text-xs font-semibold rounded-full">
+                          ACTIVE
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Free Plan
+                        <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs font-semibold rounded-full">
+                          LIMITED
+                        </span>
+                      </>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    {profile?.is_subscribed 
+                      ? "Enjoy unlimited access to all content" 
+                      : "Upgrade to access premium content"}
+                  </CardDescription>
+                </div>
               </div>
               {profile?.is_subscribed && daysUntilExpiry !== null && daysUntilExpiry <= 7 && (
                 <div className="flex items-center gap-2 text-warning bg-warning/10 px-3 py-1.5 rounded-full">
@@ -313,30 +327,52 @@ export const UserDashboard = ({ onPlay, onDetails }: UserDashboardProps) => {
           <CardContent className="space-y-4">
             {profile?.is_subscribed ? (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Plan Details Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-secondary/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Crown className="h-4 w-4" />
+                      <span className="text-sm">Current Plan</span>
+                    </div>
+                    <p className="font-semibold text-lg">Monthly Premium</p>
+                  </div>
                   <div className="bg-secondary/50 rounded-lg p-4">
                     <div className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Calendar className="h-4 w-4" />
-                      <span className="text-sm">Subscription Started</span>
+                      <span className="text-sm">Started On</span>
                     </div>
-                    <p className="font-medium">
+                    <p className="font-semibold">
                       {profile.created_at 
-                        ? format(new Date(profile.created_at), "MMMM d, yyyy") 
+                        ? format(new Date(profile.created_at), "MMM d, yyyy") 
                         : "N/A"}
                     </p>
                   </div>
                   <div className="bg-secondary/50 rounded-lg p-4">
                     <div className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Calendar className="h-4 w-4" />
-                      <span className="text-sm">Expires On</span>
+                      <span className="text-sm">Renewal Date</span>
                     </div>
-                    <p className="font-medium">
+                    <p className={`font-semibold ${daysUntilExpiry !== null && daysUntilExpiry <= 7 ? 'text-warning' : ''}`}>
                       {subscriptionExpiry 
-                        ? format(subscriptionExpiry, "MMMM d, yyyy") 
+                        ? format(subscriptionExpiry, "MMM d, yyyy") 
                         : "No expiry set"}
                     </p>
                   </div>
                 </div>
+
+                {/* Progress until renewal */}
+                {subscriptionExpiry && profile.created_at && (
+                  <div className="bg-secondary/30 rounded-lg p-4">
+                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                      <span>Subscription Period</span>
+                      <span>{daysUntilExpiry !== null ? `${daysUntilExpiry} days remaining` : ''}</span>
+                    </div>
+                    <Progress 
+                      value={daysUntilExpiry !== null ? Math.max(0, 100 - ((daysUntilExpiry / 30) * 100)) : 0} 
+                      className="h-2"
+                    />
+                  </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <Button 
@@ -378,9 +414,13 @@ export const UserDashboard = ({ onPlay, onDetails }: UserDashboardProps) => {
                 </div>
               </>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground mb-4">
-                  Unlock unlimited access to all movies, TV shows, and exclusive content
+              <div className="text-center py-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand/10 mb-4">
+                  <Crown className="h-8 w-8 text-brand" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Upgrade to Premium</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Unlock unlimited access to all movies, TV shows, and exclusive content with no ads
                 </p>
                 <Button 
                   onClick={() => navigate("/subscription")}
@@ -388,7 +428,7 @@ export const UserDashboard = ({ onPlay, onDetails }: UserDashboardProps) => {
                   className="bg-brand hover:bg-brand/90"
                 >
                   <Crown className="h-5 w-5 mr-2" />
-                  Upgrade to Premium
+                  Get Premium Now
                 </Button>
               </div>
             )}

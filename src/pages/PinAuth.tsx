@@ -152,64 +152,26 @@ const PinAuth = () => {
 
   const handleResetPin = async () => {
     if (step === 1) {
-      setIsLoading(true);
-      try {
-        // Check if mobile number exists (using generic error to prevent enumeration)
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("mobile_number", formData.mobileNumber)
-          .maybeSingle();
-
-        if (error || !profile) {
-          toast.error("Invalid mobile number or secret word");
-          setIsLoading(false);
-          return;
-        }
-
-        setStep(2);
-      } catch (error) {
-        toast.error("An error occurred");
-      } finally {
-        setIsLoading(false);
+      // Just validate mobile number format and proceed
+      if (!/^\+?[0-9]{10,15}$/.test(formData.mobileNumber.replace(/\s/g, ""))) {
+        toast.error("Please enter a valid mobile number");
+        return;
       }
+      setStep(2);
       return;
     }
 
     if (step === 2) {
-      setIsLoading(true);
-      try {
-        // Use secure RPC function to verify secret word (hashed comparison on server)
-        const { data: result, error } = await supabase
-          .rpc('verify_secret_word', {
-            user_mobile: formData.mobileNumber,
-            input_secret: formData.secretWord.toLowerCase()
-          });
-
-        if (error) {
-          toast.error("An error occurred");
-          setIsLoading(false);
-          return;
-        }
-
-        const verifyResult = result?.[0];
-        
-        if (!verifyResult?.is_valid) {
-          toast.error("Invalid mobile number or secret word");
-          setIsLoading(false);
-          return;
-        }
-
-        setStep(3);
-      } catch (error) {
-        toast.error("An error occurred");
-      } finally {
-        setIsLoading(false);
+      // Just validate secret word format and proceed
+      if (formData.secretWord.length < 4) {
+        toast.error("Secret word must be at least 4 characters");
+        return;
       }
+      setStep(3);
       return;
     }
 
-    // Final step - update PIN (will be hashed by trigger)
+    // Final step - use secure edge function with rate limiting
     if (formData.pin.length !== 6) {
       toast.error("PIN must be 6 digits");
       return;
@@ -221,17 +183,22 @@ const PinAuth = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ 
-          pin_code: formData.pin,
-          pin_attempts: 0,
-          pin_locked_until: null
-        })
-        .eq("mobile_number", formData.mobileNumber);
+      // Call secure edge function for PIN reset with server-side validation
+      const { data, error } = await supabase.functions.invoke('reset-pin', {
+        body: {
+          mobileNumber: formData.mobileNumber,
+          secretWord: formData.secretWord,
+          newPin: formData.pin
+        }
+      });
 
       if (error) {
-        toast.error("Failed to reset PIN");
+        toast.error("Failed to reset PIN. Please try again.");
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
         return;
       }
 
