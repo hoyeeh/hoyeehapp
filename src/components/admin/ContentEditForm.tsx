@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUpdateContent } from "@/hooks/useAdmin";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { X, Save, Loader2 } from "lucide-react";
 
@@ -29,13 +31,6 @@ interface ContentEditFormProps {
   onClose: () => void;
 }
 
-const GENRES = [
-  "Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary",
-  "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery",
-  "Romance", "Science Fiction", "Thriller", "War", "Western", "Nollywood",
-  "African Cinema"
-];
-
 export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
   const updateContent = useUpdateContent();
   const [formData, setFormData] = useState({
@@ -49,6 +44,16 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
     duration: content.duration || 0,
     year: content.year || new Date().getFullYear(),
     rating: content.rating || "",
+  });
+
+  // Fetch genres from database
+  const { data: genres = [] } = useQuery({
+    queryKey: ["genres"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("genres").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,8 +118,8 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                   <SelectValue placeholder="Select genre" />
                 </SelectTrigger>
                 <SelectContent>
-                  {GENRES.map((genre) => (
-                    <SelectItem key={genre} value={genre}>{genre}</SelectItem>
+                  {genres.map((genre: any) => (
+                    <SelectItem key={genre.id} value={genre.name}>{genre.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

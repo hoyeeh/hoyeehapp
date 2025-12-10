@@ -145,6 +145,53 @@ export type Database = {
         }
         Relationships: []
       }
+      home_sections: {
+        Row: {
+          card_style: string
+          created_at: string
+          display_order: number
+          genre_id: string | null
+          id: string
+          is_active: boolean
+          max_items: number | null
+          section_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          card_style?: string
+          created_at?: string
+          display_order?: number
+          genre_id?: string | null
+          id?: string
+          is_active?: boolean
+          max_items?: number | null
+          section_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          card_style?: string
+          created_at?: string
+          display_order?: number
+          genre_id?: string | null
+          id?: string
+          is_active?: boolean
+          max_items?: number | null
+          section_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "home_sections_genre_id_fkey"
+            columns: ["genre_id"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string

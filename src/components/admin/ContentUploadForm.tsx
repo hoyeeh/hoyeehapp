@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCreateContent } from "@/hooks/useAdmin";
 import { useVideoUpload } from "@/hooks/useVideoUpload";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,16 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Fetch genres from database
+  const { data: genres = [] } = useQuery({
+    queryKey: ["genres"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("genres").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -296,11 +307,14 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Genre</Label>
-                    <Input
-                      value={formData.genre}
-                      onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                      placeholder="Drama, Action..."
-                    />
+                    <Select value={formData.genre} onValueChange={(v) => setFormData({ ...formData, genre: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select genre..." /></SelectTrigger>
+                      <SelectContent>
+                        {genres.map((genre: any) => (
+                          <SelectItem key={genre.id} value={genre.name}>{genre.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Duration (min)</Label>
@@ -377,7 +391,14 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Genre</Label>
-                  <Input value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} placeholder="Drama, Action..." />
+                  <Select value={formData.genre} onValueChange={(v) => setFormData({ ...formData, genre: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select genre..." /></SelectTrigger>
+                    <SelectContent>
+                      {genres.map((genre: any) => (
+                        <SelectItem key={genre.id} value={genre.name}>{genre.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Year</Label>

@@ -45,23 +45,22 @@ const Index = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("top_10")
-        .select(`
-          id,
-          rank,
-          content:content_id (
-            id,
-            title,
-            description,
-            thumbnail_url,
-            video_url,
-            genre,
-            content_type,
-            is_premium,
-            duration,
-            year
-          )
-        `)
+        .select(`id, rank, content:content_id (id, title, description, thumbnail_url, video_url, genre, content_type, is_premium, duration, year)`)
         .order("rank");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch home sections config
+  const { data: homeSections = [] } = useQuery({
+    queryKey: ["home-sections-display"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("home_sections")
+        .select("*, genre:genre_id(name)")
+        .eq("is_active", true)
+        .order("display_order");
       if (error) throw error;
       return data || [];
     },
@@ -83,14 +82,15 @@ const Index = () => {
     },
   });
 
-  // Fetch genres for content grouping
-  const { data: genres = [] } = useQuery({
-    queryKey: ["genres"],
+  // Fetch trending content (most viewed)
+  const { data: trendingContent = [] } = useQuery({
+    queryKey: ["trending-content"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("genres")
+        .from("content")
         .select("*")
-        .order("name");
+        .order("view_count", { ascending: false })
+        .limit(15);
       if (error) throw error;
       return data || [];
     },
@@ -114,6 +114,21 @@ const Index = () => {
         year: item.content.year,
       } as Content,
     }));
+
+  // Transform trending to Content type
+  const trendingContentItems: Content[] = trendingContent.map((item: any) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description || "",
+    thumbnailUrl: item.thumbnail_url || "",
+    videoUrl: item.video_url || "",
+    genre: item.genre || "",
+    contentType: item.content_type as "movie" | "series",
+    isPremium: item.is_premium || false,
+    duration: item.duration || 0,
+    year: item.year,
+    rating: item.rating,
+  }));
 
   // Transform recently added to Content type
   const recentlyAddedContent: Content[] = recentlyAdded.map((item: any) => ({
@@ -204,7 +219,30 @@ const Index = () => {
   const shows = content.filter((c) => c.contentType === "series");
   const featuredContent = content[0];
 
-  // Get content by genre
+  // Get section content based on type
+  const getSectionContent = (section: any): Content[] => {
+    switch (section.section_type) {
+      case "recently_added":
+        return recentlyAddedContent;
+      case "trending":
+        return trendingContentItems;
+      case "genre":
+        const genreName = section.genre?.name;
+        if (!genreName) return [];
+        return content.filter((c) => c.genre.toLowerCase().includes(genreName.toLowerCase())).slice(0, section.max_items || 15);
+      case "custom":
+        if (section.title.toLowerCase().includes("movie")) {
+          return movies.slice(0, section.max_items || 15);
+        } else if (section.title.toLowerCase().includes("show") || section.title.toLowerCase().includes("series")) {
+          return shows.slice(0, section.max_items || 15);
+        }
+        return content.slice(0, section.max_items || 15);
+      default:
+        return [];
+    }
+  };
+
+  // Get content by genre (fallback)
   const getContentByGenre = (genreName: string) => {
     return content.filter((c) => 
       c.genre.toLowerCase().includes(genreName.toLowerCase())
@@ -310,75 +348,50 @@ const Index = () => {
                 />
                 
                 <div className="mt-8 space-y-2">
-                  {/* Top 10 Section */}
-                  {top10Content.length > 0 && (
-                    <Top10Row
-                      content={top10Content}
-                      onPlay={handlePlay}
-                      onDetails={handleDetails}
-                    />
-                  )}
+                  {/* Render sections from database config */}
+                  {homeSections.map((section: any) => {
+                    if (section.section_type === "top10") {
+                      return top10Content.length > 0 ? (
+                        <Top10Row
+                          key={section.id}
+                          content={top10Content}
+                          onPlay={handlePlay}
+                          onDetails={handleDetails}
+                        />
+                      ) : null;
+                    }
 
-                  {/* Recently Added */}
-                  {recentlyAddedContent.length > 0 && (
-                    <ContentRow
-                      title="🆕 Recently Added"
-                      content={recentlyAddedContent}
-                      onPlay={handlePlay}
-                      onToggleList={handleToggleList}
-                      onDetails={handleDetails}
-                      userList={watchlistIds}
-                    />
-                  )}
+                    if (section.section_type === "my_list") {
+                      return watchlistIds.length > 0 ? (
+                        <ContentRow
+                          key={section.id}
+                          title={section.title}
+                          content={content.filter((c) => watchlistIds.includes(c.id))}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                          cardStyle={section.card_style}
+                        />
+                      ) : null;
+                    }
 
-                  {/* Popular Movies */}
-                  <ContentRow
-                    title="Popular Movies"
-                    content={movies}
-                    onPlay={handlePlay}
-                    onToggleList={handleToggleList}
-                    onDetails={handleDetails}
-                    userList={watchlistIds}
-                  />
-                  
-                  {/* TV Shows */}
-                  <ContentRow
-                    title="TV Shows"
-                    content={shows}
-                    onPlay={handlePlay}
-                    onToggleList={handleToggleList}
-                    onDetails={handleDetails}
-                    userList={watchlistIds}
-                  />
+                    const sectionContent = getSectionContent(section);
+                    if (sectionContent.length === 0) return null;
 
-                  {/* Genre-based rows */}
-                  {genres.slice(0, 6).map((genre: any) => {
-                    const genreContent = getContentByGenre(genre.name);
-                    if (genreContent.length === 0) return null;
                     return (
                       <ContentRow
-                        key={genre.id}
-                        title={genre.name}
-                        content={genreContent}
+                        key={section.id}
+                        title={section.title}
+                        content={sectionContent}
                         onPlay={handlePlay}
                         onToggleList={handleToggleList}
                         onDetails={handleDetails}
                         userList={watchlistIds}
+                        cardStyle={section.card_style}
                       />
                     );
                   })}
-
-                  {/* My List Preview */}
-                  {watchlistIds.length > 0 && (
-                    <ContentRow
-                      title="My List"
-                      content={content.filter((c) => watchlistIds.includes(c.id))}
-                      onPlay={handlePlay}
-                      onToggleList={handleToggleList}
-                      onDetails={handleDetails}
-                      userList={watchlistIds}
-                    />
-                  )}
                 </div>
               </>
             )}

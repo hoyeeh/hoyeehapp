@@ -10,6 +10,7 @@ interface ContentRowProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   userList?: string[];
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
 }
 
 export const ContentRow = ({
@@ -19,6 +20,7 @@ export const ContentRow = ({
   onToggleList,
   onDetails,
   userList = [],
+  cardStyle = "poster",
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +70,7 @@ export const ContentRow = ({
               onToggleList={onToggleList}
               onDetails={onDetails}
               isInList={userList.includes(item.id)}
+              cardStyle={cardStyle}
             />
           ))}
         </div>
