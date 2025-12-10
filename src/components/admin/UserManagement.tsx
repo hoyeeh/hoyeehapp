@@ -29,7 +29,7 @@ export const UserManagement = ({ users }: UserManagementProps) => {
     }
   };
 
-  const handleRemoveRole = async (userId: string, role: string) => {
+  const handleRemoveRole = async (userId: string, role: "admin" | "moderator" | "user") => {
     try {
       await removeRole.mutateAsync({ userId, role });
       toast.success("Role removed");
