@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.reset-pin]
 verify_jwt = false
+
+[functions.dlna-discover]
+verify_jwt = false
