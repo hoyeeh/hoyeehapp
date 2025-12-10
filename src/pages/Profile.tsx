@@ -13,6 +13,7 @@ import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield } from "lucide-rea
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { ParentalControls } from "@/components/ParentalControls";
 
 const COUNTRIES = [
   { code: 'CM', name: 'Cameroon' },
@@ -275,6 +276,9 @@ const Profile = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Parental Controls */}
+        <ParentalControls />
 
         {/* Notifications */}
         <Card className="bg-card mb-6">
