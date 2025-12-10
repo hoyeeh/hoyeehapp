@@ -1,5 +1,5 @@
 import { Content } from "@/types";
-import { ContentCard } from "./ContentCard";
+import { ContentCardWithPreview } from "./ContentCardWithPreview";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -111,7 +111,7 @@ export const ContentRow = ({
                   {index + 1}
                 </div>
               )}
-              <ContentCard
+              <ContentCardWithPreview
                 content={item}
                 onPlay={onPlay}
                 onToggleList={onToggleList}

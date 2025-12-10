@@ -1,5 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { Users, Film, CreditCard, TrendingUp, Tv, Star } from "lucide-react";
+import { Users, Film, CreditCard, TrendingUp, Tv, Star, Cloud, CheckCircle, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface AdminOverviewProps {
   users: any[];
@@ -8,6 +10,14 @@ interface AdminOverviewProps {
 }
 
 export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewProps) => {
+  const [cdnConfigured, setCdnConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check if CDN is configured by looking at env variable
+    const cdnEndpoint = import.meta.env.VITE_DO_SPACES_CDN_ENDPOINT;
+    setCdnConfigured(!!cdnEndpoint && cdnEndpoint.length > 0);
+  }, []);
+
   const activeSubscriptions = subscriptions.filter(s => s.status === "active").length;
   const totalRevenue = subscriptions
     .filter(s => s.status === "active")
@@ -58,6 +68,46 @@ export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewPr
     <div className="space-y-6">
       <h2 className="text-2xl font-display">Dashboard Overview</h2>
 
+      {/* CDN Configuration Status */}
+      <Card className={cn(
+        "bg-card border-l-4",
+        cdnConfigured === null ? "border-l-muted" : cdnConfigured ? "border-l-green-500" : "border-l-yellow-500"
+      )}>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "p-2 rounded-lg",
+                cdnConfigured === null ? "bg-muted/50" : cdnConfigured ? "bg-green-500/10" : "bg-yellow-500/10"
+              )}>
+                <Cloud className={cn(
+                  "h-5 w-5",
+                  cdnConfigured === null ? "text-muted-foreground" : cdnConfigured ? "text-green-500" : "text-yellow-500"
+                )} />
+              </div>
+              <div>
+                <p className="font-medium">CDN Configuration</p>
+                <p className="text-sm text-muted-foreground">
+                  {cdnConfigured === null 
+                    ? "Checking..." 
+                    : cdnConfigured 
+                      ? "DigitalOcean Spaces CDN is configured and active" 
+                      : "CDN not configured - videos served from origin"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {cdnConfigured === null ? (
+                <span className="text-sm text-muted-foreground">Loading...</span>
+              ) : cdnConfigured ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <XCircle className="h-5 w-5 text-yellow-500" />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       {/* Main Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
