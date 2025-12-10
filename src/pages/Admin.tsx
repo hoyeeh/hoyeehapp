@@ -24,6 +24,8 @@ import { EnhancedHomeSectionManagement } from "@/components/admin/EnhancedHomeSe
 import { ComingSoonManagement } from "@/components/admin/ComingSoonManagement";
 import { HeroBannerManagement } from "@/components/admin/HeroBannerManagement";
 import { AdminPushNotifications } from "@/components/admin/AdminPushNotifications";
+import { BulkThumbnailRegeneration } from "@/components/admin/BulkThumbnailRegeneration";
+import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -181,6 +183,7 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Upload Content</h2>
+            <UploadQueuePanel />
             <ContentUploadForm onClose={() => setActiveTab("content")} />
           </div>
         );
@@ -213,7 +216,12 @@ const Admin = () => {
         return <AdminNotifications />;
       
       case "transcoding":
-        return <TranscodingDashboard />;
+        return (
+          <div className="space-y-6">
+            <TranscodingDashboard />
+            <BulkThumbnailRegeneration />
+          </div>
+        );
       
       case "genres":
         return (
