@@ -1,9 +1,10 @@
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, Bell } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import NotificationBell from "./NotificationBell";
 
 interface SidebarProps {
   currentView: ViewState;
@@ -64,6 +65,12 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
 
       {/* Bottom Section */}
       <div className="p-2 md:p-4 border-t border-sidebar-border space-y-1">
+        {/* Notifications */}
+        <div className="flex items-center justify-center md:justify-start px-3 py-2">
+          <NotificationBell />
+          <span className="hidden md:inline font-medium ml-3">Notifications</span>
+        </div>
+
         {/* Profile Link */}
         <button
           onClick={() => navigate("/profile")}

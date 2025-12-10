@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2, Edit2, BarChart3 } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2, Edit2, BarChart3, Tv, Bell } from "lucide-react";
 import { ContentUploadForm } from "@/components/admin/ContentUploadForm";
 import { ContentEditForm } from "@/components/admin/ContentEditForm";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
+import TVShowManagement from "@/components/admin/TVShowManagement";
+import { useSendNotification } from "@/hooks/useNotifications";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -25,6 +27,8 @@ const Admin = () => {
   
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [editingContent, setEditingContent] = useState<any>(null);
+  const [managingTVShow, setManagingTVShow] = useState<{ id: string; title: string } | null>(null);
+  const sendNotification = useSendNotification();
 
   const handleRefreshUsers = () => {
     // Trigger refetch through query invalidation
@@ -179,6 +183,14 @@ const Admin = () => {
               <ContentEditForm content={editingContent} onClose={() => setEditingContent(null)} />
             )}
 
+            {managingTVShow && (
+              <TVShowManagement 
+                contentId={managingTVShow.id}
+                contentTitle={managingTVShow.title}
+                onClose={() => setManagingTVShow(null)}
+              />
+            )}
+
             <div className="grid gap-4">
               {content.map((item) => (
                 <Card key={item.id} className="bg-card">
@@ -189,7 +201,14 @@ const Admin = () => {
                       className="w-20 h-28 object-cover rounded"
                     />
                     <div className="flex-1">
-                      <h3 className="font-semibold">{item.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{item.title}</h3>
+                        {item.content_type === "series" && (
+                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
+                            TV Series
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {item.content_type} • {item.year} • {item.genre}
                       </p>
@@ -198,6 +217,16 @@ const Admin = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      {item.content_type === "series" && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setManagingTVShow({ id: item.id, title: item.title })}
+                          title="Manage Seasons & Episodes"
+                        >
+                          <Tv className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="icon"
