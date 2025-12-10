@@ -1,7 +1,9 @@
-import { Home, Film, Tv, List, Search, User, LogOut } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface SidebarProps {
   currentView: ViewState;
@@ -18,6 +20,9 @@ const navItems = [
 ];
 
 export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: SidebarProps) => {
+  const navigate = useNavigate();
+  const { data: isAdmin } = useIsAdmin();
+
   return (
     <aside className="fixed left-0 top-0 h-full w-16 md:w-64 bg-sidebar border-r border-sidebar-border z-50 flex flex-col">
       {/* Logo */}
@@ -51,9 +56,30 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
         </ul>
       </nav>
 
-      {/* User Section */}
-      <div className="p-2 md:p-4 border-t border-sidebar-border">
-        <div className="hidden md:flex items-center gap-3 px-3 py-2 mb-2">
+      {/* Bottom Section */}
+      <div className="p-2 md:p-4 border-t border-sidebar-border space-y-1">
+        {/* Subscription Link */}
+        <button
+          onClick={() => navigate("/subscription")}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        >
+          <CreditCard className="h-5 w-5 flex-shrink-0" />
+          <span className="hidden md:inline font-medium">Subscription</span>
+        </button>
+
+        {/* Admin Link - Only for admins */}
+        {isAdmin && (
+          <button
+            onClick={() => navigate("/admin")}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-brand hover:bg-sidebar-accent transition-colors"
+          >
+            <Shield className="h-5 w-5 flex-shrink-0" />
+            <span className="hidden md:inline font-medium">Admin</span>
+          </button>
+        )}
+
+        {/* User Info */}
+        <div className="hidden md:flex items-center gap-3 px-3 py-2">
           <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-primary-foreground font-semibold text-sm">
             {userName?.charAt(0).toUpperCase() || "U"}
           </div>
