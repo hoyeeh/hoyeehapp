@@ -5,12 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hoyeeh TV Receiver</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
@@ -18,7 +13,6 @@
       min-height: 100vh;
       overflow: hidden;
     }
-
     .container {
       display: flex;
       flex-direction: column;
@@ -27,18 +21,8 @@
       min-height: 100vh;
       padding: 40px;
     }
-
-    .logo {
-      font-size: 48px;
-      font-weight: bold;
-      color: #ff6300;
-      margin-bottom: 20px;
-    }
-
-    .pairing-screen {
-      text-align: center;
-    }
-
+    .logo { font-size: 48px; font-weight: bold; color: #ff6300; margin-bottom: 20px; }
+    .pairing-screen { text-align: center; }
     .pairing-code {
       font-size: 120px;
       font-weight: bold;
@@ -47,31 +31,10 @@
       margin: 40px 0;
       font-family: 'Courier New', monospace;
     }
-
-    .instructions {
-      font-size: 24px;
-      color: #aaa;
-      max-width: 600px;
-      line-height: 1.6;
-    }
-
-    .status {
-      margin-top: 30px;
-      font-size: 18px;
-      color: #666;
-    }
-
-    .status.connected {
-      color: #4ade80;
-    }
-
-    .expires {
-      margin-top: 20px;
-      font-size: 16px;
-      color: #666;
-    }
-
-    /* Video Player */
+    .instructions { font-size: 24px; color: #aaa; max-width: 600px; line-height: 1.6; }
+    .status { margin-top: 30px; font-size: 18px; color: #666; }
+    .status.connected { color: #4ade80; }
+    .expires { margin-top: 20px; font-size: 16px; color: #666; }
     .player-container {
       display: none;
       width: 100vw;
@@ -81,17 +44,8 @@
       left: 0;
       background: black;
     }
-
-    .player-container.active {
-      display: block;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
+    .player-container.active { display: block; }
+    video { width: 100%; height: 100%; object-fit: contain; }
     .player-overlay {
       position: absolute;
       bottom: 0;
@@ -102,18 +56,9 @@
       opacity: 0;
       transition: opacity 0.3s;
     }
-
     .player-container:hover .player-overlay,
-    .player-overlay.visible {
-      opacity: 1;
-    }
-
-    .video-title {
-      font-size: 32px;
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
-
+    .player-overlay.visible { opacity: 1; }
+    .video-title { font-size: 32px; font-weight: bold; margin-bottom: 20px; }
     .progress-bar {
       width: 100%;
       height: 8px;
@@ -122,25 +67,9 @@
       margin-bottom: 20px;
       cursor: pointer;
     }
-
-    .progress-fill {
-      height: 100%;
-      background: #ff6300;
-      border-radius: 4px;
-      transition: width 0.1s;
-    }
-
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-
-    .time-display {
-      font-size: 18px;
-      color: #aaa;
-    }
-
+    .progress-fill { height: 100%; background: #ff6300; border-radius: 4px; transition: width 0.1s; }
+    .controls { display: flex; align-items: center; gap: 20px; }
+    .time-display { font-size: 18px; color: #aaa; }
     .now-playing-badge {
       position: absolute;
       top: 20px;
@@ -151,8 +80,6 @@
       font-size: 14px;
       font-weight: bold;
     }
-
-    /* Loading spinner */
     .spinner {
       width: 60px;
       height: 60px;
@@ -162,36 +89,44 @@
       animation: spin 1s linear infinite;
       margin: 20px auto;
     }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-message { color: #ef4444; font-size: 18px; margin-top: 20px; }
+    .idle-screen { display: none; text-align: center; }
+    .idle-screen.active { display: block; }
+    .idle-screen h2 { font-size: 36px; margin-bottom: 20px; }
+    .idle-screen p { font-size: 20px; color: #aaa; }
+    /* Queue Panel */
+    .queue-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
-
-    .error-message {
-      color: #ef4444;
-      font-size: 18px;
-      margin-top: 20px;
+    .player-container:hover .queue-panel,
+    .queue-panel.visible { opacity: 1; }
+    .queue-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #ff6300; }
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.05);
     }
-
-    /* Idle screen */
-    .idle-screen {
-      display: none;
-      text-align: center;
-    }
-
-    .idle-screen.active {
-      display: block;
-    }
-
-    .idle-screen h2 {
-      font-size: 36px;
-      margin-bottom: 20px;
-    }
-
-    .idle-screen p {
-      font-size: 20px;
-      color: #aaa;
-    }
+    .queue-item.active { background: rgba(255,99,0,0.2); border: 1px solid #ff6300; }
+    .queue-item img { width: 60px; height: 34px; object-fit: cover; border-radius: 4px; }
+    .queue-item-info { flex: 1; overflow: hidden; }
+    .queue-item-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .queue-item-number { font-size: 10px; color: #aaa; }
+    .queue-empty { font-size: 14px; color: #666; text-align: center; padding: 20px 0; }
   </style>
 </head>
 <body>
@@ -216,11 +151,19 @@
     <h2>Ready to Cast</h2>
     <p>Select content from your phone or computer to start watching</p>
     <p class="status connected">Connected</p>
+    <div id="idleQueue" style="margin-top: 30px;"></div>
   </div>
 
   <div class="player-container" id="playerContainer">
     <video id="videoPlayer" playsinline></video>
     <div class="now-playing-badge">Now Playing</div>
+    
+    <!-- Queue Panel -->
+    <div class="queue-panel" id="queuePanel">
+      <div class="queue-title">Up Next</div>
+      <div id="queueList"></div>
+    </div>
+    
     <div class="player-overlay" id="playerOverlay">
       <h2 class="video-title" id="videoTitle">Video Title</h2>
       <div class="progress-bar" id="progressBar">
@@ -243,24 +186,24 @@
     let pollInterval = null;
     let heartbeatInterval = null;
     let hls = null;
+    let currentQueue = [];
+    let currentQueueIndex = 0;
 
     const video = document.getElementById('videoPlayer');
     const pairingScreen = document.getElementById('pairingScreen');
     const idleScreen = document.getElementById('idleScreen');
     const playerContainer = document.getElementById('playerContainer');
 
-    // Format time
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60);
       const secs = Math.floor(seconds % 60);
       return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // Call edge function
     async function callSignaling(action, body = {}) {
       const url = `${SUPABASE_URL}/functions/v1/cast-signaling?action=${action}`;
       const response = await fetch(url, {
-        method: body ? 'POST' : 'GET',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
@@ -270,7 +213,14 @@
       return response.json();
     }
 
-    // Generate pairing code
+    async function checkStatus() {
+      const url = `${SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${sessionId}`;
+      const response = await fetch(url, {
+        headers: { 'apikey': SUPABASE_ANON_KEY },
+      });
+      return response.json();
+    }
+
     async function generatePairingCode() {
       try {
         document.getElementById('spinner').style.display = 'block';
@@ -289,11 +239,8 @@
           document.getElementById('pairingCode').textContent = pairingCode;
           document.getElementById('status').textContent = 'Waiting for connection...';
 
-          // Show expiration countdown
           const expiresAt = new Date(result.expiresAt);
           updateExpiry(expiresAt);
-
-          // Start polling for pairing
           startPolling();
         } else {
           throw new Error(result.error || 'Failed to generate code');
@@ -306,7 +253,6 @@
       }
     }
 
-    // Update expiry countdown
     function updateExpiry(expiresAt) {
       const updateCountdown = () => {
         const now = new Date();
@@ -328,14 +274,12 @@
       setInterval(updateCountdown, 1000);
     }
 
-    // Start polling for session updates
     function startPolling() {
       if (pollInterval) clearInterval(pollInterval);
 
       pollInterval = setInterval(async () => {
         try {
-          const result = await callSignaling('status', {}, `&sessionId=${sessionId}`);
-          
+          const result = await checkStatus();
           if (result.success) {
             handleSessionUpdate(result.session);
           }
@@ -345,11 +289,16 @@
       }, 1000);
     }
 
-    // Handle session updates
     function handleSessionUpdate(session) {
       if (session.status === 'paired' || session.status === 'active') {
         document.getElementById('status').textContent = 'Connected!';
         document.getElementById('status').classList.add('connected');
+
+        // Update queue
+        if (session.queue && Array.isArray(session.queue)) {
+          currentQueue = session.queue;
+          renderQueue();
+        }
 
         if (session.videoUrl) {
           showPlayer(session);
@@ -357,23 +306,38 @@
           showIdleScreen();
         }
 
-        // Start heartbeat
         startHeartbeat();
       }
 
       if (session.status === 'active' && session.videoUrl) {
-        // Update playback if needed
         updatePlaybackState(session);
       }
 
       if (session.status === 'disconnected') {
-        // Show pairing screen again
         showPairingScreen();
         generatePairingCode();
       }
     }
 
-    // Show player
+    function renderQueue() {
+      const queueList = document.getElementById('queueList');
+      
+      if (!currentQueue || currentQueue.length === 0) {
+        queueList.innerHTML = '<div class="queue-empty">No items in queue</div>';
+        return;
+      }
+
+      queueList.innerHTML = currentQueue.map((item, index) => `
+        <div class="queue-item ${index === currentQueueIndex ? 'active' : ''}">
+          <img src="${item.thumbnail || ''}" alt="" onerror="this.style.display='none'">
+          <div class="queue-item-info">
+            <div class="queue-item-title">${item.title}</div>
+            <div class="queue-item-number">${index === currentQueueIndex ? 'Now Playing' : `#${index + 1}`}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
     function showPlayer(session) {
       pairingScreen.style.display = 'none';
       idleScreen.classList.remove('active');
@@ -381,11 +345,16 @@
 
       document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
 
-      // Load video
+      // Find current index in queue
+      if (currentQueue.length > 0) {
+        const idx = currentQueue.findIndex(item => item.url === session.videoUrl);
+        if (idx !== -1) currentQueueIndex = idx;
+      }
+
       loadVideo(session.videoUrl, session.playbackTime);
+      renderQueue();
     }
 
-    // Load video
     function loadVideo(url, startTime = 0) {
       if (hls) {
         hls.destroy();
@@ -411,7 +380,6 @@
       }
     }
 
-    // Update playback state from controller
     function updatePlaybackState(session) {
       if (Math.abs(video.currentTime - session.playbackTime) > 3) {
         video.currentTime = session.playbackTime;
@@ -428,21 +396,40 @@
       }
     }
 
-    // Show idle screen
     function showIdleScreen() {
       pairingScreen.style.display = 'none';
       playerContainer.classList.remove('active');
       idleScreen.classList.add('active');
+      renderIdleQueue();
     }
 
-    // Show pairing screen
+    function renderIdleQueue() {
+      const container = document.getElementById('idleQueue');
+      if (!currentQueue || currentQueue.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="color: #ff6300; font-size: 18px; margin-bottom: 16px;">Queue (${currentQueue.length} items)</div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+          ${currentQueue.slice(0, 5).map(item => `
+            <div style="text-align: center; width: 120px;">
+              <img src="${item.thumbnail || ''}" alt="" style="width: 100%; height: 68px; object-fit: cover; border-radius: 8px;" onerror="this.style.display='none'">
+              <div style="font-size: 12px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</div>
+            </div>
+          `).join('')}
+          ${currentQueue.length > 5 ? `<div style="display: flex; align-items: center; color: #aaa;">+${currentQueue.length - 5} more</div>` : ''}
+        </div>
+      `;
+    }
+
     function showPairingScreen() {
       playerContainer.classList.remove('active');
       idleScreen.classList.remove('active');
       pairingScreen.style.display = 'flex';
     }
 
-    // Start heartbeat
     function startHeartbeat() {
       if (heartbeatInterval) clearInterval(heartbeatInterval);
 
@@ -459,7 +446,26 @@
       }, 2000);
     }
 
-    // Update progress bar
+    // Play next in queue when video ends
+    video.addEventListener('ended', async () => {
+      if (currentQueue.length > 0 && currentQueueIndex < currentQueue.length - 1) {
+        currentQueueIndex++;
+        const nextItem = currentQueue[currentQueueIndex];
+        
+        // Notify server about queue progression
+        await callSignaling('command', {
+          sessionId,
+          command: 'LOAD',
+          payload: {
+            videoUrl: nextItem.url,
+            title: nextItem.title,
+            thumbnail: nextItem.thumbnail,
+            startTime: 0,
+          }
+        });
+      }
+    });
+
     video.addEventListener('timeupdate', () => {
       const progress = (video.currentTime / video.duration) * 100;
       document.getElementById('progressFill').style.width = `${progress}%`;
@@ -467,45 +473,17 @@
         `${formatTime(video.currentTime)} / ${formatTime(video.duration || 0)}`;
     });
 
-    // Show overlay on interaction
     let overlayTimeout;
     playerContainer.addEventListener('mousemove', () => {
       document.getElementById('playerOverlay').classList.add('visible');
+      document.getElementById('queuePanel').classList.add('visible');
       clearTimeout(overlayTimeout);
       overlayTimeout = setTimeout(() => {
         document.getElementById('playerOverlay').classList.remove('visible');
+        document.getElementById('queuePanel').classList.remove('visible');
       }, 3000);
     });
 
-    // Override status endpoint call to include query param
-    async function checkStatus() {
-      const url = `${SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${sessionId}`;
-      const response = await fetch(url, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-        },
-      });
-      return response.json();
-    }
-
-    // Modified polling to use GET request
-    function startPolling() {
-      if (pollInterval) clearInterval(pollInterval);
-
-      pollInterval = setInterval(async () => {
-        try {
-          const result = await checkStatus();
-          
-          if (result.success) {
-            handleSessionUpdate(result.session);
-          }
-        } catch (error) {
-          console.error('Polling error:', error);
-        }
-      }, 1000);
-    }
-
-    // Initialize
     generatePairingCode();
   </script>
 </body>

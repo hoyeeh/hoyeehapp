@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 
 export interface QueueItem {
@@ -15,27 +15,74 @@ interface CastQueueState {
   isQueueActive: boolean;
 }
 
-export function useCastQueue() {
-  const [state, setState] = useState<CastQueueState>({
+// Persist queue to localStorage for session persistence
+const QUEUE_STORAGE_KEY = 'hoyeeh_cast_queue';
+
+const loadQueueFromStorage = (): CastQueueState => {
+  try {
+    const saved = localStorage.getItem(QUEUE_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Error loading queue from storage:', e);
+  }
+  return {
     queue: [],
     currentIndex: 0,
     isQueueActive: false,
-  });
+  };
+};
+
+const saveQueueToStorage = (state: CastQueueState) => {
+  try {
+    localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Error saving queue to storage:', e);
+  }
+};
+
+export function useCastQueue(onQueueChange?: (queue: QueueItem[]) => void) {
+  const [state, setState] = useState<CastQueueState>(loadQueueFromStorage);
+
+  // Save to storage and notify on change
+  useEffect(() => {
+    saveQueueToStorage(state);
+    onQueueChange?.(state.queue);
+  }, [state, onQueueChange]);
 
   const addToQueue = useCallback((item: QueueItem) => {
-    setState(prev => ({
-      ...prev,
-      queue: [...prev.queue, item],
-    }));
-    toast.success(`"${item.title}" added to queue`);
+    setState(prev => {
+      // Prevent duplicates
+      if (prev.queue.some(q => q.id === item.id)) {
+        toast.info(`"${item.title}" is already in queue`);
+        return prev;
+      }
+      
+      const newState = {
+        ...prev,
+        queue: [...prev.queue, item],
+      };
+      toast.success(`"${item.title}" added to queue`);
+      return newState;
+    });
   }, []);
 
   const addMultipleToQueue = useCallback((items: QueueItem[]) => {
-    setState(prev => ({
-      ...prev,
-      queue: [...prev.queue, ...items],
-    }));
-    toast.success(`${items.length} items added to queue`);
+    setState(prev => {
+      const newItems = items.filter(item => !prev.queue.some(q => q.id === item.id));
+      if (newItems.length === 0) {
+        toast.info('Items already in queue');
+        return prev;
+      }
+      
+      const newState = {
+        ...prev,
+        queue: [...prev.queue, ...newItems],
+      };
+      toast.success(`${newItems.length} items added to queue`);
+      return newState;
+    });
   }, []);
 
   const removeFromQueue = useCallback((id: string) => {
@@ -44,7 +91,6 @@ export function useCastQueue() {
       const currentItem = prev.queue[prev.currentIndex];
       let newIndex = prev.currentIndex;
       
-      // Adjust index if removing item before or at current
       if (currentItem && currentItem.id === id) {
         newIndex = Math.min(prev.currentIndex, newQueue.length - 1);
       } else {
@@ -63,12 +109,11 @@ export function useCastQueue() {
   }, []);
 
   const clearQueue = useCallback(() => {
-    setState(prev => ({
-      ...prev,
+    setState({
       queue: [],
       currentIndex: 0,
       isQueueActive: false,
-    }));
+    });
     toast.info('Queue cleared');
   }, []);
 
@@ -80,7 +125,6 @@ export function useCastQueue() {
           currentIndex: prev.currentIndex + 1,
         };
       }
-      // Loop back to start or stop
       return {
         ...prev,
         currentIndex: 0,
@@ -110,7 +154,6 @@ export function useCastQueue() {
       const [movedItem] = newQueue.splice(fromIndex, 1);
       newQueue.splice(toIndex, 0, movedItem);
       
-      // Adjust current index if affected
       let newIndex = prev.currentIndex;
       if (fromIndex === prev.currentIndex) {
         newIndex = toIndex;
@@ -137,6 +180,13 @@ export function useCastQueue() {
     }
   }, [state.queue.length]);
 
+  const setQueue = useCallback((queue: QueueItem[]) => {
+    setState(prev => ({
+      ...prev,
+      queue,
+    }));
+  }, []);
+
   const currentItem = state.queue[state.currentIndex] || null;
   const hasNext = state.currentIndex < state.queue.length - 1;
   const hasPrevious = state.currentIndex > 0;
@@ -157,5 +207,6 @@ export function useCastQueue() {
     playAtIndex,
     reorderQueue,
     startQueue,
+    setQueue,
   };
 }
