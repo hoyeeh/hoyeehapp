@@ -6,6 +6,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, mux-signature',
 };
 
+// Helper function to send transcoding notification
+async function sendTranscodingNotification(
+  supabaseUrl: string,
+  anonKey: string,
+  jobId: string,
+  status: "completed" | "failed",
+  episodeTitle?: string,
+  showTitle?: string,
+  errorMessage?: string
+) {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/transcoding-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({ jobId, status, episodeTitle, showTitle, errorMessage }),
+    });
+    const result = await response.json();
+    console.log("Notification sent:", result);
+  } catch (err) {
+    console.error("Failed to send notification:", err);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,6 +40,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const payload = await req.json();
@@ -40,6 +67,31 @@ serve(async (req) => {
 
         const hlsUrl = `https://stream.mux.com/${playbackId}.m3u8`;
         const thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg`;
+
+        // Get episode and show info for notification
+        const { data: episodeData } = await supabase
+          .from('episodes')
+          .select('title, season_id')
+          .eq('id', episodeId)
+          .single();
+
+        let showTitle = '';
+        if (episodeData?.season_id) {
+          const { data: seasonData } = await supabase
+            .from('seasons')
+            .select('content_id')
+            .eq('id', episodeData.season_id)
+            .single();
+          
+          if (seasonData?.content_id) {
+            const { data: contentData } = await supabase
+              .from('content')
+              .select('title')
+              .eq('id', seasonData.content_id)
+              .single();
+            showTitle = contentData?.title || '';
+          }
+        }
 
         // Update episode with HLS URL and thumbnail
         const { error: episodeError } = await supabase
@@ -72,6 +124,16 @@ serve(async (req) => {
             console.error('Error updating transcoding job:', jobError);
           } else {
             console.log(`Transcoding job ${jobId} marked as completed`);
+            
+            // Send notification email
+            await sendTranscodingNotification(
+              supabaseUrl, 
+              anonKey, 
+              jobId, 
+              "completed", 
+              episodeData?.title,
+              showTitle
+            );
           }
         }
         break;
@@ -79,7 +141,37 @@ serve(async (req) => {
 
       case 'video.asset.errored': {
         const passthrough = JSON.parse(data.passthrough || '{}');
-        const { jobId } = passthrough;
+        const { jobId, episodeId } = passthrough;
+
+        let episodeTitle = '';
+        let showTitle = '';
+        
+        if (episodeId) {
+          const { data: episodeData } = await supabase
+            .from('episodes')
+            .select('title, season_id')
+            .eq('id', episodeId)
+            .single();
+          
+          episodeTitle = episodeData?.title || '';
+          
+          if (episodeData?.season_id) {
+            const { data: seasonData } = await supabase
+              .from('seasons')
+              .select('content_id')
+              .eq('id', episodeData.season_id)
+              .single();
+            
+            if (seasonData?.content_id) {
+              const { data: contentData } = await supabase
+                .from('content')
+                .select('title')
+                .eq('id', seasonData.content_id)
+                .single();
+              showTitle = contentData?.title || '';
+            }
+          }
+        }
 
         if (jobId) {
           const errorMessage = data.errors?.messages?.join(', ') || 'Transcoding failed';
@@ -94,6 +186,17 @@ serve(async (req) => {
             .eq('id', jobId);
 
           console.log(`Transcoding job ${jobId} failed: ${errorMessage}`);
+          
+          // Send failure notification email
+          await sendTranscodingNotification(
+            supabaseUrl, 
+            anonKey, 
+            jobId, 
+            "failed", 
+            episodeTitle,
+            showTitle,
+            errorMessage
+          );
         }
         break;
       }

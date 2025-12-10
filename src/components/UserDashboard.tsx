@@ -1,0 +1,324 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useDatabase";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Content } from "@/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Play, Clock, Crown, Calendar, AlertTriangle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { format, differenceInDays } from "date-fns";
+
+interface WatchHistoryWithContent {
+  id: string;
+  content_id: string;
+  progress: number;
+  last_watched: string;
+  content: {
+    id: string;
+    title: string;
+    thumbnail_url: string;
+    duration: number;
+    content_type: string;
+  };
+}
+
+interface UserDashboardProps {
+  onPlay: (content: Content) => void;
+}
+
+export const UserDashboard = ({ onPlay }: UserDashboardProps) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: profile, refetch: refetchProfile } = useProfile();
+  const [canceling, setCanceling] = useState(false);
+
+  // Fetch watch history with content details
+  const { data: watchHistory = [], isLoading: historyLoading } = useQuery({
+    queryKey: ["watch-history-with-content", user?.id],
+    queryFn: async (): Promise<WatchHistoryWithContent[]> => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from("watch_history")
+        .select(`
+          id,
+          content_id,
+          progress,
+          last_watched,
+          content:content_id (
+            id,
+            title,
+            thumbnail_url,
+            duration,
+            content_type
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("last_watched", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      return (data || []) as unknown as WatchHistoryWithContent[];
+    },
+    enabled: !!user,
+  });
+
+  // Filter to only show incomplete items (less than 90% watched)
+  const continueWatching = watchHistory.filter((item) => {
+    if (!item.content?.duration) return false;
+    const percentWatched = (item.progress / item.content.duration) * 100;
+    return percentWatched < 90 && percentWatched > 0;
+  });
+
+  const handleCancelSubscription = async () => {
+    if (!user) return;
+    
+    setCanceling(true);
+    try {
+      // Update profile to mark subscription as canceled (will expire at end of period)
+      const { error } = await supabase
+        .from("profiles")
+        .update({ 
+          is_subscribed: false,
+          subscription_expiry: null 
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      await refetchProfile();
+      toast.success("Subscription canceled successfully");
+    } catch (error) {
+      console.error("Cancel subscription error:", error);
+      toast.error("Failed to cancel subscription");
+    } finally {
+      setCanceling(false);
+    }
+  };
+
+  const handlePlayContent = (item: WatchHistoryWithContent) => {
+    const content: Content = {
+      id: item.content.id,
+      title: item.content.title,
+      thumbnailUrl: item.content.thumbnail_url || "",
+      videoUrl: "",
+      description: "",
+      genre: "",
+      contentType: item.content.content_type as "movie" | "series",
+      isPremium: false,
+      duration: item.content.duration || 0,
+    };
+    onPlay(content);
+  };
+
+  const getProgressPercent = (progress: number, duration: number) => {
+    if (!duration) return 0;
+    return Math.min(100, Math.round((progress / duration) * 100));
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+
+  const subscriptionExpiry = profile?.subscription_expiry 
+    ? new Date(profile.subscription_expiry) 
+    : null;
+  
+  const daysUntilExpiry = subscriptionExpiry 
+    ? differenceInDays(subscriptionExpiry, new Date()) 
+    : null;
+
+  return (
+    <div className="space-y-8 px-4 md:px-12 py-8">
+      {/* Continue Watching Section */}
+      <section>
+        <h2 className="font-display text-2xl md:text-3xl mb-6 flex items-center gap-2">
+          <Clock className="h-7 w-7 text-brand" />
+          Continue Watching
+        </h2>
+        
+        {historyLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-brand" />
+          </div>
+        ) : continueWatching.length === 0 ? (
+          <Card className="bg-card/50">
+            <CardContent className="py-12 text-center">
+              <Play className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No content in progress</p>
+              <p className="text-sm text-muted-foreground mt-2">Start watching something to see it here!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {continueWatching.map((item) => {
+              const progressPercent = getProgressPercent(item.progress, item.content.duration);
+              const remainingTime = item.content.duration - item.progress;
+              
+              return (
+                <Card 
+                  key={item.id} 
+                  className="bg-card overflow-hidden group cursor-pointer hover:ring-2 hover:ring-brand transition-all"
+                  onClick={() => handlePlayContent(item)}
+                >
+                  <div className="relative aspect-video">
+                    <img
+                      src={item.content.thumbnail_url || "/placeholder.svg"}
+                      alt={item.content.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="w-14 h-14 rounded-full bg-brand flex items-center justify-center">
+                        <Play className="h-7 w-7 text-primary-foreground ml-1" fill="currentColor" />
+                      </div>
+                    </div>
+                    <Progress 
+                      value={progressPercent} 
+                      className="absolute bottom-0 left-0 right-0 h-1 rounded-none bg-muted/50" 
+                    />
+                  </div>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold truncate">{item.content.title}</h3>
+                    <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
+                      <span>{progressPercent}% watched</span>
+                      <span>{formatDuration(remainingTime)} left</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Subscription Section */}
+      <section>
+        <h2 className="font-display text-2xl md:text-3xl mb-6 flex items-center gap-2">
+          <Crown className="h-7 w-7 text-brand" />
+          Subscription
+        </h2>
+
+        <Card className={`bg-card ${profile?.is_subscribed ? 'border-brand/30' : ''}`}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  {profile?.is_subscribed ? (
+                    <>
+                      <Crown className="h-5 w-5 text-brand" />
+                      Premium Member
+                    </>
+                  ) : (
+                    "Free Plan"
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  {profile?.is_subscribed 
+                    ? "Enjoy unlimited access to all content" 
+                    : "Upgrade to access premium content"}
+                </CardDescription>
+              </div>
+              {profile?.is_subscribed && daysUntilExpiry !== null && daysUntilExpiry <= 7 && (
+                <div className="flex items-center gap-2 text-warning bg-warning/10 px-3 py-1.5 rounded-full">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Expires in {daysUntilExpiry} days</span>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile?.is_subscribed ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-secondary/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-sm">Subscription Started</span>
+                    </div>
+                    <p className="font-medium">
+                      {profile.created_at 
+                        ? format(new Date(profile.created_at), "MMMM d, yyyy") 
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-sm">Expires On</span>
+                    </div>
+                    <p className="font-medium">
+                      {subscriptionExpiry 
+                        ? format(subscriptionExpiry, "MMMM d, yyyy") 
+                        : "No expiry set"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <Button 
+                    onClick={() => navigate("/subscription")}
+                    className="bg-brand hover:bg-brand/90"
+                  >
+                    Renew Subscription
+                  </Button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="text-destructive border-destructive/50 hover:bg-destructive/10">
+                        Cancel Subscription
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to cancel your premium subscription? 
+                          You will lose access to all premium content immediately.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancelSubscription}
+                          className="bg-destructive hover:bg-destructive/90"
+                          disabled={canceling}
+                        >
+                          {canceling ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : null}
+                          Yes, Cancel
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-muted-foreground mb-4">
+                  Unlock unlimited access to all movies, TV shows, and exclusive content
+                </p>
+                <Button 
+                  onClick={() => navigate("/subscription")}
+                  size="lg"
+                  className="bg-brand hover:bg-brand/90"
+                >
+                  <Crown className="h-5 w-5 mr-2" />
+                  Upgrade to Premium
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+};

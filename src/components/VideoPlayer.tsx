@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
+import { useWatchProgress } from "@/hooks/useWatchProgress";
 
 interface VideoPlayerProps {
   src: string;
@@ -48,6 +49,7 @@ export const VideoPlayer = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const lastSaveTimeRef = useRef<number>(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -61,6 +63,15 @@ export const VideoPlayer = ({
   const [selectedQuality, setSelectedQuality] = useState('auto');
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const [isHls, setIsHls] = useState(false);
+  const [loadedProgress, setLoadedProgress] = useState<number | null>(null);
+
+  // Watch progress hook
+  const { saveProgressImmediately } = useWatchProgress({
+    contentId,
+    onProgressLoaded: useCallback((progress: number) => {
+      setLoadedProgress(progress);
+    }, []),
+  });
 
   // Check if source is HLS and detect available qualities
   useEffect(() => {
@@ -93,33 +104,53 @@ export const VideoPlayer = ({
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
-      if (initialProgress > 0) {
-        video.currentTime = initialProgress;
+      // Use loaded progress from DB if available, otherwise use initialProgress
+      const startTime = loadedProgress !== null ? loadedProgress : initialProgress;
+      if (startTime > 0) {
+        video.currentTime = startTime;
       }
     };
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
+      
+      // Save progress every 10 seconds
+      const now = Date.now();
+      if (now - lastSaveTimeRef.current >= 10000) {
+        lastSaveTimeRef.current = now;
+        saveProgressImmediately(video.currentTime, video.duration);
+      }
     };
 
     const handleWaiting = () => setIsBuffering(true);
     const handlePlaying = () => setIsBuffering(false);
     const handleCanPlay = () => setIsBuffering(false);
+    
+    const handlePause = () => {
+      // Save progress immediately on pause
+      saveProgressImmediately(video.currentTime, video.duration);
+    };
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("waiting", handleWaiting);
     video.addEventListener("playing", handlePlaying);
     video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("pause", handlePause);
 
     return () => {
+      // Save progress when unmounting
+      if (video.currentTime > 0 && video.duration > 0) {
+        saveProgressImmediately(video.currentTime, video.duration);
+      }
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);
       video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("pause", handlePause);
     };
-  }, [initialProgress]);
+  }, [initialProgress, loadedProgress, saveProgressImmediately]);
 
   // Auto-hide controls
   useEffect(() => {
