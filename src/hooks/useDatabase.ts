@@ -27,6 +27,7 @@ export const useContent = () => {
         duration: item.duration || 0,
         year: item.year || undefined,
         rating: item.rating || undefined,
+        contentRating: item.content_rating || undefined,
       }));
     },
   });

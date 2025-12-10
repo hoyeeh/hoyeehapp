@@ -30,6 +30,7 @@ export interface Content {
   duration: number;
   year?: number;
   rating?: string;
+  contentRating?: string;
 }
 
 export type ViewState = 'home' | 'movies' | 'shows' | 'player' | 'admin' | 'mylist' | 'profile' | 'search';

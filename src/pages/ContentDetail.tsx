@@ -5,6 +5,7 @@ import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, us
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { Loader2, ArrowLeft, Play, Plus, Check, Star, Clock, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
@@ -210,6 +211,7 @@ const ContentDetail = () => {
                   PREMIUM
                 </span>
               )}
+              <ContentRatingBadge rating={(content as any).content_rating} size="md" />
             </div>
 
             {/* Genres */}
