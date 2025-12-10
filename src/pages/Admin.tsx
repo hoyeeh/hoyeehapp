@@ -5,7 +5,8 @@ import { useIsAdmin, useAllUsers, useAllSubscriptions, useAdminContent, useDelet
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Plus, Trash2, Edit2, Tv } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Tv } from "lucide-react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
@@ -24,6 +25,7 @@ import { EnhancedHomeSectionManagement } from "@/components/admin/EnhancedHomeSe
 import { ComingSoonManagement } from "@/components/admin/ComingSoonManagement";
 import { HeroBannerManagement } from "@/components/admin/HeroBannerManagement";
 import { AdminPushNotifications } from "@/components/admin/AdminPushNotifications";
+import { AdminEmailSender } from "@/components/admin/AdminEmailSender";
 import { BulkThumbnailRegeneration } from "@/components/admin/BulkThumbnailRegeneration";
 import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
 import { CDNMigrationTool } from "@/components/admin/CDNMigrationTool";
@@ -73,7 +75,7 @@ const Admin = () => {
   if (authLoading || adminLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <LoadingSpinner size="lg" text="Loading admin panel..." />
       </div>
     );
   }
@@ -214,7 +216,15 @@ const Admin = () => {
         );
       
       case "notifications":
-        return <AdminNotifications />;
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Notifications & Emails</h2>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <AdminEmailSender />
+              <AdminNotifications />
+            </div>
+          </div>
+        );
       
       case "transcoding":
         return (
