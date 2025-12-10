@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
@@ -13,14 +13,14 @@ import { Top10Row } from "@/components/Top10Row";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
+import { ContentFilter, FilterState } from "@/components/ContentFilter";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import { subDays } from "date-fns";
 
-export type ExtendedViewState = ViewState | 'dashboard';
+export type ExtendedViewState = ViewState | 'dashboard' | 'downloads';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -38,6 +38,15 @@ const Index = () => {
   const [playingContent, setPlayingContent] = useState<{ content: Content; progress: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<FilterState>({
+    genre: null,
+    year: null,
+    contentType: null,
+  });
+
+  const handleFilterChange = useCallback((filters: FilterState) => {
+    setActiveFilters(filters);
+  }, []);
 
   // Fetch Top 10 content
   const { data: top10Data = [] } = useQuery({
@@ -193,6 +202,7 @@ const Index = () => {
   const getDisplayContent = () => {
     let filtered = content;
     
+    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = content.filter(
@@ -203,12 +213,30 @@ const Index = () => {
       );
     }
     
+    // Apply view filter
     if (currentView === "movies") {
       filtered = filtered.filter((c) => c.contentType === "movie");
     } else if (currentView === "shows") {
       filtered = filtered.filter((c) => c.contentType === "series");
     } else if (currentView === "mylist") {
       filtered = filtered.filter((c) => watchlistIds.includes(c.id));
+    }
+    
+    // Apply genre filter
+    if (activeFilters.genre) {
+      filtered = filtered.filter((c) =>
+        c.genre.toLowerCase().includes(activeFilters.genre!.toLowerCase())
+      );
+    }
+    
+    // Apply year filter
+    if (activeFilters.year) {
+      filtered = filtered.filter((c) => c.year === activeFilters.year);
+    }
+    
+    // Apply content type filter (only when not on specific view)
+    if (activeFilters.contentType && currentView !== "movies" && currentView !== "shows") {
+      filtered = filtered.filter((c) => c.contentType === activeFilters.contentType);
     }
     
     return filtered;
@@ -392,13 +420,26 @@ const Index = () => {
                       />
                     );
                   })}
+
+                  {/* Top TV Shows - Wide Section */}
+                  {shows.length > 0 && (
+                    <ContentRow
+                      title="Top TV Shows"
+                      content={shows.slice(0, 10)}
+                      onPlay={handlePlay}
+                      onToggleList={handleToggleList}
+                      onDetails={handleDetails}
+                      userList={watchlistIds}
+                      cardStyle="wide"
+                    />
+                  )}
                 </div>
               </>
             )}
 
             {(currentView === "movies" || currentView === "shows" || currentView === "mylist" || searchQuery) && (
               <div className="px-4 md:px-12 pt-4">
-                <h1 className="font-display text-3xl md:text-4xl mb-6">
+                <h1 className="font-display text-3xl md:text-4xl mb-4">
                   {searchQuery
                     ? `Search results for "${searchQuery}"`
                     : currentView === "movies"
@@ -407,6 +448,14 @@ const Index = () => {
                     ? "TV Shows"
                     : "My List"}
                 </h1>
+                
+                {/* Content Filter */}
+                {(currentView === "movies" || currentView === "shows") && (
+                  <ContentFilter
+                    onFilterChange={handleFilterChange}
+                    contentType={currentView === "movies" ? "movie" : "series"}
+                  />
+                )}
                 
                 {displayContent.length === 0 ? (
                   <p className="text-muted-foreground text-lg">
