@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoUploadField } from "./VideoUploadField";
+import { BatchVideoUpload } from "./BatchVideoUpload";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -301,12 +302,13 @@ interface SeasonItemProps {
 
 const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps) => {
   const { toast } = useToast();
-  const { data: episodes, isLoading } = useEpisodes(season.id);
+  const { data: episodes, isLoading, refetch } = useEpisodes(season.id);
   const createEpisode = useCreateEpisode();
   const updateEpisode = useUpdateEpisode();
   const deleteEpisode = useDeleteEpisode();
 
   const [showEpisodeForm, setShowEpisodeForm] = useState(false);
+  const [showBatchUpload, setShowBatchUpload] = useState(false);
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
   const [episodeForm, setEpisodeForm] = useState({
     episode_number: 1,
@@ -403,20 +405,51 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
         
         <CollapsibleContent>
           <div className="p-4 space-y-4 bg-background">
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm font-medium">Episodes</h4>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => {
-                  resetEpisodeForm();
-                  setEpisodeForm(prev => ({ ...prev, episode_number: (episodes?.length || 0) + 1 }));
-                  setShowEpisodeForm(true);
+            {showBatchUpload && episodes ? (
+              <BatchVideoUpload
+                seasonId={season.id}
+                seasonNumber={season.season_number}
+                episodes={episodes.map(ep => ({
+                  id: ep.id,
+                  episode_number: ep.episode_number,
+                  title: ep.title,
+                  video_url: ep.video_url,
+                }))}
+                onComplete={() => {
+                  refetch();
+                  setShowBatchUpload(false);
                 }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Episode
-              </Button>
+                onClose={() => setShowBatchUpload(false)}
+              />
+            ) : (
+              <>
+            <div className="flex justify-between items-center flex-wrap gap-2">
+              <h4 className="text-sm font-medium">Episodes</h4>
+              <div className="flex gap-2">
+                {episodes && episodes.length > 0 && (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setShowBatchUpload(true)}
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Batch Upload Videos
+                  </Button>
+                )}
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => {
+                    resetEpisodeForm();
+                    setEpisodeForm(prev => ({ ...prev, episode_number: (episodes?.length || 0) + 1 }));
+                    setShowEpisodeForm(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Episode
+                </Button>
+              </div>
             </div>
 
             {/* Episode Form Dialog */}
@@ -544,6 +577,8 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
                   </div>
                 ))}
               </div>
+            )}
+              </>
             )}
           </div>
         </CollapsibleContent>
