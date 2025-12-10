@@ -20,6 +20,8 @@ import { TranscodingDashboard } from "@/components/admin/TranscodingDashboard";
 import { GenreManagement } from "@/components/admin/GenreManagement";
 import { Top10Management } from "@/components/admin/Top10Management";
 import { HomeSectionManagement } from "@/components/admin/HomeSectionManagement";
+import { ComingSoonManagement } from "@/components/admin/ComingSoonManagement";
+import { HeroBannerManagement } from "@/components/admin/HeroBannerManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -232,6 +234,22 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Home Page Management</h2>
             <HomeSectionManagement />
+          </div>
+        );
+      
+      case "comingsoon":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Coming Soon Management</h2>
+            <ComingSoonManagement />
+          </div>
+        );
+      
+      case "banners":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Hero Banner Management</h2>
+            <HeroBannerManagement />
           </div>
         );
       

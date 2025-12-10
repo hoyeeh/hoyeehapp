@@ -1,4 +1,4 @@
-import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid } from "lucide-react";
+import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 
@@ -16,6 +16,8 @@ const menuItems = [
   { id: "genres", label: "Genres", icon: Tag },
   { id: "top10", label: "Top 10", icon: Trophy },
   { id: "homepage", label: "Home Page", icon: LayoutGrid },
+  { id: "comingsoon", label: "Coming Soon", icon: Clock },
+  { id: "banners", label: "Hero Banners", icon: Image },
   { id: "users", label: "Users", icon: Users },
   { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "roles", label: "Roles", icon: Shield },

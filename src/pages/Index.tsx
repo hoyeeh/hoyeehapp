@@ -7,10 +7,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Content, ViewState } from "@/types";
 import { LandingPage } from "@/components/LandingPage";
 import { Sidebar } from "@/components/Sidebar";
-import { HeroBanner } from "@/components/HeroBanner";
+import { EnhancedHeroBanner } from "@/components/EnhancedHeroBanner";
 import { ContentRow } from "@/components/ContentRow";
 import { Top10Row } from "@/components/Top10Row";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
+import { ComingSoonRow } from "@/components/ComingSoonRow";
+import { RecommendationsRow } from "@/components/RecommendationsRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
@@ -368,12 +370,9 @@ const Index = () => {
 
             {currentView === "home" && !searchQuery && (
               <>
-                <HeroBanner
-                  content={featuredContent}
+                <EnhancedHeroBanner
                   onPlay={handlePlay}
                   onDetails={handleDetails}
-                  onToggleList={handleToggleList}
-                  isInList={featuredContent ? watchlistIds.includes(featuredContent.id) : false}
                 />
                 
                 <div className="mt-8 space-y-2">
@@ -382,6 +381,17 @@ const Index = () => {
                     onPlay={(c, progress) => setPlayingContent({ content: c, progress })}
                     onDetails={handleDetails}
                   />
+
+                  {/* AI Recommendations Row */}
+                  <RecommendationsRow
+                    onPlay={handlePlay}
+                    onToggleList={handleToggleList}
+                    onDetails={handleDetails}
+                    userList={watchlistIds}
+                  />
+
+                  {/* Coming Soon Row - Above Top 10 */}
+                  <ComingSoonRow />
 
                   {/* Render sections from database config - all with wide 16:9 cards */}
                   {homeSections.map((section: any) => {
