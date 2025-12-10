@@ -29,16 +29,17 @@ serve(async (req: Request): Promise<Response> => {
     // Get expiring subscriptions (1 day, 3 days, 7 days before expiry)
     const { data: expiringSubscriptions, error: subError } = await supabase
       .from("subscriptions")
-      .select(`
-        *,
-        profiles:user_id (
-          id,
-          display_name
-        )
-      `)
+      .select("*")
       .eq("status", "active")
       .gte("expires_at", now.toISOString())
       .lte("expires_at", sevenDaysFromNow.toISOString());
+
+    if (subError) {
+      console.error("Error fetching subscriptions:", subError);
+      throw subError;
+    }
+
+    console.log(`Found ${expiringSubscriptions?.length || 0} expiring subscriptions`);
 
     if (subError) {
       console.error("Error fetching subscriptions:", subError);
@@ -81,8 +82,15 @@ serve(async (req: Request): Promise<Response> => {
           continue;
         }
 
+        // Get profile for display name
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", subscription.user_id)
+          .maybeSingle();
+
         const userEmail = userData.user.email;
-        const userName = (subscription.profiles as any)?.display_name || userEmail.split("@")[0];
+        const userName = profileData?.display_name || userEmail.split("@")[0];
 
         // Prepare email content
         const emailContent = getEmailContent(emailType, {
