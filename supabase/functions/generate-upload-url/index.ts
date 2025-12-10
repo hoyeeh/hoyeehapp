@@ -75,12 +75,16 @@ serve(async (req) => {
       );
     }
 
-    // Validate file type (only allow video files)
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
-    if (!allowedTypes.some(type => fileType.startsWith('video/') || allowedTypes.includes(fileType))) {
+    // Validate file type (allow video and image files)
+    const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/ogg'];
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const isVideo = fileType.startsWith('video/') || allowedVideoTypes.includes(fileType);
+    const isImage = allowedImageTypes.includes(fileType);
+    
+    if (!isVideo && !isImage) {
       console.error('Invalid file type:', fileType);
       return new Response(
-        JSON.stringify({ error: 'Only video files are allowed' }),
+        JSON.stringify({ error: 'Only video and image files are allowed' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

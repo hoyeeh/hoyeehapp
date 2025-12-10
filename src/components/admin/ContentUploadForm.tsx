@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCreateContent } from "@/hooks/useAdmin";
-import { useVideoUpload } from "@/hooks/useVideoUpload";
+import { useVideoUploadSpaces } from "@/hooks/useVideoUploadSpaces";
+import { getVideoDuration } from "@/utils/videoDuration";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ interface TMDBResult {
 
 export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const createContent = useCreateContent();
-  const { uploadVideo, uploadThumbnail, uploading, error: uploadError } = useVideoUpload();
+  const { uploadVideo, uploading, progress, error: uploadError, resetProgress } = useVideoUploadSpaces();
 
   const [activeTab, setActiveTab] = useState<"search" | "manual">("search");
   
@@ -58,7 +59,20 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleVideoFileSelect = async (file: File | null) => {
+    setVideoFile(file);
+    if (file) {
+      try {
+        const duration = await getVideoDuration(file);
+        setFormData(prev => ({ ...prev, duration: Math.round(duration / 60) }));
+      } catch (error) {
+        console.error("Failed to detect video duration:", error);
+      }
+    }
+  };
 
   // Fetch genres from database
   const { data: genres = [] } = useQuery({
@@ -133,13 +147,15 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       let thumbnailUrl = formData.thumbnail_url || "";
 
       if (videoFile) {
-        const url = await uploadVideo(videoFile, formData.title);
-        if (url) videoUrl = url;
+        const result = await uploadVideo(videoFile, 'movies');
+        if (result) videoUrl = result.publicUrl;
       }
 
       if (thumbnailFile) {
-        const url = await uploadThumbnail(thumbnailFile, formData.title);
-        if (url) thumbnailUrl = url;
+        setThumbnailUploading(true);
+        const result = await uploadVideo(thumbnailFile, 'thumbnails');
+        if (result) thumbnailUrl = result.publicUrl;
+        setThumbnailUploading(false);
       }
 
       await createContent.mutateAsync({
@@ -184,6 +200,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     setSearchQuery("");
     setVideoFile(null);
     setThumbnailFile(null);
+    resetProgress();
   };
 
   return (
@@ -339,8 +356,19 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                   <Input
                     type="file"
                     accept="video/*"
-                    onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                    onChange={(e) => handleVideoFileSelect(e.target.files?.[0] || null)}
                   />
+                  {progress && (
+                    <div className="space-y-1">
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-brand transition-all duration-300"
+                          style={{ width: `${progress.percent}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{progress.percent}% uploaded</p>
+                    </div>
+                  )}
                 </div>
 
                 {uploadError && <p className="text-destructive text-sm">{uploadError}</p>}
@@ -418,7 +446,18 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Video File (max 2GB)</Label>
-                  <Input type="file" accept="video/*" onChange={(e) => setVideoFile(e.target.files?.[0] || null)} />
+                  <Input type="file" accept="video/*" onChange={(e) => handleVideoFileSelect(e.target.files?.[0] || null)} />
+                  {progress && (
+                    <div className="space-y-1">
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-brand transition-all duration-300"
+                          style={{ width: `${progress.percent}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{progress.percent}% uploaded</p>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Thumbnail</Label>
