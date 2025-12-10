@@ -2,7 +2,7 @@ import { Content } from "@/types";
 import { Play, Plus, Check, Info, Lock, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { toCdnUrl } from "@/utils/cdnUrl";
 
 interface ContentCardWithPreviewProps {
@@ -14,6 +14,7 @@ interface ContentCardWithPreviewProps {
   size?: "sm" | "md" | "lg";
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
   isRestricted?: boolean;
+  showTop10Badge?: boolean;
 }
 
 export const ContentCardWithPreview = ({
@@ -25,7 +26,15 @@ export const ContentCardWithPreview = ({
   size = "md",
   cardStyle = "poster",
   isRestricted = false,
+  showTop10Badge = false,
 }: ContentCardWithPreviewProps) => {
+  // Check if content was added within the last 2 weeks
+  const isJustAdded = useMemo(() => {
+    if (!content.createdAt) return false;
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    return new Date(content.createdAt) > twoWeeksAgo;
+  }, [content.createdAt]);
   const [isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -222,6 +231,20 @@ export const ContentCardWithPreview = ({
             )}
             <ContentRatingBadge rating={content.contentRating} size="sm" />
           </div>
+
+          {/* Top 10 Badge - Bottom Right */}
+          {showTop10Badge && (
+            <div className="absolute bottom-0 right-0 bg-destructive text-destructive-foreground px-2 py-1 text-xs font-bold rounded-tl">
+              TOP 10
+            </div>
+          )}
+
+          {/* Just Added Badge - Bottom Full Width */}
+          {isJustAdded && !showTop10Badge && (
+            <div className="absolute bottom-0 left-0 right-0 bg-destructive text-destructive-foreground py-1 text-xs font-bold text-center">
+              JUST ADDED
+            </div>
+          )}
 
           {/* Mute Toggle when playing */}
           {showPreview && content.videoUrl && (
