@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { VideoUploadField } from "./VideoUploadField";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -41,13 +42,12 @@ interface TVShowManagementProps {
 
 const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowManagementProps) => {
   const { toast } = useToast();
-  const { data: seasons, isLoading } = useSeasons(contentId);
+  const { data: seasons, isLoading, refetch } = useSeasons(contentId);
   const createSeason = useCreateSeason();
   const deleteSeason = useDeleteSeason();
 
   const [expandedSeasons, setExpandedSeasons] = useState<string[]>([]);
   const [showSeasonForm, setShowSeasonForm] = useState(false);
-  const [editingSeason, setEditingSeason] = useState<Season | null>(null);
   const [importing, setImporting] = useState(false);
   const [seasonForm, setSeasonForm] = useState({
     season_number: 1,
@@ -82,6 +82,8 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
 
       console.log('TMDB Seasons:', seasonsData);
 
+      let totalEpisodes = 0;
+
       // Import each season and its episodes
       for (const tmdbSeason of seasonsData.seasons || []) {
         // Create season
@@ -111,11 +113,16 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
               duration: ep.duration || 0,
               is_premium: false,
             });
+            totalEpisodes++;
           }
         }
       }
 
-      toast({ title: `Imported ${seasonsData.seasons?.length || 0} seasons from TMDB` });
+      refetch();
+      toast({ 
+        title: "Import Complete", 
+        description: `Imported ${seasonsData.seasons?.length || 0} seasons with ${totalEpisodes} episodes from TMDB` 
+      });
     } catch (error) {
       console.error('Import error:', error);
       toast({ title: "Failed to import from TMDB", variant: "destructive" });
@@ -150,7 +157,6 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
 
   const resetSeasonForm = () => {
     setShowSeasonForm(false);
-    setEditingSeason(null);
     setSeasonForm({
       season_number: (seasons?.length || 0) + 1,
       title: "",
@@ -162,7 +168,7 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <CardTitle className="text-xl flex items-center gap-2">
           <Film className="h-5 w-5 text-primary" />
           Manage: {contentTitle}
@@ -172,7 +178,7 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
       <CardContent className="space-y-4">
         <div className="flex flex-wrap justify-between items-center gap-2">
           <h3 className="font-semibold">Seasons ({seasons?.length || 0})</h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {tmdbId && (
               <Button 
                 variant="outline"
@@ -264,7 +270,9 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
           <div className="text-center py-8 text-muted-foreground">Loading seasons...</div>
         ) : seasons?.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No seasons yet. {tmdbId ? "Use 'Import from TMDB' to auto-populate seasons and episodes." : "Add the first season to get started."}
+            {tmdbId 
+              ? "No seasons yet. Click 'Import from TMDB' to auto-populate seasons and episodes." 
+              : "No seasons yet. Add the first season to get started."}
           </div>
         ) : (
           <div className="space-y-2">
@@ -413,7 +421,7 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
 
             {/* Episode Form Dialog */}
             <Dialog open={showEpisodeForm} onOpenChange={setShowEpisodeForm}>
-              <DialogContent className="max-w-lg">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingEpisode ? "Edit Episode" : "Add Episode"}</DialogTitle>
                 </DialogHeader>
@@ -456,14 +464,15 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
                       rows={2}
                     />
                   </div>
-                  <div>
-                    <Label>Video URL</Label>
-                    <Input
-                      value={episodeForm.video_url}
-                      onChange={e => setEpisodeForm(prev => ({ ...prev, video_url: e.target.value }))}
-                      placeholder="https://..."
-                    />
-                  </div>
+                  
+                  {/* Video Upload Field */}
+                  <VideoUploadField
+                    value={episodeForm.video_url}
+                    onChange={(url) => setEpisodeForm(prev => ({ ...prev, video_url: url }))}
+                    label="Episode Video"
+                    folder={`episodes/s${season.season_number}`}
+                  />
+
                   <div>
                     <Label>Thumbnail URL</Label>
                     <Input
@@ -494,7 +503,7 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
               <div className="text-center py-4 text-muted-foreground text-sm">Loading episodes...</div>
             ) : episodes?.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground text-sm">
-                No episodes yet.
+                No episodes yet. Add episodes or import from TMDB.
               </div>
             ) : (
               <div className="space-y-2">
@@ -511,13 +520,15 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
                         <div className="font-medium text-sm">
                           E{episode.episode_number}: {episode.title}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {episode.duration} min
+                        <div className="text-xs text-muted-foreground flex flex-wrap gap-2">
+                          <span>{episode.duration} min</span>
                           {episode.is_premium && (
-                            <span className="ml-2 text-primary">Premium</span>
+                            <span className="text-primary">Premium</span>
                           )}
-                          {episode.video_url && (
-                            <span className="ml-2 text-green-500">Has Video</span>
+                          {episode.video_url ? (
+                            <span className="text-green-500">✓ Video</span>
+                          ) : (
+                            <span className="text-yellow-500">No Video</span>
                           )}
                         </div>
                       </div>
