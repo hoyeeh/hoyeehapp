@@ -31,6 +31,7 @@ import { usePictureInPicture } from "@/hooks/usePictureInPicture";
 import { useDLNA } from "@/hooks/useDLNA";
 import { CastController } from "@/components/CastController";
 import { toast } from "sonner";
+import { toCdnUrl } from "@/utils/cdnUrl";
 
 interface VideoPlayerProps {
   src: string;
@@ -112,18 +113,21 @@ export const VideoPlayer = ({
     }
   }, [src]);
 
-  // Get the video source with quality parameter for HLS
+  // Get the video source with quality parameter for HLS and CDN conversion
   const getVideoSource = () => {
+    // Convert to CDN URL if it's a DigitalOcean Spaces URL
+    const cdnSrc = toCdnUrl(src);
+    
     if (!isHls || selectedQuality === 'auto') {
-      return src;
+      return cdnSrc;
     }
     // For Mux HLS, we can append quality parameters
     // Mux uses rendition_order parameter for quality selection
-    if (src.includes('stream.mux.com')) {
-      const baseUrl = src.split('?')[0];
+    if (cdnSrc.includes('stream.mux.com')) {
+      const baseUrl = cdnSrc.split('?')[0];
       return `${baseUrl}?rendition_order=desc&max_resolution=${selectedQuality}p`;
     }
-    return src;
+    return cdnSrc;
   };
 
   useEffect(() => {

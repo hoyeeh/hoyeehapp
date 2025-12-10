@@ -26,6 +26,7 @@ import { HeroBannerManagement } from "@/components/admin/HeroBannerManagement";
 import { AdminPushNotifications } from "@/components/admin/AdminPushNotifications";
 import { BulkThumbnailRegeneration } from "@/components/admin/BulkThumbnailRegeneration";
 import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
+import { CDNMigrationTool } from "@/components/admin/CDNMigrationTool";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -219,6 +220,7 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <TranscodingDashboard />
+            <CDNMigrationTool />
             <BulkThumbnailRegeneration />
           </div>
         );
