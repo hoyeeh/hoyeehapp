@@ -10,8 +10,16 @@ import {
   SkipBack,
   SkipForward,
   Loader2,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Slider } from "@/components/ui/slider";
 
 interface VideoPlayerProps {
   src: string;
@@ -20,6 +28,8 @@ interface VideoPlayerProps {
   initialProgress?: number;
   onBack: () => void;
 }
+
+const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 export const VideoPlayer = ({
   src,
@@ -39,6 +49,8 @@ export const VideoPlayer = ({
   const [showControls, setShowControls] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -86,8 +98,12 @@ export const VideoPlayer = ({
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const video = videoRef.current;
+      if (!video) return;
+
       switch (e.key) {
         case " ":
+        case "k":
           e.preventDefault();
           togglePlay();
           break;
@@ -98,10 +114,40 @@ export const VideoPlayer = ({
           toggleFullscreen();
           break;
         case "ArrowLeft":
+          e.preventDefault();
           skip(-10);
           break;
         case "ArrowRight":
+          e.preventDefault();
           skip(10);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          adjustVolume(0.1);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          adjustVolume(-0.1);
+          break;
+        case "j":
+          skip(-10);
+          break;
+        case "l":
+          skip(10);
+          break;
+        case "0":
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+        case "6":
+        case "7":
+        case "8":
+        case "9":
+          e.preventDefault();
+          const percent = parseInt(e.key) / 10;
+          video.currentTime = video.duration * percent;
           break;
         case "Escape":
           if (isFullscreen) toggleFullscreen();
@@ -148,6 +194,31 @@ export const VideoPlayer = ({
     const video = videoRef.current;
     if (!video) return;
     video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+  };
+
+  const adjustVolume = (delta: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const newVolume = Math.max(0, Math.min(1, volume + delta));
+    video.volume = newVolume;
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const newVolume = value[0];
+    video.volume = newVolume;
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+  };
+
+  const handlePlaybackRateChange = (rate: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = rate;
+    setPlaybackRate(rate);
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -212,9 +283,9 @@ export const VideoPlayer = ({
         <div className="absolute top-0 left-0 right-0 p-4 flex items-center gap-4">
           <button
             onClick={onBack}
-            className="w-10 h-10 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
+            className="w-12 h-12 rounded-full bg-brand/80 flex items-center justify-center hover:bg-brand transition-colors"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-6 w-6 text-primary-foreground" />
           </button>
           <h2 className="font-display text-xl">{title}</h2>
         </div>
@@ -230,12 +301,12 @@ export const VideoPlayer = ({
           
           <button
             onClick={togglePlay}
-            className="w-20 h-20 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-colors"
+            className="w-20 h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30"
           >
             {isPlaying ? (
-              <Pause className="h-10 w-10" fill="currentColor" />
+              <Pause className="h-10 w-10 text-primary-foreground" fill="currentColor" />
             ) : (
-              <Play className="h-10 w-10 ml-1" fill="currentColor" />
+              <Play className="h-10 w-10 ml-1 text-primary-foreground" fill="currentColor" />
             )}
           </button>
           
@@ -252,14 +323,14 @@ export const VideoPlayer = ({
           {/* Progress Bar */}
           <div
             ref={progressRef}
-            className="h-1 bg-muted rounded-full cursor-pointer group"
+            className="h-1.5 bg-muted rounded-full cursor-pointer group"
             onClick={handleProgressClick}
           >
             <div
-              className="h-full bg-brand rounded-full relative transition-all group-hover:h-1.5"
+              className="h-full bg-brand rounded-full relative transition-all group-hover:h-2"
               style={{ width: `${progress}%` }}
             >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-brand scale-0 group-hover:scale-100 transition-transform" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-brand scale-0 group-hover:scale-100 transition-transform shadow-lg" />
             </div>
           </div>
 
@@ -273,25 +344,68 @@ export const VideoPlayer = ({
                 {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
               </button>
               
-              <button
-                onClick={toggleMute}
-                className="hover:text-brand transition-colors"
-              >
-                {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
-              </button>
+              {/* Volume Control */}
+              <div className="flex items-center gap-2 group">
+                <button
+                  onClick={toggleMute}
+                  className="hover:text-brand transition-colors"
+                >
+                  {isMuted || volume === 0 ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
+                </button>
+                <div className="w-0 group-hover:w-24 overflow-hidden transition-all duration-200">
+                  <Slider
+                    value={[isMuted ? 0 : volume]}
+                    max={1}
+                    step={0.01}
+                    onValueChange={handleVolumeChange}
+                    className="w-24"
+                  />
+                </div>
+              </div>
 
               <span className="text-sm text-muted-foreground">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             </div>
 
-            <button
-              onClick={toggleFullscreen}
-              className="hover:text-brand transition-colors"
-            >
-              {isFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Playback Speed */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 hover:text-brand transition-colors text-sm">
+                    <Settings className="h-5 w-5" />
+                    {playbackRate}x
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card">
+                  {PLAYBACK_RATES.map((rate) => (
+                    <DropdownMenuItem
+                      key={rate}
+                      onClick={() => handlePlaybackRateChange(rate)}
+                      className={cn(
+                        "cursor-pointer",
+                        playbackRate === rate && "text-brand font-semibold"
+                      )}
+                    >
+                      {rate}x
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <button
+                onClick={toggleFullscreen}
+                className="hover:text-brand transition-colors"
+              >
+                {isFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Keyboard shortcuts tooltip */}
+        <div className="absolute bottom-20 right-4 text-xs text-muted-foreground opacity-50">
+          Space/K: Play | M: Mute | F: Fullscreen | ←→: Seek | ↑↓: Volume
         </div>
       </div>
     </div>

@@ -79,6 +79,11 @@ export type Database = {
           display_name: string | null
           id: string
           is_subscribed: boolean | null
+          mobile_number: string | null
+          pin_attempts: number | null
+          pin_code: string | null
+          pin_locked_until: string | null
+          secret_word: string | null
           subscription_expiry: string | null
           updated_at: string | null
         }
@@ -89,6 +94,11 @@ export type Database = {
           display_name?: string | null
           id: string
           is_subscribed?: boolean | null
+          mobile_number?: string | null
+          pin_attempts?: number | null
+          pin_code?: string | null
+          pin_locked_until?: string | null
+          secret_word?: string | null
           subscription_expiry?: string | null
           updated_at?: string | null
         }
@@ -99,6 +109,11 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_subscribed?: boolean | null
+          mobile_number?: string | null
+          pin_attempts?: number | null
+          pin_code?: string | null
+          pin_locked_until?: string | null
+          secret_word?: string | null
           subscription_expiry?: string | null
           updated_at?: string | null
         }

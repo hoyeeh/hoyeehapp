@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2, Edit2 } from "lucide-react";
 import { ContentUploadForm } from "@/components/admin/ContentUploadForm";
+import { ContentEditForm } from "@/components/admin/ContentEditForm";
 import { UserManagement } from "@/components/admin/UserManagement";
+import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
 
 const Admin = () => {
@@ -22,6 +24,12 @@ const Admin = () => {
   const deleteContent = useDeleteContent();
   
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [editingContent, setEditingContent] = useState<any>(null);
+
+  const handleRefreshUsers = () => {
+    // Trigger refetch through query invalidation
+    window.location.reload();
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -163,6 +171,10 @@ const Admin = () => {
               <ContentUploadForm onClose={() => setShowUploadForm(false)} />
             )}
 
+            {editingContent && (
+              <ContentEditForm content={editingContent} onClose={() => setEditingContent(null)} />
+            )}
+
             <div className="grid gap-4">
               {content.map((item) => (
                 <Card key={item.id} className="bg-card">
@@ -183,6 +195,13 @@ const Admin = () => {
                     </div>
                     <div className="flex gap-2">
                       <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setEditingContent(item)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
                         variant="destructive"
                         size="icon"
                         onClick={() => handleDeleteContent(item.id, item.title)}
@@ -198,23 +217,7 @@ const Admin = () => {
 
           <TabsContent value="users" className="space-y-4">
             <h2 className="text-2xl font-display">User Management</h2>
-            <div className="grid gap-4">
-              {users.map((user) => (
-                <Card key={user.id} className="bg-card">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                      {user.display_name?.charAt(0).toUpperCase() || "U"}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{user.display_name || "Unknown"}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {user.is_subscribed ? "Premium Member" : "Free User"} • Joined {new Date(user.created_at || "").toLocaleDateString()}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <AdminUserManagement users={users as any} onRefresh={handleRefreshUsers} />
           </TabsContent>
 
           <TabsContent value="subscriptions" className="space-y-4">
