@@ -52,6 +52,7 @@ interface Content {
 
 const SECTION_TYPES = [
   { value: "top10", label: "Top 10" },
+  { value: "new_releases", label: "New Releases (Last 2 weeks)" },
   { value: "recently_added", label: "Recently Added" },
   { value: "trending", label: "Trending" },
   { value: "genre", label: "Genre-based" },
