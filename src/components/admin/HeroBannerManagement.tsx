@@ -81,7 +81,7 @@ export const HeroBannerManagement = () => {
     mutationFn: async () => {
       const { error } = await supabase.from("hero_banners").insert({
         ...formData,
-        content_id: formData.content_id || null,
+        content_id: formData.content_id && formData.content_id !== "none" ? formData.content_id : null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       });
@@ -104,7 +104,7 @@ export const HeroBannerManagement = () => {
         .from("hero_banners")
         .update({
           ...formData,
-          content_id: formData.content_id || null,
+          content_id: formData.content_id && formData.content_id !== "none" ? formData.content_id : null,
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
         })
@@ -282,7 +282,7 @@ export const HeroBannerManagement = () => {
                     <SelectValue placeholder="Select content (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {content.map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.title}
