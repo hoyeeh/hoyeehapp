@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { X, Save, Loader2 } from "lucide-react";
+import { VideoUploadField } from "./VideoUploadField";
+import { ThumbnailUploadField } from "./ThumbnailUploadField";
 
 interface ContentItem {
   id: string;
@@ -178,25 +180,24 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Thumbnail URL</Label>
-            <Input
-              value={formData.thumbnail_url}
-              onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-              className="bg-secondary"
-              placeholder="https://..."
-            />
-          </div>
+          {/* Thumbnail Upload */}
+          <ThumbnailUploadField
+            value={formData.thumbnail_url}
+            onChange={(url) => setFormData({ ...formData, thumbnail_url: url })}
+            label="Thumbnail"
+            folder="thumbnails"
+          />
 
-          <div className="space-y-2">
-            <Label>Video URL</Label>
-            <Input
+          {/* Video Upload - Only show for movies */}
+          {formData.content_type === "movie" && (
+            <VideoUploadField
               value={formData.video_url}
-              onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-              className="bg-secondary"
-              placeholder="https://..."
+              onChange={(url) => setFormData({ ...formData, video_url: url })}
+              onDurationDetected={(duration) => setFormData({ ...formData, duration: Math.round(duration / 60) })}
+              label="Video"
+              folder="movies"
             />
-          </div>
+          )}
 
           <div className="flex items-center gap-3">
             <Switch
