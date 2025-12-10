@@ -14,6 +14,7 @@ import { Top10Row } from "@/components/Top10Row";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { ComingSoonRow } from "@/components/ComingSoonRow";
 import { RecommendationsRow } from "@/components/RecommendationsRow";
+import { NewReleasesRow } from "@/components/NewReleasesRow";
 import { AIRecommendationsRow } from "@/components/AIRecommendationsRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -417,6 +418,14 @@ const Index = () => {
                     onDetails={handleDetails}
                   />
 
+                  {/* New Releases Row - Shows content from last 2 weeks */}
+                  <NewReleasesRow
+                    onPlay={handlePlay}
+                    onToggleList={handleToggleList}
+                    onDetails={handleDetails}
+                    userList={watchlistIds}
+                  />
+
                   {/* AI Recommendations Row */}
                   <RecommendationsRow
                     onPlay={handlePlay}
@@ -427,8 +436,6 @@ const Index = () => {
 
                   {/* Coming Soon Row - Above Top 10 */}
                   <ComingSoonRow />
-
-                  {/* Render sections from database config - all with wide 16:9 cards */}
                   {homeSections.map((section: any) => {
                     if (section.section_type === "top10") {
                       return top10Content.length > 0 ? (

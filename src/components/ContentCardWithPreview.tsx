@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { toCdnUrl } from "@/utils/cdnUrl";
+import hoyeehBadge from "@/assets/hoyeeh-badge.png";
 
 interface ContentCardWithPreviewProps {
   content: Content;
@@ -15,6 +16,7 @@ interface ContentCardWithPreviewProps {
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
   isRestricted?: boolean;
   showTop10Badge?: boolean;
+  showJustAddedBadge?: boolean;
 }
 
 export const ContentCardWithPreview = ({
@@ -27,6 +29,7 @@ export const ContentCardWithPreview = ({
   cardStyle = "poster",
   isRestricted = false,
   showTop10Badge = false,
+  showJustAddedBadge = false,
 }: ContentCardWithPreviewProps) => {
   // Check if content was added within the last 2 weeks
   const isJustAdded = useMemo(() => {
@@ -35,6 +38,9 @@ export const ContentCardWithPreview = ({
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
     return new Date(content.createdAt) > twoWeeksAgo;
   }, [content.createdAt]);
+
+  // Show just added badge either if prop is true or if content is actually new
+  const shouldShowJustAdded = showJustAddedBadge || isJustAdded;
   const [isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -222,8 +228,17 @@ export const ContentCardWithPreview = ({
             />
           )}
           
-          {/* Badges */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {/* Hoyeeh Brand Badge - Top Left */}
+          <div className="absolute top-2 left-2 z-10">
+            <img 
+              src={hoyeehBadge} 
+              alt="Hoyeeh" 
+              className="w-6 h-6 object-contain drop-shadow-lg"
+            />
+          </div>
+
+          {/* Badges - Top Right */}
+          <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
             {content.isPremium && (
               <div className="bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground shadow-lg">
                 PREMIUM
@@ -240,7 +255,7 @@ export const ContentCardWithPreview = ({
           )}
 
           {/* Just Added Badge - Bottom Full Width */}
-          {isJustAdded && !showTop10Badge && (
+          {shouldShowJustAdded && !showTop10Badge && (
             <div className="absolute bottom-0 left-0 right-0 bg-destructive text-destructive-foreground py-1 text-xs font-bold text-center">
               JUST ADDED
             </div>
