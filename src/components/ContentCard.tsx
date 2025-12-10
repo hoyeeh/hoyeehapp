@@ -30,15 +30,15 @@ export const ContentCard = ({
   const aspectRatios = {
     poster: "aspect-[2/3]",
     backdrop: "aspect-video",
-    wide: "aspect-[4/3]",
+    wide: "aspect-video", // 16:9 for wide cards
     square: "aspect-square",
     minimal: "aspect-[3/2]",
   };
 
   const cardWidths = {
     poster: sizeClasses[size],
-    backdrop: size === "sm" ? "w-48 md:w-64" : size === "md" ? "w-64 md:w-80" : "w-80 md:w-96",
-    wide: size === "sm" ? "w-40 md:w-48" : size === "md" ? "w-48 md:w-60" : "w-56 md:w-72",
+    backdrop: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
+    wide: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96", // Wider for 16:9
     square: size === "sm" ? "w-32 md:w-40" : size === "md" ? "w-40 md:w-48" : "w-48 md:w-56",
     minimal: size === "sm" ? "w-48 md:w-56" : size === "md" ? "w-56 md:w-64" : "w-64 md:w-80",
   };
@@ -119,8 +119,8 @@ export const ContentCard = ({
           </div>
         )}
 
-        {/* Backdrop style info overlay */}
-        {cardStyle === "backdrop" && (
+        {/* Info overlay for backdrop and wide styles */}
+        {(cardStyle === "backdrop" || cardStyle === "wide") && (
           <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-background via-background/80 to-transparent">
             <h3 className="font-semibold text-sm">{content.title}</h3>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
@@ -158,8 +158,8 @@ export const ContentCard = ({
         </div>
       </div>
 
-      {/* Title & Info - not shown on backdrop style (already in overlay) */}
-      {cardStyle !== "backdrop" && (
+      {/* Title & Info - not shown on backdrop/wide styles (already in overlay) */}
+      {cardStyle !== "backdrop" && cardStyle !== "wide" && (
         <div className="mt-2 px-1">
           <h3 className="font-medium text-sm truncate">{content.title}</h3>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
