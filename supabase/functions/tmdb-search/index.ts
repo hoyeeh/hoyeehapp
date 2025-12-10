@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const TMDB_API_KEY = "6f3977dc8470a256a7350cb703e2c366"; // Public demo key
+const TMDB_API_KEY = Deno.env.get("TMDB_API_KEY");
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
@@ -16,6 +16,14 @@ serve(async (req) => {
   }
 
   try {
+    if (!TMDB_API_KEY) {
+      console.error('TMDB_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'TMDB API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { query, type = 'movie' } = await req.json();
     
     if (!query) {
