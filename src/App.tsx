@@ -15,6 +15,7 @@ import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import ContentDetail from "./pages/ContentDetail";
 import MyList from "./pages/MyList";
+import Downloads from "./pages/Downloads";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/content/:id" element={<ContentDetail />} />
             <Route path="/my-list" element={<MyList />} />
+            <Route path="/downloads" element={<Downloads />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,6 +1,7 @@
 import { Content } from "@/types";
-import { X, Play, Plus, Check, Clock, Star } from "lucide-react";
+import { X, Play, Plus, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DownloadButton } from "./DownloadButton";
 
 interface ContentDetailsModalProps {
   content: Content;
@@ -109,6 +110,8 @@ export const ContentDetailsModal = ({
                 </>
               )}
             </Button>
+
+            <DownloadButton content={content} />
           </div>
         </div>
       </div>
