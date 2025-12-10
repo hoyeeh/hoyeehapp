@@ -10,10 +10,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.stripe-payment]
-verify_jwt = false
+verify_jwt = true
 
 [functions.flutterwave-payment]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-subscription-email]
 verify_jwt = false
@@ -22,10 +22,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-push-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-upload-url]
-verify_jwt = false
+verify_jwt = true
 
 [functions.transcode-video]
 verify_jwt = false

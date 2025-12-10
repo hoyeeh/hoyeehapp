@@ -11,6 +11,7 @@ import {
   SkipForward,
   Loader2,
   Settings,
+  Cast,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -21,6 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { useWatchProgress } from "@/hooks/useWatchProgress";
+import { useGoogleCast } from "@/hooks/useGoogleCast";
+import { CastController } from "@/components/CastController";
 
 interface VideoPlayerProps {
   src: string;
@@ -64,6 +67,17 @@ export const VideoPlayer = ({
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const [isHls, setIsHls] = useState(false);
   const [loadedProgress, setLoadedProgress] = useState<number | null>(null);
+  const [isCasting, setIsCasting] = useState(false);
+
+  // Google Cast hook
+  const cast = useGoogleCast({
+    mediaUrl: src,
+    mediaTitle: title,
+    onTimeUpdate: (time) => {
+      setCurrentTime(time);
+      saveProgressImmediately(time, cast.duration);
+    },
+  });
 
   // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
@@ -484,6 +498,35 @@ export const VideoPlayer = ({
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Cast Button */}
+              {cast.isAvailable && (
+                <button
+                  onClick={() => {
+                    if (cast.isConnected) {
+                      // Start casting current video
+                      const video = videoRef.current;
+                      if (video) {
+                        video.pause();
+                        setIsPlaying(false);
+                        setIsCasting(true);
+                        cast.loadMedia(src, title, undefined, video.currentTime);
+                      }
+                    } else {
+                      cast.connect();
+                    }
+                  }}
+                  className={cn(
+                    "p-2 rounded-full transition-colors",
+                    cast.isConnected 
+                      ? "text-brand bg-brand/20 hover:bg-brand/30" 
+                      : "hover:text-brand hover:bg-muted"
+                  )}
+                  title={cast.isConnected ? `Casting to ${cast.deviceName}` : 'Cast to device'}
+                >
+                  <Cast className={cn("h-5 w-5", cast.isConnected && "fill-current")} />
+                </button>
+              )}
+
               <button
                 onClick={toggleFullscreen}
                 className="hover:text-brand transition-colors"
@@ -499,6 +542,28 @@ export const VideoPlayer = ({
           Space/K: Play | M: Mute | F: Fullscreen | ←→: Seek | ↑↓: Volume
         </div>
       </div>
+
+      {/* Cast Controller - shown when casting */}
+      {isCasting && cast.isConnected && (
+        <CastController
+          deviceName={cast.deviceName || 'Cast Device'}
+          mediaTitle={title}
+          isPlaying={cast.isPlaying}
+          currentTime={cast.currentTime}
+          duration={cast.duration}
+          volume={cast.volume}
+          isMuted={cast.isMuted}
+          onPlay={cast.play}
+          onPause={cast.pause}
+          onSeek={cast.seek}
+          onVolumeChange={cast.setVolume}
+          onMuteToggle={() => cast.setMuted(!cast.isMuted)}
+          onDisconnect={() => {
+            cast.disconnect();
+            setIsCasting(false);
+          }}
+        />
+      )}
     </div>
   );
 };
