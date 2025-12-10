@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      coming_soon: {
+        Row: {
+          content_type: string
+          created_at: string
+          description: string | null
+          expected_release_date: string | null
+          genre: string | null
+          id: string
+          is_active: boolean
+          thumbnail_url: string | null
+          title: string
+          trailer_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          expected_release_date?: string | null
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          thumbnail_url?: string | null
+          title: string
+          trailer_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          expected_release_date?: string | null
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          thumbnail_url?: string | null
+          title?: string
+          trailer_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coming_soon_watchlist: {
+        Row: {
+          coming_soon_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          coming_soon_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          coming_soon_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coming_soon_watchlist_coming_soon_id_fkey"
+            columns: ["coming_soon_id"]
+            isOneToOne: false
+            referencedRelation: "coming_soon"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coming_soon_watchlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content: {
         Row: {
           content_type: string
@@ -144,6 +222,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      hero_banners: {
+        Row: {
+          content_id: string | null
+          created_at: string
+          cta_link: string | null
+          cta_text: string | null
+          description: string | null
+          display_order: number
+          end_date: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          start_date: string | null
+          subtitle: string | null
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          content_id?: string | null
+          created_at?: string
+          cta_link?: string | null
+          cta_text?: string | null
+          description?: string | null
+          display_order?: number
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          start_date?: string | null
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          content_id?: string | null
+          created_at?: string
+          cta_link?: string | null
+          cta_text?: string | null
+          description?: string | null
+          display_order?: number
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          start_date?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hero_banners_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       home_sections: {
         Row: {
@@ -316,6 +456,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          rating: number
+          review_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          rating: number
+          review_text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          review_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
