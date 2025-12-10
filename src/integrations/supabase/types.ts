@@ -94,6 +94,7 @@ export type Database = {
       }
       content: {
         Row: {
+          content_rating: string | null
           content_type: string
           created_at: string | null
           created_by: string | null
@@ -112,6 +113,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          content_rating?: string | null
           content_type: string
           created_at?: string | null
           created_by?: string | null
@@ -130,6 +132,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          content_rating?: string | null
           content_type?: string
           created_at?: string | null
           created_by?: string | null
@@ -389,6 +392,9 @@ export type Database = {
           id: string
           is_subscribed: boolean | null
           mobile_number: string | null
+          parental_controls_enabled: boolean | null
+          parental_pin: string | null
+          parental_rating_limit: string | null
           pin_attempts: number | null
           pin_code: string | null
           pin_locked_until: string | null
@@ -404,6 +410,9 @@ export type Database = {
           id: string
           is_subscribed?: boolean | null
           mobile_number?: string | null
+          parental_controls_enabled?: boolean | null
+          parental_pin?: string | null
+          parental_rating_limit?: string | null
           pin_attempts?: number | null
           pin_code?: string | null
           pin_locked_until?: string | null
@@ -419,6 +428,9 @@ export type Database = {
           id?: string
           is_subscribed?: boolean | null
           mobile_number?: string | null
+          parental_controls_enabled?: boolean | null
+          parental_pin?: string | null
+          parental_rating_limit?: string | null
           pin_attempts?: number | null
           pin_code?: string | null
           pin_locked_until?: string | null
@@ -548,6 +560,45 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      section_content: {
+        Row: {
+          content_id: string
+          created_at: string
+          display_order: number
+          id: string
+          section_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          section_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_content_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "home_sections"
             referencedColumns: ["id"]
           },
         ]

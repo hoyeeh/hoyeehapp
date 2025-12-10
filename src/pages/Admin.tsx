@@ -20,8 +20,10 @@ import { TranscodingDashboard } from "@/components/admin/TranscodingDashboard";
 import { GenreManagement } from "@/components/admin/GenreManagement";
 import { Top10Management } from "@/components/admin/Top10Management";
 import { HomeSectionManagement } from "@/components/admin/HomeSectionManagement";
+import { EnhancedHomeSectionManagement } from "@/components/admin/EnhancedHomeSectionManagement";
 import { ComingSoonManagement } from "@/components/admin/ComingSoonManagement";
 import { HeroBannerManagement } from "@/components/admin/HeroBannerManagement";
+import { AdminPushNotifications } from "@/components/admin/AdminPushNotifications";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -233,7 +235,15 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Home Page Management</h2>
-            <HomeSectionManagement />
+            <EnhancedHomeSectionManagement />
+          </div>
+        );
+      
+      case "push":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Push Notifications</h2>
+            <AdminPushNotifications />
           </div>
         );
       
