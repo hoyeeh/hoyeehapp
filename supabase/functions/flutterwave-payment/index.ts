@@ -10,8 +10,29 @@ const FLUTTERWAVE_SECRET_KEY = Deno.env.get("FLUTTERWAVE_SECRET_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Monthly price in XAF
-const MONTHLY_PRICE_XAF = 2500;
+// Helper to send confirmation email
+async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, expiryDate: string) {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/send-subscription-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: userEmail,
+        type: "payment_confirmation",
+        data: {
+          userName,
+          amount,
+          currency: "XAF",
+          planType: "Monthly",
+          expiryDate,
+        },
+      }),
+    });
+    console.log("Confirmation email sent to:", userEmail);
+  } catch (e) {
+    console.error("Failed to send confirmation email:", e);
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -36,6 +57,15 @@ serve(async (req) => {
 
     const { action, ...params } = await req.json();
 
+    // Fetch current pricing from subscription_settings
+    const { data: settings } = await supabase
+      .from("subscription_settings")
+      .select("base_price")
+      .eq("plan_type", "monthly")
+      .single();
+
+    const monthlyPrice = settings?.base_price || 2000;
+
     if (action === "initialize") {
       console.log("Initializing Flutterwave payment for user:", user.id);
 
@@ -51,7 +81,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           tx_ref: txRef,
-          amount: MONTHLY_PRICE_XAF,
+          amount: monthlyPrice,
           currency: "XAF",
           payment_options: "mobilemoneyrwanda, mobilemoneyghana, mobilemoneyfranco, mobilemoneyuganda, mobilemoneyzambia",
           redirect_url: `${origin}/subscription?tx_ref=${txRef}`,
@@ -84,7 +114,7 @@ serve(async (req) => {
         plan_type: "monthly",
         payment_provider: "flutterwave",
         payment_reference: txRef,
-        amount: MONTHLY_PRICE_XAF,
+        amount: monthlyPrice,
         currency: "XAF",
         status: "pending",
       });
@@ -139,6 +169,23 @@ serve(async (req) => {
             subscription_expiry: expiresAt.toISOString(),
           })
           .eq("id", user.id);
+
+        // Get user profile for email
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .single();
+
+        // Send confirmation email
+        if (user.email) {
+          await sendConfirmationEmail(
+            user.email,
+            profile?.display_name || user.email.split("@")[0],
+            monthlyPrice,
+            expiresAt.toLocaleDateString()
+          );
+        }
 
         console.log("Payment verified successfully for user:", user.id);
 
