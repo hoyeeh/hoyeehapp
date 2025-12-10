@@ -391,8 +391,11 @@ export type Database = {
           error_message: string | null
           format: string
           id: string
+          last_retry_at: string | null
+          max_retries: number | null
           output_url: string | null
           progress: number | null
+          retry_count: number | null
           source_url: string
           status: string
           updated_at: string
@@ -404,8 +407,11 @@ export type Database = {
           error_message?: string | null
           format?: string
           id?: string
+          last_retry_at?: string | null
+          max_retries?: number | null
           output_url?: string | null
           progress?: number | null
+          retry_count?: number | null
           source_url: string
           status?: string
           updated_at?: string
@@ -417,8 +423,11 @@ export type Database = {
           error_message?: string | null
           format?: string
           id?: string
+          last_retry_at?: string | null
+          max_retries?: number | null
           output_url?: string | null
           progress?: number | null
+          retry_count?: number | null
           source_url?: string
           status?: string
           updated_at?: string
