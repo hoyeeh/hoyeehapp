@@ -104,11 +104,47 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_settings: {
+        Row: {
+          base_price: number
+          created_at: string | null
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          plan_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          plan_type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_price?: number
+          created_at?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          plan_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
+          admin_notes: string | null
           amount: number
           created_at: string | null
           currency: string
+          discount_percent: number | null
+          discount_reason: string | null
           expires_at: string | null
           id: string
           payment_provider: string
@@ -120,9 +156,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          admin_notes?: string | null
           amount: number
           created_at?: string | null
           currency?: string
+          discount_percent?: number | null
+          discount_reason?: string | null
           expires_at?: string | null
           id?: string
           payment_provider: string
@@ -134,9 +173,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          admin_notes?: string | null
           amount?: number
           created_at?: string | null
           currency?: string
+          discount_percent?: number | null
+          discount_reason?: string | null
           expires_at?: string | null
           id?: string
           payment_provider?: string
