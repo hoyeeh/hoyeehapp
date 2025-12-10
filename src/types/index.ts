@@ -31,6 +31,7 @@ export interface Content {
   year?: number;
   rating?: string;
   contentRating?: string;
+  createdAt?: string;
 }
 
 export type ViewState = 'home' | 'movies' | 'shows' | 'player' | 'admin' | 'mylist' | 'profile' | 'search';

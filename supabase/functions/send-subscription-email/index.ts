@@ -37,7 +37,7 @@ const emailWrapper = (content: string, previewText: string) => `
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <!-- Logo -->
     <div style="text-align: center; margin-bottom: 32px;">
-      <img src="https://hoyeeh.sgp1.cdn.digitaloceanspaces.com/logo/hoyeeh-logo.png" width="80" height="80" alt="Hoyeeh" style="margin: 0 auto;">
+      <img src="https://hoyeeh.sgp1.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png" width="150" height="auto" alt="Hoyeeh" style="margin: 0 auto;">
     </div>
     
     <!-- Content -->

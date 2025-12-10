@@ -81,6 +81,10 @@ export const Top10Row = ({ content, onPlay, onDetails }: Top10RowProps) => {
                     PREMIUM
                   </div>
                 )}
+                {/* Top 10 Badge */}
+                <div className="absolute bottom-0 right-0 bg-destructive text-destructive-foreground px-2 py-1 text-xs font-bold rounded-tl">
+                  TOP 10
+                </div>
               </div>
             </div>
           ))}
