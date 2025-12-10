@@ -12,6 +12,9 @@ import {
   Loader2,
   Settings,
   Cast,
+  PictureInPicture2,
+  ListVideo,
+  Tv,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -19,11 +22,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { useWatchProgress } from "@/hooks/useWatchProgress";
 import { useGoogleCast } from "@/hooks/useGoogleCast";
+import { usePictureInPicture } from "@/hooks/usePictureInPicture";
+import { useDLNA } from "@/hooks/useDLNA";
 import { CastController } from "@/components/CastController";
+import { toast } from "sonner";
 
 interface VideoPlayerProps {
   src: string;
@@ -68,6 +75,15 @@ export const VideoPlayer = ({
   const [isHls, setIsHls] = useState(false);
   const [loadedProgress, setLoadedProgress] = useState<number | null>(null);
   const [isCasting, setIsCasting] = useState(false);
+  const [isDLNACasting, setIsDLNACasting] = useState(false);
+
+  // Watch progress hook
+  const { saveProgressImmediately } = useWatchProgress({
+    contentId,
+    onProgressLoaded: useCallback((progress: number) => {
+      setLoadedProgress(progress);
+    }, []),
+  });
 
   // Google Cast hook
   const cast = useGoogleCast({
@@ -79,13 +95,11 @@ export const VideoPlayer = ({
     },
   });
 
-  // Watch progress hook
-  const { saveProgressImmediately } = useWatchProgress({
-    contentId,
-    onProgressLoaded: useCallback((progress: number) => {
-      setLoadedProgress(progress);
-    }, []),
-  });
+  // Picture-in-Picture hook
+  const pip = usePictureInPicture(videoRef);
+
+  // DLNA hook
+  const dlna = useDLNA();
 
   // Check if source is HLS and detect available qualities
   useEffect(() => {
@@ -231,7 +245,11 @@ export const VideoPlayer = ({
           break;
         case "Escape":
           if (isFullscreen) toggleFullscreen();
+          else if (pip.isActive) pip.exitPiP();
           else onBack();
+          break;
+        case "p":
+          pip.togglePiP();
           break;
       }
     };
@@ -498,32 +516,100 @@ export const VideoPlayer = ({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Cast Button */}
-              {cast.isAvailable && (
-                <button
-                  onClick={() => {
-                    if (cast.isConnected) {
-                      // Start casting current video
-                      const video = videoRef.current;
-                      if (video) {
-                        video.pause();
-                        setIsPlaying(false);
-                        setIsCasting(true);
-                        cast.loadMedia(src, title, undefined, video.currentTime);
+              {/* Cast Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "p-2 rounded-full transition-colors",
+                      (cast.isConnected || isDLNACasting)
+                        ? "text-brand bg-brand/20 hover:bg-brand/30" 
+                        : "hover:text-brand hover:bg-muted"
+                    )}
+                    title="Cast to device"
+                  >
+                    <Cast className={cn("h-5 w-5", (cast.isConnected || isDLNACasting) && "fill-current")} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card min-w-[200px]">
+                  {/* Google Cast */}
+                  {cast.isAvailable && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (cast.isConnected) {
+                            const video = videoRef.current;
+                            if (video) {
+                              video.pause();
+                              setIsPlaying(false);
+                              setIsCasting(true);
+                              cast.loadMedia(src, title, undefined, video.currentTime);
+                            }
+                          } else {
+                            cast.connect();
+                          }
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <Cast className="mr-2 h-4 w-4" />
+                        {cast.isConnected ? `Cast to ${cast.deviceName}` : 'Chromecast'}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  
+                  {/* DLNA */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (dlna.connectedDevice) {
+                        const video = videoRef.current;
+                        if (video) {
+                          video.pause();
+                          setIsPlaying(false);
+                          setIsDLNACasting(true);
+                          dlna.playMedia(src, title, video.currentTime);
+                        }
+                      } else {
+                        dlna.scanForDevices();
                       }
-                    } else {
-                      cast.connect();
-                    }
-                  }}
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Tv className="mr-2 h-4 w-4" />
+                    {dlna.isScanning ? 'Scanning...' : dlna.connectedDevice ? `DLNA: ${dlna.connectedDevice.name}` : 'DLNA/UPnP TV'}
+                  </DropdownMenuItem>
+                  
+                  {dlna.devices.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {dlna.devices.map((device) => (
+                        <DropdownMenuItem
+                          key={device.id}
+                          onClick={() => dlna.connectToDevice(device)}
+                          className="cursor-pointer"
+                        >
+                          <Tv className="mr-2 h-4 w-4" />
+                          {device.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Picture-in-Picture Button */}
+              {pip.isSupported && (
+                <button
+                  onClick={pip.togglePiP}
                   className={cn(
-                    "p-2 rounded-full transition-colors",
-                    cast.isConnected 
+                    "p-2 rounded-full transition-colors hidden sm:block",
+                    pip.isActive 
                       ? "text-brand bg-brand/20 hover:bg-brand/30" 
                       : "hover:text-brand hover:bg-muted"
                   )}
-                  title={cast.isConnected ? `Casting to ${cast.deviceName}` : 'Cast to device'}
+                  title={pip.isActive ? 'Exit Picture-in-Picture' : 'Picture-in-Picture'}
                 >
-                  <Cast className={cn("h-5 w-5", cast.isConnected && "fill-current")} />
+                  <PictureInPicture2 className="h-5 w-5" />
                 </button>
               )}
 
@@ -539,11 +625,11 @@ export const VideoPlayer = ({
 
         {/* Keyboard shortcuts tooltip - hidden on mobile */}
         <div className="absolute bottom-20 right-4 text-xs text-muted-foreground opacity-50 hidden md:block">
-          Space/K: Play | M: Mute | F: Fullscreen | ←→: Seek | ↑↓: Volume
+          Space/K: Play | M: Mute | F: Fullscreen | P: PiP | ←→: Seek | ↑↓: Volume
         </div>
       </div>
 
-      {/* Cast Controller - shown when casting */}
+      {/* Cast Controller - shown when casting via Chromecast */}
       {isCasting && cast.isConnected && (
         <CastController
           deviceName={cast.deviceName || 'Cast Device'}
@@ -561,6 +647,28 @@ export const VideoPlayer = ({
           onDisconnect={() => {
             cast.disconnect();
             setIsCasting(false);
+          }}
+        />
+      )}
+
+      {/* DLNA Controller - shown when casting via DLNA */}
+      {isDLNACasting && dlna.connectedDevice && (
+        <CastController
+          deviceName={dlna.connectedDevice.name}
+          mediaTitle={title}
+          isPlaying={dlna.isPlaying}
+          currentTime={dlna.currentTime}
+          duration={dlna.duration}
+          volume={1}
+          isMuted={false}
+          onPlay={dlna.play}
+          onPause={dlna.pause}
+          onSeek={dlna.seek}
+          onVolumeChange={() => {}}
+          onMuteToggle={() => {}}
+          onDisconnect={() => {
+            dlna.disconnect();
+            setIsDLNACasting(false);
           }}
         />
       )}
