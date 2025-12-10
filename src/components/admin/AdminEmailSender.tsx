@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Send, Users, User, Loader2 } from "lucide-react";
+import { Mail, Send, Users, User, Loader2, FileEdit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 type EmailType = "payment_confirmation" | "renewal_reminder" | "expiration_warning" | "subscription_cancelled" | "welcome" | "custom";
@@ -40,23 +40,6 @@ export const AdminEmailSender = () => {
     },
   });
 
-  // Get user emails from auth metadata
-  const { data: userEmails = [] } = useQuery({
-    queryKey: ["user-emails-for-admin"],
-    queryFn: async () => {
-      // Get all profiles with their IDs
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name");
-      
-      // We need auth admin to get emails, return profiles for now
-      return profiles?.map(p => ({
-        id: p.id,
-        display_name: p.display_name,
-      })) || [];
-    },
-  });
-
   const sendEmail = async (toEmail: string, userName: string) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Not authenticated");
@@ -64,7 +47,7 @@ export const AdminEmailSender = () => {
     const response = await supabase.functions.invoke("send-subscription-email", {
       body: {
         to: toEmail,
-        type: emailType === "custom" ? "welcome" : emailType,
+        type: emailType,
         data: {
           userName,
           amount: 2500,
@@ -72,6 +55,9 @@ export const AdminEmailSender = () => {
           planType: "Monthly",
           expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
           daysUntilExpiry: 7,
+          // Custom email fields
+          customSubject: emailType === "custom" ? customSubject : undefined,
+          customMessage: emailType === "custom" ? customMessage : undefined,
         },
       },
     });
@@ -86,11 +72,20 @@ export const AdminEmailSender = () => {
       return;
     }
 
+    if (emailType === "custom" && (!customSubject || !customMessage)) {
+      toast.error("Please enter subject and message for custom email");
+      return;
+    }
+
     setIsSending(true);
     try {
       await sendEmail(email, "Valued Customer");
       toast.success(`Email sent successfully to ${email}`);
       setEmail("");
+      if (emailType === "custom") {
+        setCustomSubject("");
+        setCustomMessage("");
+      }
     } catch (error: any) {
       console.error("Error sending email:", error);
       toast.error(error.message || "Failed to send email");
@@ -102,6 +97,11 @@ export const AdminEmailSender = () => {
   const handleSendToAll = async () => {
     if (users.length === 0) {
       toast.error("No users found");
+      return;
+    }
+
+    if (emailType === "custom" && (!customSubject || !customMessage)) {
+      toast.error("Please enter subject and message for custom email");
       return;
     }
 
@@ -189,9 +189,42 @@ export const AdminEmailSender = () => {
               <SelectItem value="renewal_reminder">Renewal Reminder</SelectItem>
               <SelectItem value="expiration_warning">Expiration Warning</SelectItem>
               <SelectItem value="subscription_cancelled">Subscription Cancelled</SelectItem>
+              <SelectItem value="custom">
+                <span className="flex items-center gap-2">
+                  <FileEdit className="h-4 w-4" />
+                  Custom Email
+                </span>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {/* Custom Email Fields */}
+        {emailType === "custom" && (
+          <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/50">
+            <div className="space-y-2">
+              <Label>Email Subject</Label>
+              <Input
+                placeholder="Enter email subject..."
+                value={customSubject}
+                onChange={(e) => setCustomSubject(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email Message</Label>
+              <Textarea
+                placeholder="Enter your message..."
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use {"{userName}"} to include the recipient's name in your message.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Individual Email Input */}
         {recipientType === "individual" && (

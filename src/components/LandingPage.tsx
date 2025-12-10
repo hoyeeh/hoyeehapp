@@ -166,23 +166,28 @@ export const LandingPage = ({ onSignIn, onGetStarted }: LandingPageProps) => {
       {/* Footer */}
       <footer className="border-t-8 border-secondary py-12 px-6 md:px-20 bg-background text-muted-foreground">
         <div className="max-w-5xl mx-auto">
-          <p className="mb-6">Questions? Call 1-800-HOYEEH</p>
+          <p className="mb-6">
+            Questions? Email us at{" "}
+            <a href="mailto:info@hoyeeh.com" className="text-brand hover:underline">
+              info@hoyeeh.com
+            </a>
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-sm">
-            <a href="#" className="hover:underline">FAQ</a>
-            <a href="#" className="hover:underline">Help Center</a>
-            <a href="#" className="hover:underline">Account</a>
+            <a href="#faq" className="hover:underline">FAQ</a>
+            <a href="mailto:support@hoyeeh.com" className="hover:underline">Help Center</a>
+            <a href="/profile" className="hover:underline">Account</a>
             <a href="#" className="hover:underline">Media Center</a>
             <a href="#" className="hover:underline">Investor Relations</a>
-            <a href="#" className="hover:underline">Jobs</a>
             <a href="#" className="hover:underline">Ways to Watch</a>
             <a href="#" className="hover:underline">Terms of Use</a>
             <a href="#" className="hover:underline">Privacy</a>
             <a href="#" className="hover:underline">Cookie Preferences</a>
             <a href="#" className="hover:underline">Corporate Information</a>
-            <a href="#" className="hover:underline">Contact Us</a>
+            <a href="mailto:info@hoyeeh.com" className="hover:underline">Contact Us</a>
+            <a href="mailto:support@hoyeeh.com" className="hover:underline">Support</a>
           </div>
           <Logo className="opacity-50" />
-          <p className="mt-4 text-sm">Hoyeeh Africa © 2024</p>
+          <p className="mt-4 text-sm">© {new Date().getFullYear()} Hoyeeh Africa. All rights reserved.</p>
         </div>
       </footer>
     </div>

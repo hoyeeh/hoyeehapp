@@ -25,9 +25,10 @@ import { ParentalPinModal } from "@/components/ParentalPinModal";
 import { isRestrictedForKids, isRestrictedByParentalControls } from "@/components/ContentRatingBadge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { Search, X, Loader2 } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { subDays } from "date-fns";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search';
 
@@ -308,7 +309,7 @@ const Index = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-brand" />
+        <LoadingSpinner size="lg" text="Loading..." />
       </div>
     );
   }
@@ -393,7 +394,7 @@ const Index = () => {
         {/* Content Loading State */}
         {contentLoading ? (
           <div className="flex items-center justify-center h-[50vh]">
-            <Loader2 className="h-12 w-12 animate-spin text-brand" />
+            <LoadingSpinner size="lg" text="Loading content..." />
           </div>
         ) : (
           <div className="pb-8">
