@@ -1,12 +1,125 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { S3Client, PutObjectCommand } from "https://esm.sh/@aws-sdk/client-s3@3.485.0";
-import { getSignedUrl } from "https://esm.sh/@aws-sdk/s3-request-presigner@3.485.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helper to convert ArrayBuffer to hex string
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// SHA-256 hash
+async function sha256(message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return toHex(hash);
+}
+
+// HMAC-SHA256
+async function hmacSha256(key: BufferSource, message: string): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key as ArrayBuffer,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  return await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
+}
+
+// Get AWS signature key
+async function getSignatureKey(
+  secretKey: string,
+  dateStamp: string,
+  region: string,
+  service: string
+): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const kDate = await hmacSha256(encoder.encode('AWS4' + secretKey), dateStamp);
+  const kRegion = await hmacSha256(kDate, region);
+  const kService = await hmacSha256(kRegion, service);
+  const kSigning = await hmacSha256(kService, 'aws4_request');
+  return kSigning;
+}
+
+// Helper function to create AWS Signature V4 presigned URL
+async function createPresignedUrl(
+  accessKey: string,
+  secretKey: string,
+  region: string,
+  bucket: string,
+  key: string,
+  contentType: string,
+  host: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  const service = 's3';
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\d{3}/, '');
+  const dateStamp = amzDate.slice(0, 8);
+  
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const credential = `${accessKey}/${credentialScope}`;
+  
+  // Create canonical request
+  const httpMethod = 'PUT';
+  const canonicalUri = `/${key}`;
+  
+  // Query parameters for presigned URL (must be sorted)
+  const queryParams: [string, string][] = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', expiresIn.toString()],
+    ['X-Amz-SignedHeaders', 'content-type;host;x-amz-acl'],
+  ];
+  
+  const canonicalQueryString = queryParams
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  
+  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-acl:public-read\n`;
+  const signedHeaders = 'content-type;host;x-amz-acl';
+  
+  // For presigned URLs, the payload hash is UNSIGNED-PAYLOAD
+  const payloadHash = 'UNSIGNED-PAYLOAD';
+  
+  const canonicalRequest = [
+    httpMethod,
+    canonicalUri,
+    canonicalQueryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
+  
+  // Create string to sign
+  const canonicalRequestHash = await sha256(canonicalRequest);
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    canonicalRequestHash,
+  ].join('\n');
+  
+  // Calculate signature
+  const signingKey = await getSignatureKey(secretKey, dateStamp, region, service);
+  const signatureBuffer = await hmacSha256(signingKey, stringToSign);
+  const signature = toHex(signatureBuffer);
+  
+  // Build presigned URL
+  const presignedUrl = `https://${host}${canonicalUri}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+  
+  return presignedUrl;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -91,34 +204,29 @@ serve(async (req) => {
 
     console.log(`Admin ${user.id} generating presigned URL for: ${folder}/${fileName}`);
 
-    // Create S3 client for DigitalOcean Spaces
-    const s3Client = new S3Client({
-      endpoint: spacesEndpoint,
-      region: spacesRegion,
-      credentials: {
-        accessKeyId: spacesKey,
-        secretAccessKey: spacesSecret,
-      },
-      forcePathStyle: false,
-    });
-
     // Generate unique file key
     const timestamp = Date.now();
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const fileKey = `${folder}/${timestamp}-${sanitizedFileName}`;
 
-    // Create the presigned URL for PUT operation
-    const command = new PutObjectCommand({
-      Bucket: spacesBucket,
-      Key: fileKey,
-      ContentType: fileType,
-      ACL: 'public-read',
-    });
+    // Parse the endpoint to get the host
+    const endpointUrl = new URL(spacesEndpoint);
+    const host = `${spacesBucket}.${endpointUrl.host}`;
 
-    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // 1 hour expiry
+    // Generate presigned URL using AWS Signature V4
+    const presignedUrl = await createPresignedUrl(
+      spacesKey,
+      spacesSecret,
+      spacesRegion,
+      spacesBucket,
+      fileKey,
+      fileType,
+      host,
+      3600 // 1 hour expiry
+    );
 
     // Construct the public URL for the file
-    const publicUrl = `${spacesEndpoint}/${spacesBucket}/${fileKey}`;
+    const publicUrl = `https://${host}/${fileKey}`;
 
     console.log(`Generated presigned URL for key: ${fileKey}`);
 
