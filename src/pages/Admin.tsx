@@ -2,19 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin, useAllUsers, useAllSubscriptions, useAdminContent, useDeleteContent } from "@/hooks/useAdmin";
-import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2, Edit2, BarChart3, Tv, Bell } from "lucide-react";
+import { Loader2, ArrowLeft, Plus, Trash2, Edit2, Tv } from "lucide-react";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminOverview } from "@/components/admin/AdminOverview";
+import { AdminNotifications } from "@/components/admin/AdminNotifications";
+import { TVShowsList } from "@/components/admin/TVShowsList";
 import { ContentUploadForm } from "@/components/admin/ContentUploadForm";
 import { ContentEditForm } from "@/components/admin/ContentEditForm";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
 import TVShowManagement from "@/components/admin/TVShowManagement";
-import { useSendNotification } from "@/hooks/useNotifications";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -25,13 +26,12 @@ const Admin = () => {
   const { data: content = [] } = useAdminContent();
   const deleteContent = useDeleteContent();
   
+  const [activeTab, setActiveTab] = useState("overview");
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [editingContent, setEditingContent] = useState<any>(null);
-  const [managingTVShow, setManagingTVShow] = useState<{ id: string; title: string } | null>(null);
-  const sendNotification = useSendNotification();
+  const [managingTVShow, setManagingTVShow] = useState<{ id: string; title: string; tmdbId?: number } | null>(null);
 
   const handleRefreshUsers = () => {
-    // Trigger refetch through query invalidation
     window.location.reload();
   };
 
@@ -71,102 +71,14 @@ const Admin = () => {
     return null;
   }
 
-  const activeSubscriptions = subscriptions.filter(s => s.status === "active").length;
-  const totalRevenue = subscriptions
-    .filter(s => s.status === "active")
-    .reduce((acc, s) => acc + Number(s.amount), 0);
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border p-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Logo />
-          <span className="text-muted-foreground hidden sm:inline">/ Admin</span>
-        </div>
-        <Button variant="outline" onClick={() => navigate("/analytics")} className="gap-2">
-          <BarChart3 className="h-4 w-4" />
-          <span className="hidden sm:inline">Analytics</span>
-        </Button>
-      </header>
-
-      <main className="container max-w-7xl mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Total Users
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{users.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Active Subscriptions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{activeSubscriptions}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <Film className="h-4 w-4" />
-                Total Content
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{content.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Monthly Revenue
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{totalRevenue.toLocaleString()} XAF</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="content" className="space-y-4">
-          <TabsList className="bg-card">
-            <TabsTrigger value="content" className="gap-2">
-              <Film className="h-4 w-4" />
-              Content
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2">
-              <Users className="h-4 w-4" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="subscriptions" className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              Subscriptions
-            </TabsTrigger>
-            <TabsTrigger value="roles" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Roles
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="content" className="space-y-4">
+  const renderContent = () => {
+    switch (activeTab) {
+      case "overview":
+        return <AdminOverview users={users} content={content} subscriptions={subscriptions} />;
+      
+      case "content":
+        return (
+          <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-display">Content Management</h2>
               <Button onClick={() => setShowUploadForm(true)} className="gap-2">
@@ -187,6 +99,7 @@ const Admin = () => {
               <TVShowManagement 
                 contentId={managingTVShow.id}
                 contentTitle={managingTVShow.title}
+                tmdbId={managingTVShow.tmdbId}
                 onClose={() => setManagingTVShow(null)}
               />
             )}
@@ -221,7 +134,11 @@ const Admin = () => {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => setManagingTVShow({ id: item.id, title: item.title })}
+                          onClick={() => setManagingTVShow({ 
+                            id: item.id, 
+                            title: item.title,
+                            tmdbId: item.tmdb_id 
+                          })}
                           title="Manage Seasons & Episodes"
                         >
                           <Tv className="h-4 w-4" />
@@ -246,23 +163,77 @@ const Admin = () => {
                 </Card>
               ))}
             </div>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
+          </div>
+        );
+      
+      case "tvshows":
+        return <TVShowsList content={content} onDelete={handleDeleteContent} />;
+      
+      case "upload":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Upload Content</h2>
+            <ContentUploadForm onClose={() => setActiveTab("content")} />
+          </div>
+        );
+      
+      case "users":
+        return (
+          <div className="space-y-6">
             <h2 className="text-2xl font-display">User Management</h2>
             <AdminUserManagement users={users as any} onRefresh={handleRefreshUsers} />
-          </TabsContent>
-
-          <TabsContent value="subscriptions" className="space-y-4">
+          </div>
+        );
+      
+      case "subscriptions":
+        return (
+          <div className="space-y-6">
             <h2 className="text-2xl font-display">Subscription Management</h2>
             <SubscriptionManagement users={users} subscriptions={subscriptions as any} />
-          </TabsContent>
-
-          <TabsContent value="roles" className="space-y-4">
+          </div>
+        );
+      
+      case "roles":
+        return (
+          <div className="space-y-6">
             <h2 className="text-2xl font-display">Role Management</h2>
             <UserManagement users={users} />
-          </TabsContent>
-        </Tabs>
+          </div>
+        );
+      
+      case "notifications":
+        return <AdminNotifications />;
+      
+      case "analytics":
+        navigate("/analytics");
+        return null;
+      
+      default:
+        return <AdminOverview users={users} content={content} subscriptions={subscriptions} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Admin Sidebar */}
+      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Main Content */}
+      <main className="flex-1 ml-16 md:ml-64">
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-semibold capitalize">{activeTab}</h1>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="p-4 md:p-8">
+          {renderContent()}
+        </div>
       </main>
     </div>
   );

@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.tmdb-details]
 verify_jwt = false
 
+[functions.tmdb-seasons]
+verify_jwt = false
+
 [functions.stripe-payment]
 verify_jwt = false
 

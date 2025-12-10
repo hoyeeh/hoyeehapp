@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play } from "lucide-react";
+import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -24,7 +25,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Collapsible,
@@ -35,19 +35,20 @@ import {
 interface TVShowManagementProps {
   contentId: string;
   contentTitle: string;
+  tmdbId?: number | null;
   onClose: () => void;
 }
 
-const TVShowManagement = ({ contentId, contentTitle, onClose }: TVShowManagementProps) => {
+const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowManagementProps) => {
   const { toast } = useToast();
   const { data: seasons, isLoading } = useSeasons(contentId);
   const createSeason = useCreateSeason();
-  const updateSeason = useUpdateSeason();
   const deleteSeason = useDeleteSeason();
 
   const [expandedSeasons, setExpandedSeasons] = useState<string[]>([]);
   const [showSeasonForm, setShowSeasonForm] = useState(false);
   const [editingSeason, setEditingSeason] = useState<Season | null>(null);
+  const [importing, setImporting] = useState(false);
   const [seasonForm, setSeasonForm] = useState({
     season_number: 1,
     title: "",
@@ -64,22 +65,73 @@ const TVShowManagement = ({ contentId, contentTitle, onClose }: TVShowManagement
     );
   };
 
+  const handleImportFromTMDB = async () => {
+    if (!tmdbId) {
+      toast({ title: "No TMDB ID available for this show", variant: "destructive" });
+      return;
+    }
+
+    setImporting(true);
+    try {
+      // Fetch seasons from TMDB
+      const { data: seasonsData, error: seasonsError } = await supabase.functions.invoke('tmdb-seasons', {
+        body: { tmdb_id: tmdbId }
+      });
+
+      if (seasonsError) throw seasonsError;
+
+      console.log('TMDB Seasons:', seasonsData);
+
+      // Import each season and its episodes
+      for (const tmdbSeason of seasonsData.seasons || []) {
+        // Create season
+        const seasonResult = await createSeason.mutateAsync({
+          content_id: contentId,
+          season_number: tmdbSeason.season_number,
+          title: tmdbSeason.name,
+          description: tmdbSeason.overview,
+          thumbnail_url: tmdbSeason.poster_path,
+          year: tmdbSeason.air_date ? parseInt(tmdbSeason.air_date.split('-')[0]) : null,
+        });
+
+        // Fetch episodes for this season
+        const { data: episodesData } = await supabase.functions.invoke('tmdb-seasons', {
+          body: { tmdb_id: tmdbId, season_number: tmdbSeason.season_number }
+        });
+
+        if (episodesData?.episodes) {
+          // Create episodes
+          for (const ep of episodesData.episodes) {
+            await supabase.from('episodes').insert({
+              season_id: seasonResult.id,
+              episode_number: ep.episode_number,
+              title: ep.title,
+              description: ep.description,
+              thumbnail_url: ep.thumbnail_url,
+              duration: ep.duration || 0,
+              is_premium: false,
+            });
+          }
+        }
+      }
+
+      toast({ title: `Imported ${seasonsData.seasons?.length || 0} seasons from TMDB` });
+    } catch (error) {
+      console.error('Import error:', error);
+      toast({ title: "Failed to import from TMDB", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleSeasonSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingSeason) {
-        await updateSeason.mutateAsync({
-          id: editingSeason.id,
-          ...seasonForm,
-        });
-        toast({ title: "Season updated successfully" });
-      } else {
-        await createSeason.mutateAsync({
-          content_id: contentId,
-          ...seasonForm,
-        });
-        toast({ title: "Season created successfully" });
-      }
+      await createSeason.mutateAsync({
+        content_id: contentId,
+        ...seasonForm,
+      });
+      toast({ title: "Season created successfully" });
       resetSeasonForm();
     } catch (error) {
       toast({ title: "Error saving season", variant: "destructive" });
@@ -108,18 +160,6 @@ const TVShowManagement = ({ contentId, contentTitle, onClose }: TVShowManagement
     });
   };
 
-  const startEditSeason = (season: Season) => {
-    setEditingSeason(season);
-    setSeasonForm({
-      season_number: season.season_number,
-      title: season.title || "",
-      description: season.description || "",
-      thumbnail_url: season.thumbnail_url || "",
-      year: season.year || new Date().getFullYear(),
-    });
-    setShowSeasonForm(true);
-  };
-
   return (
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -130,26 +170,39 @@ const TVShowManagement = ({ contentId, contentTitle, onClose }: TVShowManagement
         <Button variant="outline" onClick={onClose}>Close</Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <h3 className="font-semibold">Seasons ({seasons?.length || 0})</h3>
-          <Button 
-            onClick={() => {
-              resetSeasonForm();
-              setSeasonForm(prev => ({ ...prev, season_number: (seasons?.length || 0) + 1 }));
-              setShowSeasonForm(true);
-            }}
-            size="sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Season
-          </Button>
+          <div className="flex gap-2">
+            {tmdbId && (
+              <Button 
+                variant="outline"
+                onClick={handleImportFromTMDB}
+                disabled={importing}
+                className="gap-2"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Import from TMDB
+              </Button>
+            )}
+            <Button 
+              onClick={() => {
+                resetSeasonForm();
+                setSeasonForm(prev => ({ ...prev, season_number: (seasons?.length || 0) + 1 }));
+                setShowSeasonForm(true);
+              }}
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Season
+            </Button>
+          </div>
         </div>
 
         {/* Season Form Dialog */}
         <Dialog open={showSeasonForm} onOpenChange={setShowSeasonForm}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingSeason ? "Edit Season" : "Add Season"}</DialogTitle>
+              <DialogTitle>Add Season</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSeasonSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -198,8 +251,8 @@ const TVShowManagement = ({ contentId, contentTitle, onClose }: TVShowManagement
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={resetSeasonForm}>Cancel</Button>
-                <Button type="submit" disabled={createSeason.isPending || updateSeason.isPending}>
-                  {editingSeason ? "Update" : "Create"}
+                <Button type="submit" disabled={createSeason.isPending}>
+                  Create
                 </Button>
               </div>
             </form>
@@ -211,7 +264,7 @@ const TVShowManagement = ({ contentId, contentTitle, onClose }: TVShowManagement
           <div className="text-center py-8 text-muted-foreground">Loading seasons...</div>
         ) : seasons?.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No seasons yet. Add the first season to get started.
+            No seasons yet. {tmdbId ? "Use 'Import from TMDB' to auto-populate seasons and episodes." : "Add the first season to get started."}
           </div>
         ) : (
           <div className="space-y-2">
@@ -221,7 +274,6 @@ const TVShowManagement = ({ contentId, contentTitle, onClose }: TVShowManagement
                 season={season}
                 isExpanded={expandedSeasons.includes(season.id)}
                 onToggle={() => toggleSeason(season.id)}
-                onEdit={() => startEditSeason(season)}
                 onDelete={() => handleDeleteSeason(season.id)}
               />
             ))}
@@ -236,11 +288,10 @@ interface SeasonItemProps {
   season: Season;
   isExpanded: boolean;
   onToggle: () => void;
-  onEdit: () => void;
   onDelete: () => void;
 }
 
-const SeasonItem = ({ season, isExpanded, onToggle, onEdit, onDelete }: SeasonItemProps) => {
+const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps) => {
   const { toast } = useToast();
   const { data: episodes, isLoading } = useEpisodes(season.id);
   const createEpisode = useCreateEpisode();
@@ -267,13 +318,13 @@ const SeasonItem = ({ season, isExpanded, onToggle, onEdit, onDelete }: SeasonIt
           id: editingEpisode.id,
           ...episodeForm,
         });
-        toast({ title: "Episode updated successfully" });
+        toast({ title: "Episode updated" });
       } else {
         await createEpisode.mutateAsync({
           season_id: season.id,
           ...episodeForm,
         });
-        toast({ title: "Episode created successfully" });
+        toast({ title: "Episode created" });
       }
       resetEpisodeForm();
     } catch (error) {
@@ -285,7 +336,7 @@ const SeasonItem = ({ season, isExpanded, onToggle, onEdit, onDelete }: SeasonIt
     if (!confirm("Delete this episode?")) return;
     try {
       await deleteEpisode.mutateAsync(episodeId);
-      toast({ title: "Episode deleted successfully" });
+      toast({ title: "Episode deleted" });
     } catch (error) {
       toast({ title: "Error deleting episode", variant: "destructive" });
     }
@@ -335,9 +386,6 @@ const SeasonItem = ({ season, isExpanded, onToggle, onEdit, onDelete }: SeasonIt
               </div>
             </div>
             <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-              <Button size="sm" variant="ghost" onClick={onEdit}>
-                <Edit2 className="h-4 w-4" />
-              </Button>
               <Button size="sm" variant="ghost" onClick={onDelete}>
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
@@ -467,6 +515,9 @@ const SeasonItem = ({ season, isExpanded, onToggle, onEdit, onDelete }: SeasonIt
                           {episode.duration} min
                           {episode.is_premium && (
                             <span className="ml-2 text-primary">Premium</span>
+                          )}
+                          {episode.video_url && (
+                            <span className="ml-2 text-green-500">Has Video</span>
                           )}
                         </div>
                       </div>

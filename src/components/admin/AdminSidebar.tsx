@@ -1,0 +1,76 @@
+import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/Logo";
+
+interface AdminSidebarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const menuItems = [
+  { id: "overview", label: "Overview", icon: Home },
+  { id: "content", label: "Content", icon: Film },
+  { id: "tvshows", label: "TV Shows", icon: Tv },
+  { id: "upload", label: "Upload", icon: Upload },
+  { id: "users", label: "Users", icon: Users },
+  { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
+  { id: "roles", label: "Roles", icon: Shield },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
+];
+
+export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
+  return (
+    <aside className="fixed left-0 top-0 h-full w-16 md:w-64 bg-sidebar border-r border-sidebar-border z-50 flex flex-col">
+      {/* Logo */}
+      <div className="p-4 md:p-6 border-b border-sidebar-border">
+        <div className="flex items-center gap-2">
+          <Logo className="hidden md:block" />
+          <span className="hidden md:inline text-muted-foreground text-sm">Admin</span>
+        </div>
+        <div className="md:hidden text-primary font-display text-xl font-bold">A</div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-2 md:p-4 overflow-y-auto">
+        <ul className="space-y-1">
+          {menuItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <li key={item.id}>
+                <button
+                  onClick={() => onTabChange(item.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  )}
+                >
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="hidden md:inline font-medium">{item.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* Settings */}
+      <div className="p-2 md:p-4 border-t border-sidebar-border">
+        <button
+          onClick={() => onTabChange("settings")}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors",
+            activeTab === "settings"
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent"
+          )}
+        >
+          <Settings className="h-5 w-5 flex-shrink-0" />
+          <span className="hidden md:inline font-medium">Settings</span>
+        </button>
+      </div>
+    </aside>
+  );
+};
