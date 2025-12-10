@@ -17,7 +17,7 @@ export const useVideoUploadSpaces = () => {
   const uploadVideo = useCallback(async (
     file: File,
     folder: string = 'episodes'
-  ): Promise<{ fileKey: string; publicUrl: string } | null> => {
+  ): Promise<{ fileKey: string; publicUrl: string; cdnUrl: string } | null> => {
     setUploading(true);
     setProgress({ percent: 0, loaded: 0, total: file.size });
     setError(null);
@@ -43,7 +43,7 @@ export const useVideoUploadSpaces = () => {
         throw new Error(presignError?.message || 'Failed to get upload URL');
       }
 
-      const { presignedUrl, fileKey, publicUrl } = presignData;
+      const { presignedUrl, fileKey, publicUrl, cdnUrl } = presignData;
 
       // Upload file directly to DigitalOcean Spaces using presigned URL
       await new Promise<void>((resolve, reject) => {
@@ -85,7 +85,8 @@ export const useVideoUploadSpaces = () => {
       // Remove completed uploads after a delay
       setTimeout(() => removeUpload(uploadId), 5000);
       
-      return { fileKey, publicUrl };
+      // Return CDN URL as primary URL for better performance
+      return { fileKey, publicUrl, cdnUrl: cdnUrl || publicUrl };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
       setError(message);

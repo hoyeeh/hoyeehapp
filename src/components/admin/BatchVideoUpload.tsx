@@ -149,7 +149,7 @@ export const BatchVideoUpload = ({
           throw new Error(presignError?.message || 'Failed to get upload URL');
         }
         
-        const { presignedUrl, publicUrl } = presignData;
+        const { presignedUrl, publicUrl, cdnUrl } = presignData;
         
         // Upload file with progress tracking
         await new Promise<void>((resolve, reject) => {
@@ -176,13 +176,14 @@ export const BatchVideoUpload = ({
           
           xhr.open('PUT', presignedUrl);
           xhr.setRequestHeader('Content-Type', mapping.file.type);
+          xhr.setRequestHeader('x-amz-acl', 'public-read');
           xhr.send(mapping.file);
         });
         
-        // Update episode with video URL
+        // Update episode with CDN URL for better performance
         const { error: updateError } = await supabase
           .from('episodes')
-          .update({ video_url: publicUrl })
+          .update({ video_url: cdnUrl || publicUrl })
           .eq('id', mapping.episodeId);
         
         if (updateError) throw updateError;
