@@ -8,6 +8,7 @@ import { ExpirationWarning } from './_templates/expiration-warning.tsx';
 import { RenewalReminder } from './_templates/renewal-reminder.tsx';
 import { SubscriptionCancelled } from './_templates/subscription-cancelled.tsx';
 import { WelcomeEmail } from './_templates/welcome-email.tsx';
+import { BaseEmail, emailStyles } from './_templates/base-email.tsx';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -18,7 +19,7 @@ const corsHeaders = {
 
 interface EmailRequest {
   to: string;
-  type: "payment_confirmation" | "renewal_reminder" | "expiration_warning" | "subscription_cancelled" | "welcome";
+  type: "payment_confirmation" | "renewal_reminder" | "expiration_warning" | "subscription_cancelled" | "welcome" | "custom";
   data: {
     userName?: string;
     amount?: number;
@@ -26,8 +27,28 @@ interface EmailRequest {
     planType?: string;
     expiryDate?: string;
     daysUntilExpiry?: number;
+    customSubject?: string;
+    customMessage?: string;
   };
 }
+
+// Custom email component
+const CustomEmail = ({ userName, message }: { userName: string; message: string }) => {
+  // Replace {userName} placeholder in message
+  const processedMessage = message.replace(/{userName}/g, userName);
+  
+  return React.createElement(BaseEmail, { previewText: "Message from Hoyeeh" },
+    React.createElement('h1', { style: emailStyles.heading }, `Hello ${userName}!`),
+    React.createElement('div', { style: emailStyles.text }, 
+      processedMessage.split('\n').map((line: string, i: number) => 
+        React.createElement('p', { key: i, style: { margin: '8px 0' } }, line)
+      )
+    ),
+    React.createElement('p', { style: emailStyles.mutedText }, 
+      'If you have any questions, please contact us at support@hoyeeh.com'
+    )
+  );
+};
 
 async function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"]) {
   const { 
@@ -36,7 +57,9 @@ async function getEmailContent(type: EmailRequest["type"], data: EmailRequest["d
     currency = "XAF", 
     planType = "Monthly", 
     expiryDate = "", 
-    daysUntilExpiry = 0 
+    daysUntilExpiry = 0,
+    customSubject = "",
+    customMessage = ""
   } = data;
 
   let subject = "";
@@ -99,6 +122,16 @@ async function getEmailContent(type: EmailRequest["type"], data: EmailRequest["d
       html = await renderAsync(
         React.createElement(WelcomeEmail, {
           userName,
+        })
+      );
+      break;
+
+    case "custom":
+      subject = customSubject || "Message from Hoyeeh";
+      html = await renderAsync(
+        React.createElement(CustomEmail, {
+          userName,
+          message: customMessage,
         })
       );
       break;

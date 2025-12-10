@@ -9,7 +9,8 @@ import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { CastQueuePanel } from "@/components/CastQueuePanel";
 import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
-import { Loader2, ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo } from "lucide-react";
+import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo } from "lucide-react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
 
 interface CastMember {
@@ -172,7 +173,7 @@ const ContentDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-brand" />
+        <LoadingSpinner size="lg" text="Loading content..." />
       </div>
     );
   }
