@@ -280,41 +280,41 @@ export const VideoPlayer = ({
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/90 to-transparent" />
 
         {/* Top Bar */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex items-center gap-4">
+        <div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4">
           <button
             onClick={onBack}
-            className="w-12 h-12 rounded-full bg-brand/80 flex items-center justify-center hover:bg-brand transition-colors"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand/80 flex items-center justify-center hover:bg-brand transition-colors"
           >
-            <ArrowLeft className="h-6 w-6 text-primary-foreground" />
+            <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
           </button>
-          <h2 className="font-display text-xl">{title}</h2>
+          <h2 className="font-display text-sm sm:text-xl truncate max-w-[60vw]">{title}</h2>
         </div>
 
         {/* Center Controls */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 sm:gap-8">
           <button
             onClick={() => skip(-10)}
-            className="w-14 h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
           >
-            <SkipBack className="h-6 w-6" />
+            <SkipBack className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
           
           <button
             onClick={togglePlay}
-            className="w-20 h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30"
+            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30"
           >
             {isPlaying ? (
-              <Pause className="h-10 w-10 text-primary-foreground" fill="currentColor" />
+              <Pause className="h-7 w-7 sm:h-10 sm:w-10 text-primary-foreground" fill="currentColor" />
             ) : (
-              <Play className="h-10 w-10 ml-1 text-primary-foreground" fill="currentColor" />
+              <Play className="h-7 w-7 sm:h-10 sm:w-10 ml-1 text-primary-foreground" fill="currentColor" />
             )}
           </button>
           
           <button
             onClick={() => skip(10)}
-            className="w-14 h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
           >
-            <SkipForward className="h-6 w-6" />
+            <SkipForward className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
 
@@ -363,16 +363,16 @@ export const VideoPlayer = ({
                 </div>
               </div>
 
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {/* Playback Speed */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-1 hover:text-brand transition-colors text-sm">
+                  <button className="hidden sm:flex items-center gap-1 hover:text-brand transition-colors text-sm">
                     <Settings className="h-5 w-5" />
                     {playbackRate}x
                   </button>
@@ -397,14 +397,14 @@ export const VideoPlayer = ({
                 onClick={toggleFullscreen}
                 className="hover:text-brand transition-colors"
               >
-                {isFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
+                {isFullscreen ? <Minimize className="h-5 w-5 sm:h-6 sm:w-6" /> : <Maximize className="h-5 w-5 sm:h-6 sm:w-6" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Keyboard shortcuts tooltip */}
-        <div className="absolute bottom-20 right-4 text-xs text-muted-foreground opacity-50">
+        {/* Keyboard shortcuts tooltip - hidden on mobile */}
+        <div className="absolute bottom-20 right-4 text-xs text-muted-foreground opacity-50 hidden md:block">
           Space/K: Play | M: Mute | F: Fullscreen | ←→: Seek | ↑↓: Volume
         </div>
       </div>

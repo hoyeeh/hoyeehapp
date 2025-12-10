@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2, Edit2 } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Film, CreditCard, Shield, Plus, Trash2, Edit2, BarChart3 } from "lucide-react";
 import { ContentUploadForm } from "@/components/admin/ContentUploadForm";
 import { ContentEditForm } from "@/components/admin/ContentEditForm";
 import { UserManagement } from "@/components/admin/UserManagement";
@@ -81,8 +81,12 @@ const Admin = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <Logo />
-          <span className="text-muted-foreground">/ Admin</span>
+          <span className="text-muted-foreground hidden sm:inline">/ Admin</span>
         </div>
+        <Button variant="outline" onClick={() => navigate("/analytics")} className="gap-2">
+          <BarChart3 className="h-4 w-4" />
+          <span className="hidden sm:inline">Analytics</span>
+        </Button>
       </header>
 
       <main className="container max-w-7xl mx-auto px-4 py-8">

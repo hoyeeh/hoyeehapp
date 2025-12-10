@@ -7,8 +7,11 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PinAuth from "./pages/PinAuth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Subscription from "./pages/Subscription";
 import Admin from "./pages/Admin";
+import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import ContentDetail from "./pages/ContentDetail";
 import MyList from "./pages/MyList";
@@ -27,8 +30,11 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/pin-auth" element={<PinAuth />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/content/:id" element={<ContentDetail />} />
             <Route path="/my-list" element={<MyList />} />
