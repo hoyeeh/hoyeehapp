@@ -9,9 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Play, Clock, Crown, Calendar, AlertTriangle, Loader2 } from "lucide-react";
+import { Play, Clock, Crown, Calendar, AlertTriangle, Loader2, Sparkles, Film, Tv } from "lucide-react";
 import { toast } from "sonner";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, subDays } from "date-fns";
 
 interface WatchHistoryWithContent {
   id: string;
@@ -29,9 +29,10 @@ interface WatchHistoryWithContent {
 
 interface UserDashboardProps {
   onPlay: (content: Content) => void;
+  onDetails?: (content: Content) => void;
 }
 
-export const UserDashboard = ({ onPlay }: UserDashboardProps) => {
+export const UserDashboard = ({ onPlay, onDetails }: UserDashboardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: profile, refetch: refetchProfile } = useProfile();
@@ -68,6 +69,22 @@ export const UserDashboard = ({ onPlay }: UserDashboardProps) => {
     enabled: !!user,
   });
 
+  // Fetch recently added content (last 7 days)
+  const { data: recentlyAdded = [] } = useQuery({
+    queryKey: ["recently-added"],
+    queryFn: async () => {
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const { data, error } = await supabase
+        .from("content")
+        .select("*")
+        .gte("created_at", sevenDaysAgo)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Filter to only show incomplete items (less than 90% watched)
   const continueWatching = watchHistory.filter((item) => {
     if (!item.content?.duration) return false;
@@ -80,7 +97,6 @@ export const UserDashboard = ({ onPlay }: UserDashboardProps) => {
     
     setCanceling(true);
     try {
-      // Update profile to mark subscription as canceled (will expire at end of period)
       const { error } = await supabase
         .from("profiles")
         .update({ 
@@ -114,6 +130,21 @@ export const UserDashboard = ({ onPlay }: UserDashboardProps) => {
       duration: item.content.duration || 0,
     };
     onPlay(content);
+  };
+
+  const handleContentClick = (item: any) => {
+    const content: Content = {
+      id: item.id,
+      title: item.title,
+      thumbnailUrl: item.thumbnail_url || "",
+      videoUrl: item.video_url || "",
+      description: item.description || "",
+      genre: item.genre || "",
+      contentType: item.content_type as "movie" | "series",
+      isPremium: item.is_premium || false,
+      duration: item.duration || 0,
+    };
+    onDetails?.(content);
   };
 
   const getProgressPercent = (progress: number, duration: number) => {
@@ -198,6 +229,51 @@ export const UserDashboard = ({ onPlay }: UserDashboardProps) => {
           </div>
         )}
       </section>
+
+      {/* Recently Added Section */}
+      {recentlyAdded.length > 0 && (
+        <section>
+          <h2 className="font-display text-2xl md:text-3xl mb-6 flex items-center gap-2">
+            <Sparkles className="h-7 w-7 text-brand" />
+            Recently Added
+          </h2>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {recentlyAdded.map((item: any) => (
+              <div
+                key={item.id}
+                className="cursor-pointer group"
+                onClick={() => handleContentClick(item)}
+              >
+                <div className="aspect-[2/3] rounded-lg overflow-hidden bg-secondary relative">
+                  <img
+                    src={item.thumbnail_url || "/placeholder.svg"}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {item.is_premium && (
+                    <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
+                      PREMIUM
+                    </div>
+                  )}
+                  <div className="absolute top-2 right-2 bg-green-500 px-2 py-0.5 rounded text-xs font-semibold text-white">
+                    NEW
+                  </div>
+                  <div className="absolute bottom-2 left-2">
+                    {item.content_type === "movie" ? (
+                      <Film className="h-4 w-4 text-white drop-shadow" />
+                    ) : (
+                      <Tv className="h-4 w-4 text-white drop-shadow" />
+                    )}
+                  </div>
+                </div>
+                <h3 className="mt-2 font-medium truncate">{item.title}</h3>
+                <p className="text-sm text-muted-foreground">{item.year}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Subscription Section */}
       <section>

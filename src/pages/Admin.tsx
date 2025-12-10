@@ -17,6 +17,8 @@ import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
 import TVShowManagement from "@/components/admin/TVShowManagement";
 import { TranscodingDashboard } from "@/components/admin/TranscodingDashboard";
+import { GenreManagement } from "@/components/admin/GenreManagement";
+import { Top10Management } from "@/components/admin/Top10Management";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -207,6 +209,22 @@ const Admin = () => {
       
       case "transcoding":
         return <TranscodingDashboard />;
+      
+      case "genres":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Genre Management</h2>
+            <GenreManagement />
+          </div>
+        );
+      
+      case "top10":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Top 10 Management</h2>
+            <Top10Management />
+          </div>
+        );
       
       case "analytics":
         navigate("/analytics");

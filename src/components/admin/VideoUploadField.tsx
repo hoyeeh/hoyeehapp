@@ -6,17 +6,20 @@ import { Progress } from "@/components/ui/progress";
 import { useVideoUploadSpaces } from "@/hooks/useVideoUploadSpaces";
 import { Upload, X, Check, Film, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getVideoDuration } from "@/utils/videoDuration";
 
 interface VideoUploadFieldProps {
   value: string;
   onChange: (url: string) => void;
+  onDurationDetected?: (duration: number) => void;
   label?: string;
   folder?: string;
 }
 
 export const VideoUploadField = ({ 
   value, 
-  onChange, 
+  onChange,
+  onDurationDetected,
   label = "Video",
   folder = "episodes"
 }: VideoUploadFieldProps) => {
@@ -25,7 +28,7 @@ export const VideoUploadField = ({
   const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
@@ -40,6 +43,16 @@ export const VideoUploadField = ({
       }
       setSelectedFile(file);
       resetProgress();
+      
+      // Auto-detect video duration
+      if (onDurationDetected) {
+        try {
+          const duration = await getVideoDuration(file);
+          onDurationDetected(duration);
+        } catch (error) {
+          console.error("Failed to detect video duration:", error);
+        }
+      }
     }
   };
 

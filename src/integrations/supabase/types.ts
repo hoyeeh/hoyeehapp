@@ -121,6 +121,30 @@ export type Database = {
           },
         ]
       }
+      genres: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string
@@ -382,6 +406,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      top_10: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          rank: number
+          updated_at: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          rank: number
+          updated_at?: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          rank?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "top_10_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: true
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transcoding_jobs: {
         Row: {
