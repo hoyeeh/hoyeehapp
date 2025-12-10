@@ -40,6 +40,7 @@ interface HomeSection {
   display_order: number;
   is_active: boolean;
   max_items: number | null;
+  content_type_filter?: string;
 }
 
 interface Content {
@@ -210,6 +211,7 @@ export const EnhancedHomeSectionManagement = () => {
         max_items: data.max_items,
         is_active: data.is_active,
         display_order: maxOrder + 1,
+        content_type_filter: data.content_type_filter,
       });
       if (error) throw error;
     },
@@ -232,6 +234,7 @@ export const EnhancedHomeSectionManagement = () => {
           card_style: data.card_style,
           max_items: data.max_items,
           is_active: data.is_active,
+          content_type_filter: data.content_type_filter,
         })
         .eq("id", id);
       if (error) throw error;
@@ -339,11 +342,6 @@ export const EnhancedHomeSectionManagement = () => {
 
   const handleEdit = (section: HomeSection) => {
     setEditingSection(section);
-    // Parse content_type_filter from title if it contains "Movies" or "Series"
-    let contentTypeFilter: "all" | "movie" | "series" = "all";
-    if (section.title.toLowerCase().includes("movie")) contentTypeFilter = "movie";
-    else if (section.title.toLowerCase().includes("series") || section.title.toLowerCase().includes("show")) contentTypeFilter = "series";
-    
     setFormData({
       title: section.title,
       section_type: section.section_type,
@@ -351,7 +349,7 @@ export const EnhancedHomeSectionManagement = () => {
       card_style: section.card_style,
       max_items: section.max_items || 15,
       is_active: section.is_active,
-      content_type_filter: contentTypeFilter,
+      content_type_filter: (section.content_type_filter as "all" | "movie" | "series") || "all",
     });
     setShowForm(true);
   };
