@@ -107,7 +107,8 @@ export const ThumbnailUploadField = ({
     
     const result = await uploadFile(selectedFile, folder);
     if (result) {
-      onChange(result.publicUrl);
+      // Use CDN URL for better performance
+      onChange(result.cdnUrl);
       setSelectedFile(null);
       setCompressionStats(null);
       if (previewUrl) {

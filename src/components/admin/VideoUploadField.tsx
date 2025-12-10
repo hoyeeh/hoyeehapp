@@ -89,7 +89,8 @@ export const VideoUploadField = ({
     
     const result = await uploadVideo(selectedFile, folder);
     if (result) {
-      onChange(result.publicUrl);
+      // Use CDN URL for better performance
+      onChange(result.cdnUrl);
       setSelectedFile(null);
     }
   };

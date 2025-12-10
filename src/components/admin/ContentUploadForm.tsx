@@ -148,13 +148,13 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
       if (videoFile) {
         const result = await uploadVideo(videoFile, 'movies');
-        if (result) videoUrl = result.publicUrl;
+        if (result) videoUrl = result.cdnUrl;
       }
 
       if (thumbnailFile) {
         setThumbnailUploading(true);
         const result = await uploadVideo(thumbnailFile, 'thumbnails');
-        if (result) thumbnailUrl = result.publicUrl;
+        if (result) thumbnailUrl = result.cdnUrl;
         setThumbnailUploading(false);
       }
 

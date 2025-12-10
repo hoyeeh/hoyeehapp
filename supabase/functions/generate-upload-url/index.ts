@@ -170,6 +170,7 @@ serve(async (req) => {
     const spacesEndpoint = Deno.env.get('DO_SPACES_ENDPOINT');
     const spacesBucket = Deno.env.get('DO_SPACES_BUCKET');
     const spacesRegion = Deno.env.get('DO_SPACES_REGION') || 'nyc3';
+    const spacesCdnEndpoint = Deno.env.get('DO_SPACES_CDN_ENDPOINT');
 
     if (!spacesKey || !spacesSecret || !spacesEndpoint || !spacesBucket) {
       console.error('Missing DigitalOcean Spaces configuration');
@@ -225,16 +226,22 @@ serve(async (req) => {
       3600 // 1 hour expiry
     );
 
-    // Construct the public URL for the file
+    // Construct the public URL for the file (origin)
     const publicUrl = `https://${host}/${fileKey}`;
+    
+    // Construct CDN URL if configured
+    const cdnUrl = spacesCdnEndpoint 
+      ? `${spacesCdnEndpoint.replace(/\/$/, '')}/${fileKey}`
+      : publicUrl.replace('.digitaloceanspaces.com', '.cdn.digitaloceanspaces.com');
 
-    console.log(`Generated presigned URL for key: ${fileKey}`);
+    console.log(`Generated presigned URL for key: ${fileKey}, CDN: ${cdnUrl}`);
 
     return new Response(
       JSON.stringify({
         presignedUrl,
         fileKey,
         publicUrl,
+        cdnUrl,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
