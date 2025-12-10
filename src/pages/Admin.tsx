@@ -16,6 +16,7 @@ import { UserManagement } from "@/components/admin/UserManagement";
 import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
 import TVShowManagement from "@/components/admin/TVShowManagement";
+import { TranscodingDashboard } from "@/components/admin/TranscodingDashboard";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -203,6 +204,9 @@ const Admin = () => {
       
       case "notifications":
         return <AdminNotifications />;
+      
+      case "transcoding":
+        return <TranscodingDashboard />;
       
       case "analytics":
         navigate("/analytics");

@@ -29,6 +29,13 @@ interface VideoPlayerProps {
   onBack: () => void;
 }
 
+const QUALITY_OPTIONS = [
+  { label: 'Auto', value: 'auto' },
+  { label: '1080p', value: '1080' },
+  { label: '720p', value: '720' },
+  { label: '480p', value: '480' },
+];
+
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 export const VideoPlayer = ({
@@ -51,6 +58,34 @@ export const VideoPlayer = ({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [selectedQuality, setSelectedQuality] = useState('auto');
+  const [availableQualities, setAvailableQualities] = useState<string[]>([]);
+  const [isHls, setIsHls] = useState(false);
+
+  // Check if source is HLS and detect available qualities
+  useEffect(() => {
+    const isHlsStream = src.includes('.m3u8');
+    setIsHls(isHlsStream);
+    
+    if (isHlsStream) {
+      // For Mux streams, these qualities are typically available
+      setAvailableQualities(['auto', '1080', '720', '480']);
+    }
+  }, [src]);
+
+  // Get the video source with quality parameter for HLS
+  const getVideoSource = () => {
+    if (!isHls || selectedQuality === 'auto') {
+      return src;
+    }
+    // For Mux HLS, we can append quality parameters
+    // Mux uses rendition_order parameter for quality selection
+    if (src.includes('stream.mux.com')) {
+      const baseUrl = src.split('?')[0];
+      return `${baseUrl}?rendition_order=desc&max_resolution=${selectedQuality}p`;
+    }
+    return src;
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -252,7 +287,7 @@ export const VideoPlayer = ({
       {/* Video */}
       <video
         ref={videoRef}
-        src={src}
+        src={getVideoSource()}
         className="w-full h-full object-contain"
         autoPlay
         playsInline
@@ -369,6 +404,31 @@ export const VideoPlayer = ({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* Quality Selection - only show for HLS streams */}
+              {isHls && availableQualities.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="hidden sm:flex items-center gap-1 hover:text-brand transition-colors text-sm px-2 py-1 rounded bg-background/50">
+                      {selectedQuality === 'auto' ? 'Auto' : `${selectedQuality}p`}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-card">
+                    {QUALITY_OPTIONS.filter(q => availableQualities.includes(q.value)).map((quality) => (
+                      <DropdownMenuItem
+                        key={quality.value}
+                        onClick={() => setSelectedQuality(quality.value)}
+                        className={cn(
+                          "cursor-pointer",
+                          selectedQuality === quality.value && "text-brand font-semibold"
+                        )}
+                      >
+                        {quality.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
               {/* Playback Speed */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
