@@ -29,56 +29,38 @@ const PinAuth = () => {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      // Find user by mobile number
-      const { data: profiles, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("mobile_number", formData.mobileNumber)
-        .maybeSingle();
+      // Use secure RPC function to verify PIN (hashed comparison on server)
+      const { data: result, error } = await supabase
+        .rpc('verify_pin_code', {
+          user_mobile: formData.mobileNumber,
+          input_pin: formData.pin
+        });
 
-      if (profileError || !profiles) {
-        toast.error("Mobile number not registered");
+      if (error) {
+        toast.error("An error occurred. Please try again.");
         setIsLoading(false);
         return;
       }
 
-      // Check if account is locked
-      if (profiles.pin_locked_until && new Date(profiles.pin_locked_until) > new Date()) {
+      const verifyResult = result?.[0];
+      
+      if (!verifyResult?.user_id) {
+        toast.error("Invalid mobile number or PIN");
+        setIsLoading(false);
+        return;
+      }
+
+      if (verifyResult.is_locked) {
         toast.error("Account is locked. Please try again later.");
         setIsLoading(false);
         return;
       }
 
-      // Verify PIN
-      if (profiles.pin_code !== formData.pin) {
-        const attempts = (profiles.pin_attempts || 0) + 1;
-        
-        if (attempts >= 5) {
-          // Lock account for 30 minutes
-          await supabase
-            .from("profiles")
-            .update({ 
-              pin_attempts: attempts,
-              pin_locked_until: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-            })
-            .eq("id", profiles.id);
-          toast.error("Too many failed attempts. Account locked for 30 minutes.");
-        } else {
-          await supabase
-            .from("profiles")
-            .update({ pin_attempts: attempts })
-            .eq("id", profiles.id);
-          toast.error(`Incorrect PIN. ${5 - attempts} attempts remaining.`);
-        }
+      if (!verifyResult.is_valid) {
+        toast.error("Invalid mobile number or PIN");
         setIsLoading(false);
         return;
       }
-
-      // Reset attempts on successful login
-      await supabase
-        .from("profiles")
-        .update({ pin_attempts: 0, pin_locked_until: null })
-        .eq("id", profiles.id);
 
       // Sign in with email/password (stored during registration)
       // For PIN login, we use a special flow - redirect to main auth with stored credentials
@@ -172,15 +154,15 @@ const PinAuth = () => {
     if (step === 1) {
       setIsLoading(true);
       try {
-        // Find user by mobile number
+        // Check if mobile number exists (using generic error to prevent enumeration)
         const { data: profile, error } = await supabase
           .from("profiles")
-          .select("id, secret_word")
+          .select("id")
           .eq("mobile_number", formData.mobileNumber)
           .maybeSingle();
 
         if (error || !profile) {
-          toast.error("Mobile number not found");
+          toast.error("Invalid mobile number or secret word");
           setIsLoading(false);
           return;
         }
@@ -197,15 +179,23 @@ const PinAuth = () => {
     if (step === 2) {
       setIsLoading(true);
       try {
-        // Verify secret word
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("id, secret_word")
-          .eq("mobile_number", formData.mobileNumber)
-          .maybeSingle();
+        // Use secure RPC function to verify secret word (hashed comparison on server)
+        const { data: result, error } = await supabase
+          .rpc('verify_secret_word', {
+            user_mobile: formData.mobileNumber,
+            input_secret: formData.secretWord.toLowerCase()
+          });
 
-        if (!profile || profile.secret_word !== formData.secretWord.toLowerCase()) {
-          toast.error("Incorrect secret word");
+        if (error) {
+          toast.error("An error occurred");
+          setIsLoading(false);
+          return;
+        }
+
+        const verifyResult = result?.[0];
+        
+        if (!verifyResult?.is_valid) {
+          toast.error("Invalid mobile number or secret word");
           setIsLoading(false);
           return;
         }
@@ -219,7 +209,7 @@ const PinAuth = () => {
       return;
     }
 
-    // Final step - update PIN
+    // Final step - update PIN (will be hashed by trigger)
     if (formData.pin.length !== 6) {
       toast.error("PIN must be 6 digits");
       return;

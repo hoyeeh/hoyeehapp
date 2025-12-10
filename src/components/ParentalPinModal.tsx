@@ -4,12 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Shield, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ParentalPinModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  correctPin: string;
+  userId: string;
   contentTitle?: string;
 }
 
@@ -17,7 +18,7 @@ export const ParentalPinModal = ({
   isOpen,
   onClose,
   onSuccess,
-  correctPin,
+  userId,
   contentTitle,
 }: ParentalPinModalProps) => {
   const [pin, setPin] = useState("");
@@ -25,33 +26,54 @@ export const ParentalPinModal = ({
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isLocked) return;
+    if (isLocked || isVerifying) return;
 
-    if (pin === correctPin) {
-      setPin("");
-      setError("");
-      setAttempts(0);
-      onSuccess();
-    } else {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      setPin("");
-      
-      if (newAttempts >= 3) {
-        setIsLocked(true);
-        setError("Too many attempts. Locked for 30 seconds.");
-        setTimeout(() => {
-          setIsLocked(false);
-          setAttempts(0);
-          setError("");
-        }, 30000);
-      } else {
-        setError(`Incorrect PIN. ${3 - newAttempts} attempts remaining.`);
+    setIsVerifying(true);
+    try {
+      // Use secure RPC function to verify parental PIN (hashed comparison on server)
+      const { data: isValid, error: rpcError } = await supabase
+        .rpc('verify_parental_pin', {
+          user_uuid: userId,
+          input_pin: pin
+        });
+
+      if (rpcError) {
+        setError("An error occurred. Please try again.");
+        setIsVerifying(false);
+        return;
       }
+
+      if (isValid) {
+        setPin("");
+        setError("");
+        setAttempts(0);
+        onSuccess();
+      } else {
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        setPin("");
+        
+        if (newAttempts >= 3) {
+          setIsLocked(true);
+          setError("Too many attempts. Locked for 30 seconds.");
+          setTimeout(() => {
+            setIsLocked(false);
+            setAttempts(0);
+            setError("");
+          }, 30000);
+        } else {
+          setError(`Incorrect PIN. ${3 - newAttempts} attempts remaining.`);
+        }
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -93,7 +115,7 @@ export const ParentalPinModal = ({
                 }}
                 placeholder="••••"
                 maxLength={6}
-                disabled={isLocked}
+                disabled={isLocked || isVerifying}
                 autoFocus
                 className="text-center text-2xl tracking-widest"
               />
@@ -121,10 +143,10 @@ export const ParentalPinModal = ({
             </Button>
             <Button
               type="submit"
-              disabled={pin.length < 4 || isLocked}
+              disabled={pin.length < 4 || isLocked || isVerifying}
               className="flex-1"
             >
-              {isLocked ? (
+              {isLocked || isVerifying ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Unlock"

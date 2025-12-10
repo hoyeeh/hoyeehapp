@@ -940,6 +940,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      verify_parental_pin: {
+        Args: { input_pin: string; user_uuid: string }
+        Returns: boolean
+      }
+      verify_pin_code: {
+        Args: { input_pin: string; user_mobile: string }
+        Returns: {
+          is_locked: boolean
+          is_valid: boolean
+          lock_until: string
+          user_id: string
+        }[]
+      }
+      verify_secret_word: {
+        Args: { input_secret: string; user_mobile: string }
+        Returns: {
+          is_valid: boolean
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

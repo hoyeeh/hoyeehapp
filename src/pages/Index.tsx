@@ -553,7 +553,7 @@ const Index = () => {
       )}
 
       {/* Parental Pin Modal */}
-      {pinModalContent && profile?.parental_pin && (
+      {pinModalContent && profile?.parental_pin && user && (
         <ParentalPinModal
           isOpen={!!pinModalContent}
           onClose={() => setPinModalContent(null)}
@@ -561,7 +561,7 @@ const Index = () => {
             setPlayingContent({ content: pinModalContent, progress: 0 });
             setPinModalContent(null);
           }}
-          correctPin={profile.parental_pin}
+          userId={user.id}
           contentTitle={pinModalContent.title}
         />
       )}
