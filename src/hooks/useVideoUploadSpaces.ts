@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUploadPersistence } from "./useUploadPersistence";
 
 interface UploadProgress {
   percent: number;
@@ -11,14 +12,19 @@ export const useVideoUploadSpaces = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { addUpload, updateUpload, removeUpload } = useUploadPersistence();
 
-  const uploadVideo = async (
+  const uploadVideo = useCallback(async (
     file: File,
     folder: string = 'episodes'
   ): Promise<{ fileKey: string; publicUrl: string } | null> => {
     setUploading(true);
     setProgress({ percent: 0, loaded: 0, total: file.size });
     setError(null);
+
+    // Track upload in persistence
+    const uploadId = addUpload(file.name, file.size, folder);
+    updateUpload(uploadId, { status: 'uploading' });
 
     try {
       // Get presigned URL from edge function
@@ -51,6 +57,7 @@ export const useVideoUploadSpaces = () => {
               loaded: event.loaded,
               total: event.total,
             });
+            updateUpload(uploadId, { progress: percent });
           }
         });
 
@@ -72,21 +79,27 @@ export const useVideoUploadSpaces = () => {
       });
 
       setProgress({ percent: 100, loaded: file.size, total: file.size });
+      updateUpload(uploadId, { status: 'completed', progress: 100 });
+      
+      // Remove completed uploads after a delay
+      setTimeout(() => removeUpload(uploadId), 5000);
+      
       return { fileKey, publicUrl };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
       setError(message);
+      updateUpload(uploadId, { status: 'failed', error: message });
       console.error('Upload error:', err);
       return null;
     } finally {
       setUploading(false);
     }
-  };
+  }, [addUpload, updateUpload, removeUpload]);
 
-  const resetProgress = () => {
+  const resetProgress = useCallback(() => {
     setProgress(null);
     setError(null);
-  };
+  }, []);
 
   return {
     uploadVideo,
