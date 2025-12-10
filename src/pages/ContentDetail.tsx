@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ContentRatingBadge } from "@/components/ContentRatingBadge";
-import { Loader2, ArrowLeft, Play, Plus, Check, Star, Clock, Calendar } from "lucide-react";
+import { CastQueuePanel } from "@/components/CastQueuePanel";
+import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
+import { Loader2, ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Cast } from "lucide-react";
 import { toast } from "sonner";
 
 interface CastMember {
@@ -48,6 +50,10 @@ const ContentDetail = () => {
   const { data: profile } = useProfile();
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
+  
+  // Cast Queue
+  const castQueue = useCastQueue();
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
@@ -112,11 +118,41 @@ const ContentDetail = () => {
     setPlaying(true);
   };
 
+  const handleAddToQueue = () => {
+    if (!content) return;
+    
+    const queueItem: QueueItem = {
+      id: content.id,
+      url: content.videoUrl,
+      title: content.title,
+      thumbnail: content.thumbnailUrl,
+      duration: content.duration,
+    };
+    
+    castQueue.addToQueue(queueItem);
+  };
+
   const handleRecommendationClick = (tmdbId: number) => {
     // Find content with this TMDB ID
     const rec = allContent.find((c: any) => c.tmdb_id === tmdbId);
     if (rec) {
       navigate(`/content/${rec.id}`);
+    }
+  };
+
+  const handleAddRecommendationToQueue = (rec: Recommendation) => {
+    const matchedContent = allContent.find((c: any) => c.tmdb_id === rec.tmdb_id);
+    if (matchedContent) {
+      const queueItem: QueueItem = {
+        id: matchedContent.id,
+        url: matchedContent.videoUrl,
+        title: matchedContent.title,
+        thumbnail: matchedContent.thumbnailUrl,
+        duration: matchedContent.duration,
+      };
+      castQueue.addToQueue(queueItem);
+    } else {
+      toast.error("This content is not available in your library");
     }
   };
 
@@ -178,6 +214,21 @@ const ContentDetail = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
 
+        {/* Queue Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsQueueOpen(true)}
+          className="absolute top-4 right-4 z-10 bg-background/50 hover:bg-background/80"
+        >
+          <ListVideo className="h-5 w-5" />
+          {castQueue.queue.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-brand text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center">
+              {castQueue.queue.length}
+            </span>
+          )}
+        </Button>
+
         {/* Content Info */}
         <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
           <div className="max-w-3xl">
@@ -224,7 +275,7 @@ const ContentDetail = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button size="lg" className="gap-2 bg-brand hover:bg-brand/90" onClick={handlePlay}>
                 <Play className="h-5 w-5 fill-current" />
                 Play
@@ -237,6 +288,15 @@ const ContentDetail = () => {
               >
                 {isInList ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                 {isInList ? "In My List" : "My List"}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="gap-2"
+                onClick={handleAddToQueue}
+              >
+                <Cast className="h-5 w-5" />
+                Add to Queue
               </Button>
             </div>
           </div>
@@ -296,32 +356,47 @@ const ContentDetail = () => {
                 {recommendations.map((rec) => (
                   <div
                     key={rec.tmdb_id}
-                    className="cursor-pointer group"
-                    onClick={() => handleRecommendationClick(rec.tmdb_id)}
+                    className="group relative"
                   >
-                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-secondary">
-                      {rec.thumbnail_url ? (
-                        <img
-                          src={rec.thumbnail_url}
-                          alt={rec.title}
-                          className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          No Image
-                        </div>
-                      )}
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => handleRecommendationClick(rec.tmdb_id)}
+                    >
+                      <div className="aspect-[2/3] rounded-lg overflow-hidden bg-secondary">
+                        {rec.thumbnail_url ? (
+                          <img
+                            src={rec.thumbnail_url}
+                            alt={rec.title}
+                            className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="mt-2 font-medium text-sm truncate">{rec.title}</h3>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{rec.year}</span>
+                        {rec.rating && (
+                          <span className="flex items-center gap-0.5 text-yellow-500">
+                            <Star className="h-3 w-3 fill-current" />
+                            {rec.rating}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <h3 className="mt-2 font-medium text-sm truncate">{rec.title}</h3>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{rec.year}</span>
-                      {rec.rating && (
-                        <span className="flex items-center gap-0.5 text-yellow-500">
-                          <Star className="h-3 w-3 fill-current" />
-                          {rec.rating}
-                        </span>
-                      )}
-                    </div>
+                    {/* Add to queue button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddRecommendationToQueue(rec);
+                      }}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-brand"
+                      title="Add to Cast Queue"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -329,6 +404,18 @@ const ContentDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Cast Queue Panel */}
+      <CastQueuePanel
+        queue={castQueue.queue}
+        currentIndex={castQueue.currentIndex}
+        isOpen={isQueueOpen}
+        onClose={() => setIsQueueOpen(false)}
+        onPlayAtIndex={castQueue.playAtIndex}
+        onRemove={castQueue.removeFromQueue}
+        onClear={castQueue.clearQueue}
+        onReorder={castQueue.reorderQueue}
+      />
     </div>
   );
 };
