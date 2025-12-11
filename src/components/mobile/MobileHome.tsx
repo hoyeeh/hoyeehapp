@@ -57,7 +57,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   }, [queryClient]);
 
   // Fetch Top 10
-  const { data: top10Data = [] } = useQuery({
+  const { data: top10Data = [], isLoading: isLoadingTop10 } = useQuery({
     queryKey: ["mobile-top-10"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -71,7 +71,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   });
 
   // Fetch trending
-  const { data: trendingData = [] } = useQuery({
+  const { data: trendingData = [], isLoading: isLoadingTrending } = useQuery({
     queryKey: ["mobile-trending"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -85,7 +85,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   });
 
   // Fetch new releases
-  const { data: newReleases = [] } = useQuery({
+  const { data: newReleases = [], isLoading: isLoadingNewReleases } = useQuery({
     queryKey: ["mobile-new-releases"],
     queryFn: async () => {
       const twoWeeksAgo = subDays(new Date(), 14).toISOString();
@@ -209,35 +209,32 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
           />
 
           {/* New Releases */}
-          {newContent.length > 0 && (
-            <MobileContentRow
-              title="New Releases"
-              content={newContent}
-              onDetails={handleDetails}
-              showSeeAll
-            />
-          )}
+          <MobileContentRow
+            title="New Releases"
+            content={newContent}
+            onDetails={handleDetails}
+            showSeeAll
+            isLoading={isLoadingNewReleases}
+          />
 
           {/* Top 10 */}
-          {top10Content.length > 0 && (
-            <MobileContentRow
-              title="Top 10 in Hoyeeh"
-              content={top10Content}
-              onDetails={handleDetails}
-              showRank
-              variant="poster"
-            />
-          )}
+          <MobileContentRow
+            title="Top 10 in Hoyeeh"
+            content={top10Content}
+            onDetails={handleDetails}
+            showRank
+            variant="poster"
+            isLoading={isLoadingTop10}
+          />
 
           {/* Trending */}
-          {trending.length > 0 && (
-            <MobileContentRow
-              title="Trending Now"
-              content={trending}
-              onDetails={handleDetails}
-              variant="landscape"
-            />
-          )}
+          <MobileContentRow
+            title="Trending Now"
+            content={trending}
+            onDetails={handleDetails}
+            variant="landscape"
+            isLoading={isLoadingTrending}
+          />
 
           {/* Movies */}
           {movies.length > 0 && (

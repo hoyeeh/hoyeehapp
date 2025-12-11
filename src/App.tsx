@@ -68,6 +68,7 @@ const App = () => (
                 <Route path="/copyright" element={<Copyright />} />
                 <Route path="/install" element={<Install />} />
                 <Route path="/notifications" element={<NotificationPreferences />} />
+                <Route path="/notification-preferences" element={<NotificationPreferences />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CastProvider>
