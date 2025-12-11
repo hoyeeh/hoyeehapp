@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,62 +14,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Generate a unique session ID for this browser instance
-const generateSessionId = () => {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-};
-
-// Get or create session ID for this browser
-const getLocalSessionId = () => {
-  let sessionId = localStorage.getItem('device_session_id');
-  if (!sessionId) {
-    sessionId = generateSessionId();
-    localStorage.setItem('device_session_id', sessionId);
-  }
-  return sessionId;
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        // Handle session on sign in - use setTimeout to avoid deadlock
-        if (event === 'SIGNED_IN' && session?.user) {
-          setTimeout(() => {
-            updateActiveSession(session.user.id);
-          }, 0);
-        }
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      // Check active session for existing login
-      if (session?.user) {
-        setTimeout(() => {
-          checkAndUpdateSession(session.user.id);
-        }, 0);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+  // Generate a unique session ID for this browser instance - inside component to avoid SSR issues
+  const generateSessionId = useCallback(() => {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
   }, []);
 
-  const updateActiveSession = async (userId: string) => {
+  // Get or create session ID for this browser - inside component to avoid SSR issues
+  const getLocalSessionId = useCallback(() => {
+    if (typeof window === 'undefined') return '';
+    
+    let sessionId = localStorage.getItem('device_session_id');
+    if (!sessionId) {
+      sessionId = generateSessionId();
+      localStorage.setItem('device_session_id', sessionId);
+    }
+    return sessionId;
+  }, [generateSessionId]);
+
+  const updateActiveSession = useCallback(async (userId: string) => {
     const localSessionId = getLocalSessionId();
+    if (!localSessionId) return;
     
     try {
       await supabase
@@ -82,13 +51,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Error updating active session:', error);
     }
-  };
+  }, [getLocalSessionId]);
 
-  const checkAndUpdateSession = async (userId: string) => {
+  const checkAndUpdateSession = useCallback(async (userId: string) => {
     const localSessionId = getLocalSessionId();
+    if (!localSessionId) return;
     
     try {
-      // Check if there's an active session
       const { data: profile } = await supabase
         .from('profiles')
         .select('active_session_id')
@@ -96,7 +65,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (profile?.active_session_id && profile.active_session_id !== localSessionId) {
-        // Another device is logged in, sign out this one
         toast.error("Already signed in on another device", {
           description: "You have been signed out because your account is active on another device.",
           duration: 5000,
@@ -105,15 +73,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Update this session as active
       await updateActiveSession(userId);
     } catch (error) {
       console.error('Error checking session:', error);
     }
-  };
+  }, [getLocalSessionId, updateActiveSession]);
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setLoading(false);
+        
+        // Handle session on sign in - use setTimeout to avoid deadlock
+        if (event === 'SIGNED_IN' && currentSession?.user) {
+          setTimeout(() => {
+            updateActiveSession(currentSession.user.id);
+          }, 0);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
+      setLoading(false);
+      
+      // Check active session for existing login
+      if (existingSession?.user) {
+        setTimeout(() => {
+          checkAndUpdateSession(existingSession.user.id);
+        }, 0);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [updateActiveSession, checkAndUpdateSession]);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : '/';
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -150,7 +151,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (profile?.active_session_id && profile.active_session_id !== localSessionId) {
-        // Force logout the other device by updating the session
         toast.info("Signed out from other device", {
           description: "Your account was active on another device. That session has been ended.",
           duration: 5000,
