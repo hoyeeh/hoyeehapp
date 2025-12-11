@@ -33,6 +33,14 @@ interface TMDBResult {
 interface TMDBDetails extends TMDBResult {
   duration: number;
   genres: string[];
+  content_rating?: string;
+  cast?: Array<{
+    id: number;
+    name: string;
+    character: string;
+    profile_path: string | null;
+  }>;
+  director?: string | null;
 }
 
 export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
@@ -48,8 +56,9 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const [searching, setSearching] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TMDBResult | null>(null);
   const [fetchingDetails, setFetchingDetails] = useState(false);
+  const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
 
-  // Form state
+  // Form state - is_premium defaults to true
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -57,10 +66,11 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     content_type: "movie",
     year: new Date().getFullYear(),
     rating: "",
-    is_premium: false,
+    is_premium: true,
     duration: 0,
     thumbnail_url: "",
     tmdb_id: null as number | null,
+    content_rating: "PG",
   });
 
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -126,6 +136,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const handleSelectResult = async (result: TMDBResult) => {
     setSelectedResult(result);
     setFetchingDetails(true);
+    setTmdbDetails(null);
     
     // Immediately set basic data
     setFormData(prev => ({
@@ -139,19 +150,21 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       tmdb_id: result.tmdb_id,
     }));
 
-    // Fetch details to get duration and genres
+    // Fetch details to get duration, genres, cast, director, and content_rating
     try {
       const { data, error } = await supabase.functions.invoke('tmdb-details', {
         body: { tmdb_id: result.tmdb_id, type: searchType }
       });
 
       if (!error && data) {
+        setTmdbDetails(data);
         setFormData(prev => ({
           ...prev,
           duration: data.duration || 0,
           genre: data.genres?.[0] || "",
+          content_rating: data.content_rating || "PG",
         }));
-        toast.success(`Duration: ${data.duration} min`);
+        toast.success(`Fetched: ${data.duration} min, Rating: ${data.content_rating}`);
       }
     } catch (error) {
       console.error('Failed to fetch details:', error);
@@ -216,16 +229,18 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       content_type: "movie",
       year: new Date().getFullYear(),
       rating: "",
-      is_premium: false,
+      is_premium: true,
       duration: 0,
       thumbnail_url: "",
       tmdb_id: null,
+      content_rating: "PG",
     });
     setSelectedResult(null);
     setSearchResults([]);
     setSearchQuery("");
     setVideoFile(null);
     setThumbnailFile(null);
+    setTmdbDetails(null);
     resetProgress();
   };
 
@@ -323,7 +338,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
               {/* Selected Content Preview */}
               {selectedResult && (
-                <div className="border border-border rounded-lg p-4 bg-secondary/30">
+                <div className="border border-border rounded-lg p-4 bg-secondary/30 space-y-4">
                   <div className="flex gap-4">
                     {selectedResult.thumbnail_url && (
                       <img
@@ -337,19 +352,64 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                       <p className="text-sm text-muted-foreground line-clamp-3">
                         {selectedResult.description}
                       </p>
-                      <div className="flex gap-4 text-sm">
+                      <div className="flex flex-wrap gap-4 text-sm">
                         <span>Year: {selectedResult.year}</span>
-                        <span>Rating: ⭐ {selectedResult.rating}</span>
+                        <span>⭐ {selectedResult.rating}</span>
                         {fetchingDetails ? (
                           <span className="flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Fetching duration...
+                            <Loader2 className="h-3 w-3 animate-spin" /> Fetching...
                           </span>
-                        ) : formData.duration > 0 && (
-                          <span className="text-primary">Duration: {formData.duration} min</span>
+                        ) : (
+                          <>
+                            {formData.duration > 0 && (
+                              <span className="text-primary">{formData.duration} min</span>
+                            )}
+                            {formData.content_rating && (
+                              <span className="px-2 py-0.5 bg-primary/20 rounded text-xs font-medium">
+                                {formData.content_rating}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
+
+                  {/* Cast & Director Info */}
+                  {tmdbDetails && (tmdbDetails.cast?.length || tmdbDetails.director) && (
+                    <div className="border-t border-border pt-3 space-y-2">
+                      {tmdbDetails.director && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Director:</span>{" "}
+                          <span className="font-medium">{tmdbDetails.director}</span>
+                        </p>
+                      )}
+                      {tmdbDetails.cast && tmdbDetails.cast.length > 0 && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-2">Cast:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {tmdbDetails.cast.slice(0, 6).map((actor) => (
+                              <div key={actor.id} className="flex items-center gap-2 bg-secondary/50 rounded-full px-3 py-1">
+                                {actor.profile_path && (
+                                  <img
+                                    src={actor.profile_path}
+                                    alt={actor.name}
+                                    className="w-6 h-6 rounded-full object-cover"
+                                  />
+                                )}
+                                <span className="text-xs">{actor.name}</span>
+                              </div>
+                            ))}
+                            {tmdbDetails.cast.length > 6 && (
+                              <span className="text-xs text-muted-foreground self-center">
+                                +{tmdbDetails.cast.length - 6} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

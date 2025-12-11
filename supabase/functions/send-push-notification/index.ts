@@ -40,6 +40,28 @@ async function sendWebPush(
   }
 }
 
+// Get preference field based on notification type
+function getPreferenceField(type: string): string {
+  switch (type) {
+    case 'new_release':
+    case 'release':
+      return 'new_releases';
+    case 'coming_soon':
+      return 'coming_soon_alerts';
+    case 'subscription':
+    case 'renewal':
+    case 'expiration':
+      return 'subscription_reminders';
+    case 'promotional':
+    case 'promo':
+      return 'promotional';
+    case 'weekly_digest':
+      return 'weekly_digest';
+    default:
+      return 'new_releases';
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -86,9 +108,10 @@ serve(async (req) => {
 
     const { userId, title, body, type, contentId, sendToAll, url }: PushNotificationRequest = await req.json();
 
-    console.log(`Admin ${user.id} sending push notification: ${title} - ${body}`);
+    console.log(`Admin ${user.id} sending ${type} push notification: ${title}`);
 
     let userIds: string[] = [];
+    const preferenceField = getPreferenceField(type);
 
     if (sendToAll) {
       // Get all users with push subscriptions
@@ -97,34 +120,74 @@ serve(async (req) => {
         .select('user_id, endpoint, p256dh, auth');
       
       if (subscriptions && subscriptions.length > 0) {
-        // Send web push to each subscription
+        const allUserIds = [...new Set(subscriptions.map(s => s.user_id))];
+        
+        // Fetch notification preferences for these users
+        const { data: preferences } = await supabase
+          .from('notification_preferences')
+          .select(`user_id, ${preferenceField}`)
+          .in('user_id', allUserIds);
+
+        // Create a map of user preferences
+        const prefsMap = new Map<string, boolean>();
+        preferences?.forEach((p: any) => {
+          prefsMap.set(p.user_id, p[preferenceField]);
+        });
+
+        // Filter to users who have opted in (or have no preference - default to true)
+        const optedInUserIds = allUserIds.filter(uid => {
+          const pref = prefsMap.get(uid);
+          return pref === true || pref === undefined;
+        });
+
+        console.log(`${optedInUserIds.length} of ${allUserIds.length} users opted in for ${preferenceField}`);
+
+        // Send web push to opted-in users' subscriptions
         for (const sub of subscriptions) {
-          await sendWebPush(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            { title, body, url: url || (contentId ? `/content/${contentId}` : '/') }
-          );
+          if (optedInUserIds.includes(sub.user_id)) {
+            await sendWebPush(
+              { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+              { title, body, url: url || (contentId ? `/content/${contentId}` : '/') }
+            );
+          }
         }
-        userIds = [...new Set(subscriptions.map(s => s.user_id))];
+        userIds = optedInUserIds;
       }
     } else if (userId) {
-      // Get specific user's subscriptions
-      const { data: subscriptions } = await supabase
-        .from('push_subscriptions')
-        .select('endpoint, p256dh, auth')
-        .eq('user_id', userId);
+      // Check if this specific user has opted in
+      const { data: userPref } = await supabase
+        .from('notification_preferences')
+        .select(preferenceField)
+        .eq('user_id', userId)
+        .single();
 
-      if (subscriptions) {
-        for (const sub of subscriptions) {
-          await sendWebPush(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            { title, body, url: url || (contentId ? `/content/${contentId}` : '/') }
-          );
+      // Only proceed if user has opted in or has no preference
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prefValue = userPref ? (userPref as any)[preferenceField] : undefined;
+      const hasOptedIn = prefValue !== false;
+
+      if (hasOptedIn) {
+        // Get specific user's subscriptions
+        const { data: subscriptions } = await supabase
+          .from('push_subscriptions')
+          .select('endpoint, p256dh, auth')
+          .eq('user_id', userId);
+
+        if (subscriptions) {
+          for (const sub of subscriptions) {
+            await sendWebPush(
+              { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+              { title, body, url: url || (contentId ? `/content/${contentId}` : '/') }
+            );
+          }
         }
+        userIds = [userId];
+      } else {
+        console.log(`User ${userId} has opted out of ${preferenceField} notifications`);
       }
-      userIds = [userId];
     }
 
-    // Create in-app notifications for each user
+    // Create in-app notifications for opted-in users
     const notifications = userIds.map(uid => ({
       user_id: uid,
       title,
@@ -143,7 +206,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Created ${notifications.length} notifications`);
+    console.log(`Created ${notifications.length} notifications (respecting user preferences)`);
 
     return new Response(
       JSON.stringify({ 
