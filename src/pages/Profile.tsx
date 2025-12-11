@@ -9,12 +9,37 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield } from "lucide-react";
+import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { ParentalControls } from "@/components/ParentalControls";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
+// Import avatar images
+import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
+import avatarGold from "@/assets/avatars/avatar-gold.png";
+import avatarBlue from "@/assets/avatars/avatar-blue.png";
+import avatarPurple from "@/assets/avatars/avatar-purple.png";
+import avatarGreen from "@/assets/avatars/avatar-green.png";
+import avatarYellow from "@/assets/avatars/avatar-yellow.png";
+import avatarRed from "@/assets/avatars/avatar-red.png";
+import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
+import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
+
+const PROFILE_AVATARS = [
+  { src: avatarBasketball, name: "Basketball" },
+  { src: avatarGold, name: "Gold" },
+  { src: avatarBlue, name: "Blue" },
+  { src: avatarPurple, name: "Purple" },
+  { src: avatarGreen, name: "Green" },
+  { src: avatarYellow, name: "Yellow" },
+  { src: avatarRed, name: "Red" },
+  { src: avatarCowboy, name: "Cowboy" },
+  { src: avatarUnicorn, name: "Unicorn" },
+];
 
 const COUNTRIES = [
   { code: 'CM', name: 'Cameroon' },
@@ -37,6 +62,8 @@ const Profile = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -49,6 +76,12 @@ const Profile = () => {
       setDisplayName(profile.display_name || "");
       setCountry(profile.country || "CM");
       setAvatarUrl(profile.avatar_url);
+      
+      // Find matching preset avatar
+      const avatarIndex = PROFILE_AVATARS.findIndex(a => a.src === profile.avatar_url);
+      if (avatarIndex >= 0) {
+        setSelectedAvatar(avatarIndex);
+      }
     }
   }, [profile]);
 
@@ -93,11 +126,37 @@ const Profile = () => {
       if (updateError) throw updateError;
 
       setAvatarUrl(publicUrl);
+      setSelectedAvatar(null);
       refetch();
       toast.success("Avatar updated successfully");
     } catch (error) {
       console.error('Avatar upload error:', error);
       toast.error("Failed to upload avatar");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSelectPresetAvatar = async (index: number) => {
+    if (!user) return;
+    
+    setUploading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: PROFILE_AVATARS[index].src })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setAvatarUrl(PROFILE_AVATARS[index].src);
+      setSelectedAvatar(index);
+      setAvatarDialogOpen(false);
+      refetch();
+      toast.success("Avatar updated successfully");
+    } catch (error) {
+      console.error('Avatar update error:', error);
+      toast.error("Failed to update avatar");
     } finally {
       setUploading(false);
     }
@@ -128,6 +187,9 @@ const Profile = () => {
     }
   };
 
+  // Check if current avatar is a preset
+  const isPresetAvatar = PROFILE_AVATARS.some(a => a.src === avatarUrl);
+
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -157,18 +219,18 @@ const Profile = () => {
               <User className="h-5 w-5" />
               Profile Picture
             </CardTitle>
-            <CardDescription>Upload a profile picture to personalize your account</CardDescription>
+            <CardDescription>Choose an avatar or upload your own picture</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-6">
             <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+              <Avatar className="h-24 w-24 cursor-pointer" onClick={() => setAvatarDialogOpen(true)}>
+                <AvatarImage src={avatarUrl || undefined} alt={displayName} className="object-cover" />
                 <AvatarFallback className="text-2xl bg-brand text-primary-foreground">
                   {displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <label
-                htmlFor="avatar-upload"
+              <button
+                onClick={() => setAvatarDialogOpen(true)}
                 className="absolute bottom-0 right-0 p-1.5 bg-brand rounded-full cursor-pointer hover:bg-brand/90 transition-colors"
               >
                 {uploading ? (
@@ -176,22 +238,100 @@ const Profile = () => {
                 ) : (
                   <Camera className="h-4 w-4 text-primary-foreground" />
                 )}
-              </label>
-              <input
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-                disabled={uploading}
-              />
+              </button>
             </div>
             <div>
               <p className="font-medium">{displayName || "Set your display name"}</p>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => setAvatarDialogOpen(true)}
+              >
+                Change Avatar
+              </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* Avatar Selection Dialog */}
+        <Dialog open={avatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Choose Your Avatar</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* Current Avatar Preview */}
+              <div className="flex justify-center">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage 
+                    src={selectedAvatar !== null ? PROFILE_AVATARS[selectedAvatar].src : avatarUrl || undefined} 
+                    alt="Preview"
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="text-2xl bg-brand text-primary-foreground">
+                    {displayName?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              {/* Preset Avatars Grid */}
+              <div>
+                <Label className="text-sm text-muted-foreground mb-3 block">Choose from presets</Label>
+                <div className="grid grid-cols-5 gap-3 justify-items-center">
+                  {PROFILE_AVATARS.map((avatar, i) => (
+                    <button
+                      key={avatar.name}
+                      className={cn(
+                        "w-14 h-14 rounded-lg overflow-hidden transition-all relative",
+                        (selectedAvatar === i || avatarUrl === avatar.src) 
+                          ? "ring-2 ring-offset-2 ring-brand scale-110" 
+                          : "hover:scale-105 opacity-70 hover:opacity-100"
+                      )}
+                      onClick={() => handleSelectPresetAvatar(i)}
+                      disabled={uploading}
+                    >
+                      <img 
+                        src={avatar.src} 
+                        alt={avatar.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {avatarUrl === avatar.src && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Check className="h-5 w-5 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Upload */}
+              <div className="pt-4 border-t border-border">
+                <Label className="text-sm text-muted-foreground mb-3 block">Or upload your own</Label>
+                <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors">
+                  <Camera className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Upload custom image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAvatarDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Profile Details */}
         <Card className="bg-card mb-6">
