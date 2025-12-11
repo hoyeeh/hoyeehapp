@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import ContentDetail from "./pages/ContentDetail";
 import MyList from "./pages/MyList";
 import Downloads from "./pages/Downloads";
+import Dashboard from "./pages/Dashboard";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 import Genres from "./pages/Genres";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/content/:id" element={<ContentDetail />} />
                 <Route path="/my-list" element={<MyList />} />
                 <Route path="/downloads" element={<Downloads />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/genres" element={<Genres />} />
                 <Route path="/terms" element={<TermsOfUse />} />

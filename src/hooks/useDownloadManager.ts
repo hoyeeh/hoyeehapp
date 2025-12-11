@@ -170,6 +170,23 @@ export function useDownloadManager() {
       return;
     }
 
+    // Check Wi-Fi only setting
+    const wifiOnlyEnabled = localStorage.getItem('hoyeeh-wifi-only-downloads') === 'true';
+    if (wifiOnlyEnabled) {
+      const connection = (navigator as any).connection || 
+                        (navigator as any).mozConnection || 
+                        (navigator as any).webkitConnection;
+      if (connection) {
+        const mobileTypes = ['cellular', '2g', '3g', '4g', '5g'];
+        const connectionType = connection.type || '';
+        const effectiveType = connection.effectiveType || '';
+        if (mobileTypes.includes(connectionType) || mobileTypes.includes(effectiveType)) {
+          toast.error('Wi-Fi only mode is enabled. Connect to Wi-Fi to download.');
+          return;
+        }
+      }
+    }
+
     const downloadId = getDownloadId(content.id, episodeId);
     
     // Check if already downloading
