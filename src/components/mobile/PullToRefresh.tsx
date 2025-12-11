@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHaptics } from "@/hooks/useHaptics";
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
@@ -14,11 +15,14 @@ export function PullToRefresh({ onRefresh, children, threshold = 80 }: PullToRef
   const [isPulling, setIsPulling] = useState(false);
   const startY = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { mediumTap, successFeedback } = useHaptics();
+  const hasTriggeredHaptic = useRef(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (containerRef.current?.scrollTop === 0) {
       startY.current = e.touches[0].clientY;
       setIsPulling(true);
+      hasTriggeredHaptic.current = false;
     }
   }, []);
 
@@ -33,8 +37,14 @@ export function PullToRefresh({ onRefresh, children, threshold = 80 }: PullToRef
       const resistance = 0.4;
       const pull = Math.min(diff * resistance, threshold * 1.5);
       setPullDistance(pull);
+
+      // Haptic feedback when reaching threshold
+      if (pull >= threshold && !hasTriggeredHaptic.current) {
+        mediumTap();
+        hasTriggeredHaptic.current = true;
+      }
     }
-  }, [isPulling, isRefreshing, threshold]);
+  }, [isPulling, isRefreshing, threshold, mediumTap]);
 
   const handleTouchEnd = useCallback(async () => {
     if (!isPulling) return;
@@ -47,6 +57,7 @@ export function PullToRefresh({ onRefresh, children, threshold = 80 }: PullToRef
       
       try {
         await onRefresh();
+        successFeedback();
       } finally {
         setIsRefreshing(false);
         setPullDistance(0);
@@ -54,7 +65,7 @@ export function PullToRefresh({ onRefresh, children, threshold = 80 }: PullToRef
     } else {
       setPullDistance(0);
     }
-  }, [isPulling, pullDistance, threshold, isRefreshing, onRefresh]);
+  }, [isPulling, pullDistance, threshold, isRefreshing, onRefresh, successFeedback]);
 
   const progress = Math.min(pullDistance / threshold, 1);
 

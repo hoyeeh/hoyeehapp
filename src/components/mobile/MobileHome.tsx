@@ -13,7 +13,6 @@ import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeroCard } from "./MobileHeroCard";
 import { MobileContentRow } from "./MobileContentRow";
-import { SwipeableContentRow } from "./SwipeableContentRow";
 import { MobileContinueWatching } from "./MobileContinueWatching";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MobileContentDetail } from "./MobileContentDetail";

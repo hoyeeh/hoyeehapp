@@ -17,6 +17,8 @@ import { ParentalControls } from "@/components/ParentalControls";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileProfile } from "@/components/mobile/MobileProfile";
 
 // Import avatar images
 import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
@@ -54,6 +56,7 @@ const COUNTRIES = [
 
 const Profile = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { user, loading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading, refetch } = useProfile();
 
@@ -64,6 +67,11 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
+
+  // Return mobile version for mobile devices
+  if (isMobile) {
+    return <MobileProfile />;
+  }
 
   useEffect(() => {
     if (!authLoading && !user) {
