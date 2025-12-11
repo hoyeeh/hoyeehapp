@@ -57,6 +57,7 @@ export function useDownloadManager() {
   const [storageUsed, setStorageUsed] = useState(0);
   const [activeDownloads, setActiveDownloads] = useState<Map<string, AbortController>>(new Map());
   const deviceKeyRef = useRef<CryptoKey | null>(null);
+  const pausedByNetworkRef = useRef<Set<string>>(new Set());
 
   // Load downloads on mount
   useEffect(() => {
@@ -68,6 +69,49 @@ export function useDownloadManager() {
   useEffect(() => {
     cleanupExpiredDownloads();
   }, []);
+
+  // Auto pause/resume based on network changes
+  useEffect(() => {
+    const wifiOnlyEnabled = localStorage.getItem('hoyeeh-wifi-only-downloads') === 'true';
+    if (!wifiOnlyEnabled) return;
+
+    const handleNetworkChange = () => {
+      const connection = (navigator as any).connection || 
+                        (navigator as any).mozConnection || 
+                        (navigator as any).webkitConnection;
+      
+      if (!connection) return;
+      
+      const connectionType = connection.type || '';
+      const effectiveType = connection.effectiveType || '';
+      const mobileTypes = ['cellular', '2g', '3g', '4g', '5g'];
+      const isWifi = !mobileTypes.includes(connectionType) && 
+                     !mobileTypes.includes(effectiveType) ||
+                     connectionType === 'wifi' || connectionType === 'ethernet';
+
+      if (!isWifi) {
+        // Switched to mobile data - pause all active downloads
+        activeDownloads.forEach((controller, downloadId) => {
+          controller.abort();
+          pausedByNetworkRef.current.add(downloadId);
+          toast.warning('Downloads paused - switched to mobile data');
+        });
+      } else if (pausedByNetworkRef.current.size > 0) {
+        // Switched back to Wi-Fi - notify user (can't auto-resume easily)
+        toast.success(`Wi-Fi connected. ${pausedByNetworkRef.current.size} download(s) ready to resume.`);
+        pausedByNetworkRef.current.clear();
+      }
+    };
+
+    const connection = (navigator as any).connection || 
+                      (navigator as any).mozConnection || 
+                      (navigator as any).webkitConnection;
+    
+    if (connection) {
+      connection.addEventListener('change', handleNetworkChange);
+      return () => connection.removeEventListener('change', handleNetworkChange);
+    }
+  }, [activeDownloads]);
 
   const initializeDeviceKey = async () => {
     try {
