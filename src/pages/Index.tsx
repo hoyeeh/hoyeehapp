@@ -348,18 +348,19 @@ const Index = () => {
     return <ProfilePicker onProfileSelected={setCurrentProfile} />;
   }
 
-  // Main App (logged in)
+  // Main App (logged in) - Wrap with KidsInterface for kids profiles
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar
-        currentView={currentView}
-        onNavigate={setCurrentView}
-        onLogout={handleLogout}
-        userName={profile?.display_name || user.email?.split("@")[0]}
-      />
+    <KidsInterface>
+      <div className="min-h-screen bg-background">
+        <Sidebar
+          currentView={currentView}
+          onNavigate={setCurrentView}
+          onLogout={handleLogout}
+          userName={profile?.display_name || user.email?.split("@")[0]}
+        />
 
-      {/* Main Content */}
-      <main className="ml-16 md:ml-64">
+        {/* Main Content */}
+        <main className="ml-16 md:ml-64">
         {/* Top Bar */}
         <div className="sticky top-0 z-40 bg-gradient-to-b from-background to-transparent p-4 flex justify-end">
           {showSearch ? (
@@ -589,7 +590,8 @@ const Index = () => {
       )}
 
       <Toaster position="bottom-right" />
-    </div>
+      </div>
+    </KidsInterface>
   );
 };
 

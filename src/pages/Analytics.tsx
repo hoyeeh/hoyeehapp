@@ -73,6 +73,29 @@ const Analytics = () => {
   const totalRevenue = subscriptions
     .filter(s => s.status === "active")
     .reduce((acc, s) => acc + Number(s.amount), 0);
+
+  // Daily revenue (today)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dailyRevenue = subscriptions
+    .filter(s => {
+      if (!s.created_at) return false;
+      const createdDate = new Date(s.created_at);
+      createdDate.setHours(0, 0, 0, 0);
+      return createdDate.getTime() === today.getTime() && s.status === "active";
+    })
+    .reduce((acc, s) => acc + Number(s.amount), 0);
+
+  // Weekly revenue (last 7 days)
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weeklyRevenue = subscriptions
+    .filter(s => {
+      if (!s.created_at) return false;
+      const createdDate = new Date(s.created_at);
+      return createdDate >= weekAgo && s.status === "active";
+    })
+    .reduce((acc, s) => acc + Number(s.amount), 0);
   
   const subscribedUsers = users.filter(u => u.is_subscribed).length;
   const conversionRate = users.length > 0 ? ((subscribedUsers / users.length) * 100).toFixed(1) : 0;
@@ -158,7 +181,7 @@ const Analytics = () => {
 
       <main className="container max-w-7xl mx-auto px-4 py-8">
         {/* Key Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <Card className="bg-card">
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
@@ -186,6 +209,32 @@ const Analytics = () => {
               <p className="text-xs text-muted-foreground">
                 Free to premium
               </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-l-4 border-l-emerald-500">
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-emerald-500" />
+                Daily Revenue
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl sm:text-3xl font-bold text-emerald-500">{dailyRevenue.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">XAF today</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-l-4 border-l-amber-500">
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-amber-500" />
+                Weekly Revenue
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl sm:text-3xl font-bold text-amber-500">{weeklyRevenue.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">XAF this week</p>
             </CardContent>
           </Card>
 
