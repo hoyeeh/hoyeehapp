@@ -34,6 +34,7 @@ import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
 import { KidsCategoryManagement } from "@/components/admin/KidsCategoryManagement";
 import { AdminSubscriptionCredits } from "@/components/admin/AdminSubscriptionCredits";
 import { AdminSupportChat } from "@/components/admin/AdminSupportChat";
+import { AdminTicketAssignments } from "@/components/admin/AdminTicketAssignments";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -219,6 +220,7 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Support Chat</h2>
+            <AdminTicketAssignments />
             <AdminSupportChat />
           </div>
         );

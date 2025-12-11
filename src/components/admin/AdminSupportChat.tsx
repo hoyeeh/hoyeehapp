@@ -28,6 +28,7 @@ interface SupportTicket {
   subject: string;
   status: string;
   ticket_type: string;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +40,7 @@ export const AdminSupportChat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("all");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch all users for display names
@@ -150,6 +152,7 @@ export const AdminSupportChat = () => {
       // Send email notification via edge function
       const userName = users?.find(u => u.id === ticket.user_id)?.display_name || "User";
       
+      // Send email notification
       try {
         await supabase.functions.invoke("send-support-reply-email", {
           body: {
@@ -161,12 +164,37 @@ export const AdminSupportChat = () => {
         });
       } catch (emailError) {
         console.error("Failed to send email notification:", emailError);
-        // Don't fail the whole operation if email fails
+      }
+
+      // Send push notification
+      try {
+        await supabase.functions.invoke("send-push-notification", {
+          body: {
+            userId: ticket.user_id,
+            title: "Support Reply",
+            body: `New reply on: ${ticket.subject}`,
+            url: "/",
+          },
+        });
+      } catch (pushError) {
+        console.error("Failed to send push notification:", pushError);
+      }
+
+      // Create in-app notification
+      try {
+        await supabase.from("notifications").insert({
+          user_id: ticket.user_id,
+          title: "Support Reply",
+          body: `New reply on your ticket: ${ticket.subject}`,
+          type: "support",
+        });
+      } catch (notifError) {
+        console.error("Failed to create notification:", notifError);
       }
     },
     onSuccess: () => {
       setNewMessage("");
-      toast.success("Reply sent with email notification");
+      toast.success("Reply sent with notifications");
       queryClient.invalidateQueries({ queryKey: ["admin-support-messages", selectedTicket] });
       queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
     },
@@ -214,6 +242,8 @@ export const AdminSupportChat = () => {
   const filteredTickets = tickets?.filter(ticket => {
     if (statusFilter !== "all" && ticket.status !== statusFilter) return false;
     if (typeFilter !== "all" && ticket.ticket_type !== typeFilter) return false;
+    if (assignmentFilter === "mine" && ticket.assigned_to !== user?.id) return false;
+    if (assignmentFilter === "unassigned" && ticket.assigned_to !== null) return false;
     return true;
   });
 
@@ -221,13 +251,15 @@ export const AdminSupportChat = () => {
 
   // Stats
   const openCount = tickets?.filter(t => t.status === "open").length || 0;
+  const myTickets = tickets?.filter(t => t.assigned_to === user?.id).length || 0;
+  const unassignedCount = tickets?.filter(t => t.assigned_to === null && t.status === "open").length || 0;
   const movieRequests = tickets?.filter(t => t.ticket_type === "movie_request").length || 0;
   const showRequests = tickets?.filter(t => t.ticket_type === "show_request").length || 0;
 
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="text-2xl font-bold">{tickets?.length || 0}</div>
@@ -242,14 +274,20 @@ export const AdminSupportChat = () => {
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-blue-500">{movieRequests}</div>
-            <p className="text-sm text-muted-foreground">Movie Requests</p>
+            <div className="text-2xl font-bold text-brand">{myTickets}</div>
+            <p className="text-sm text-muted-foreground">My Tickets</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-purple-500">{showRequests}</div>
-            <p className="text-sm text-muted-foreground">Show Requests</p>
+            <div className="text-2xl font-bold text-red-500">{unassignedCount}</div>
+            <p className="text-sm text-muted-foreground">Unassigned</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-blue-500">{movieRequests}</div>
+            <p className="text-sm text-muted-foreground">Movie Requests</p>
           </CardContent>
         </Card>
       </div>
@@ -264,7 +302,7 @@ export const AdminSupportChat = () => {
             </CardTitle>
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -273,8 +311,18 @@ export const AdminSupportChat = () => {
                   <SelectItem value="closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={assignmentFilter} onValueChange={setAssignmentFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tickets</SelectItem>
+                  <SelectItem value="mine">My Tickets</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-36">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -313,15 +361,25 @@ export const AdminSupportChat = () => {
                       <User className="h-3 w-3" />
                       <span className="truncate">{getUserName(ticket.user_id)}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center flex-wrap gap-1 mt-2">
                       <Badge
                         variant={ticket.status === "open" ? "default" : "secondary"}
                         className="text-xs"
                       >
                         {ticket.status}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(ticket.updated_at), "MMM d, h:mm a")}
+                      {ticket.assigned_to && (
+                        <Badge variant="outline" className="text-xs">
+                          {ticket.assigned_to === user?.id ? "You" : getUserName(ticket.assigned_to)}
+                        </Badge>
+                      )}
+                      {!ticket.assigned_to && (
+                        <Badge variant="destructive" className="text-xs">
+                          Unassigned
+                        </Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {format(new Date(ticket.updated_at), "MMM d")}
                       </span>
                     </div>
                   </button>
