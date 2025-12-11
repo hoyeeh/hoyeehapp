@@ -8,7 +8,10 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { CastQueuePanel } from "@/components/CastQueuePanel";
 import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
+import { TVShowSeasons } from "@/components/TVShowSeasons";
+import { DownloadButton } from "@/components/DownloadButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
+import { Episode } from "@/hooks/useSeasons";
 import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
@@ -60,9 +63,11 @@ const ContentDetail = () => {
   const [loading, setLoading] = useState(true);
   const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
 
   const content = allContent.find(c => c.id === id);
   const isInList = id ? watchlistIds.includes(id) : false;
+  const isTVShow = content?.contentType === 'series';
 
   useEffect(() => {
     const fetchTMDBDetails = async () => {
@@ -158,6 +163,29 @@ const ContentDetail = () => {
     }
   };
 
+  const handlePlayEpisode = (episode: Episode) => {
+    if (episode.is_premium && !profile?.is_subscribed) {
+      toast.error("This episode requires a premium subscription");
+      navigate("/subscription");
+      return;
+    }
+    setPlayingEpisode(episode);
+  };
+
+  // Playing episode
+  if (playingEpisode && content) {
+    return (
+      <VideoPlayer
+        src={playingEpisode.video_url || ''}
+        title={`${content.title} - S${playingEpisode.episode_number} ${playingEpisode.title}`}
+        contentId={content.id}
+        initialProgress={0}
+        onBack={() => setPlayingEpisode(null)}
+      />
+    );
+  }
+
+  // Playing main content (movie or TV show trailer)
   if (playing && content) {
     return (
       <VideoPlayer
@@ -297,6 +325,8 @@ const ContentDetail = () => {
                 thumbnail={content.thumbnailUrl}
                 duration={content.duration}
               />
+              {/* Download button for movies */}
+              {!isTVShow && <DownloadButton content={content} />}
             </div>
           </div>
         </div>
@@ -318,6 +348,13 @@ const ContentDetail = () => {
               </p>
             )}
           </div>
+
+          {/* TV Show Seasons & Episodes */}
+          {isTVShow && (
+            <div className="mb-10">
+              <TVShowSeasons content={content} onPlayEpisode={handlePlayEpisode} />
+            </div>
+          )}
 
           {/* Cast */}
           {cast.length > 0 && (

@@ -387,7 +387,7 @@ export function useDownloadManager() {
     }
   };
 
-  const pauseDownload = useCallback((contentId: string, episodeId?: string) => {
+  const pauseDownload = useCallback(async (contentId: string, episodeId?: string) => {
     const downloadId = getDownloadId(contentId, episodeId);
     const controller = activeDownloads.get(downloadId);
     if (controller) {
@@ -397,8 +397,71 @@ export function useDownloadManager() {
         next.delete(downloadId);
         return next;
       });
+      
+      // Update metadata to paused status
+      const metadata = await getMetadata(downloadId);
+      if (metadata) {
+        await saveMetadata({ ...metadata, status: 'paused', updatedAt: Date.now() });
+        await loadDownloads();
+        toast.info('Download paused');
+      }
     }
   }, [activeDownloads]);
+
+  const resumeDownload = useCallback(async (contentId: string, episodeId?: string) => {
+    const downloadId = getDownloadId(contentId, episodeId);
+    const metadata = await getMetadata(downloadId);
+    
+    if (!metadata || metadata.status !== 'paused') {
+      toast.error('No paused download to resume');
+      return;
+    }
+
+    // For now, restart the download (true resume would need partial file support)
+    const license = await getLicense(downloadId);
+    if (!license) {
+      toast.error('Download license not found. Please start a new download.');
+      return;
+    }
+
+    // Re-fetch content info and restart
+    const { data: content } = await supabase
+      .from('content')
+      .select('*')
+      .eq('id', contentId)
+      .single();
+
+    if (!content) {
+      toast.error('Content not found');
+      return;
+    }
+
+    // Reset metadata and restart
+    await saveMetadata({ 
+      ...metadata, 
+      status: 'downloading', 
+      progress: 0,
+      downloadedSize: 0,
+      updatedAt: Date.now() 
+    });
+    
+    const contentObj = {
+      id: content.id,
+      title: content.title,
+      description: content.description || '',
+      thumbnailUrl: content.thumbnail_url || '',
+      videoUrl: content.video_url || '',
+      contentType: content.content_type as any,
+      genre: content.genre || '',
+      year: content.year || 0,
+      rating: content.rating || '',
+      duration: content.duration || 0,
+      isPremium: content.is_premium || false,
+      contentRating: content.content_rating || 'PG',
+    };
+
+    startDownload(contentObj, episodeId, metadata.episodeTitle, metadata.quality);
+  }, [startDownload]);
 
   const cancelDownload = useCallback(async (contentId: string, episodeId?: string) => {
     const downloadId = getDownloadId(contentId, episodeId);
@@ -558,6 +621,7 @@ export function useDownloadManager() {
     storageLimit: STORAGE_LIMIT,
     startDownload,
     pauseDownload,
+    resumeDownload,
     cancelDownload,
     deleteDownload,
     getProgress,
