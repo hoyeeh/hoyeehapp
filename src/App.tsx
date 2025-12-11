@@ -21,6 +21,10 @@ import Downloads from "./pages/Downloads";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 import Genres from "./pages/Genres";
+import TermsOfUse from "./pages/TermsOfUse";
+import Privacy from "./pages/Privacy";
+import About from "./pages/About";
+import HelpCenter from "./pages/HelpCenter";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +52,10 @@ const App = () => (
                 <Route path="/downloads" element={<Downloads />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/genres" element={<Genres />} />
+                <Route path="/terms" element={<TermsOfUse />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/help" element={<HelpCenter />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CastProvider>

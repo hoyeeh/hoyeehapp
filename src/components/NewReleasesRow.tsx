@@ -1,11 +1,12 @@
 import { Content } from "@/types";
 import { ContentCardWithPreview } from "./ContentCardWithPreview";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, Tv2 } from "lucide-react";
 import { useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { subDays } from "date-fns";
+import { Button } from "@/components/ui/button";
 
 interface NewReleasesRowProps {
   onPlay: (content: Content) => void;
@@ -15,6 +16,7 @@ interface NewReleasesRowProps {
   title?: string;
   maxItems?: number;
   contentTypeFilter?: "all" | "movie" | "series";
+  showFilterControls?: boolean;
 }
 
 export const NewReleasesRow = ({
@@ -24,15 +26,17 @@ export const NewReleasesRow = ({
   userList = [],
   title = "New Releases",
   maxItems = 20,
-  contentTypeFilter = "all",
+  contentTypeFilter: initialFilter = "all",
+  showFilterControls = true,
 }: NewReleasesRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<"all" | "movie" | "series">(initialFilter);
 
   // Fetch content from last 2 weeks
   const { data: newReleases = [] } = useQuery({
-    queryKey: ["new-releases-2-weeks", contentTypeFilter, maxItems],
+    queryKey: ["new-releases-2-weeks", activeFilter, maxItems],
     queryFn: async () => {
       const twoWeeksAgo = subDays(new Date(), 14).toISOString();
       let query = supabase
@@ -43,8 +47,8 @@ export const NewReleasesRow = ({
         .limit(maxItems);
       
       // Apply content type filter if not "all"
-      if (contentTypeFilter !== "all") {
-        query = query.eq("content_type", contentTypeFilter);
+      if (activeFilter !== "all") {
+        query = query.eq("content_type", activeFilter);
       }
       
       const { data, error } = await query;
@@ -93,14 +97,47 @@ export const NewReleasesRow = ({
 
   return (
     <section className="group/section relative py-4 transition-all duration-300 hover:z-10">
-      {/* Section Title */}
-      <div className="px-4 md:px-12 mb-3 flex items-baseline gap-3">
-        <h2 className="font-display text-lg md:text-xl lg:text-2xl text-foreground tracking-wide">
-          {title}
-        </h2>
-        <span className="text-brand text-sm font-medium opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer hover:underline">
-          Explore All →
-        </span>
+      {/* Section Title with Filter Controls */}
+      <div className="px-4 md:px-12 mb-3 flex items-center justify-between">
+        <div className="flex items-baseline gap-3">
+          <h2 className="font-display text-lg md:text-xl lg:text-2xl text-foreground tracking-wide">
+            {title}
+          </h2>
+          <span className="text-brand text-sm font-medium opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer hover:underline">
+            Explore All →
+          </span>
+        </div>
+        
+        {showFilterControls && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant={activeFilter === "all" ? "brand" : "ghost"}
+              size="sm"
+              onClick={() => setActiveFilter("all")}
+              className="text-xs h-7 px-3"
+            >
+              All
+            </Button>
+            <Button
+              variant={activeFilter === "movie" ? "brand" : "ghost"}
+              size="sm"
+              onClick={() => setActiveFilter("movie")}
+              className="text-xs h-7 px-3 gap-1"
+            >
+              <Film className="h-3 w-3" />
+              Movies
+            </Button>
+            <Button
+              variant={activeFilter === "series" ? "brand" : "ghost"}
+              size="sm"
+              onClick={() => setActiveFilter("series")}
+              className="text-xs h-7 px-3 gap-1"
+            >
+              <Tv2 className="h-3 w-3" />
+              TV Shows
+            </Button>
+          </div>
+        )}
       </div>
       
       <div className="relative">
