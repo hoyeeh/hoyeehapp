@@ -74,3 +74,6 @@ verify_jwt = true
 
 [functions.weekly-viewing-report]
 verify_jwt = false
+
+[functions.weekly-digest]
+verify_jwt = false

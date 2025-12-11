@@ -209,7 +209,10 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
         video_url: videoUrl || undefined,
         thumbnail_url: thumbnailUrl || undefined,
         tmdb_id: formData.tmdb_id,
-      });
+        content_rating: formData.content_rating,
+        director: tmdbDetails?.director || undefined,
+        cast_members: tmdbDetails?.cast || undefined,
+      } as any);
 
       toast.success("Content created successfully!");
       onClose();
