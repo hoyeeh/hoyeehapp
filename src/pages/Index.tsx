@@ -34,6 +34,8 @@ import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { subDays } from "date-fns";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileHome } from "@/components/mobile";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -41,6 +43,7 @@ export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search'
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
+  const isMobile = useIsMobile();
   
   const { profiles, currentProfile, setCurrentProfile, loading: profilesLoading } = useProfileContext();
   
@@ -371,6 +374,19 @@ const Index = () => {
         )}
         <Toaster position="bottom-right" />
       </KidsInterface>
+    );
+  }
+
+  // Mobile PWA Experience
+  if (isMobile) {
+    return (
+      <>
+        <MobileHome 
+          onPlay={(item, progress) => setPlayingContent({ content: item, progress: progress || 0 })} 
+        />
+        <PWAInstallBanner />
+        <Toaster position="top-center" />
+      </>
     );
   }
 
