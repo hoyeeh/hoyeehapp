@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { CastQueuePanel } from "@/components/CastQueuePanel";
@@ -12,7 +13,7 @@ import { TVShowSeasons } from "@/components/TVShowSeasons";
 import { DownloadButton } from "@/components/DownloadButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
 import { Episode } from "@/hooks/useSeasons";
-import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo } from "lucide-react";
+import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
 
@@ -55,6 +56,126 @@ const parseDatabaseCast = (castMembers: any): CastMember[] => {
   } catch {
     return [];
   }
+};
+
+// Recommendations Section with Filters
+interface RecommendationsSectionProps {
+  recommendations: Recommendation[];
+  allContent: any[];
+  onRecommendationClick: (tmdbId: number) => void;
+  onAddToQueue: (rec: Recommendation) => void;
+}
+
+const RecommendationsSection = ({ 
+  recommendations, 
+  allContent, 
+  onRecommendationClick, 
+  onAddToQueue 
+}: RecommendationsSectionProps) => {
+  const [yearFilter, setYearFilter] = useState<string>("all");
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
+
+  // Get unique years from recommendations
+  const years = useMemo(() => {
+    const uniqueYears = [...new Set(recommendations.map(r => r.year).filter(Boolean))];
+    return uniqueYears.sort((a, b) => parseInt(b) - parseInt(a));
+  }, [recommendations]);
+
+  // Filter recommendations
+  const filteredRecs = useMemo(() => {
+    return recommendations.filter(rec => {
+      if (yearFilter !== "all" && rec.year !== yearFilter) return false;
+      if (ratingFilter !== "all") {
+        const rating = parseFloat(rec.rating || "0");
+        if (ratingFilter === "high" && rating < 7) return false;
+        if (ratingFilter === "medium" && (rating < 5 || rating >= 7)) return false;
+        if (ratingFilter === "low" && rating >= 5) return false;
+      }
+      return true;
+    });
+  }, [recommendations, yearFilter, ratingFilter]);
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <h2 className="font-display text-2xl">More Like This</h2>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-28 h-8 text-xs">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {years.map(year => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={ratingFilter} onValueChange={setRatingFilter}>
+            <SelectTrigger className="w-28 h-8 text-xs">
+              <SelectValue placeholder="Rating" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Ratings</SelectItem>
+              <SelectItem value="high">7+ Stars</SelectItem>
+              <SelectItem value="medium">5-7 Stars</SelectItem>
+              <SelectItem value="low">Under 5</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      {filteredRecs.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No recommendations match your filters.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {filteredRecs.map((rec) => (
+            <div key={rec.tmdb_id} className="group relative">
+              <div 
+                className="cursor-pointer"
+                onClick={() => onRecommendationClick(rec.tmdb_id)}
+              >
+                <div className="aspect-[2/3] rounded-lg overflow-hidden bg-secondary">
+                  {rec.thumbnail_url ? (
+                    <img
+                      src={rec.thumbnail_url}
+                      alt={rec.title}
+                      className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      No Image
+                    </div>
+                  )}
+                </div>
+                <h3 className="mt-2 font-medium text-sm truncate">{rec.title}</h3>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{rec.year}</span>
+                  {rec.rating && (
+                    <span className="flex items-center gap-0.5 text-yellow-500">
+                      <Star className="h-3 w-3 fill-current" />
+                      {rec.rating}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToQueue(rec);
+                }}
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-brand"
+                title="Add to Cast Queue"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const ContentDetail = () => {
@@ -401,57 +522,12 @@ const ContentDetail = () => {
 
           {/* Recommendations */}
           {recommendations.length > 0 && (
-            <div>
-              <h2 className="font-display text-2xl mb-4">More Like This</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {recommendations.map((rec) => (
-                  <div
-                    key={rec.tmdb_id}
-                    className="group relative"
-                  >
-                    <div 
-                      className="cursor-pointer"
-                      onClick={() => handleRecommendationClick(rec.tmdb_id)}
-                    >
-                      <div className="aspect-[2/3] rounded-lg overflow-hidden bg-secondary">
-                        {rec.thumbnail_url ? (
-                          <img
-                            src={rec.thumbnail_url}
-                            alt={rec.title}
-                            className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                            No Image
-                          </div>
-                        )}
-                      </div>
-                      <h3 className="mt-2 font-medium text-sm truncate">{rec.title}</h3>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{rec.year}</span>
-                        {rec.rating && (
-                          <span className="flex items-center gap-0.5 text-yellow-500">
-                            <Star className="h-3 w-3 fill-current" />
-                            {rec.rating}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {/* Add to queue button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddRecommendationToQueue(rec);
-                      }}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-brand"
-                      title="Add to Cast Queue"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <RecommendationsSection
+              recommendations={recommendations}
+              allContent={allContent}
+              onRecommendationClick={handleRecommendationClick}
+              onAddToQueue={handleAddRecommendationToQueue}
+            />
           )}
         </div>
       </div>

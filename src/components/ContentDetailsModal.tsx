@@ -1,11 +1,18 @@
 import { Content } from "@/types";
-import { X, Play, Plus, Check, Clock } from "lucide-react";
+import { X, Play, Plus, Check, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DownloadButton } from "./DownloadButton";
 import { ContentReviews } from "./ContentReviews";
 import { SocialShare } from "./SocialShare";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ContentRatingBadge } from "./ContentRatingBadge";
+
+interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+}
 
 interface ContentDetailsModalProps {
   content: Content;
@@ -14,6 +21,17 @@ interface ContentDetailsModalProps {
   onToggleList: (content: Content) => void;
   isInList: boolean;
 }
+
+// Helper to parse cast_members from database
+const parseCast = (castMembers: any): CastMember[] => {
+  if (!castMembers) return [];
+  if (Array.isArray(castMembers)) return castMembers;
+  try {
+    return typeof castMembers === 'string' ? JSON.parse(castMembers) : [];
+  } catch {
+    return [];
+  }
+};
 
 export const ContentDetailsModal = ({
   content,
@@ -27,6 +45,9 @@ export const ContentDetailsModal = ({
     const minutes = Math.floor((seconds % 3600) / 60);
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
+
+  const cast = parseCast((content as any).cast_members);
+  const director = (content as any).director;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -85,9 +106,45 @@ export const ContentDetailsModal = ({
               <span className="text-brand">{content.genre}</span>
             </div>
 
+            {/* Director */}
+            {director && (
+              <p className="text-sm mb-2">
+                <span className="text-muted-foreground">Director:</span>{" "}
+                <span className="font-medium">{director}</span>
+              </p>
+            )}
+
             <p className="text-muted-foreground mb-6 leading-relaxed">
               {content.description}
             </p>
+
+            {/* Cast Section */}
+            {cast.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Cast</h3>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {cast.slice(0, 8).map((member) => (
+                    <div key={member.id} className="flex-shrink-0 text-center w-16">
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-secondary mx-auto mb-1">
+                        {member.profile_path ? (
+                          <img
+                            src={member.profile_path}
+                            alt={member.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs font-medium truncate">{member.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{member.character}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3 mb-8">
               <Button

@@ -10,9 +10,16 @@ import { useUpdateContent } from "@/hooks/useAdmin";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { X, Save, Loader2 } from "lucide-react";
+import { X, Save, Loader2, Plus, Trash2, User } from "lucide-react";
 import { VideoUploadField } from "./VideoUploadField";
 import { ThumbnailUploadField } from "./ThumbnailUploadField";
+
+interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+}
 
 interface ContentItem {
   id: string;
@@ -26,12 +33,25 @@ interface ContentItem {
   duration: number | null;
   year: number | null;
   rating: string | null;
+  director?: string | null;
+  cast_members?: CastMember[] | null;
 }
 
 interface ContentEditFormProps {
   content: ContentItem;
   onClose: () => void;
 }
+
+// Helper to parse cast_members
+const parseCast = (castMembers: any): CastMember[] => {
+  if (!castMembers) return [];
+  if (Array.isArray(castMembers)) return castMembers;
+  try {
+    return typeof castMembers === 'string' ? JSON.parse(castMembers) : [];
+  } catch {
+    return [];
+  }
+};
 
 export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
   const updateContent = useUpdateContent();
@@ -46,7 +66,12 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
     duration: content.duration || 0,
     year: content.year || new Date().getFullYear(),
     rating: content.rating || "",
+    director: content.director || "",
   });
+
+  const [castMembers, setCastMembers] = useState<CastMember[]>(parseCast(content.cast_members));
+  const [newCastName, setNewCastName] = useState("");
+  const [newCastCharacter, setNewCastCharacter] = useState("");
 
   // Fetch genres from database
   const { data: genres = [] } = useQuery({
@@ -58,6 +83,26 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
     },
   });
 
+  const handleAddCastMember = () => {
+    if (!newCastName.trim()) {
+      toast.error("Please enter cast member name");
+      return;
+    }
+    const newMember: CastMember = {
+      id: Date.now(),
+      name: newCastName.trim(),
+      character: newCastCharacter.trim(),
+      profile_path: null,
+    };
+    setCastMembers([...castMembers, newMember]);
+    setNewCastName("");
+    setNewCastCharacter("");
+  };
+
+  const handleRemoveCastMember = (id: number) => {
+    setCastMembers(castMembers.filter(m => m.id !== id));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -65,6 +110,8 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
       await updateContent.mutateAsync({
         id: content.id,
         ...formData,
+        director: formData.director || null,
+        cast_members: castMembers.length > 0 ? castMembers : null,
       });
       toast.success("Content updated successfully!");
       onClose();
@@ -168,6 +215,16 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                 min={0}
               />
             </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Director</Label>
+              <Input
+                value={formData.director}
+                onChange={(e) => setFormData({ ...formData, director: e.target.value })}
+                className="bg-secondary"
+                placeholder="Enter director name"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -178,6 +235,62 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
               className="bg-secondary min-h-24"
               rows={3}
             />
+          </div>
+
+          {/* Cast Members Section */}
+          <div className="space-y-3 border border-border rounded-lg p-4">
+            <Label className="text-base font-semibold">Cast Members</Label>
+            
+            {/* Existing Cast */}
+            {castMembers.length > 0 && (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {castMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2">
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                      {member.profile_path ? (
+                        <img src={member.profile_path} alt={member.name} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <User className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{member.name}</p>
+                      {member.character && (
+                        <p className="text-xs text-muted-foreground truncate">as {member.character}</p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveCastMember(member.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add New Cast */}
+            <div className="flex gap-2">
+              <Input
+                value={newCastName}
+                onChange={(e) => setNewCastName(e.target.value)}
+                placeholder="Actor name"
+                className="bg-secondary flex-1"
+              />
+              <Input
+                value={newCastCharacter}
+                onChange={(e) => setNewCastCharacter(e.target.value)}
+                placeholder="Character"
+                className="bg-secondary flex-1"
+              />
+              <Button type="button" variant="secondary" size="icon" onClick={handleAddCastMember}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Thumbnail Upload */}
