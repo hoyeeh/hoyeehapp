@@ -43,9 +43,8 @@ serve(async (req) => {
       throw watchlistError;
     }
 
-    console.log(`Found ${watchlistUsers?.length || 0} users to notify`);
+    console.log(`Found ${watchlistUsers?.length || 0} users in watchlist`);
 
-    // Get user emails from auth.users
     const userIds = watchlistUsers?.map((w: any) => w.user_id) || [];
     
     if (userIds.length === 0) {
@@ -55,7 +54,31 @@ serve(async (req) => {
       );
     }
 
-    // Fetch user emails
+    // Fetch notification preferences for all users
+    const { data: preferences, error: prefsError } = await supabase
+      .from("notification_preferences")
+      .select("user_id, coming_soon_alerts")
+      .in("user_id", userIds);
+
+    if (prefsError) {
+      console.error("Error fetching notification preferences:", prefsError);
+    }
+
+    // Create a map of user preferences (default to true if no preference set)
+    const prefsMap = new Map<string, boolean>();
+    preferences?.forEach((p: any) => {
+      prefsMap.set(p.user_id, p.coming_soon_alerts);
+    });
+
+    // Filter users who have opted in or have no preference (default opt-in)
+    const optedInUserIds = userIds.filter(userId => {
+      const pref = prefsMap.get(userId);
+      return pref === true || pref === undefined;
+    });
+
+    console.log(`${optedInUserIds.length} users opted in for coming_soon_alerts`);
+
+    // Fetch user emails for opted-in users
     const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
     
     if (authError) {
@@ -64,7 +87,7 @@ serve(async (req) => {
     }
 
     const userEmails = authData.users
-      .filter(u => userIds.includes(u.id))
+      .filter(u => optedInUserIds.includes(u.id))
       .map(u => {
         const watchlistEntry = watchlistUsers?.find((w: any) => w.user_id === u.id);
         const profileData = watchlistEntry?.profiles as { display_name?: string } | null;
@@ -75,8 +98,8 @@ serve(async (req) => {
         };
       });
 
-    // Create in-app notifications for all users
-    const notifications = userIds.map(userId => ({
+    // Create in-app notifications only for opted-in users
+    const notifications = optedInUserIds.map(userId => ({
       user_id: userId,
       title: "Now Available!",
       body: `"${title}" is now available to watch on Hoyeeh!`,
@@ -94,7 +117,7 @@ serve(async (req) => {
 
     // Send email notifications if Resend API key is configured
     if (resendApiKey && userEmails.length > 0) {
-      console.log(`Sending emails to ${userEmails.length} users`);
+      console.log(`Sending emails to ${userEmails.length} opted-in users`);
 
       for (const user of userEmails) {
         if (!user.email) continue;
@@ -157,6 +180,8 @@ serve(async (req) => {
                             <td style="padding: 20px 30px; border-top: 1px solid #1a1a1a;">
                               <p style="margin: 0; color: #666666; font-size: 12px; text-align: center;">
                                 You're receiving this because you added "${title}" to your coming soon watchlist.
+                                <br>
+                                <a href="https://hoyeeh.lovable.app/notifications" style="color: #ff6300;">Manage notification preferences</a>
                               </p>
                             </td>
                           </tr>
@@ -182,7 +207,7 @@ serve(async (req) => {
       }
     }
 
-    // Remove from coming_soon_watchlist after notifications
+    // Remove from coming_soon_watchlist after notifications (for all users, not just opted-in)
     const { error: deleteError } = await supabase
       .from("coming_soon_watchlist")
       .delete()
@@ -195,8 +220,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        notifiedUsers: userIds.length,
-        message: `Notified ${userIds.length} users about "${title}" release` 
+        notifiedUsers: optedInUserIds.length,
+        totalWatchlistUsers: userIds.length,
+        message: `Notified ${optedInUserIds.length} of ${userIds.length} users about "${title}" release` 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

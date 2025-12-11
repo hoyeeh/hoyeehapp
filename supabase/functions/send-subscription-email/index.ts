@@ -22,6 +22,24 @@ interface EmailRequest {
     customSubject?: string;
     customMessage?: string;
   };
+  skipPreferenceCheck?: boolean;
+}
+
+// Get preference field based on email type
+function getPreferenceField(type: EmailRequest["type"]): string | null {
+  switch (type) {
+    case "renewal_reminder":
+    case "expiration_warning":
+    case "subscription_cancelled":
+      return "subscription_reminders";
+    case "payment_confirmation":
+    case "welcome":
+      return null; // Always send these
+    case "custom":
+      return "promotional";
+    default:
+      return null;
+  }
 }
 
 // Email template wrapper
@@ -55,6 +73,8 @@ const emailWrapper = (content: string, previewText: string) => `
         <a href="https://hoyeeh.lovable.app" style="color: #ff6300; text-decoration: none;">Visit Hoyeeh</a>
         &bull;
         <a href="https://hoyeeh.lovable.app/subscription" style="color: #ff6300; text-decoration: none;">Manage Subscription</a>
+        &bull;
+        <a href="https://hoyeeh.lovable.app/notifications" style="color: #ff6300; text-decoration: none;">Email Preferences</a>
       </p>
     </div>
   </div>
@@ -230,7 +250,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const { to, type, data }: EmailRequest = await req.json();
+    const { to, type, data, skipPreferenceCheck }: EmailRequest = await req.json();
 
     // Check if admin for sending to others
     const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
@@ -239,6 +259,37 @@ serve(async (req: Request): Promise<Response> => {
         JSON.stringify({ error: 'Forbidden - can only send to your own email' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check user notification preferences unless skipped
+    const preferenceField = getPreferenceField(type);
+    if (preferenceField && !skipPreferenceCheck) {
+      // Find user by email
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const targetUser = authUsers?.users.find(u => u.email === to);
+      
+      if (targetUser) {
+        const { data: userPref } = await supabase
+          .from('notification_preferences')
+          .select(preferenceField)
+          .eq('user_id', targetUser.id)
+          .single();
+
+        // If user has explicitly opted out, don't send
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const prefValue = userPref ? (userPref as any)[preferenceField] : undefined;
+        if (prefValue === false) {
+          console.log(`User ${to} has opted out of ${preferenceField} emails, skipping`);
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              skipped: true,
+              reason: `User has opted out of ${preferenceField} emails`
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
     }
 
     console.log(`Sending ${type} email to ${to} by user ${user.id}`);
