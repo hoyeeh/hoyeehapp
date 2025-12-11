@@ -7,6 +7,7 @@ import { MobileWalkthrough } from "./MobileWalkthrough";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const WALKTHROUGH_SEEN_KEY = "hoyeeh_walkthrough_seen";
+const SPLASH_SEEN_KEY = "hoyeeh_splash_seen_session";
 
 interface MobileOnboardingProps {
   children: React.ReactNode;
@@ -19,10 +20,17 @@ export const MobileOnboarding = ({ children }: MobileOnboardingProps) => {
   const { user, loading: authLoading } = useAuth();
   const { data: screens = [], isLoading: screensLoading } = useWalkthroughScreens();
   
-  const [state, setState] = useState<OnboardingState>('splash');
-
-  // Check if walkthrough has been seen before
+  // Check if splash was already shown this session
+  const splashSeenThisSession = sessionStorage.getItem(SPLASH_SEEN_KEY) === "true";
   const walkthroughSeen = localStorage.getItem(WALKTHROUGH_SEEN_KEY) === "true";
+  
+  // Skip splash if already seen this session OR if user is logged in
+  const [state, setState] = useState<OnboardingState>(() => {
+    if (splashSeenThisSession || user) {
+      return 'complete';
+    }
+    return 'splash';
+  });
 
   useEffect(() => {
     console.log('[MobileOnboarding] State:', state, 'User:', !!user, 'AuthLoading:', authLoading, 'WalkthroughSeen:', walkthroughSeen);
@@ -30,6 +38,9 @@ export const MobileOnboarding = ({ children }: MobileOnboardingProps) => {
 
   const handleSplashComplete = () => {
     console.log('[MobileOnboarding] Splash complete');
+    
+    // Mark splash as seen for this session
+    sessionStorage.setItem(SPLASH_SEEN_KEY, "true");
     
     // If user is logged in or walkthrough already seen, go to complete
     if (user || walkthroughSeen) {
