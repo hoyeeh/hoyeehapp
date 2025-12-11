@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { useContent, useWatchlist, useProfile } from "@/hooks/useDatabase";
+import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
@@ -31,6 +31,8 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   const { data: content = [], isLoading } = useContent();
   const { data: watchlistIds = [] } = useWatchlist();
   const { data: profile } = useProfile();
+  const addToWatchlist = useAddToWatchlist();
+  const removeFromWatchlist = useRemoveFromWatchlist();
 
   const [showSearch, setShowSearch] = useState(false);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
@@ -143,7 +145,22 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   };
 
   const handleToggleList = async (item: Content) => {
-    // Handled by parent
+    if (!user) {
+      toast.error("Please sign in to add to your list");
+      return;
+    }
+    const isInList = watchlistIds.includes(item.id);
+    try {
+      if (isInList) {
+        await removeFromWatchlist.mutateAsync(item.id);
+        toast.success("Removed from My List");
+      } else {
+        await addToWatchlist.mutateAsync(item.id);
+        toast.success("Added to My List");
+      }
+    } catch {
+      toast.error("Failed to update watchlist");
+    }
   };
 
   if (isLoading) {
@@ -275,7 +292,8 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
           <MobileContentDetail
             content={selectedContent}
             onClose={() => setSelectedContent(null)}
-            onPlay={handlePlay}
+            onPlay={(c) => handlePlay(c)}
+            onToggleList={handleToggleList}
             isInList={watchlistIds.includes(selectedContent.id)}
           />
         )}

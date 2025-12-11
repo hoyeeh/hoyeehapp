@@ -327,7 +327,6 @@ export function MobileContentDetail({
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              lightTap();
                               toast.info("Episode download started");
                             }}
                             className="active:scale-95 transition-transform"
