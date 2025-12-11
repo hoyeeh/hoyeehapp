@@ -1,4 +1,4 @@
-import { Download, Check, Loader2, Trash2, ChevronDown, X } from "lucide-react";
+import { Download, Check, Trash2, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Content } from "@/types";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
@@ -38,7 +38,6 @@ export const DownloadButton = ({
   const { startDownload, cancelDownload, deleteDownload, isDownloaded, getProgress } = useDownloadManager();
   const [showQualityMenu, setShowQualityMenu] = useState(false);
 
-  const downloadId = episodeId || content.id;
   const downloaded = isDownloaded(content.id, episodeId);
   const progress = getProgress(content.id, episodeId);
 
@@ -64,6 +63,20 @@ export const DownloadButton = ({
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
+  const formatSpeed = (bytesPerSecond: number) => {
+    if (bytesPerSecond < 1024) return `${bytesPerSecond.toFixed(0)} B/s`;
+    if (bytesPerSecond < 1024 * 1024) return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+    return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
+  };
+
+  const formatEta = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${mins}m`;
+  };
+
   if (variant === "icon") {
     return (
       <DropdownMenu open={showQualityMenu} onOpenChange={setShowQualityMenu}>
@@ -79,6 +92,7 @@ export const DownloadButton = ({
                 : "border-muted-foreground/50 text-foreground hover:border-foreground",
               className
             )}
+            title={progress?.status === "downloading" && progress.speed ? `${formatSpeed(progress.speed)} • ${formatEta(progress.eta || 0)} left` : undefined}
           >
             {progress?.status === "downloading" ? (
               <div className="relative w-full h-full flex items-center justify-center">
@@ -183,9 +197,16 @@ export const DownloadButton = ({
         <div className="space-y-1">
           <Progress value={progress.progress} className="h-1.5" />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{formatSize(progress.downloadedSize)}</span>
-            <span>{formatSize(progress.totalSize)}</span>
+            <span>{formatSize(progress.downloadedSize)} / {formatSize(progress.totalSize)}</span>
+            {progress.speed && progress.speed > 0 && (
+              <span className="text-brand font-medium">{formatSpeed(progress.speed)}</span>
+            )}
           </div>
+          {progress.eta && progress.eta > 0 && (
+            <div className="text-xs text-muted-foreground text-right">
+              ~{formatEta(progress.eta)} remaining
+            </div>
+          )}
         </div>
       )}
     </div>

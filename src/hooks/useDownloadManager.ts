@@ -36,6 +36,8 @@ interface DownloadProgress {
   downloadedSize: number;
   totalSize: number;
   status: DownloadMetadata['status'];
+  speed?: number; // bytes per second
+  eta?: number; // estimated time remaining in seconds
 }
 
 // Generate or get device ID
@@ -282,6 +284,9 @@ export function useDownloadManager() {
 
       const chunks: Uint8Array[] = [];
       let downloadedSize = 0;
+      const startedAt = Date.now();
+      let lastUpdateTime = startedAt;
+      let lastDownloadedSize = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -296,6 +301,19 @@ export function useDownloadManager() {
         chunks.push(value);
         downloadedSize += value.length;
 
+        const now = Date.now();
+        const timeSinceStart = (now - startedAt) / 1000; // seconds
+        const timeSinceLastUpdate = (now - lastUpdateTime) / 1000;
+
+        // Calculate speed (bytes per second) - use rolling average
+        const overallSpeed = timeSinceStart > 0 ? downloadedSize / timeSinceStart : 0;
+        const recentSpeed = timeSinceLastUpdate > 0 ? (downloadedSize - lastDownloadedSize) / timeSinceLastUpdate : overallSpeed;
+        const speed = Math.round((overallSpeed + recentSpeed) / 2); // Average of overall and recent
+
+        // Calculate ETA
+        const remainingBytes = totalSize - downloadedSize;
+        const eta = speed > 0 ? Math.round(remainingBytes / speed) : 0;
+
         // Update progress
         const progress = totalSize > 0 ? Math.round((downloadedSize / totalSize) * 100) : 0;
         
@@ -304,17 +322,22 @@ export function useDownloadManager() {
           downloadedSize,
           totalSize,
           progress,
+          speed,
+          eta,
+          startedAt,
           status: 'downloading',
-          updatedAt: Date.now(),
+          updatedAt: now,
         };
         await saveMetadata(updatedMetadata);
         
-        // Update state periodically (every 5%)
-        if (progress % 5 === 0) {
+        // Update state more frequently for speed/ETA (every 2% or 500ms)
+        if (progress % 2 === 0 || timeSinceLastUpdate >= 0.5) {
           setDownloads(prev => 
             prev.map(d => d.id === downloadId ? updatedMetadata : d)
           );
           setStorageUsed(await getStorageUsed());
+          lastUpdateTime = now;
+          lastDownloadedSize = downloadedSize;
         }
       }
 
@@ -428,6 +451,8 @@ export function useDownloadManager() {
       downloadedSize: download.downloadedSize,
       totalSize: download.totalSize,
       status: download.status,
+      speed: download.speed,
+      eta: download.eta,
     };
   }, [downloads]);
 

@@ -26,6 +26,9 @@ export interface DownloadMetadata {
   createdAt: number;
   updatedAt: number;
   lastWatchedPosition?: number;
+  speed?: number; // bytes per second
+  eta?: number; // estimated time remaining in seconds
+  startedAt?: number; // timestamp when download started
 }
 
 export interface DownloadLicense {
