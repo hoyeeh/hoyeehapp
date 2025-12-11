@@ -89,7 +89,7 @@ export const ContentDetailsModal = ({
               {content.description}
             </p>
 
-            <div className="flex flex-wrap gap-3 mb-8">
+            <div className="flex flex-wrap items-center gap-3 mb-8">
               <Button
                 variant="brand"
                 size="lg"
@@ -119,9 +119,9 @@ export const ContentDetailsModal = ({
                 )}
               </Button>
 
-              <DownloadButton content={content} />
+              <DownloadButton content={content} variant="button" />
               
-              <SocialShare content={content} />
+              <SocialShare content={content} variant="default" />
             </div>
 
             {/* Reviews Section */}

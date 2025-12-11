@@ -141,13 +141,13 @@ export const DownloadButton = ({
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <DropdownMenu open={showQualityMenu} onOpenChange={setShowQualityMenu}>
           <DropdownMenuTrigger asChild>
             <Button
               onClick={handleClick}
-              variant={downloaded ? "secondary" : progress?.status === "paused" ? "outline" : "outline"}
-              size="sm"
+              variant={downloaded ? "secondary" : progress?.status === "paused" ? "outline" : "secondary"}
+              size="lg"
               className={cn("gap-2", progress?.status === "paused" && "border-yellow-500/50 text-yellow-500")}
             >
               {progress?.status === "downloading" ? (
@@ -187,8 +187,8 @@ export const DownloadButton = ({
 
         {/* Cancel button for downloading/paused state */}
         {(progress?.status === "downloading" || progress?.status === "paused") && (
-          <Button variant="ghost" size="sm" onClick={handleCancel} className="px-2">
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="lg" onClick={handleCancel} className="px-3">
+            <X className="h-5 w-5" />
           </Button>
         )}
       </div>
