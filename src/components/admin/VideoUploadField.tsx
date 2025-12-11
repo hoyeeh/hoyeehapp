@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,8 @@ import { useVideoUploadSpaces } from "@/hooks/useVideoUploadSpaces";
 import { Upload, X, Check, Film, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getVideoDuration } from "@/utils/videoDuration";
+
+const VIDEO_UPLOAD_MODE_KEY = "admin-video-upload-mode";
 
 interface VideoUploadFieldProps {
   value: string;
@@ -25,9 +27,17 @@ export const VideoUploadField = ({
 }: VideoUploadFieldProps) => {
   const { uploadVideo, uploading, progress, error, resetProgress } = useVideoUploadSpaces();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
+  const [uploadMode, setUploadMode] = useState<"upload" | "url">(() => {
+    const saved = localStorage.getItem(VIDEO_UPLOAD_MODE_KEY);
+    return (saved === "upload" || saved === "url") ? saved : "url";
+  });
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Persist upload mode preference
+  useEffect(() => {
+    localStorage.setItem(VIDEO_UPLOAD_MODE_KEY, uploadMode);
+  }, [uploadMode]);
 
   const processFile = async (file: File) => {
     // Validate file type
