@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StorageManagement } from "@/components/StorageManagement";
 import { GlobalDownloadNotifications } from "@/components/GlobalDownloadNotifications";
+import { WifiOnlyToggle } from "@/components/WifiOnlyToggle";
 
 const STORAGE_LIMIT = 10 * 1024 * 1024 * 1024; // 10GB
 
@@ -132,7 +133,10 @@ const Downloads = () => {
 
           {/* Storage Management Panel */}
           {showStorageManagement && (
-            <div className="mb-8">
+            <div className="mb-8 space-y-4">
+              {/* Wi-Fi Only Toggle */}
+              <WifiOnlyToggle />
+              
               <StorageManagement
                 downloads={downloads.map(d => ({
                   id: d.id,
