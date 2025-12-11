@@ -1107,6 +1107,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       reset_pin_secure: {
         Args: { input_secret: string; new_pin: string; user_mobile: string }
         Returns: {
