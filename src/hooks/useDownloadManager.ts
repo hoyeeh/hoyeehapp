@@ -93,14 +93,70 @@ export function useDownloadManager() {
 
   const cleanupExpiredDownloads = async () => {
     const downloadList = await listDownloads();
+    let cleaned = 0;
     for (const download of downloadList) {
       const license = await getLicense(download.id);
       if (license && license.expiresAt < Date.now()) {
         await deleteFromStorage(download.id);
         await saveMetadata({ ...download, status: 'expired' });
+        cleaned++;
       }
     }
-    await loadDownloads();
+    if (cleaned > 0) {
+      await loadDownloads();
+    }
+    return cleaned;
+  };
+
+  // Auto-cleanup to free space when storage limit is reached
+  const autoCleanupForSpace = async (requiredSpace: number = 0): Promise<boolean> => {
+    const downloadList = await listDownloads();
+    let currentStorage = await getStorageUsed();
+    const targetStorage = STORAGE_LIMIT - requiredSpace;
+
+    if (currentStorage <= targetStorage) {
+      return true; // Already have enough space
+    }
+
+    // Step 1: Remove expired downloads first
+    const expiredCleaned = await cleanupExpiredDownloads();
+    if (expiredCleaned > 0) {
+      currentStorage = await getStorageUsed();
+      if (currentStorage <= targetStorage) {
+        toast.info(`Cleaned up ${expiredCleaned} expired download(s) to free space`);
+        return true;
+      }
+    }
+
+    // Step 2: Get completed downloads sorted by last watched (oldest first), then by creation date
+    const completedDownloads = downloadList
+      .filter(d => d.status === 'completed')
+      .sort((a, b) => {
+        // Prioritize removing downloads that were never watched
+        const aWatched = a.lastWatchedPosition ? a.updatedAt : 0;
+        const bWatched = b.lastWatchedPosition ? b.updatedAt : 0;
+        if (aWatched !== bWatched) return aWatched - bWatched;
+        // Then by creation date (oldest first)
+        return a.createdAt - b.createdAt;
+      });
+
+    // Step 3: Remove oldest downloads until we have enough space
+    let removedCount = 0;
+    for (const download of completedDownloads) {
+      if (currentStorage <= targetStorage) break;
+
+      await deleteFromStorage(download.id);
+      currentStorage -= download.downloadedSize;
+      removedCount++;
+    }
+
+    if (removedCount > 0) {
+      await loadDownloads();
+      toast.info(`Removed ${removedCount} old download(s) to free space`);
+    }
+
+    currentStorage = await getStorageUsed();
+    return currentStorage <= targetStorage;
   };
 
   const startDownload = useCallback(async (
@@ -122,11 +178,21 @@ export function useDownloadManager() {
       return;
     }
 
-    // Check storage limit
+    // Estimate required space based on quality
+    const estimatedSize = preferredQuality === '1080p' 
+      ? 2 * 1024 * 1024 * 1024 // 2GB
+      : preferredQuality === '720p'
+      ? 1024 * 1024 * 1024 // 1GB
+      : 500 * 1024 * 1024; // 500MB
+
+    // Check storage limit and try auto-cleanup
     const currentStorage = await getStorageUsed();
-    if (currentStorage >= STORAGE_LIMIT) {
-      toast.error('Storage limit reached. Please delete some downloads.');
-      return;
+    if (currentStorage + estimatedSize >= STORAGE_LIMIT) {
+      const hasSpace = await autoCleanupForSpace(estimatedSize);
+      if (!hasSpace) {
+        toast.error('Storage limit reached. Please manually delete some downloads.');
+        return;
+      }
     }
 
     // Check if already downloaded
@@ -631,6 +697,7 @@ export function useDownloadManager() {
     getOfflineVideoUrl,
     clearAllOnLogout,
     loadDownloads,
+    cleanupExpiredDownloads,
     formatBytes,
   };
 }
