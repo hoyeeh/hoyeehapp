@@ -26,6 +26,9 @@ import TermsOfUse from "./pages/TermsOfUse";
 import Privacy from "./pages/Privacy";
 import About from "./pages/About";
 import HelpCenter from "./pages/HelpCenter";
+import Contact from "./pages/Contact";
+import Support from "./pages/Support";
+import Copyright from "./pages/Copyright";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +61,9 @@ const App = () => (
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/help" element={<HelpCenter />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/copyright" element={<Copyright />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CastProvider>
