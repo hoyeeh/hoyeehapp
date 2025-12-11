@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit2, Tv, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Tv, Search, ChevronLeft, ChevronRight, ArrowUpDown, FileText } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminOverview } from "@/components/admin/AdminOverview";
@@ -39,6 +39,7 @@ import { AdminSubscriptionCredits } from "@/components/admin/AdminSubscriptionCr
 import { AdminSupportChat } from "@/components/admin/AdminSupportChat";
 import { AdminTicketAssignments } from "@/components/admin/AdminTicketAssignments";
 import { WalkthroughManagement } from "@/components/admin/WalkthroughManagement";
+import { BulkContentImport } from "@/components/admin/BulkContentImport";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -51,6 +52,7 @@ const Admin = () => {
   
   const [activeTab, setActiveTab] = useState("overview");
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [editingContent, setEditingContent] = useState<any>(null);
   const [managingTVShow, setManagingTVShow] = useState<{ id: string; title: string; tmdbId?: number } | null>(null);
   
@@ -203,10 +205,16 @@ const Admin = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-2xl font-display">Content Management</h2>
-              <Button onClick={() => setShowUploadForm(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Content
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowBulkImport(true)} className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Bulk Import
+                </Button>
+                <Button onClick={() => setShowUploadForm(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Content
+                </Button>
+              </div>
             </div>
 
             {/* Search, Filters, and Sorting */}
@@ -279,6 +287,10 @@ const Admin = () => {
                 Showing {paginatedContent.length} of {filteredContent.length} items
               </p>
             </div>
+
+            {showBulkImport && (
+              <BulkContentImport onClose={() => setShowBulkImport(false)} />
+            )}
 
             {showUploadForm && (
               <ContentUploadForm onClose={() => setShowUploadForm(false)} />
