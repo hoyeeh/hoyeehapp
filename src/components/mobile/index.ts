@@ -11,3 +11,4 @@ export { MobileContentDetail } from "./MobileContentDetail";
 export { PullToRefresh } from "./PullToRefresh";
 export { SwipeNavigation } from "./SwipeNavigation";
 export { MobileDownloads } from "./MobileDownloads";
+export { MobileProfile } from "./MobileProfile";
