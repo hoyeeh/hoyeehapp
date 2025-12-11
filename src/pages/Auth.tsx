@@ -1,20 +1,29 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Phone } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+interface PinAuthData {
+  mobileNumber: string;
+  pin: string;
+  secretWord: string;
+}
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn, signUp } = useAuth();
   
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [pinAuthData, setPinAuthData] = useState<PinAuthData | null>(null);
   
   const [formData, setFormData] = useState({
     email: "",
@@ -28,6 +37,23 @@ const Auth = () => {
     password: "",
     confirmPassword: "",
   });
+
+  // Check for PIN registration data from sessionStorage
+  useEffect(() => {
+    const state = location.state as { fromPinRegistration?: boolean } | null;
+    if (state?.fromPinRegistration) {
+      const storedData = sessionStorage.getItem('pinAuthData');
+      if (storedData) {
+        try {
+          const parsed = JSON.parse(storedData) as PinAuthData;
+          setPinAuthData(parsed);
+          setIsRegistering(true);
+        } catch (e) {
+          console.error('Failed to parse PIN auth data:', e);
+        }
+      }
+    }
+  }, [location.state]);
 
   const validateForm = () => {
     const newErrors = { email: "", password: "", confirmPassword: "" };
@@ -78,10 +104,41 @@ const Auth = () => {
           } else {
             toast.error(error.message);
           }
+          setIsLoading(false);
+          return;
+        }
+        
+        // If we have PIN auth data, update the profile with mobile/PIN/secret word
+        if (pinAuthData) {
+          // Wait a moment for the profile to be created by the trigger
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({
+                mobile_number: pinAuthData.mobileNumber,
+                pin_code: pinAuthData.pin,
+                secret_word: pinAuthData.secretWord,
+              })
+              .eq("id", user.id);
+
+            if (updateError) {
+              console.error('Failed to update profile with PIN data:', updateError);
+              toast.error("Account created but PIN setup failed. You can set it up later.");
+            } else {
+              toast.success("Account created with PIN authentication enabled!");
+            }
+            
+            // Clear the session storage
+            sessionStorage.removeItem('pinAuthData');
+          }
         } else {
           toast.success("Account created successfully! Welcome to Hoyeeh.");
-          navigate("/");
         }
+        
+        navigate("/");
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
@@ -115,11 +172,23 @@ const Auth = () => {
       {/* Form */}
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-card/80 backdrop-blur-sm rounded-lg p-8 md:p-12 animate-scale-in">
-          <h1 className="font-display text-3xl md:text-4xl mb-8">
+          <h1 className="font-display text-3xl md:text-4xl mb-2">
             {isRegistering ? "Sign Up" : "Sign In"}
           </h1>
+          
+          {pinAuthData && (
+            <div className="mb-6 p-3 bg-brand/10 border border-brand/20 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-brand">
+                <Phone className="h-4 w-4" />
+                <span>PIN login enabled: {pinAuthData.mobileNumber}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Complete registration to enable PIN authentication
+              </p>
+            </div>
+          )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 mt-6">
             {isRegistering && (
               <Input
                 type="text"
@@ -206,7 +275,11 @@ const Auth = () => {
               <>
                 Already have an account?{" "}
                 <button
-                  onClick={() => setIsRegistering(false)}
+                  onClick={() => {
+                    setIsRegistering(false);
+                    setPinAuthData(null);
+                    sessionStorage.removeItem('pinAuthData');
+                  }}
                   className="text-foreground hover:underline font-medium"
                 >
                   Sign In
