@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { useQuery } from "@tanstack/react-query";
@@ -9,7 +9,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { toast } from "sonner";
-import { Search as SearchIcon, X, Loader2, Filter, SlidersHorizontal } from "lucide-react";
+import { Search as SearchIcon, X, Loader2, Filter, SlidersHorizontal, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +22,20 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 
+// Parse cast members from content
+const parseCastMembers = (castMembers: any): { name: string }[] => {
+  if (!castMembers) return [];
+  if (Array.isArray(castMembers)) return castMembers;
+  try {
+    return typeof castMembers === 'string' ? JSON.parse(castMembers) : [];
+  } catch {
+    return [];
+  }
+};
+
 const Search = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: content = [], isLoading: contentLoading } = useContent();
@@ -40,8 +52,18 @@ const Search = () => {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedRating, setSelectedRating] = useState<string>("all");
+  const [selectedActor, setSelectedActor] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("title");
   const [showFilters, setShowFilters] = useState(true);
+
+  // Handle actor query param on mount
+  useEffect(() => {
+    const actorParam = searchParams.get('actor');
+    if (actorParam) {
+      setSelectedActor(actorParam);
+      setShowFilters(true);
+    }
+  }, [searchParams]);
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -64,6 +86,18 @@ const Search = () => {
   const ratings = useMemo(() => {
     const uniqueRatings = [...new Set(content.map((c) => c.rating).filter(Boolean))];
     return uniqueRatings.sort();
+  }, [content]);
+
+  // Get unique actors from content
+  const actors = useMemo(() => {
+    const actorSet = new Set<string>();
+    content.forEach((c: any) => {
+      const cast = parseCastMembers(c.cast_members);
+      cast.forEach((member: any) => {
+        if (member.name) actorSet.add(member.name);
+      });
+    });
+    return Array.from(actorSet).sort();
   }, [content]);
 
   // Filter and sort content
@@ -103,6 +137,16 @@ const Search = () => {
       filtered = filtered.filter((c) => c.rating === selectedRating);
     }
 
+    // Apply actor filter
+    if (selectedActor !== "all") {
+      filtered = filtered.filter((c: any) => {
+        const cast = parseCastMembers(c.cast_members);
+        return cast.some((member: any) => 
+          member.name?.toLowerCase() === selectedActor.toLowerCase()
+        );
+      });
+    }
+
     // Apply sorting
     filtered = [...filtered].sort((a, b) => {
       switch (sortBy) {
@@ -120,7 +164,7 @@ const Search = () => {
     });
 
     return filtered;
-  }, [content, searchQuery, selectedGenre, selectedYear, selectedType, selectedRating, sortBy]);
+  }, [content, searchQuery, selectedGenre, selectedYear, selectedType, selectedRating, selectedActor, sortBy]);
 
   const handleToggleList = async (item: Content) => {
     const isInList = watchlistIds.includes(item.id);
@@ -156,8 +200,10 @@ const Search = () => {
     setSelectedYear("all");
     setSelectedType("all");
     setSelectedRating("all");
+    setSelectedActor("all");
     setSortBy("title");
     setSearchQuery("");
+    setSearchParams({});
   };
 
   const hasActiveFilters =
@@ -165,6 +211,7 @@ const Search = () => {
     selectedYear !== "all" ||
     selectedType !== "all" ||
     selectedRating !== "all" ||
+    selectedActor !== "all" ||
     searchQuery;
 
   if (!user) {
@@ -245,7 +292,7 @@ const Search = () => {
                 <h2 className="font-semibold">Advanced Filters</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
                 {/* Genre */}
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Genre</label>
@@ -315,6 +362,24 @@ const Search = () => {
                   </Select>
                 </div>
 
+                {/* Actor Filter */}
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">Actor</label>
+                  <Select value={selectedActor} onValueChange={setSelectedActor}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Actors" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Actors</SelectItem>
+                      {actors.map((actor) => (
+                        <SelectItem key={actor} value={actor}>
+                          {actor}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Sort By */}
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Sort By</label>
@@ -364,6 +429,13 @@ const Search = () => {
                     <Badge variant="secondary" className="gap-1">
                       {selectedRating}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedRating("all")} />
+                    </Badge>
+                  )}
+                  {selectedActor !== "all" && (
+                    <Badge variant="secondary" className="gap-1 bg-brand/20">
+                      <User className="h-3 w-3" />
+                      {selectedActor}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => { setSelectedActor("all"); setSearchParams({}); }} />
                     </Badge>
                   )}
                   <Button variant="ghost" size="sm" onClick={clearFilters}>

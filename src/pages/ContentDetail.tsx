@@ -13,7 +13,8 @@ import { TVShowSeasons } from "@/components/TVShowSeasons";
 import { DownloadButton } from "@/components/DownloadButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
 import { Episode } from "@/hooks/useSeasons";
-import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter, User } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
 
@@ -550,25 +551,32 @@ const ContentDetail = () => {
           {cast.length > 0 && (
             <div className="mb-10">
               <h2 className="font-display text-2xl mb-4">Cast</h2>
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              <div className="flex flex-wrap gap-2">
                 {cast.map((member) => (
-                  <div key={member.id} className="flex-shrink-0 w-28 text-center">
-                    <div className="w-28 h-28 rounded-full overflow-hidden bg-secondary mb-2 mx-auto">
+                  <Badge
+                    key={member.id}
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-brand hover:text-primary-foreground transition-colors py-2 px-4 text-sm"
+                    onClick={() => navigate(`/search?actor=${encodeURIComponent(member.name)}`)}
+                  >
+                    <div className="flex items-center gap-2">
                       {member.profile_path ? (
                         <img
                           src={member.profile_path}
                           alt={member.name}
-                          className="w-full h-full object-cover"
+                          className="w-6 h-6 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
-                          {member.name.charAt(0)}
-                        </div>
+                        <User className="h-5 w-5" />
                       )}
+                      <div className="text-left">
+                        <span className="font-medium">{member.name}</span>
+                        {member.character && (
+                          <span className="text-xs opacity-70 ml-1">as {member.character}</span>
+                        )}
+                      </div>
                     </div>
-                    <p className="font-medium text-sm truncate">{member.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{member.character}</p>
-                  </div>
+                  </Badge>
                 ))}
               </div>
             </div>

@@ -3,7 +3,7 @@ import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Play, Tv, Download, Users, ChevronRight, Plus } from "lucide-react";
-import heroImage from "@/assets/hero-lion.jpg";
+import heroImage from "@/assets/hero-landing.png";
 
 interface LandingPageProps {
   onSignIn: () => void;
