@@ -192,11 +192,13 @@ export type Database = {
       }
       content: {
         Row: {
+          cast_members: Json | null
           content_rating: string | null
           content_type: string
           created_at: string | null
           created_by: string | null
           description: string | null
+          director: string | null
           duration: number | null
           genre: string | null
           id: string
@@ -211,11 +213,13 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          cast_members?: Json | null
           content_rating?: string | null
           content_type: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          director?: string | null
           duration?: number | null
           genre?: string | null
           id?: string
@@ -230,11 +234,13 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          cast_members?: Json | null
           content_rating?: string | null
           content_type?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          director?: string | null
           duration?: number | null
           genre?: string | null
           id?: string
