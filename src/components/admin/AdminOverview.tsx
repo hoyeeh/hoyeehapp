@@ -1,7 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { Users, Film, CreditCard, TrendingUp, Tv, Star, Cloud, CheckCircle, XCircle } from "lucide-react";
+import { Users, Film, CreditCard, TrendingUp, Tv, Star, Cloud, CheckCircle, XCircle, Calendar, CalendarDays } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { subDays, isWithinInterval, startOfDay } from "date-fns";
 
 interface AdminOverviewProps {
   users: any[];
@@ -23,6 +24,37 @@ export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewPr
     .filter(s => s.status === "active")
     .reduce((acc, s) => acc + Number(s.amount), 0);
   
+  // Calculate daily revenue (subscriptions created today)
+  const today = startOfDay(new Date());
+  const dailyRevenue = subscriptions
+    .filter(s => {
+      if (!s.created_at) return false;
+      const createdDate = startOfDay(new Date(s.created_at));
+      return createdDate.getTime() === today.getTime() && s.status === "active";
+    })
+    .reduce((acc, s) => acc + Number(s.amount), 0);
+
+  // Calculate weekly revenue (subscriptions created in last 7 days)
+  const weekAgo = subDays(new Date(), 7);
+  const weeklyRevenue = subscriptions
+    .filter(s => {
+      if (!s.created_at) return false;
+      return isWithinInterval(new Date(s.created_at), { start: weekAgo, end: new Date() }) && s.status === "active";
+    })
+    .reduce((acc, s) => acc + Number(s.amount), 0);
+
+  // Calculate new users today and this week
+  const dailyUsers = users.filter(u => {
+    if (!u.created_at) return false;
+    const createdDate = startOfDay(new Date(u.created_at));
+    return createdDate.getTime() === today.getTime();
+  }).length;
+
+  const weeklyUsers = users.filter(u => {
+    if (!u.created_at) return false;
+    return isWithinInterval(new Date(u.created_at), { start: weekAgo, end: new Date() });
+  }).length;
+  
   const movies = content.filter(c => c.content_type === "movie").length;
   const series = content.filter(c => c.content_type === "series").length;
   const premiumContent = content.filter(c => c.is_premium).length;
@@ -32,6 +64,7 @@ export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewPr
       icon: Users, 
       label: "Total Users", 
       value: users.length,
+      subtext: `+${dailyUsers} today`,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10"
     },
@@ -55,6 +88,24 @@ export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewPr
       value: `${totalRevenue.toLocaleString()} XAF`,
       color: "text-primary",
       bgColor: "bg-primary/10"
+    },
+  ];
+
+  const revenueStats = [
+    {
+      icon: Calendar,
+      label: "Daily Revenue",
+      value: `${dailyRevenue.toLocaleString()} XAF`,
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10"
+    },
+    {
+      icon: CalendarDays,
+      label: "Weekly Revenue",
+      value: `${weeklyRevenue.toLocaleString()} XAF`,
+      subtext: `${weeklyUsers} new users`,
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10"
     },
   ];
 
@@ -122,6 +173,28 @@ export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewPr
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Daily & Weekly Revenue Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {revenueStats.map((stat) => (
+          <Card key={stat.label} className="bg-card border-l-4" style={{ borderLeftColor: stat.color.includes('emerald') ? '#10b981' : '#f59e0b' }}>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-2">
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
+                {stat.label}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{stat.value}</p>
+              {stat.subtext && (
+                <p className="text-sm text-muted-foreground">{stat.subtext}</p>
+              )}
             </CardContent>
           </Card>
         ))}
