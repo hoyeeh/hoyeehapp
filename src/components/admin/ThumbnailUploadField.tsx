@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,8 @@ import { useVideoUploadSpaces } from "@/hooks/useVideoUploadSpaces";
 import { Upload, X, Check, Image, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage, getCompressionStats } from "@/utils/imageCompression";
+
+const THUMBNAIL_UPLOAD_MODE_KEY = "admin-thumbnail-upload-mode";
 
 interface ThumbnailUploadFieldProps {
   value: string;
@@ -23,12 +25,20 @@ export const ThumbnailUploadField = ({
 }: ThumbnailUploadFieldProps) => {
   const { uploadVideo: uploadFile, uploading, progress, error, resetProgress } = useVideoUploadSpaces();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
+  const [uploadMode, setUploadMode] = useState<"upload" | "url">(() => {
+    const saved = localStorage.getItem(THUMBNAIL_UPLOAD_MODE_KEY);
+    return (saved === "upload" || saved === "url") ? saved : "url";
+  });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
   const [compressionStats, setCompressionStats] = useState<{ savings: number; percentage: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Persist upload mode preference
+  useEffect(() => {
+    localStorage.setItem(THUMBNAIL_UPLOAD_MODE_KEY, uploadMode);
+  }, [uploadMode]);
 
   const processFile = async (file: File) => {
     // Validate file type
