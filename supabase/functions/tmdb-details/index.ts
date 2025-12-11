@@ -92,13 +92,14 @@ serve(async (req) => {
       profile_path: c.profile_path ? `${TMDB_IMAGE_BASE}${c.profile_path}` : null,
     }));
 
-    // Get similar content (first 6)
+    // Get similar content (first 6) with genres
     const recommendations = (similar.results || []).slice(0, 6).map((r: any) => ({
       tmdb_id: r.id,
       title: type === 'series' ? r.name : r.title,
       thumbnail_url: r.poster_path ? `${TMDB_IMAGE_BASE}${r.poster_path}` : null,
       year: (type === 'series' ? r.first_air_date : r.release_date)?.split('-')[0],
       rating: r.vote_average?.toFixed(1),
+      genre_ids: r.genre_ids || [],
     }));
 
     // Extract content rating
