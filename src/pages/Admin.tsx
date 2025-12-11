@@ -125,35 +125,25 @@ const Admin = () => {
               />
             )}
 
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {content.map((item) => (
-                <Card key={item.id} className="bg-card">
-                  <CardContent className="p-4 flex items-center gap-4">
+                <Card key={item.id} className="bg-card overflow-hidden group">
+                  <div className="relative aspect-[2/3]">
                     <img
                       src={item.thumbnail_url || "/placeholder.svg"}
                       alt={item.title}
-                      className="w-20 h-28 object-cover rounded"
+                      className="w-full h-full object-cover"
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{item.title}</h3>
-                        {item.content_type === "series" && (
-                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
-                            TV Series
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {item.content_type} • {item.year} • {item.genre}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {item.is_premium ? "Premium" : "Free"} • {item.view_count || 0} views
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
+                    {item.content_type === "series" && (
+                      <span className="absolute top-2 left-2 text-xs bg-primary/90 text-primary-foreground px-2 py-0.5 rounded">
+                        TV Series
+                      </span>
+                    )}
+                    {/* Hover Actions */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       {item.content_type === "series" && (
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="icon"
                           onClick={() => setManagingTVShow({ 
                             id: item.id, 
@@ -166,9 +156,10 @@ const Admin = () => {
                         </Button>
                       )}
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="icon"
                         onClick={() => setEditingContent(item)}
+                        title="Edit"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -176,10 +167,20 @@ const Admin = () => {
                         variant="destructive"
                         size="icon"
                         onClick={() => handleDeleteContent(item.id, item.title)}
+                        title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                  </div>
+                  <CardContent className="p-3">
+                    <h3 className="font-semibold text-sm truncate">{item.title}</h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {item.year} • {item.genre}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {item.view_count || 0} views
+                    </p>
                   </CardContent>
                 </Card>
               ))}
