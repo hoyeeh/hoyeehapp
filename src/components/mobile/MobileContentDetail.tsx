@@ -54,9 +54,14 @@ export function MobileContentDetail({
     }
   };
   
-  // Preview video timer logic
+  // Preview video timer logic - start from 20 minutes into the video
   useEffect(() => {
     if (!content.videoUrl || !isPreviewPlaying) return;
+    
+    // Set video to start at 20 minutes (1200 seconds)
+    if (videoRef.current) {
+      videoRef.current.currentTime = 1200;
+    }
     
     // Reset timer state
     setPreviewTimer(20);
@@ -91,7 +96,8 @@ export function MobileContentDetail({
   const handleReplayPreview = () => {
     mediumTap();
     if (videoRef.current) {
-      videoRef.current.currentTime = 0;
+      // Reset to 20 minutes mark
+      videoRef.current.currentTime = 1200;
       videoRef.current.play();
     }
     setIsPreviewPlaying(true);
@@ -339,7 +345,7 @@ export function MobileContentDetail({
                 onClick={handleReplayPreview}
                 className={cn(
                   "flex flex-col items-center gap-2 p-4 rounded-full",
-                  "bg-primary/90 text-white",
+                  "bg-secondary/80 backdrop-blur-sm border border-border/50 text-foreground",
                   "active:scale-95 transition-transform"
                 )}
               >
