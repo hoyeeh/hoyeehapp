@@ -6,6 +6,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Simple in-memory rate limiter (resets on cold start)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10; // 10 downloads per minute per user
+
+function checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetIn: number } {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+  
+  if (!userLimit || now > userLimit.resetTime) {
+    // Reset or create new window
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+  }
+  
+  if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
+    return { 
+      allowed: false, 
+      remaining: 0, 
+      resetIn: userLimit.resetTime - now 
+    };
+  }
+  
+  userLimit.count++;
+  return { 
+    allowed: true, 
+    remaining: MAX_REQUESTS_PER_WINDOW - userLimit.count, 
+    resetIn: userLimit.resetTime - now 
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -41,6 +72,28 @@ serve(async (req) => {
     }
 
     console.log('Authenticated user:', user.id);
+
+    // Check rate limit
+    const rateLimit = checkRateLimit(user.id);
+    if (!rateLimit.allowed) {
+      console.warn('Rate limit exceeded for user:', user.id);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Rate limit exceeded. Please try again later.',
+          retryAfter: Math.ceil(rateLimit.resetIn / 1000)
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetIn / 1000))
+          } 
+        }
+      );
+    }
 
     // Check if user has an active subscription or is an admin
     const { data: profile } = await supabase
@@ -118,18 +171,20 @@ serve(async (req) => {
     const contentLength = videoResponse.headers.get('content-length');
     const contentType = videoResponse.headers.get('content-type') || 'video/mp4';
 
-    // Build response headers
+    // Build response headers with rate limit info
     const responseHeaders: Record<string, string> = {
       ...corsHeaders,
       'Content-Type': contentType,
       'Cache-Control': 'no-cache',
+      'X-RateLimit-Remaining': String(rateLimit.remaining),
+      'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetIn / 1000))
     };
 
     if (contentLength) {
       responseHeaders['Content-Length'] = contentLength;
     }
 
-    console.log('Streaming video, size:', contentLength, 'type:', contentType);
+    console.log('Streaming video, size:', contentLength, 'type:', contentType, 'rate limit remaining:', rateLimit.remaining);
 
     return new Response(videoResponse.body, {
       status: 200,
