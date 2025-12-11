@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_ticket_assignments: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          ticket_type: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          ticket_type: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          ticket_type?: string
+        }
+        Relationships: []
+      }
       cast_receivers: {
         Row: {
           created_at: string | null
@@ -1123,6 +1147,7 @@ export type Database = {
       }
       support_tickets: {
         Row: {
+          assigned_to: string | null
           created_at: string
           id: string
           status: string
@@ -1132,6 +1157,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assigned_to?: string | null
           created_at?: string
           id?: string
           status?: string
@@ -1141,6 +1167,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assigned_to?: string | null
           created_at?: string
           id?: string
           status?: string
