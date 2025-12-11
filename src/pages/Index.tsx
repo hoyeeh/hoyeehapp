@@ -22,6 +22,7 @@ import { UserDashboard } from "@/components/UserDashboard";
 import { ContentFilter, FilterState } from "@/components/ContentFilter";
 import { ProfilePicker } from "@/components/ProfilePicker";
 import { KidsInterface } from "@/components/KidsInterface";
+import { KidsHomePage } from "@/components/KidsHomePage";
 import { ParentalPinModal } from "@/components/ParentalPinModal";
 import { isRestrictedForKids, isRestrictedByParentalControls } from "@/components/ContentRatingBadge";
 import { Toaster } from "@/components/ui/sonner";
@@ -349,6 +350,27 @@ const Index = () => {
   }
 
   // Main App (logged in) - Wrap with KidsInterface for kids profiles
+  // Kids profile shows simplified kids-only content
+  if (currentProfile?.is_kids) {
+    return (
+      <KidsInterface>
+        <KidsHomePage onPlay={handlePlay} onDetails={handleDetails} />
+        
+        {/* Content Details Modal */}
+        {selectedContent && (
+          <ContentDetailsModal
+            content={selectedContent}
+            onClose={() => setSelectedContent(null)}
+            onPlay={handlePlay}
+            onToggleList={handleToggleList}
+            isInList={watchlistIds.includes(selectedContent.id)}
+          />
+        )}
+        <Toaster position="bottom-right" />
+      </KidsInterface>
+    );
+  }
+
   return (
     <KidsInterface>
       <div className="min-h-screen bg-background">
