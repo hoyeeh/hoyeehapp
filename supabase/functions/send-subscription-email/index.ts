@@ -11,7 +11,7 @@ const corsHeaders = {
 
 interface EmailRequest {
   to: string;
-  type: "payment_confirmation" | "renewal_reminder" | "expiration_warning" | "subscription_cancelled" | "welcome" | "custom";
+  type: "payment_confirmation" | "renewal_reminder" | "expiration_warning" | "subscription_cancelled" | "welcome" | "custom" | "support_reply";
   data: {
     userName?: string;
     amount?: number;
@@ -21,6 +21,8 @@ interface EmailRequest {
     daysUntilExpiry?: number;
     customSubject?: string;
     customMessage?: string;
+    ticketSubject?: string;
+    replyMessage?: string;
   };
   skipPreferenceCheck?: boolean;
 }
@@ -34,6 +36,7 @@ function getPreferenceField(type: EmailRequest["type"]): string | null {
       return "subscription_reminders";
     case "payment_confirmation":
     case "welcome":
+    case "support_reply":
       return null; // Always send these
     case "custom":
       return "promotional";
@@ -102,7 +105,9 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
     expiryDate = "", 
     daysUntilExpiry = 0,
     customSubject = "",
-    customMessage = ""
+    customMessage = "",
+    ticketSubject = "",
+    replyMessage = ""
   } = data;
 
   let subject = "";
@@ -209,6 +214,22 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
         </div>
         <p style="${styles.muted}">If you have any questions, please contact us at support@hoyeeh.com</p>
       `, subject);
+      break;
+
+    case "support_reply":
+      subject = `Re: ${ticketSubject} - Hoyeeh Support`;
+      html = emailWrapper(`
+        <h1 style="${styles.heading}">Support Reply</h1>
+        <p style="${styles.text}">Hello <span style="${styles.highlight}">${userName}</span>,</p>
+        <p style="${styles.text}">Our support team has replied to your ticket:</p>
+        <div style="${styles.infoBoxBorder}">
+          <p style="color: #888; font-size: 12px; margin: 0 0 8px 0;"><strong>Ticket:</strong> ${ticketSubject}</p>
+          <p style="color: #e0e0e0; font-size: 14px; margin: 0; white-space: pre-wrap;">${replyMessage}</p>
+        </div>
+        <p style="${styles.text}">You can reply to this message in the app.</p>
+        <a href="https://hoyeeh.lovable.app" style="${styles.button}">View Conversation</a>
+        <p style="${styles.muted}">Thank you for contacting Hoyeeh Support!</p>
+      `, "Support Reply");
       break;
 
     default:
