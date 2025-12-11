@@ -7,6 +7,7 @@ export { SwipeableContentRow } from "./SwipeableContentRow";
 export { MobileContinueWatching } from "./MobileContinueWatching";
 export { MobileHome } from "./MobileHome";
 export { MobileSearchOverlay } from "./MobileSearchOverlay";
+export { MobileSearch } from "./MobileSearch";
 export { MobileContentDetail } from "./MobileContentDetail";
 export { PullToRefresh } from "./PullToRefresh";
 export { SwipeNavigation } from "./SwipeNavigation";
