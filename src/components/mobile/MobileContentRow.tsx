@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { Content } from "@/types";
 import { MobileContentCard } from "./MobileContentCard";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MobileContentRowProps {
   title: string;
@@ -13,6 +14,36 @@ interface MobileContentRowProps {
   onSeeAll?: () => void;
   showRank?: boolean;
   progressMap?: Record<string, number>;
+  isLoading?: boolean;
+}
+
+// Skeleton components for different variants
+function PosterSkeleton() {
+  return (
+    <div className="flex-shrink-0 w-[120px]">
+      <Skeleton className="w-full aspect-[2/3] rounded-lg" />
+      <Skeleton className="h-3 w-3/4 mt-2 rounded" />
+    </div>
+  );
+}
+
+function LandscapeSkeleton() {
+  return (
+    <div className="flex-shrink-0 w-[200px]">
+      <Skeleton className="w-full aspect-video rounded-lg" />
+      <Skeleton className="h-3 w-3/4 mt-2 rounded" />
+    </div>
+  );
+}
+
+function ContinueSkeleton() {
+  return (
+    <div className="flex-shrink-0 w-[160px]">
+      <Skeleton className="w-full aspect-video rounded-lg" />
+      <Skeleton className="h-1 w-full mt-2 rounded" />
+      <Skeleton className="h-3 w-3/4 mt-1 rounded" />
+    </div>
+  );
 }
 
 export function MobileContentRow({
@@ -25,7 +56,35 @@ export function MobileContentRow({
   onSeeAll,
   showRank = false,
   progressMap,
+  isLoading = false,
 }: MobileContentRowProps) {
+  // Show skeleton when loading
+  if (isLoading) {
+    const SkeletonComponent = 
+      variant === "landscape" ? LandscapeSkeleton : 
+      variant === "continue" ? ContinueSkeleton : 
+      PosterSkeleton;
+    
+    const skeletonCount = variant === "poster" ? 5 : 3;
+
+    return (
+      <section className="mb-6">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 mb-3">
+          <Skeleton className="h-6 w-32 rounded" />
+          {showSeeAll && <Skeleton className="h-5 w-16 rounded" />}
+        </div>
+
+        {/* Skeleton Cards */}
+        <div className="flex gap-3 overflow-hidden px-4 pb-2">
+          {Array.from({ length: skeletonCount }).map((_, index) => (
+            <SkeletonComponent key={index} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   if (content.length === 0) return null;
 
   return (

@@ -45,7 +45,7 @@ export function CastPairingDialog({
     setError('');
   };
 
-  const tvReceiverUrl = `${window.location.origin}/tv-receiver/`;
+  const tvReceiverUrl = 'https://hoyeeh.com/tv-receiver/';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

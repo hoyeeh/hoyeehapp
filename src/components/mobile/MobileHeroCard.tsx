@@ -1,7 +1,6 @@
-import { Play, Plus, Check, Info } from "lucide-react";
+import { Play, Plus, Check } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/hoyeeh-logo-web.png";
 import badge from "@/assets/hoyeeh-badge.png";
 
 interface MobileHeroCardProps {
@@ -20,9 +19,9 @@ export function MobileHeroCard({
   isInList = false 
 }: MobileHeroCardProps) {
   return (
-    <div className="relative mx-4 rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 animate-fade-in">
-      {/* Background Image */}
-      <div className="relative aspect-[2/3] max-h-[65vh]">
+    <div className="relative w-full overflow-hidden animate-fade-in">
+      {/* Background Image - Full width, no margins */}
+      <div className="relative aspect-[3/4] w-full">
         <img
           src={content.thumbnailUrl}
           alt={content.title}
@@ -30,23 +29,23 @@ export function MobileHeroCard({
         />
         
         {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/40 via-transparent to-background/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30" />
         
         {/* Hoyeeh Badge */}
-        <div className="absolute top-3 left-3">
-          <img src={badge} alt="Hoyeeh" className="h-6 w-auto opacity-90" />
+        <div className="absolute top-4 left-4">
+          <img src={badge} alt="Hoyeeh" className="h-7 w-auto opacity-95" />
         </div>
 
         {/* Content Info */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 space-y-3">
+        <div className="absolute bottom-0 left-0 right-0 p-5 space-y-4">
           {/* Title */}
-          <h2 className="font-display text-2xl font-bold text-foreground leading-tight drop-shadow-lg">
+          <h2 className="font-display text-3xl font-bold text-white leading-tight drop-shadow-lg">
             {content.title}
           </h2>
           
           {/* Genre Tags */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-white/80">
             {content.genre?.split(',').slice(0, 3).map((g, i, arr) => (
               <span key={i} className="flex items-center">
                 {g.trim()}
@@ -61,10 +60,10 @@ export function MobileHeroCard({
             <button
               onClick={() => onPlay(content)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg",
-                "bg-foreground text-background font-semibold",
+                "flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-lg",
+                "bg-white text-black font-semibold",
                 "active:scale-95 transition-all duration-200",
-                "shadow-lg shadow-foreground/20"
+                "shadow-lg shadow-white/20"
               )}
             >
               <Play className="h-5 w-5" fill="currentColor" />
@@ -75,9 +74,9 @@ export function MobileHeroCard({
             <button
               onClick={() => onToggleList(content)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg",
-                "bg-secondary/80 text-foreground font-semibold",
-                "border border-border/50 backdrop-blur-sm",
+                "flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-lg",
+                "bg-white/20 text-white font-semibold",
+                "border border-white/30 backdrop-blur-sm",
                 "active:scale-95 transition-all duration-200"
               )}
             >
