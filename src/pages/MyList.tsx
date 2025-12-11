@@ -9,9 +9,12 @@ import { Play, Trash2, Loader2, List, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileMyList } from "@/components/mobile/MobileMyList";
 
 const MyList = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { user, signOut } = useAuth();
   const { data: allContent = [], isLoading: contentLoading } = useContent();
   const { data: watchlistIds = [] } = useWatchlist();
@@ -20,6 +23,11 @@ const MyList = () => {
 
   const [playingContent, setPlayingContent] = useState<Content | null>(null);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
+
+  // Return mobile version for mobile devices
+  if (isMobile) {
+    return <MobileMyList />;
+  }
 
   const myListContent = allContent.filter((c) => watchlistIds.includes(c.id));
 
