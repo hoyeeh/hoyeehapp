@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
+import { migrateLegacyKeys } from "@/utils/cacheManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PinAuth from "./pages/PinAuth";
@@ -34,6 +36,9 @@ import NotificationPreferences from "./pages/NotificationPreferences";
 import Parental from "./pages/Parental";
 
 const queryClient = new QueryClient();
+
+// Run cache migration once on module load (safe - no React hooks)
+migrateLegacyKeys();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
