@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-
+import { CACHE_KEYS } from "@/utils/cacheManager";
 export function useSmartDownload() {
   const { user } = useAuth();
   const [smartDownloadEnabled, setSmartDownloadEnabled] = useState(() => 
@@ -24,7 +24,7 @@ export function useSmartDownload() {
     // Check if on WiFi
     const connection = (navigator as any).connection;
     const isWifi = !connection || connection.type === "wifi" || connection.effectiveType === "4g";
-    const wifiOnly = localStorage.getItem("wifi-only-download") === "true";
+    const wifiOnly = localStorage.getItem(CACHE_KEYS.downloads.wifiOnly) === "true";
     
     if (wifiOnly && !isWifi) return;
 
