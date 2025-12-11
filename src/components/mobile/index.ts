@@ -17,3 +17,7 @@ export { MobileGenres } from "./MobileGenres";
 export { PageTransition, FadeIn, StaggerList, SlideIn, ScaleIn, MobilePageWrapper } from "./PageTransition";
 export { MobileOnboarding } from "./MobileOnboarding";
 export { MobileErrorBoundary } from "./MobileErrorBoundary";
+export { MobileManageProfiles } from "./MobileManageProfiles";
+export { MobileParentalControls } from "./MobileParentalControls";
+export { MobileLanguageSettings } from "./MobileLanguageSettings";
+export { MobileStorageSettings } from "./MobileStorageSettings";
