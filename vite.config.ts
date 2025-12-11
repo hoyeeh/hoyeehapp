@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.png", "robots.txt"],
+      includeAssets: ["favicon.png", "robots.txt", "pwa-icon-192.png", "pwa-icon-512.png"],
       manifest: {
         name: "Hoyeeh - African Movies & TV Shows",
         short_name: "Hoyeeh",
@@ -28,16 +28,28 @@ export default defineConfig(({ mode }) => ({
         start_url: "/",
         icons: [
           {
-            src: "/favicon.png",
+            src: "/pwa-icon-192.png",
             sizes: "192x192",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
           },
           {
-            src: "/favicon.png",
+            src: "/pwa-icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable",
+          },
+          {
+            src: "/pwa-icon-512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
+          },
+          {
+            src: "/pwa-icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
         ],
         categories: ["entertainment", "video"],
@@ -46,12 +58,12 @@ export default defineConfig(({ mode }) => ({
           {
             name: "Browse Movies",
             url: "/?filter=movie",
-            icons: [{ src: "/favicon.png", sizes: "96x96" }],
+            icons: [{ src: "/pwa-icon-192.png", sizes: "192x192" }],
           },
           {
             name: "Browse TV Shows",
             url: "/?filter=series",
-            icons: [{ src: "/favicon.png", sizes: "96x96" }],
+            icons: [{ src: "/pwa-icon-192.png", sizes: "192x192" }],
           },
         ],
       },
