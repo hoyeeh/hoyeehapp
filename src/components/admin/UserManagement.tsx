@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useUserRoles, useAddUserRole, useRemoveUserRole } from "@/hooks/useAdmin";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +15,7 @@ export const UserManagement = ({ users }: UserManagementProps) => {
   const { data: roles = [] } = useUserRoles();
   const addRole = useAddUserRole();
   const removeRole = useRemoveUserRole();
+  const { logAction } = useAuditLog();
 
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedRole, setSelectedRole] = useState<"admin" | "moderator" | "user" | "super_admin">("user");
@@ -22,6 +24,12 @@ export const UserManagement = ({ users }: UserManagementProps) => {
     if (!selectedUser || !selectedRole) return;
     try {
       await addRole.mutateAsync({ userId: selectedUser, role: selectedRole as any });
+      logAction({
+        action: 'promote_role',
+        resourceType: 'user_role',
+        resourceId: selectedUser,
+        details: { role: selectedRole, user_name: getUserName(selectedUser) },
+      });
       toast.success("Role added successfully");
       setSelectedUser("");
     } catch (error) {
@@ -32,6 +40,12 @@ export const UserManagement = ({ users }: UserManagementProps) => {
   const handleRemoveRole = async (userId: string, role: "admin" | "moderator" | "user" | "super_admin") => {
     try {
       await removeRole.mutateAsync({ userId, role: role as any });
+      logAction({
+        action: 'remove_role',
+        resourceType: 'user_role',
+        resourceId: userId,
+        details: { role, user_name: getUserName(userId) },
+      });
       toast.success("Role removed");
     } catch (error) {
       toast.error("Failed to remove role");
