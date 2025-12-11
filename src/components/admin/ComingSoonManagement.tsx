@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -29,22 +30,47 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Calendar, Loader2, Bell, Send } from "lucide-react";
+import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check } from "lucide-react";
 import { format } from "date-fns";
+
+interface TMDBResult {
+  tmdb_id: number;
+  title: string;
+  description: string;
+  content_type: string;
+  genre: string;
+  thumbnail_url: string | null;
+  backdrop_url: string | null;
+  trailer_url: string | null;
+  release_date: string | null;
+  rating: string | null;
+  popularity: number;
+}
 
 export const ComingSoonManagement = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("import");
+  
+  // TMDB Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState<"movie" | "tv">("movie");
+  const [searchResults, setSearchResults] = useState<TMDBResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedResult, setSelectedResult] = useState<TMDBResult | null>(null);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     thumbnail_url: "",
+    backdrop_url: "",
     trailer_url: "",
     content_type: "movie",
     genre: "",
     expected_release_date: "",
     is_active: true,
+    tmdb_id: null as number | null,
   });
 
   // Fetch coming soon items
@@ -60,12 +86,65 @@ export const ComingSoonManagement = () => {
     },
   });
 
+  // TMDB Search
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast.error("Please enter a search term");
+      return;
+    }
+
+    setIsSearching(true);
+    setSelectedResult(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("tmdb-coming-soon-search", {
+        body: { query: searchQuery, type: searchType },
+      });
+
+      if (error) throw error;
+      setSearchResults(data.results || []);
+      
+      if (data.results?.length === 0) {
+        toast.info("No results found");
+      }
+    } catch (error: any) {
+      console.error("Search error:", error);
+      toast.error("Search failed: " + error.message);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectTMDBResult = (result: TMDBResult) => {
+    setSelectedResult(result);
+    setFormData({
+      title: result.title,
+      description: result.description,
+      thumbnail_url: result.thumbnail_url || "",
+      backdrop_url: result.backdrop_url || "",
+      trailer_url: result.trailer_url || "",
+      content_type: result.content_type,
+      genre: result.genre,
+      expected_release_date: result.release_date || "",
+      is_active: true,
+      tmdb_id: result.tmdb_id,
+    });
+  };
+
   // Create mutation
   const createItem = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("coming_soon").insert({
-        ...formData,
+        title: formData.title,
+        description: formData.description || null,
+        thumbnail_url: formData.thumbnail_url || null,
+        backdrop_url: formData.backdrop_url || null,
+        trailer_url: formData.trailer_url || null,
+        content_type: formData.content_type,
+        genre: formData.genre || null,
         expected_release_date: formData.expected_release_date || null,
+        is_active: formData.is_active,
+        tmdb_id: formData.tmdb_id,
       });
       if (error) throw error;
     },
@@ -85,8 +164,16 @@ export const ComingSoonManagement = () => {
       const { error } = await supabase
         .from("coming_soon")
         .update({
-          ...formData,
+          title: formData.title,
+          description: formData.description || null,
+          thumbnail_url: formData.thumbnail_url || null,
+          backdrop_url: formData.backdrop_url || null,
+          trailer_url: formData.trailer_url || null,
+          content_type: formData.content_type,
+          genre: formData.genre || null,
           expected_release_date: formData.expected_release_date || null,
+          is_active: formData.is_active,
+          tmdb_id: formData.tmdb_id,
         })
         .eq("id", editingItem.id);
       if (error) throw error;
@@ -122,7 +209,7 @@ export const ComingSoonManagement = () => {
       const { data, error } = await supabase.functions.invoke("notify-coming-soon-release", {
         body: {
           comingSoonId: item.id,
-          contentId: null, // Can be linked to actual content when released
+          contentId: null,
           title: item.title,
         },
       });
@@ -142,14 +229,20 @@ export const ComingSoonManagement = () => {
       title: "",
       description: "",
       thumbnail_url: "",
+      backdrop_url: "",
       trailer_url: "",
       content_type: "movie",
       genre: "",
       expected_release_date: "",
       is_active: true,
+      tmdb_id: null,
     });
     setEditingItem(null);
     setIsDialogOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSelectedResult(null);
+    setActiveTab("import");
   };
 
   const openEditDialog = (item: any) => {
@@ -158,12 +251,15 @@ export const ComingSoonManagement = () => {
       title: item.title,
       description: item.description || "",
       thumbnail_url: item.thumbnail_url || "",
+      backdrop_url: item.backdrop_url || "",
       trailer_url: item.trailer_url || "",
       content_type: item.content_type,
       genre: item.genre || "",
       expected_release_date: item.expected_release_date || "",
       is_active: item.is_active,
+      tmdb_id: item.tmdb_id || null,
     });
+    setActiveTab("manual");
     setIsDialogOpen(true);
   };
 
@@ -184,7 +280,7 @@ export const ComingSoonManagement = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Calendar className="h-6 w-6 text-brand" />
+            <Calendar className="h-6 w-6 text-primary" />
             Coming Soon Management
           </h2>
           <p className="text-muted-foreground">
@@ -199,130 +295,262 @@ export const ComingSoonManagement = () => {
               Add Coming Soon
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? "Edit Coming Soon" : "Add Coming Soon"}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Title *</Label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  placeholder="Title"
-                />
-              </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="import" className="gap-2">
+                  <Search className="h-4 w-4" />
+                  Import from TMDB
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="gap-2">
+                  <Edit2 className="h-4 w-4" />
+                  Manual Entry
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Description"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Content Type</Label>
-                  <Select
-                    value={formData.content_type}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, content_type: v })
-                    }
-                  >
-                    <SelectTrigger>
+              <TabsContent value="import" className="space-y-4 mt-4">
+                {/* Search Controls */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search for a movie or TV show..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    />
+                  </div>
+                  <Select value={searchType} onValueChange={(v: "movie" | "tv") => setSearchType(v)}>
+                    <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="movie">Movie</SelectItem>
-                      <SelectItem value="series">TV Show</SelectItem>
+                      <SelectItem value="movie">
+                        <div className="flex items-center gap-2">
+                          <Film className="h-4 w-4" /> Movie
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="tv">
+                        <div className="flex items-center gap-2">
+                          <Tv className="h-4 w-4" /> TV Show
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button onClick={handleSearch} disabled={isSearching}>
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+
+                {/* Search Results */}
+                {searchResults.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                    {searchResults.map((result) => (
+                      <div
+                        key={result.tmdb_id}
+                        onClick={() => selectTMDBResult(result)}
+                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                          selectedResult?.tmdb_id === result.tmdb_id
+                            ? "border-primary ring-2 ring-primary/50"
+                            : "border-transparent hover:border-muted-foreground/50"
+                        }`}
+                      >
+                        {result.thumbnail_url ? (
+                          <img
+                            src={result.thumbnail_url}
+                            alt={result.title}
+                            className="w-full h-32 object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-32 bg-muted flex items-center justify-center">
+                            <Film className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-2">
+                          <p className="text-xs font-medium text-white line-clamp-2">{result.title}</p>
+                          {result.release_date && (
+                            <p className="text-xs text-white/70">{result.release_date.split("-")[0]}</p>
+                          )}
+                        </div>
+                        {selectedResult?.tmdb_id === result.tmdb_id && (
+                          <div className="absolute top-2 right-2 bg-primary rounded-full p-1">
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selected Result Preview */}
+                {selectedResult && (
+                  <div className="border rounded-lg p-4 space-y-3 bg-muted/50">
+                    <h4 className="font-semibold text-sm text-muted-foreground">Selected Content</h4>
+                    <div className="flex gap-4">
+                      {selectedResult.thumbnail_url && (
+                        <img
+                          src={selectedResult.thumbnail_url}
+                          alt={selectedResult.title}
+                          className="w-20 h-28 object-cover rounded"
+                        />
+                      )}
+                      <div className="flex-1 space-y-1">
+                        <p className="font-semibold">{formData.title}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{formData.content_type} • {formData.genre}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{formData.description}</p>
+                        {formData.trailer_url && (
+                          <p className="text-xs text-primary">✓ Trailer available</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Editable fields for imported content */}
+                    <div className="space-y-3 pt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Expected Release Date</Label>
+                        <Input
+                          type="date"
+                          value={formData.expected_release_date}
+                          onChange={(e) => setFormData({ ...formData, expected_release_date: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={formData.is_active}
+                          onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                        />
+                        <Label>Active</Label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedResult && (
+                  <div className="flex gap-2 pt-2">
+                    <Button onClick={handleSubmit} disabled={createItem.isPending}>
+                      {createItem.isPending ? "Saving..." : "Add to Coming Soon"}
+                    </Button>
+                    <Button variant="outline" onClick={resetForm}>
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="manual" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Title *</Label>
+                  <Input
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Title"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Genre</Label>
-                  <Input
-                    value={formData.genre}
-                    onChange={(e) =>
-                      setFormData({ ...formData, genre: e.target.value })
-                    }
-                    placeholder="Action, Drama..."
+                  <Label>Description</Label>
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Description"
+                    rows={3}
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Expected Release Date</Label>
-                <Input
-                  type="date"
-                  value={formData.expected_release_date}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      expected_release_date: e.target.value,
-                    })
-                  }
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Content Type</Label>
+                    <Select
+                      value={formData.content_type}
+                      onValueChange={(v) => setFormData({ ...formData, content_type: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="movie">Movie</SelectItem>
+                        <SelectItem value="series">TV Show</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Thumbnail URL</Label>
-                <Input
-                  value={formData.thumbnail_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, thumbnail_url: e.target.value })
-                  }
-                  placeholder="https://..."
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label>Genre</Label>
+                    <Input
+                      value={formData.genre}
+                      onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
+                      placeholder="Action, Drama..."
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <Label>Trailer URL</Label>
-                <Input
-                  value={formData.trailer_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, trailer_url: e.target.value })
-                  }
-                  placeholder="https://..."
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label>Expected Release Date</Label>
+                  <Input
+                    type="date"
+                    value={formData.expected_release_date}
+                    onChange={(e) => setFormData({ ...formData, expected_release_date: e.target.value })}
+                  />
+                </div>
 
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, is_active: checked })
-                  }
-                />
-                <Label>Active</Label>
-              </div>
+                <div className="space-y-2">
+                  <Label>Thumbnail URL (Poster)</Label>
+                  <Input
+                    value={formData.thumbnail_url}
+                    onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button onClick={handleSubmit} disabled={createItem.isPending || updateItem.isPending}>
-                  {(createItem.isPending || updateItem.isPending) ? "Saving..." : editingItem ? "Update" : "Create"}
-                </Button>
-                <Button variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label>Backdrop URL (Cover)</Label>
+                  <Input
+                    value={formData.backdrop_url}
+                    onChange={(e) => setFormData({ ...formData, backdrop_url: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Trailer URL</Label>
+                  <Input
+                    value={formData.trailer_url}
+                    onChange={(e) => setFormData({ ...formData, trailer_url: e.target.value })}
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                  />
+                  <Label>Active</Label>
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button onClick={handleSubmit} disabled={createItem.isPending || updateItem.isPending}>
+                    {(createItem.isPending || updateItem.isPending) ? "Saving..." : editingItem ? "Update" : "Create"}
+                  </Button>
+                  <Button variant="outline" onClick={resetForm}>
+                    Cancel
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-brand" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
@@ -343,7 +571,14 @@ export const ComingSoonManagement = () => {
           <TableBody>
             {items.map((item: any) => (
               <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.title}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {item.thumbnail_url && (
+                      <img src={item.thumbnail_url} alt="" className="w-8 h-12 object-cover rounded" />
+                    )}
+                    {item.title}
+                  </div>
+                </TableCell>
                 <TableCell className="capitalize">{item.content_type}</TableCell>
                 <TableCell>{item.genre || "-"}</TableCell>
                 <TableCell>
@@ -371,7 +606,7 @@ export const ComingSoonManagement = () => {
                       title="Send release notification"
                       disabled={sendReleaseNotification.isPending}
                     >
-                      <Send className="h-4 w-4 text-brand" />
+                      <Send className="h-4 w-4 text-primary" />
                     </Button>
                     <Button
                       variant="ghost"

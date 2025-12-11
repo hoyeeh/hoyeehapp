@@ -108,6 +108,7 @@ export type Database = {
       }
       coming_soon: {
         Row: {
+          backdrop_url: string | null
           content_type: string
           created_at: string
           description: string | null
@@ -117,10 +118,12 @@ export type Database = {
           is_active: boolean
           thumbnail_url: string | null
           title: string
+          tmdb_id: number | null
           trailer_url: string | null
           updated_at: string
         }
         Insert: {
+          backdrop_url?: string | null
           content_type?: string
           created_at?: string
           description?: string | null
@@ -130,10 +133,12 @@ export type Database = {
           is_active?: boolean
           thumbnail_url?: string | null
           title: string
+          tmdb_id?: number | null
           trailer_url?: string | null
           updated_at?: string
         }
         Update: {
+          backdrop_url?: string | null
           content_type?: string
           created_at?: string
           description?: string | null
@@ -143,6 +148,7 @@ export type Database = {
           is_active?: boolean
           thumbnail_url?: string | null
           title?: string
+          tmdb_id?: number | null
           trailer_url?: string | null
           updated_at?: string
         }
