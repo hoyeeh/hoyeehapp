@@ -31,6 +31,7 @@ import Support from "./pages/Support";
 import Copyright from "./pages/Copyright";
 import Install from "./pages/Install";
 import NotificationPreferences from "./pages/NotificationPreferences";
+import Parental from "./pages/Parental";
 
 const queryClient = new QueryClient();
 
@@ -69,7 +70,8 @@ const App = () => (
                 <Route path="/install" element={<Install />} />
                 <Route path="/notifications" element={<NotificationPreferences />} />
                 <Route path="/notification-preferences" element={<NotificationPreferences />} />
-                <Route path="/parental" element={<Navigate to="/profile" replace />} />
+                <Route path="/parental" element={<Parental />} />
+                <Route path="*" element={<NotFound />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CastProvider>
