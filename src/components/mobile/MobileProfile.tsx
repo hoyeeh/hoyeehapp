@@ -212,7 +212,7 @@ export function MobileProfile() {
         { icon: Users, label: "Manage Profiles", modalKey: "profiles" },
         { icon: CreditCard, label: "Subscription", path: "/subscription", value: profile?.is_subscribed ? "Premium" : "Free" },
         { icon: Bell, label: "Notifications", path: "/notification-preferences" },
-        { icon: Shield, label: "Parental Controls", modalKey: "parental" },
+        { icon: Shield, label: "Parental Controls", path: "/parental" },
       ],
     },
     {
