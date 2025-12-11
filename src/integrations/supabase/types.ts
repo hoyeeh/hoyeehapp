@@ -244,6 +244,72 @@ export type Database = {
         }
         Relationships: []
       }
+      download_licenses: {
+        Row: {
+          content_id: string
+          created_at: string | null
+          device_id: string
+          downloaded_at: string | null
+          encrypted_key: string
+          episode_id: string | null
+          expires_at: string
+          id: string
+          last_verified: string | null
+          quality: string | null
+          status: string | null
+          total_size: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string | null
+          device_id: string
+          downloaded_at?: string | null
+          encrypted_key: string
+          episode_id?: string | null
+          expires_at: string
+          id?: string
+          last_verified?: string | null
+          quality?: string | null
+          status?: string | null
+          total_size?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string | null
+          device_id?: string
+          downloaded_at?: string | null
+          encrypted_key?: string
+          episode_id?: string | null
+          expires_at?: string
+          id?: string
+          last_verified?: string | null
+          quality?: string | null
+          status?: string | null
+          total_size?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "download_licenses_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "download_licenses_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       episodes: {
         Row: {
           created_at: string
