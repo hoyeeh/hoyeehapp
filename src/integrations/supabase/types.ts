@@ -496,6 +496,117 @@ export type Database = {
           },
         ]
       }
+      kids_categories: {
+        Row: {
+          color: string
+          created_at: string | null
+          display_order: number | null
+          emoji: string
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          display_order?: number | null
+          emoji?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          display_order?: number | null
+          emoji?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      kids_content_categories: {
+        Row: {
+          category_id: string
+          content_id: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          category_id: string
+          content_id: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          category_id?: string
+          content_id?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_content_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "kids_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kids_content_categories_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kids_viewing_history: {
+        Row: {
+          completed: boolean | null
+          content_id: string
+          duration_watched_minutes: number | null
+          id: string
+          profile_id: string
+          watched_at: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          content_id: string
+          duration_watched_minutes?: number | null
+          id?: string
+          profile_id: string
+          watched_at?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          content_id?: string
+          duration_watched_minutes?: number | null
+          id?: string
+          profile_id?: string
+          watched_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_viewing_history_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kids_viewing_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string
@@ -987,27 +1098,36 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          daily_time_limit_minutes: number | null
           id: string
           is_kids: boolean
+          last_time_reset: string | null
           name: string
+          time_watched_today_minutes: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          daily_time_limit_minutes?: number | null
           id?: string
           is_kids?: boolean
+          last_time_reset?: string | null
           name: string
+          time_watched_today_minutes?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          daily_time_limit_minutes?: number | null
           id?: string
           is_kids?: boolean
+          last_time_reset?: string | null
           name?: string
+          time_watched_today_minutes?: number | null
           updated_at?: string
           user_id?: string
         }

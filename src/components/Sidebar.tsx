@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/collapsible";
 
 interface SidebarProps {
-  currentView: ViewState | 'dashboard' | 'downloads' | 'search';
-  onNavigate: (view: ViewState | 'dashboard' | 'downloads' | 'search') => void;
+  currentView: ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
+  onNavigate: (view: ViewState | 'dashboard' | 'downloads' | 'search' | 'parental') => void;
   onLogout: () => void;
   userName?: string;
 }
@@ -161,6 +161,20 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
             >
               <CreditCard className="h-4 w-4 flex-shrink-0 ml-1" />
               <span className="hidden md:inline text-sm">Subscription</span>
+            </button>
+
+            {/* Parental Dashboard */}
+            <button
+              onClick={() => onNavigate("parental" as any)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                currentView === "parental"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-cyan-500 hover:bg-sidebar-accent"
+              )}
+            >
+              <Baby className="h-4 w-4 flex-shrink-0 ml-1" />
+              <span className="hidden md:inline text-sm">Parental Controls</span>
             </button>
 
             {/* Admin Link - Only for admins */}

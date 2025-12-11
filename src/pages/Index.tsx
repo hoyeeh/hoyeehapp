@@ -23,6 +23,7 @@ import { ContentFilter, FilterState } from "@/components/ContentFilter";
 import { ProfilePicker } from "@/components/ProfilePicker";
 import { KidsInterface } from "@/components/KidsInterface";
 import { KidsHomePage } from "@/components/KidsHomePage";
+import { ParentalDashboard } from "@/components/ParentalDashboard";
 import { ParentalPinModal } from "@/components/ParentalPinModal";
 import { isRestrictedForKids, isRestrictedByParentalControls } from "@/components/ContentRatingBadge";
 import { Toaster } from "@/components/ui/sonner";
@@ -32,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { subDays } from "date-fns";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
-export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search';
+export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
 
 const Index = () => {
@@ -422,6 +423,11 @@ const Index = () => {
           </div>
         ) : (
           <div className="pb-8">
+            {/* Parental Dashboard View */}
+            {currentView === "parental" && (
+              <ParentalDashboard onBack={() => setCurrentView("home")} />
+            )}
+            
             {/* Dashboard View */}
             {currentView === "dashboard" && (
               <UserDashboard onPlay={handlePlay} onDetails={handleDetails} />
