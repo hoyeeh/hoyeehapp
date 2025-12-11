@@ -702,6 +702,12 @@ export function useDownloadManager() {
     }
   }, []);
 
+  const getLicenseExpiry = useCallback(async (contentId: string, episodeId?: string): Promise<number | null> => {
+    const downloadId = getDownloadId(contentId, episodeId);
+    const license = await getLicense(downloadId);
+    return license?.expiresAt || null;
+  }, []);
+
   const getOfflineVideoUrl = useCallback(async (contentId: string, episodeId?: string): Promise<string | null> => {
     const downloadId = getDownloadId(contentId, episodeId);
     
@@ -755,6 +761,7 @@ export function useDownloadManager() {
     isDownloaded,
     canPlayOffline,
     refreshLicense,
+    getLicenseExpiry,
     getOfflineVideoUrl,
     clearAllOnLogout,
     loadDownloads,
