@@ -1,4 +1,4 @@
-import { Download, Check, Trash2, ChevronDown, X } from "lucide-react";
+import { Download, Check, Trash2, ChevronDown, X, Pause, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Content } from "@/types";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
@@ -35,7 +35,7 @@ export const DownloadButton = ({
   variant = "button",
   className,
 }: DownloadButtonProps) => {
-  const { startDownload, cancelDownload, deleteDownload, isDownloaded, getProgress } = useDownloadManager();
+  const { startDownload, pauseDownload, resumeDownload, cancelDownload, deleteDownload, isDownloaded, getProgress } = useDownloadManager();
   const [showQualityMenu, setShowQualityMenu] = useState(false);
 
   const downloaded = isDownloaded(content.id, episodeId);
@@ -51,10 +51,17 @@ export const DownloadButton = ({
     if (downloaded) {
       deleteDownload(content.id, episodeId);
     } else if (progress?.status === "downloading") {
-      cancelDownload(content.id, episodeId);
+      pauseDownload(content.id, episodeId);
+    } else if (progress?.status === "paused") {
+      resumeDownload(content.id, episodeId);
     } else if (!progress || progress.status === "failed") {
       setShowQualityMenu(true);
     }
+  };
+
+  const handleCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    cancelDownload(content.id, episodeId);
   };
 
   const formatSize = (bytes: number) => {
@@ -89,36 +96,29 @@ export const DownloadButton = ({
                 ? "border-brand text-brand hover:bg-brand/10"
                 : progress?.status === "downloading"
                 ? "border-brand/50 text-brand"
+                : progress?.status === "paused"
+                ? "border-yellow-500/50 text-yellow-500"
                 : "border-muted-foreground/50 text-foreground hover:border-foreground",
               className
             )}
-            title={progress?.status === "downloading" && progress.speed ? `${formatSpeed(progress.speed)} • ${formatEta(progress.eta || 0)} left` : undefined}
+            title={
+              progress?.status === "downloading" && progress.speed 
+                ? `${formatSpeed(progress.speed)} • ${formatEta(progress.eta || 0)} left` 
+                : progress?.status === "paused"
+                ? "Paused - Click to resume"
+                : undefined
+            }
           >
             {progress?.status === "downloading" ? (
               <div className="relative w-full h-full flex items-center justify-center">
                 <svg className="w-5 h-5 -rotate-90">
-                  <circle
-                    cx="10"
-                    cy="10"
-                    r="8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeOpacity="0.2"
-                  />
-                  <circle
-                    cx="10"
-                    cy="10"
-                    r="8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeDasharray={`${(progress.progress / 100) * 50.26} 50.26`}
-                    className="transition-all duration-300"
-                  />
+                  <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2" strokeOpacity="0.2" />
+                  <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray={`${(progress.progress / 100) * 50.26} 50.26`} className="transition-all duration-300" />
                 </svg>
-                <span className="absolute text-[8px] font-bold">{progress.progress}</span>
+                <Pause className="absolute h-2 w-2" />
               </div>
+            ) : progress?.status === "paused" ? (
+              <PlayCircle className="h-3.5 w-3.5" />
             ) : downloaded ? (
               <Check className="h-3 w-3" />
             ) : (
@@ -127,15 +127,9 @@ export const DownloadButton = ({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-            Select Quality
-          </div>
+          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Select Quality</div>
           {QUALITY_OPTIONS.map((option) => (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() => handleQualitySelect(option.value)}
-              className="flex justify-between cursor-pointer"
-            >
+            <DropdownMenuItem key={option.value} onClick={() => handleQualitySelect(option.value)} className="flex justify-between cursor-pointer">
               <span>{option.label}</span>
               <span className="text-xs text-muted-foreground">{option.size}</span>
             </DropdownMenuItem>
@@ -147,50 +141,57 @@ export const DownloadButton = ({
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <DropdownMenu open={showQualityMenu} onOpenChange={setShowQualityMenu}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            onClick={handleClick}
-            variant={downloaded ? "secondary" : "outline"}
-            size="sm"
-            className="gap-2"
-            disabled={false}
-          >
-            {progress?.status === "downloading" ? (
-              <>
-                <X className="h-4 w-4" />
-                Cancel ({progress.progress}%)
-              </>
-            ) : downloaded ? (
-              <>
-                <Trash2 className="h-4 w-4" />
-                Remove
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Download
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </>
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52 bg-popover border-border">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-            Select Video Quality
-          </div>
-          {QUALITY_OPTIONS.map((option) => (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() => handleQualitySelect(option.value)}
-              className="flex justify-between cursor-pointer"
+      <div className="flex gap-2">
+        <DropdownMenu open={showQualityMenu} onOpenChange={setShowQualityMenu}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              onClick={handleClick}
+              variant={downloaded ? "secondary" : progress?.status === "paused" ? "outline" : "outline"}
+              size="sm"
+              className={cn("gap-2", progress?.status === "paused" && "border-yellow-500/50 text-yellow-500")}
             >
-              <span>{option.label}</span>
-              <span className="text-xs text-muted-foreground">{option.size}</span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+              {progress?.status === "downloading" ? (
+                <>
+                  <Pause className="h-4 w-4" />
+                  Pause ({progress.progress}%)
+                </>
+              ) : progress?.status === "paused" ? (
+                <>
+                  <PlayCircle className="h-4 w-4" />
+                  Resume ({progress.progress}%)
+                </>
+              ) : downloaded ? (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52 bg-popover border-border">
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Select Video Quality</div>
+            {QUALITY_OPTIONS.map((option) => (
+              <DropdownMenuItem key={option.value} onClick={() => handleQualitySelect(option.value)} className="flex justify-between cursor-pointer">
+                <span>{option.label}</span>
+                <span className="text-xs text-muted-foreground">{option.size}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Cancel button for downloading/paused state */}
+        {(progress?.status === "downloading" || progress?.status === "paused") && (
+          <Button variant="ghost" size="sm" onClick={handleCancel} className="px-2">
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
 
       {/* Progress bar for downloading state */}
       {progress?.status === "downloading" && (
@@ -203,10 +204,15 @@ export const DownloadButton = ({
             )}
           </div>
           {progress.eta && progress.eta > 0 && (
-            <div className="text-xs text-muted-foreground text-right">
-              ~{formatEta(progress.eta)} remaining
-            </div>
+            <div className="text-xs text-muted-foreground text-right">~{formatEta(progress.eta)} remaining</div>
           )}
+        </div>
+      )}
+
+      {/* Paused indicator */}
+      {progress?.status === "paused" && (
+        <div className="text-xs text-yellow-500">
+          Paused at {progress.progress}% • {formatSize(progress.downloadedSize)} downloaded
         </div>
       )}
     </div>
