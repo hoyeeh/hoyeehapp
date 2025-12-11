@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MobileContentCard } from "./MobileContentCard";
+import { useHaptics } from "@/hooks/useHaptics";
+import { toast } from "sonner";
 import logo from "@/assets/hoyeeh-logo-web.png";
 
 interface MobileContentDetailProps {
@@ -23,6 +25,7 @@ export function MobileContentDetail({
   onToggleList
 }: MobileContentDetailProps) {
   const [activeTab, setActiveTab] = useState<"episodes" | "more">("more");
+  const { lightTap, mediumTap, successFeedback, selectionTap } = useHaptics();
 
   // Fetch similar content
   const { data: similarContent = [] } = useQuery({
@@ -87,6 +90,55 @@ export function MobileContentDetail({
     enabled: content.contentType === "series",
   });
 
+  const handleClose = () => {
+    lightTap();
+    onClose();
+  };
+
+  const handlePlay = () => {
+    mediumTap();
+    onPlay(content);
+  };
+
+  const handleDownload = () => {
+    lightTap();
+    toast.info("Download started");
+  };
+
+  const handleToggleList = () => {
+    selectionTap();
+    onToggleList?.(content);
+    if (!isInList) {
+      successFeedback();
+      toast.success("Added to My List");
+    } else {
+      toast.success("Removed from My List");
+    }
+  };
+
+  const handleRate = () => {
+    lightTap();
+    toast.info("Rating feature coming soon");
+  };
+
+  const handleShare = () => {
+    lightTap();
+    if (navigator.share) {
+      navigator.share({
+        title: content.title,
+        text: content.description,
+        url: window.location.href,
+      });
+    } else {
+      toast.info("Share link copied!");
+    }
+  };
+
+  const handleTabChange = (tab: "episodes" | "more") => {
+    selectionTap();
+    setActiveTab(tab);
+  };
+
   return (
     <div className="fixed inset-0 z-[100] bg-background animate-in fade-in slide-in-from-bottom duration-300">
       {/* Video Preview Area */}
@@ -102,7 +154,7 @@ export function MobileContentDetail({
         
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 p-2 bg-background/50 backdrop-blur-sm rounded-full hover:bg-background/70 transition-colors active:scale-95"
         >
           <X className="h-5 w-5" />
@@ -146,7 +198,7 @@ export function MobileContentDetail({
           {/* Primary Action Buttons */}
           <div className="space-y-2">
             <button
-              onClick={() => onPlay(content)}
+              onClick={handlePlay}
               className={cn(
                 "w-full flex items-center justify-center gap-2 py-3 rounded-md",
                 "bg-foreground text-background font-semibold",
@@ -158,6 +210,7 @@ export function MobileContentDetail({
             </button>
             
             <button
+              onClick={handleDownload}
               className={cn(
                 "w-full flex items-center justify-center gap-2 py-3 rounded-md",
                 "bg-secondary text-foreground font-medium",
@@ -186,7 +239,7 @@ export function MobileContentDetail({
           {/* Action Icons Row */}
           <div className="flex items-center justify-around py-4 border-t border-b border-border/30">
             <button 
-              onClick={() => onToggleList?.(content)}
+              onClick={handleToggleList}
               className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
             >
               {isInList ? (
@@ -197,12 +250,18 @@ export function MobileContentDetail({
               <span className="text-xs text-muted-foreground">My List</span>
             </button>
             
-            <button className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
+            <button 
+              onClick={handleRate}
+              className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+            >
               <ThumbsUp className="h-6 w-6" />
               <span className="text-xs text-muted-foreground">Rate</span>
             </button>
             
-            <button className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
+            <button 
+              onClick={handleShare}
+              className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+            >
               <Share2 className="h-6 w-6" />
               <span className="text-xs text-muted-foreground">Share</span>
             </button>
@@ -212,7 +271,7 @@ export function MobileContentDetail({
           {content.contentType === "series" && (
             <div className="flex gap-6 border-b border-border/30">
               <button
-                onClick={() => setActiveTab("episodes")}
+                onClick={() => handleTabChange("episodes")}
                 className={cn(
                   "pb-2 text-sm font-medium transition-colors relative",
                   activeTab === "episodes" ? "text-foreground" : "text-muted-foreground"
@@ -224,7 +283,7 @@ export function MobileContentDetail({
                 )}
               </button>
               <button
-                onClick={() => setActiveTab("more")}
+                onClick={() => handleTabChange("more")}
                 className={cn(
                   "pb-2 text-sm font-medium transition-colors relative",
                   activeTab === "more" ? "text-foreground" : "text-muted-foreground"
@@ -241,7 +300,7 @@ export function MobileContentDetail({
           {/* Episodes List */}
           {content.contentType === "series" && activeTab === "episodes" && (
             <div className="space-y-4">
-              <button className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-md">
+              <button className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-md active:scale-95 transition-transform">
                 <span className="text-sm font-medium">Season 1</span>
                 <ChevronDown className="h-4 w-4" />
               </button>
@@ -249,7 +308,7 @@ export function MobileContentDetail({
               {episodes.length > 0 ? (
                 <div className="space-y-4">
                   {episodes.map((ep: any) => (
-                    <div key={ep.id} className="flex gap-3">
+                    <div key={ep.id} className="flex gap-3 active:opacity-70 transition-opacity">
                       <div className="relative w-32 aspect-video rounded-md overflow-hidden bg-secondary flex-shrink-0">
                         <img
                           src={ep.thumbnail_url || content.thumbnailUrl}
@@ -265,7 +324,16 @@ export function MobileContentDetail({
                           <h4 className="text-sm font-medium line-clamp-1">
                             {ep.episode_number}. {ep.title}
                           </h4>
-                          <Download className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              lightTap();
+                              toast.info("Episode download started");
+                            }}
+                            className="active:scale-95 transition-transform"
+                          >
+                            <Download className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          </button>
                         </div>
                         <span className="text-xs text-muted-foreground">
                           {ep.duration ? `${Math.floor(ep.duration / 60)}m` : ""}
@@ -295,11 +363,8 @@ export function MobileContentDetail({
                     key={item.id}
                     content={item}
                     onDetails={(c) => {
-                      // Close current and open new
+                      lightTap();
                       onClose();
-                      setTimeout(() => {
-                        // Parent will handle opening new detail
-                      }, 100);
                     }}
                     variant="poster"
                     showBadges={false}

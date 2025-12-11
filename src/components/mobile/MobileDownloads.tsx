@@ -9,6 +9,8 @@ import { useProfileContext } from "@/contexts/ProfileContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { useHaptics } from "@/hooks/useHaptics";
+import { toast } from "sonner";
 
 interface DownloadItem {
   id: string;
@@ -28,6 +30,7 @@ export function MobileDownloads() {
   const { currentProfile } = useProfileContext();
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const { lightTap, selectionTap, warningFeedback, successFeedback } = useHaptics();
 
   // Fetch download licenses
   const { data: downloads = [], isLoading, refetch } = useQuery({
@@ -88,19 +91,34 @@ export function MobileDownloads() {
   });
 
   const handleDelete = async (ids: string[]) => {
+    warningFeedback();
     // Delete selected downloads
     for (const id of ids) {
       await supabase.from("download_licenses").delete().eq("id", id);
     }
     setSelectedItems([]);
     setIsEditMode(false);
+    successFeedback();
+    toast.success(`${ids.length} download${ids.length > 1 ? "s" : ""} removed`);
     refetch();
   };
 
   const toggleSelect = (id: string) => {
+    selectionTap();
     setSelectedItems(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
+  };
+
+  const handleBack = () => {
+    lightTap();
+    navigate(-1);
+  };
+
+  const handleToggleEdit = () => {
+    lightTap();
+    setIsEditMode(!isEditMode);
+    if (isEditMode) setSelectedItems([]);
   };
 
   return (
@@ -111,7 +129,7 @@ export function MobileDownloads() {
           <div className="flex items-center justify-between px-4 h-14">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate(-1)}
+                onClick={handleBack}
                 className="p-2 -ml-2 hover:bg-secondary rounded-xl transition-colors active:scale-95"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -119,7 +137,7 @@ export function MobileDownloads() {
               <h1 className="text-lg font-bold">Downloads</h1>
             </div>
             <button
-              onClick={() => setIsEditMode(!isEditMode)}
+              onClick={handleToggleEdit}
               className="p-2 hover:bg-secondary rounded-xl transition-colors active:scale-95"
             >
               <Settings className="h-5 w-5" />
