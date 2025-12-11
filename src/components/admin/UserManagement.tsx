@@ -16,12 +16,12 @@ export const UserManagement = ({ users }: UserManagementProps) => {
   const removeRole = useRemoveUserRole();
 
   const [selectedUser, setSelectedUser] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"admin" | "moderator" | "user">("user");
+  const [selectedRole, setSelectedRole] = useState<"admin" | "moderator" | "user" | "super_admin">("user");
 
   const handleAddRole = async () => {
     if (!selectedUser || !selectedRole) return;
     try {
-      await addRole.mutateAsync({ userId: selectedUser, role: selectedRole });
+      await addRole.mutateAsync({ userId: selectedUser, role: selectedRole as any });
       toast.success("Role added successfully");
       setSelectedUser("");
     } catch (error) {
@@ -29,9 +29,9 @@ export const UserManagement = ({ users }: UserManagementProps) => {
     }
   };
 
-  const handleRemoveRole = async (userId: string, role: "admin" | "moderator" | "user") => {
+  const handleRemoveRole = async (userId: string, role: "admin" | "moderator" | "user" | "super_admin") => {
     try {
-      await removeRole.mutateAsync({ userId, role });
+      await removeRole.mutateAsync({ userId, role: role as any });
       toast.success("Role removed");
     } catch (error) {
       toast.error("Failed to remove role");
@@ -57,12 +57,13 @@ export const UserManagement = ({ users }: UserManagementProps) => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as "admin" | "moderator" | "user")}>
+            <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as "admin" | "moderator" | "user" | "super_admin")}>
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="moderator">Moderator</SelectItem>
                 <SelectItem value="user">User</SelectItem>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleAddRole} disabled={!selectedUser}><Plus className="h-4 w-4" /></Button>
@@ -81,7 +82,7 @@ export const UserManagement = ({ users }: UserManagementProps) => {
                   <p className="text-sm text-muted-foreground capitalize">{role.role}</p>
                 </div>
               </div>
-              <Button variant="destructive" size="icon" onClick={() => handleRemoveRole(role.user_id, role.role)}>
+              <Button variant="destructive" size="icon" onClick={() => handleRemoveRole(role.user_id, role.role as any)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </CardContent>
