@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin, useAllUsers, useAllSubscriptions, useAdminContent, useDeleteContent } from "@/hooks/useAdmin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit2, Tv } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Tv, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminOverview } from "@/components/admin/AdminOverview";
@@ -49,6 +51,44 @@ const Admin = () => {
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [editingContent, setEditingContent] = useState<any>(null);
   const [managingTVShow, setManagingTVShow] = useState<{ id: string; title: string; tmdbId?: number } | null>(null);
+  
+  // Content grid filters and pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+  
+  // Filtered and paginated content
+  const filteredContent = useMemo(() => {
+    let filtered = content;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (item) =>
+          item.title.toLowerCase().includes(query) ||
+          item.genre?.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query)
+      );
+    }
+    
+    if (contentTypeFilter !== "all") {
+      filtered = filtered.filter((item) => item.content_type === contentTypeFilter);
+    }
+    
+    return filtered;
+  }, [content, searchQuery, contentTypeFilter]);
+  
+  const totalPages = Math.ceil(filteredContent.length / itemsPerPage);
+  const paginatedContent = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredContent.slice(start, start + itemsPerPage);
+  }, [filteredContent, currentPage, itemsPerPage]);
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, contentTypeFilter]);
 
   const handleRefreshUsers = () => {
     window.location.reload();
@@ -100,13 +140,41 @@ const Admin = () => {
       case "content":
         return (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-2xl font-display">Content Management</h2>
               <Button onClick={() => setShowUploadForm(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add Content
               </Button>
             </div>
+
+            {/* Search and Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by title, genre..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={contentTypeFilter} onValueChange={setContentTypeFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="movie">Movies</SelectItem>
+                  <SelectItem value="series">TV Series</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Results count */}
+            <p className="text-sm text-muted-foreground">
+              Showing {paginatedContent.length} of {filteredContent.length} items
+            </p>
 
             {showUploadForm && (
               <ContentUploadForm onClose={() => setShowUploadForm(false)} />
@@ -125,8 +193,8 @@ const Admin = () => {
               />
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {content.map((item) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {paginatedContent.map((item) => (
                 <Card key={item.id} className="bg-card overflow-hidden group">
                   <div className="relative aspect-[2/3]">
                     <img
@@ -185,6 +253,53 @@ const Admin = () => {
                 </Card>
               ))}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="w-8 h-8"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         );
       

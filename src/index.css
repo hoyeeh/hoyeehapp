@@ -290,6 +290,29 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.h-safe-area-inset-bottom {
+  height: env(safe-area-inset-bottom, 0px);
+}
+
+/* Full screen mobile layout */
+.mobile-full-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
 .text-shadow-netflix {
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }

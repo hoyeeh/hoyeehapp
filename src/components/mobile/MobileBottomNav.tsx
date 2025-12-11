@@ -28,8 +28,8 @@ export function MobileBottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50 pb-safe">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-xl border-t border-border/50 safe-area-bottom">
+      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || 
             (item.path === "/" && location.pathname === "/");
@@ -40,8 +40,8 @@ export function MobileBottomNav() {
               key={item.path}
               onClick={() => handleNavClick(item.path)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-all duration-300",
-                "active:scale-95 tap-highlight-transparent",
+                "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 rounded-xl transition-all duration-300",
+                "active:scale-95 tap-highlight-transparent touch-manipulation",
                 isActive 
                   ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground"
@@ -72,6 +72,8 @@ export function MobileBottomNav() {
           );
         })}
       </div>
+      {/* Extra padding for devices with home indicator */}
+      <div className="h-safe-area-inset-bottom bg-background" />
     </nav>
   );
 }
