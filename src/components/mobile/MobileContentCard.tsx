@@ -3,6 +3,7 @@ import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import badge from "@/assets/hoyeeh-badge.png";
 import { subDays } from "date-fns";
+import { useState } from "react";
 
 interface MobileContentCardProps {
   content: Content;
@@ -14,6 +15,9 @@ interface MobileContentCardProps {
   showBadges?: boolean;
 }
 
+// Fallback placeholder for broken images
+const PLACEHOLDER_IMAGE = '/placeholder.svg';
+
 export function MobileContentCard({ 
   content, 
   onPlay,
@@ -23,8 +27,17 @@ export function MobileContentCard({
   progress,
   showBadges = true
 }: MobileContentCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const [badgeError, setBadgeError] = useState(false);
+  
   const isNewlyAdded = content.createdAt && 
     new Date(content.createdAt) > subDays(new Date(), 14);
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  const thumbnailSrc = imageError ? PLACEHOLDER_IMAGE : (content.thumbnailUrl || PLACEHOLDER_IMAGE);
 
   if (variant === "continue") {
     return (
@@ -35,10 +48,11 @@ export function MobileContentCard({
         {/* Thumbnail */}
         <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-secondary">
           <img
-            src={content.thumbnailUrl}
+            src={thumbnailSrc}
             alt={content.title}
             className="w-full h-full object-cover"
             loading="lazy"
+            onError={handleImageError}
           />
           
           {/* Play Overlay */}
@@ -92,10 +106,11 @@ export function MobileContentCard({
       >
         <div className="relative aspect-video rounded-xl overflow-hidden bg-secondary shadow-lg">
           <img
-            src={content.thumbnailUrl}
+            src={thumbnailSrc}
             alt={content.title}
             className="w-full h-full object-cover"
             loading="lazy"
+            onError={handleImageError}
           />
           
           {/* Gradient */}
@@ -103,7 +118,14 @@ export function MobileContentCard({
           
           {/* Badges */}
           <div className="absolute top-2 left-2 flex items-center gap-1">
-            <img src={badge} alt="Hoyeeh" className="h-3 w-auto" />
+            {!badgeError && (
+              <img 
+                src={badge} 
+                alt="Hoyeeh" 
+                className="h-3 w-auto" 
+                onError={() => setBadgeError(true)}
+              />
+            )}
             {rank && (
               <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 rounded">
                 TOP {rank}
@@ -130,19 +152,27 @@ export function MobileContentCard({
     >
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
         <img
-          src={content.thumbnailUrl}
+          src={thumbnailSrc}
           alt={content.title}
           className="w-full h-full object-cover"
           loading="lazy"
+          onError={handleImageError}
         />
         
         {/* Gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
         
         {/* Badge */}
-        <div className="absolute top-1.5 left-1.5">
-          <img src={badge} alt="Hoyeeh" className="h-3 w-auto opacity-80" />
-        </div>
+        {!badgeError && (
+          <div className="absolute top-1.5 left-1.5">
+            <img 
+              src={badge} 
+              alt="Hoyeeh" 
+              className="h-3 w-auto opacity-80"
+              onError={() => setBadgeError(true)}
+            />
+          </div>
+        )}
 
         {/* Rank Badge */}
         {rank && (

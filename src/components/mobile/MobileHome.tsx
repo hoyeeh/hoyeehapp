@@ -11,12 +11,13 @@ import { toast } from "sonner";
 
 import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
-import { MobileHeroCard } from "./MobileHeroCard";
+import { MobileHeroCard, MobileHeroSkeleton } from "./MobileHeroCard";
 import { MobileContentRow } from "./MobileContentRow";
 import { MobileContinueWatching } from "./MobileContinueWatching";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MobileContentDetail } from "./MobileContentDetail";
 import { PullToRefresh } from "./PullToRefresh";
+import { FadeIn } from "./PageTransition";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface MobileHomeProps {
@@ -189,77 +190,93 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
       {/* Main Content - Scrollable area with pull to refresh */}
       <PullToRefresh onRefresh={handleRefresh}>
         <main className="flex-1 pt-28 pb-24">
-          {/* Hero Card */}
-          {featuredContent && (
+          {/* Hero Card with loading skeleton */}
+          <FadeIn delay={0}>
             <div className="mb-6">
-              <MobileHeroCard
-                content={featuredContent}
-                onPlay={handlePlay}
-                onToggleList={handleToggleList}
-                onDetails={handleDetails}
-                isInList={watchlistIds.includes(featuredContent.id)}
-              />
+              {isLoadingTop10 && !featuredContent ? (
+                <MobileHeroSkeleton />
+              ) : featuredContent ? (
+                <MobileHeroCard
+                  content={featuredContent}
+                  onPlay={handlePlay}
+                  onToggleList={handleToggleList}
+                  onDetails={handleDetails}
+                  isInList={watchlistIds.includes(featuredContent.id)}
+                />
+              ) : null}
             </div>
-          )}
+          </FadeIn>
 
           {/* Continue Watching */}
-          <MobileContinueWatching
-            onPlay={(c, progress) => handlePlay(c, progress)}
-            onDetails={handleDetails}
-          />
+          <FadeIn delay={50}>
+            <MobileContinueWatching
+              onPlay={(c, progress) => handlePlay(c, progress)}
+              onDetails={handleDetails}
+            />
+          </FadeIn>
 
           {/* New Releases */}
-          <MobileContentRow
-            title="New Releases"
-            content={newContent}
-            onDetails={handleDetails}
-            showSeeAll
-            isLoading={isLoadingNewReleases}
-          />
+          <FadeIn delay={100}>
+            <MobileContentRow
+              title="New Releases"
+              content={newContent}
+              onDetails={handleDetails}
+              showSeeAll
+              isLoading={isLoadingNewReleases}
+            />
+          </FadeIn>
 
           {/* Top 10 */}
-          <MobileContentRow
-            title="Top 10 in Hoyeeh"
-            content={top10Content}
-            onDetails={handleDetails}
-            showRank
-            variant="poster"
-            isLoading={isLoadingTop10}
-          />
+          <FadeIn delay={150}>
+            <MobileContentRow
+              title="Top 10 in Hoyeeh"
+              content={top10Content}
+              onDetails={handleDetails}
+              showRank
+              variant="poster"
+              isLoading={isLoadingTop10}
+            />
+          </FadeIn>
 
           {/* Trending */}
-          <MobileContentRow
-            title="Trending Now"
-            content={trending}
-            onDetails={handleDetails}
-            variant="landscape"
-            isLoading={isLoadingTrending}
-          />
+          <FadeIn delay={200}>
+            <MobileContentRow
+              title="Trending Now"
+              content={trending}
+              onDetails={handleDetails}
+              variant="landscape"
+              isLoading={isLoadingTrending}
+            />
+          </FadeIn>
 
           {/* Movies */}
           {movies.length > 0 && (
-            <MobileContentRow
-              title="Movies"
-              content={movies.slice(0, 15)}
-              onDetails={handleDetails}
-              showSeeAll
-              onSeeAll={() => navigate("/genres?type=movie")}
-            />
+            <FadeIn delay={250}>
+              <MobileContentRow
+                title="Movies"
+                content={movies.slice(0, 15)}
+                onDetails={handleDetails}
+                showSeeAll
+                onSeeAll={() => navigate("/genres?type=movie")}
+              />
+            </FadeIn>
           )}
 
           {/* Series */}
           {series.length > 0 && (
-            <MobileContentRow
-              title="TV Series"
-              content={series.slice(0, 15)}
-              onDetails={handleDetails}
-              showSeeAll
-              onSeeAll={() => navigate("/genres?type=series")}
-            />
+            <FadeIn delay={300}>
+              <MobileContentRow
+                title="TV Series"
+                content={series.slice(0, 15)}
+                onDetails={handleDetails}
+                showSeeAll
+                onSeeAll={() => navigate("/genres?type=series")}
+              />
+            </FadeIn>
           )}
 
           {/* Genre-based rows */}
-          {["Action", "Drama", "Comedy", "Romance"].map((genre) => {
+          {["Action", "Drama", "Comedy", "Romance"].map((genre, index) => {
             const genreContent = content.filter((c) =>
               c.genre?.toLowerCase().includes(genre.toLowerCase())
             ).slice(0, 15);
@@ -267,13 +284,14 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             if (genreContent.length === 0) return null;
             
             return (
-              <MobileContentRow
-                key={genre}
-                title={genre}
-                content={genreContent}
-                onDetails={handleDetails}
-                showSeeAll
-              />
+              <FadeIn key={genre} delay={350 + index * 50}>
+                <MobileContentRow
+                  title={genre}
+                  content={genreContent}
+                  onDetails={handleDetails}
+                  showSeeAll
+                />
+              </FadeIn>
             );
           })}
         </main>
