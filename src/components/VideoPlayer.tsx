@@ -62,7 +62,7 @@ export const VideoPlayer = ({
   const progressRef = useRef<HTMLDivElement>(null);
   const lastSaveTimeRef = useRef<number>(0);
 
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true); // Start as true since video has autoPlay
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -155,8 +155,13 @@ export const VideoPlayer = ({
     };
 
     const handleWaiting = () => setIsBuffering(true);
-    const handlePlaying = () => setIsBuffering(false);
+    const handlePlaying = () => {
+      setIsBuffering(false);
+      setIsPlaying(true); // Sync isPlaying state when video actually starts playing
+    };
     const handleCanPlay = () => setIsBuffering(false);
+    const handlePlay = () => setIsPlaying(true);
+    const handlePauseEvent = () => setIsPlaying(false);
     
     const handlePause = () => {
       // Save progress immediately on pause
@@ -169,6 +174,8 @@ export const VideoPlayer = ({
     video.addEventListener("playing", handlePlaying);
     video.addEventListener("canplay", handleCanPlay);
     video.addEventListener("pause", handlePause);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePauseEvent);
 
     return () => {
       // Save progress when unmounting
@@ -181,6 +188,8 @@ export const VideoPlayer = ({
       video.removeEventListener("playing", handlePlaying);
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("pause", handlePause);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePauseEvent);
     };
   }, [initialProgress, loadedProgress, saveProgressImmediately]);
 
