@@ -171,10 +171,12 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
     );
   }
 
+  console.log('[MobileHome] Rendering, content count:', content.length);
+
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
-      <div className="fixed inset-0 bg-background flex flex-col overflow-hidden">
-        {/* Header */}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header - Fixed at top */}
+      <div className="fixed top-0 left-0 right-0 z-50">
         <MobileHeader
           onSearchClick={() => setShowSearch(true)}
           transparent={scrollY < 100}
@@ -182,9 +184,11 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}
         />
+      </div>
 
-        {/* Main Content - Scrollable area */}
-        <main className="flex-1 overflow-y-auto pt-28 pb-20 overscroll-contain">
+      {/* Main Content - Scrollable area with pull to refresh */}
+      <PullToRefresh onRefresh={handleRefresh}>
+        <main className="flex-1 pt-28 pb-24">
           {/* Hero Card */}
           {featuredContent && (
             <div className="mb-6">
@@ -276,28 +280,30 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             );
           })}
         </main>
+      </PullToRefresh>
 
-        {/* Bottom Navigation - Fixed at bottom */}
+      {/* Bottom Navigation - Fixed at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 z-50">
         <MobileBottomNav />
-
-        {/* Search Overlay */}
-        <MobileSearchOverlay
-          open={showSearch}
-          onClose={() => setShowSearch(false)}
-          onSelect={handleDetails}
-        />
-
-        {/* Content Detail Modal */}
-        {selectedContent && (
-          <MobileContentDetail
-            content={selectedContent}
-            onClose={() => setSelectedContent(null)}
-            onPlay={(c) => handlePlay(c)}
-            onToggleList={handleToggleList}
-            isInList={watchlistIds.includes(selectedContent.id)}
-          />
-        )}
       </div>
-    </PullToRefresh>
+
+      {/* Search Overlay */}
+      <MobileSearchOverlay
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        onSelect={handleDetails}
+      />
+
+      {/* Content Detail Modal */}
+      {selectedContent && (
+        <MobileContentDetail
+          content={selectedContent}
+          onClose={() => setSelectedContent(null)}
+          onPlay={(c) => handlePlay(c)}
+          onToggleList={handleToggleList}
+          isInList={watchlistIds.includes(selectedContent.id)}
+        />
+      )}
+    </div>
   );
 }
