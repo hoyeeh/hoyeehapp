@@ -36,6 +36,7 @@ import { subDays } from "date-fns";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHome } from "@/components/mobile";
+import { MobileOnboarding } from "@/components/mobile/MobileOnboarding";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -380,13 +381,13 @@ const Index = () => {
   // Mobile PWA Experience
   if (isMobile) {
     return (
-      <>
+      <MobileOnboarding>
         <MobileHome 
           onPlay={(item, progress) => setPlayingContent({ content: item, progress: progress || 0 })} 
         />
         <PWAInstallBanner />
         <Toaster position="top-center" />
-      </>
+      </MobileOnboarding>
     );
   }
 
