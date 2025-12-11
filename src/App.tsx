@@ -77,7 +77,6 @@ const App = () => (
                 <Route path="/notification-preferences" element={<NotificationPreferences />} />
                 <Route path="/parental" element={<Parental />} />
                 <Route path="*" element={<NotFound />} />
-                <Route path="*" element={<NotFound />} />
               </Routes>
             </CastProvider>
           </BrowserRouter>
