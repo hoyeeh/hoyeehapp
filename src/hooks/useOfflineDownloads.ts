@@ -109,29 +109,27 @@ export const useOfflineDownloads = () => {
       toast.info(`Starting download: ${episodeTitle || content.title}`);
 
       try {
+        // Get auth token for the request
+        const { data: { session } } = await supabase.auth.getSession();
+        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
         // Use edge function to proxy the download (bypasses CORS)
-        const { data, error } = await supabase.functions.invoke('download-video', {
-          body: { videoUrl },
-        });
-
-        if (error) {
-          throw new Error(error.message || "Failed to fetch video");
-        }
-
-        // The response comes as a blob from the edge function
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              'Authorization': `Bearer ${authToken}`,
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             },
             body: JSON.stringify({ videoUrl }),
           }
         );
 
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Download response error:", errorText);
           throw new Error("Failed to fetch video");
         }
 
