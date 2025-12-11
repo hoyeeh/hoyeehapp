@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell, MessageCircle } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { useIsAdmin } from "@/hooks/useAdmin";
 import NotificationBell from "./NotificationBell";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import { useProfileContext } from "@/contexts/ProfileContext";
+import { AdminAccessBadge } from "./AdminAccessBadge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -92,13 +93,25 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
               <div className="w-8 h-8 rounded-full bg-brand/20 flex items-center justify-center flex-shrink-0">
                 <User className="h-4 w-4 text-brand" />
               </div>
-              <div className="hidden md:flex flex-1 items-center justify-between">
-                <div className="text-left">
-                  <p className="font-medium text-sm truncate max-w-[120px]">
-                    {currentProfile?.name || userName || 'User'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Account</p>
+              <div className="hidden md:flex flex-1 flex-col">
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <p className="font-medium text-sm truncate max-w-[120px]">
+                      {currentProfile?.name || userName || 'User'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Account</p>
+                  </div>
+                  {isUserMenuOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </div>
+                {isAdmin && (
+                  <div className="mt-1">
+                    <AdminAccessBadge />
+                  </div>
+                )}
                 {isUserMenuOpen ? (
                   <ChevronUp className="h-4 w-4 text-muted-foreground" />
                 ) : (

@@ -32,6 +32,8 @@ import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
 import { CDNMigrationTool } from "@/components/admin/CDNMigrationTool";
 import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
 import { KidsCategoryManagement } from "@/components/admin/KidsCategoryManagement";
+import { AdminSubscriptionCredits } from "@/components/admin/AdminSubscriptionCredits";
+import { AdminSupportChat } from "@/components/admin/AdminSupportChat";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -209,6 +211,15 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Subscription Management</h2>
             <SubscriptionManagement users={users} subscriptions={subscriptions as any} />
+            <AdminSubscriptionCredits />
+          </div>
+        );
+      
+      case "support":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Support Chat</h2>
+            <AdminSupportChat />
           </div>
         );
       
