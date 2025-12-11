@@ -226,7 +226,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
         <main className="flex-1 pt-28 pb-24">
           {/* Hero Card with loading skeleton */}
           <FadeIn delay={0}>
-            <div className="mb-6">
+            <div className="mb-6 w-full overflow-x-hidden">
               {isLoadingTop10 && !featuredContent ? (
                 <MobileHeroSkeleton />
               ) : featuredContent ? (

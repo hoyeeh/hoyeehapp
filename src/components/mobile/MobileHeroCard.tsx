@@ -15,8 +15,8 @@ interface MobileHeroCardProps {
 // Skeleton component for hero loading state
 export function MobileHeroSkeleton() {
   return (
-    <div className="px-4">
-      <div className="relative rounded-2xl overflow-hidden animate-pulse">
+    <div className="w-full box-border px-4">
+      <div className="relative w-full rounded-2xl overflow-hidden animate-pulse">
         <div className="relative aspect-[2/3] max-h-[55vh]">
           <Skeleton className="absolute inset-0 w-full h-full" />
           
@@ -52,8 +52,8 @@ export function MobileHeroCard({
   isInList = false 
 }: MobileHeroCardProps) {
   return (
-    <div className="px-4">
-      <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 animate-fade-in border border-border/20">
+    <div className="w-full box-border px-4">
+      <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 animate-fade-in border border-border/20">
         {/* Background Image - Card format with rounded edges and proper padding */}
         <div className="relative aspect-[2/3] max-h-[55vh]">
           <img
