@@ -268,3 +268,28 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Mobile PWA Utilities */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.tap-highlight-transparent {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.text-shadow-netflix {
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
