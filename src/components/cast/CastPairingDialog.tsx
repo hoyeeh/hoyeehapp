@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tv, Loader2, Link2, ExternalLink, Smartphone } from 'lucide-react';
+import { Tv, Loader2, Link2, ExternalLink, Smartphone, Camera, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CastPairingDialogProps {
   open: boolean;
@@ -19,6 +20,97 @@ export function CastPairingDialog({
 }: CastPairingDialogProps) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<number | null>(null);
+
+  // Start camera for QR scanning
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setShowScanner(true);
+      startScanning();
+    } catch (err) {
+      toast.error('Camera access denied');
+      console.error('Camera error:', err);
+    }
+  };
+
+  // Stop camera
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    setShowScanner(false);
+  };
+
+  // Scan QR code from video feed
+  const startScanning = () => {
+    scanIntervalRef.current = window.setInterval(() => {
+      if (!videoRef.current || !canvasRef.current) return;
+      
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Use BarcodeDetector API if available
+      if ('BarcodeDetector' in window) {
+        const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+        barcodeDetector.detect(canvas).then((barcodes: any[]) => {
+          if (barcodes.length > 0) {
+            const qrData = barcodes[0].rawValue;
+            handleQRCode(qrData);
+          }
+        }).catch(() => {});
+      }
+    }, 500);
+  };
+
+  // Handle detected QR code
+  const handleQRCode = (data: string) => {
+    // Expected format: hoyeeh://pair?code=ABC123
+    const match = data.match(/code=([A-Z0-9]{6})/i);
+    if (match) {
+      const extractedCode = match[1].toUpperCase();
+      setCode(extractedCode);
+      stopCamera();
+      toast.success('QR code detected!');
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  // Cleanup when dialog closes
+  useEffect(() => {
+    if (!open) {
+      stopCamera();
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,15 +221,40 @@ export function CastPairingDialog({
             </form>
           </div>
 
-          {/* Alternative: Scan QR Code */}
+          {/* QR Code Scanner */}
           <div className="border-t pt-4">
-            <div className="flex items-start gap-3 text-sm text-muted-foreground">
-              <Smartphone className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <p>
-                <strong>Tip:</strong> You can also scan a QR code from your TV 
-                if your Smart TV's browser supports it.
-              </p>
-            </div>
+            {showScanner ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Scanning for QR code...</span>
+                  <Button variant="ghost" size="sm" onClick={stopCamera}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
+                  <video 
+                    ref={videoRef} 
+                    className="w-full h-full object-cover"
+                    playsInline
+                    muted
+                  />
+                  <div className="absolute inset-0 border-2 border-primary/50 m-8 rounded-lg" />
+                </div>
+                <canvas ref={canvasRef} className="hidden" />
+              </div>
+            ) : (
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={startCamera}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Scan QR Code from TV
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Point your camera at the QR code displayed on your TV
+            </p>
           </div>
         </div>
       </DialogContent>

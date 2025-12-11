@@ -1,14 +1,15 @@
 import { useState, useRef } from "react";
-import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown } from "lucide-react";
+import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MobileContentCard } from "./MobileContentCard";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import logo from "@/assets/hoyeeh-logo-web.png";
-import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
+import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MobileContentDetailProps {
   content: Content;
@@ -26,7 +27,11 @@ export function MobileContentDetail({
   onToggleList
 }: MobileContentDetailProps) {
   const [activeTab, setActiveTab] = useState<"episodes" | "more">("more");
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
   const { lightTap, mediumTap, successFeedback, selectionTap } = useHaptics();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   // Swipe to dismiss
   const y = useMotionValue(0);
@@ -73,6 +78,56 @@ export function MobileContentDetail({
         duration: item.duration || 0,
         year: item.year,
       }));
+    },
+  });
+
+  // Fetch user's existing rating
+  const { data: userRating } = useQuery({
+    queryKey: ["user-rating", content.id, user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("content_id", content.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data?.rating || null;
+    },
+    enabled: !!user,
+  });
+
+  // Submit rating mutation
+  const submitRating = useMutation({
+    mutationFn: async (rating: number) => {
+      if (!user) throw new Error("Not authenticated");
+      
+      const { data: existing } = await supabase
+        .from("reviews")
+        .select("id")
+        .eq("content_id", content.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("reviews")
+          .update({ rating })
+          .eq("id", existing.id);
+      } else {
+        await supabase
+          .from("reviews")
+          .insert({ content_id: content.id, user_id: user.id, rating });
+      }
+    },
+    onSuccess: () => {
+      successFeedback();
+      queryClient.invalidateQueries({ queryKey: ["user-rating", content.id] });
+      toast.success("Rating saved!");
+      setShowRatingModal(false);
+    },
+    onError: () => {
+      toast.error("Failed to save rating");
     },
   });
 
@@ -132,19 +187,36 @@ export function MobileContentDetail({
 
   const handleRate = () => {
     lightTap();
-    toast.info("Rating feature coming soon");
+    if (!user) {
+      toast.error("Please sign in to rate content");
+      return;
+    }
+    setSelectedRating(userRating || 0);
+    setShowRatingModal(true);
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     lightTap();
+    const shareUrl = `${window.location.origin}/content/${content.id}`;
+    
     if (navigator.share) {
-      navigator.share({
-        title: content.title,
-        text: content.description,
-        url: window.location.href,
-      });
+      try {
+        await navigator.share({
+          title: content.title,
+          text: content.description,
+          url: shareUrl,
+        });
+      } catch (err) {
+        // User cancelled or share failed
+      }
     } else {
-      toast.info("Share link copied!");
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        successFeedback();
+        toast.success("Link copied to clipboard!");
+      } catch {
+        toast.error("Failed to copy link");
+      }
     }
   };
 
@@ -230,7 +302,7 @@ export function MobileContentDetail({
               onClick={handlePlay}
               className={cn(
                 "w-full flex items-center justify-center gap-2 py-3 rounded-md",
-                "bg-foreground text-background font-semibold",
+                "bg-primary text-white font-semibold",
                 "active:scale-[0.98] transition-transform"
               )}
             >
@@ -383,9 +455,9 @@ export function MobileContentDetail({
 
           {/* More Like This */}
           {(content.contentType === "movie" || activeTab === "more") && (
-            <div>
+            <div className="mt-4">
               <h3 className="text-lg font-bold mb-4">More Like This</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {similarContent.map((item: Content) => (
                   <MobileContentCard
                     key={item.id}
@@ -403,6 +475,75 @@ export function MobileContentDetail({
           )}
         </div>
       </div>
+
+      {/* Rating Modal */}
+      <AnimatePresence>
+        {showRatingModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm flex items-end justify-center"
+            onClick={() => setShowRatingModal(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-md bg-card rounded-t-3xl p-6 pb-safe"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-6" />
+              <h3 className="text-xl font-bold text-center mb-2">Rate this title</h3>
+              <p className="text-sm text-muted-foreground text-center mb-6">{content.title}</p>
+              
+              <div className="flex justify-center gap-2 mb-8">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => {
+                      selectionTap();
+                      setSelectedRating(star);
+                    }}
+                    className="p-2 active:scale-90 transition-transform"
+                  >
+                    <Star 
+                      className={cn(
+                        "h-10 w-10 transition-colors",
+                        star <= selectedRating 
+                          ? "text-yellow-500 fill-yellow-500" 
+                          : "text-muted-foreground"
+                      )} 
+                    />
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowRatingModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-medium active:scale-[0.98] transition-transform"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => selectedRating > 0 && submitRating.mutate(selectedRating)}
+                  disabled={selectedRating === 0 || submitRating.isPending}
+                  className={cn(
+                    "flex-1 py-3 rounded-xl font-medium active:scale-[0.98] transition-transform",
+                    selectedRating > 0 
+                      ? "bg-primary text-white" 
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {submitRating.isPending ? "Saving..." : "Submit"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

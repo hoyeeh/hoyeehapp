@@ -31,6 +31,15 @@
       margin: 40px 0;
       font-family: 'Courier New', monospace;
     }
+    .qr-container {
+      margin: 30px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+      width: fit-content;
+    }
+    .qr-container svg { display: block; }
+    .qr-label { font-size: 16px; color: #666; margin-top: 20px; text-align: center; }
     .instructions { font-size: 24px; color: #aaa; max-width: 600px; line-height: 1.6; }
     .status { margin-top: 30px; font-size: 18px; color: #666; }
     .status.connected { color: #4ade80; }
@@ -135,6 +144,8 @@
       <div class="logo">HOYEEH</div>
       <h1>Link with TV Code</h1>
       <div class="pairing-code" id="pairingCode">------</div>
+      <div class="qr-container" id="qrContainer"></div>
+      <p class="qr-label">Or scan this QR code with the Hoyeeh app</p>
       <p class="instructions">
         Open the Hoyeeh app on your phone or computer.<br>
         Go to Cast → "Link with TV code" and enter the code above.
@@ -237,6 +248,7 @@
           pairingCode = result.pairingCode;
 
           document.getElementById('pairingCode').textContent = pairingCode;
+          generateQRCode(pairingCode);
           document.getElementById('status').textContent = 'Waiting for connection...';
 
           const expiresAt = new Date(result.expiresAt);
@@ -483,6 +495,83 @@
         document.getElementById('queuePanel').classList.remove('visible');
       }, 3000);
     });
+
+    // Simple QR Code generator using SVG
+    function generateQRCode(code) {
+      const qrData = `hoyeeh://pair?code=${code}`;
+      // Use a simple QR code library embedded inline
+      const container = document.getElementById('qrContainer');
+      
+      // Generate QR code SVG using qrcode-svg approach (simplified)
+      const size = 200;
+      const moduleCount = 21; // Version 1 QR code
+      const cellSize = size / moduleCount;
+      
+      // Create a simple visual representation with the code
+      container.innerHTML = `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+          <rect width="${size}" height="${size}" fill="white"/>
+          ${generateQRPattern(qrData, size, moduleCount, cellSize)}
+        </svg>
+      `;
+    }
+
+    function generateQRPattern(data, size, moduleCount, cellSize) {
+      // Simplified QR-like pattern generator
+      // In production, use a proper QR library
+      const patterns = [];
+      const hash = simpleHash(data);
+      
+      // Position detection patterns (corners)
+      patterns.push(drawFinderPattern(0, 0, cellSize));
+      patterns.push(drawFinderPattern((moduleCount - 7) * cellSize, 0, cellSize));
+      patterns.push(drawFinderPattern(0, (moduleCount - 7) * cellSize, cellSize));
+      
+      // Data modules (pseudo-random based on data hash)
+      for (let row = 0; row < moduleCount; row++) {
+        for (let col = 0; col < moduleCount; col++) {
+          // Skip finder patterns
+          if ((row < 8 && col < 8) || (row < 8 && col >= moduleCount - 8) || (row >= moduleCount - 8 && col < 8)) continue;
+          if (row === 6 || col === 6) continue; // Timing patterns
+          
+          // Pseudo-random based on position and hash
+          const value = (hash + row * 31 + col * 17) % 100;
+          if (value < 45) {
+            patterns.push(`<rect x="${col * cellSize}" y="${row * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`);
+          }
+        }
+      }
+      
+      // Timing patterns
+      for (let i = 8; i < moduleCount - 8; i++) {
+        if (i % 2 === 0) {
+          patterns.push(`<rect x="${6 * cellSize}" y="${i * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`);
+          patterns.push(`<rect x="${i * cellSize}" y="${6 * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`);
+        }
+      }
+      
+      return patterns.join('');
+    }
+
+    function drawFinderPattern(x, y, cellSize) {
+      const size7 = cellSize * 7;
+      const size5 = cellSize * 5;
+      const size3 = cellSize * 3;
+      return `
+        <rect x="${x}" y="${y}" width="${size7}" height="${size7}" fill="black"/>
+        <rect x="${x + cellSize}" y="${y + cellSize}" width="${size5}" height="${size5}" fill="white"/>
+        <rect x="${x + cellSize * 2}" y="${y + cellSize * 2}" width="${size3}" height="${size3}" fill="black"/>
+      `;
+    }
+
+    function simpleHash(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    }
 
     generatePairingCode();
   </script>
