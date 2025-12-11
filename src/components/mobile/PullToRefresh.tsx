@@ -72,7 +72,7 @@ export function PullToRefresh({ onRefresh, children, threshold = 80 }: PullToRef
   return (
     <div
       ref={containerRef}
-      className="relative min-h-screen overflow-y-auto overscroll-contain"
+      className="relative h-full overflow-y-auto overscroll-contain hide-scrollbar"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
