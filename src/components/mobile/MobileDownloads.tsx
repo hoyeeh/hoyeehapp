@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Settings, Play, Trash2, AlertCircle, CheckCircle, HardDrive, Wifi } from "lucide-react";
+import { ArrowLeft, Settings, Play, Trash2, AlertCircle, CheckCircle, HardDrive, Wifi, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { MobileBottomNav } from "./MobileBottomNav";
@@ -12,6 +12,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { useSmartDownload } from "@/hooks/useSmartDownload";
 
 interface DownloadItem {
   id: string;
@@ -34,6 +35,7 @@ export function MobileDownloads() {
   const [showSettings, setShowSettings] = useState(false);
   const [wifiOnly, setWifiOnly] = useState(() => localStorage.getItem("wifi-only-download") === "true");
   const { lightTap, selectionTap, warningFeedback, successFeedback } = useHaptics();
+  const { smartDownloadEnabled, toggleSmartDownload } = useSmartDownload();
 
   // Fetch download licenses
   const { data: downloads = [], isLoading, refetch } = useQuery({
@@ -166,7 +168,7 @@ export function MobileDownloads() {
         {/* Settings Panel */}
         {showSettings && (
           <div className="px-4 py-3 space-y-3 border-b border-border/30 animate-in slide-in-from-top duration-200">
-            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
+          <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
               <div className="flex items-center gap-3">
                 <Wifi className="h-5 w-5 text-primary" />
                 <div>
@@ -175,6 +177,23 @@ export function MobileDownloads() {
                 </div>
               </div>
               <Switch checked={wifiOnly} onCheckedChange={handleWifiToggle} />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Zap className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Smart Downloads</p>
+                  <p className="text-xs text-muted-foreground">Auto-download next episode</p>
+                </div>
+              </div>
+              <Switch 
+                checked={smartDownloadEnabled} 
+                onCheckedChange={(checked) => {
+                  selectionTap();
+                  toggleSmartDownload(checked);
+                  toast.success(checked ? "Smart Downloads enabled" : "Smart Downloads disabled");
+                }} 
+              />
             </div>
             <button
               onClick={handleToggleEdit}
