@@ -29,6 +29,7 @@ import { AdminEmailSender } from "@/components/admin/AdminEmailSender";
 import { BulkThumbnailRegeneration } from "@/components/admin/BulkThumbnailRegeneration";
 import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
 import { CDNMigrationTool } from "@/components/admin/CDNMigrationTool";
+import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -86,8 +87,10 @@ const Admin = () => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "superadmin":
+        return <SuperAdminDashboard />;
+      
       case "overview":
-        return <AdminOverview users={users} content={content} subscriptions={subscriptions} />;
       
       case "content":
         return (

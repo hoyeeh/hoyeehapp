@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.download-video]
 verify_jwt = false
+
+[functions.pusher-notify]
+verify_jwt = true

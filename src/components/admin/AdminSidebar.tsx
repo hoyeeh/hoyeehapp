@@ -1,6 +1,7 @@
-import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send } from "lucide-react";
+import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
+import { useIsSuperAdmin } from "@/hooks/useSuperAdmin";
 
 interface AdminSidebarProps {
   activeTab: string;
@@ -27,6 +28,8 @@ const menuItems = [
 ];
 
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
+  const { data: isSuperAdmin } = useIsSuperAdmin();
+
   return (
     <aside className="fixed left-0 top-0 h-full w-16 md:w-64 bg-sidebar border-r border-sidebar-border z-50 flex flex-col">
       {/* Logo */}
@@ -40,6 +43,25 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
 
       {/* Navigation */}
       <nav className="flex-1 p-2 md:p-4 overflow-y-auto">
+        {/* Super Admin Section */}
+        {isSuperAdmin && (
+          <div className="mb-4">
+            <button
+              onClick={() => onTabChange("superadmin")}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors mb-2",
+                activeTab === "superadmin"
+                  ? "bg-amber-500 text-white"
+                  : "text-amber-500 hover:bg-amber-500/20 border border-amber-500/30"
+              )}
+            >
+              <Crown className="h-5 w-5 flex-shrink-0" />
+              <span className="hidden md:inline font-medium">Super Admin</span>
+            </button>
+            <div className="border-b border-sidebar-border mb-2" />
+          </div>
+        )}
+
         <ul className="space-y-1">
           {menuItems.map((item) => {
             const isActive = activeTab === item.id;
