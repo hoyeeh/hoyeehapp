@@ -20,6 +20,11 @@ const Parental = () => {
     }
   }, [user, authLoading, navigate]);
 
+  const handleClose = () => {
+    navigate(-1);
+  };
+
+  // Loading state - render a simple loader without conditional component branches
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -28,9 +33,18 @@ const Parental = () => {
     );
   }
 
+  // Not authenticated - will redirect via useEffect
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner size="lg" text="Redirecting..." />
+      </div>
+    );
+  }
+
   // Mobile version - full screen modal-style component
   if (isMobile) {
-    return <MobileParentalControls onClose={() => navigate(-1)} />;
+    return <MobileParentalControls onClose={handleClose} />;
   }
 
   // Desktop version
