@@ -64,8 +64,8 @@ export const SocialShare = ({ content, variant = "default" }: SocialShareProps) 
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {variant === "icon" ? (
-          <button className="p-2 rounded-full bg-secondary/80 hover:bg-secondary transition-colors">
-            <Share2 className="h-4 w-4" />
+          <button className="w-7 h-7 rounded-full border-2 border-muted-foreground/50 text-foreground flex items-center justify-center hover:border-foreground transition-all hover:scale-110">
+            <Share2 className="h-3 w-3" />
           </button>
         ) : (
           <Button variant="secondary" size="lg" className="gap-2">

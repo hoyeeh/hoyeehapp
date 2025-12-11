@@ -39,7 +39,7 @@ export const DownloadButton = ({
       <button
         onClick={handleClick}
         className={cn(
-          "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-colors",
+          "w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
           downloaded
             ? "border-brand text-brand hover:bg-brand/10"
             : "border-muted-foreground/50 text-foreground hover:border-foreground",
@@ -48,15 +48,12 @@ export const DownloadButton = ({
       >
         {progress?.status === "downloading" ? (
           <div className="relative">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">
-              {progress.progress}
-            </span>
+            <Loader2 className="h-3 w-3 animate-spin" />
           </div>
         ) : downloaded ? (
-          <Check className="h-5 w-5" />
+          <Check className="h-3 w-3" />
         ) : (
-          <Download className="h-5 w-5" />
+          <Download className="h-3 w-3" />
         )}
       </button>
     );
