@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
 import { toast } from "sonner";
+
+// Storage key for persistent random banner index
+const DESKTOP_BANNER_KEY = "hoyeeh-desktop-banner";
+const BANNER_EXPIRY = 6 * 60 * 60 * 1000; // 6 hours
 
 interface EnhancedHeroBannerProps {
   fallbackContent?: Content;
@@ -20,9 +24,22 @@ export const EnhancedHeroBanner = ({
   onDetails,
 }: EnhancedHeroBannerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    // Get persisted random index on mount
+    try {
+      const stored = localStorage.getItem(DESKTOP_BANNER_KEY);
+      if (stored) {
+        const { index, timestamp } = JSON.parse(stored);
+        if (Date.now() - timestamp < BANNER_EXPIRY) {
+          return index;
+        }
+      }
+    } catch {}
+    return 0;
+  });
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const hasInitialized = useRef(false);
   
   const { data: watchlistIds = [] } = useWatchlist();
   const addToWatchlist = useAddToWatchlist();
@@ -73,12 +90,36 @@ export const EnhancedHeroBanner = ({
   const bannerContent = activeBanner?.content ? transformContent(activeBanner.content) : undefined;
   const content = bannerContent || fallbackContent;
 
+  // Initialize random banner on first load
+  useEffect(() => {
+    if (banners.length <= 1 || hasInitialized.current) return;
+    
+    // Check if we need to set a random index
+    try {
+      const stored = localStorage.getItem(DESKTOP_BANNER_KEY);
+      if (!stored || Date.now() - JSON.parse(stored).timestamp >= BANNER_EXPIRY) {
+        const randomIndex = Math.floor(Math.random() * banners.length);
+        setCurrentIndex(randomIndex);
+        localStorage.setItem(DESKTOP_BANNER_KEY, JSON.stringify({ index: randomIndex, timestamp: Date.now() }));
+      }
+    } catch {}
+    
+    hasInitialized.current = true;
+  }, [banners.length]);
+
   // Auto-rotate banners
   useEffect(() => {
     if (banners.length <= 1) return;
     
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % banners.length);
+      setCurrentIndex((prev) => {
+        const newIndex = (prev + 1) % banners.length;
+        // Update persisted index
+        try {
+          localStorage.setItem(DESKTOP_BANNER_KEY, JSON.stringify({ index: newIndex, timestamp: Date.now() }));
+        } catch {}
+        return newIndex;
+      });
     }, 10000);
 
     return () => clearInterval(interval);
