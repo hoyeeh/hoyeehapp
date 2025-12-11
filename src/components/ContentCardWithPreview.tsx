@@ -297,15 +297,15 @@ export const ContentCardWithPreview = ({
           isHovered ? "opacity-100" : "opacity-0 h-0 p-0 overflow-hidden"
         )}>
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-1.5 mb-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onPlay(content);
               }}
-              className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-all hover:scale-110 shadow-lg"
+              className="w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-all hover:scale-110 shadow-lg"
             >
-              <Play className="h-4 w-4 ml-0.5" fill="currentColor" />
+              <Play className="h-3 w-3 ml-0.5" fill="currentColor" />
             </button>
             
             <button
@@ -314,13 +314,13 @@ export const ContentCardWithPreview = ({
                 onToggleList(content);
               }}
               className={cn(
-                "w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
+                "w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
                 isInList 
                   ? "border-brand bg-brand/20 text-brand" 
                   : "border-muted-foreground/50 text-foreground hover:border-foreground"
               )}
             >
-              {isInList ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {isInList ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
             </button>
 
             {/* Download Button */}
@@ -338,9 +338,9 @@ export const ContentCardWithPreview = ({
                 e.stopPropagation();
                 onDetails(content);
               }}
-              className="w-9 h-9 rounded-full border-2 border-muted-foreground/50 text-foreground flex items-center justify-center hover:border-foreground transition-all hover:scale-110 ml-auto"
+              className="w-7 h-7 rounded-full border-2 border-muted-foreground/50 text-foreground flex items-center justify-center hover:border-foreground transition-all hover:scale-110 ml-auto"
             >
-              <Info className="h-4 w-4" />
+              <Info className="h-3 w-3" />
             </button>
           </div>
 
