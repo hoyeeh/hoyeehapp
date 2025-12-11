@@ -91,7 +91,7 @@ export function MobileContentDetail({
   const handleReplayPreview = () => {
     mediumTap();
     if (videoRef.current) {
-      videoRef.current.currentTime = 0;
+      videoRef.current.currentTime = 1200; // Start at 20 minutes
       videoRef.current.play();
     }
     setIsPreviewPlaying(true);
@@ -300,13 +300,16 @@ export function MobileContentDetail({
         {content.videoUrl ? (
           <video
             ref={videoRef}
-            src={content.videoUrl}
+            src={`${content.videoUrl}#t=1200`}
             className="w-full h-full object-cover"
             autoPlay
-            muted
             playsInline
             loop={false}
             poster={content.thumbnailUrl}
+            onLoadedMetadata={(e) => {
+              const video = e.currentTarget;
+              video.currentTime = 1200; // Start at 20 minutes
+            }}
           />
         ) : (
           <img
@@ -333,7 +336,7 @@ export function MobileContentDetail({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm"
+              className="absolute inset-0 flex items-center justify-center"
             >
               <button
                 onClick={handleReplayPreview}
