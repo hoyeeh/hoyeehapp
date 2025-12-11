@@ -10,14 +10,27 @@ import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Grid, List, SortAsc, SortDesc, Loader2 } from "lucide-react";
+import { ArrowLeft, Grid, List, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileGenres } from "@/components/mobile/MobileGenres";
 
 type SortOption = "title_asc" | "title_desc" | "year_asc" | "year_desc" | "newest" | "oldest";
 type ViewMode = "grid" | "list";
 
 const Genres = () => {
+  const isMobile = useIsMobile();
+  
+  // Return mobile version on mobile devices
+  if (isMobile) {
+    return <MobileGenres />;
+  }
+
+  return <DesktopGenres />;
+};
+
+const DesktopGenres = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: content = [], isLoading: contentLoading } = useContent();

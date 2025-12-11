@@ -13,4 +13,5 @@ export { SwipeNavigation } from "./SwipeNavigation";
 export { MobileDownloads } from "./MobileDownloads";
 export { MobileProfile } from "./MobileProfile";
 export { MobileMyList } from "./MobileMyList";
+export { MobileGenres } from "./MobileGenres";
 export { PageTransition, FadeIn, StaggerList, SlideIn, ScaleIn } from "./PageTransition";
