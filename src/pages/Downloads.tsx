@@ -17,12 +17,15 @@ import { GlobalDownloadNotifications } from "@/components/GlobalDownloadNotifica
 import { WifiOnlyToggle } from "@/components/WifiOnlyToggle";
 import { DownloadExpiryWarning, isExpiringSoon } from "@/components/DownloadExpiryWarning";
 import { useBackgroundDownload } from "@/hooks/useBackgroundDownload";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileDownloads } from "@/components/mobile";
 
 const STORAGE_LIMIT = 10 * 1024 * 1024 * 1024; // 10GB
 
 const Downloads = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
   const { data: profile } = useProfile();
   const {
     downloads,
@@ -119,6 +122,11 @@ const Downloads = () => {
         }}
       />
     );
+  }
+
+  // Mobile PWA Downloads View
+  if (isMobile) {
+    return <MobileDownloads />;
   }
 
   return (
