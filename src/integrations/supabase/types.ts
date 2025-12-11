@@ -1097,6 +1097,7 @@ export type Database = {
       user_profiles: {
         Row: {
           avatar_url: string | null
+          bedtime_time: string | null
           created_at: string
           daily_time_limit_minutes: number | null
           id: string
@@ -1109,6 +1110,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bedtime_time?: string | null
           created_at?: string
           daily_time_limit_minutes?: number | null
           id?: string
@@ -1121,6 +1123,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bedtime_time?: string | null
           created_at?: string
           daily_time_limit_minutes?: number | null
           id?: string
