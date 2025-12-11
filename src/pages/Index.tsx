@@ -34,10 +34,11 @@ import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { subDays } from "date-fns";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { MobileHome } from "@/components/mobile";
 import { MobileOnboarding } from "@/components/mobile/MobileOnboarding";
 import { MobileErrorBoundary } from "@/components/mobile/MobileErrorBoundary";
+import { MobileLandingPage } from "@/components/mobile/MobileLandingPage";
 import { MiniPlayerProvider } from "@/contexts/MiniPlayerContext";
 import { MiniPlayer } from "@/components/MiniPlayer";
 
@@ -47,7 +48,8 @@ export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search'
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
-  const isMobile = useIsMobile();
+  const { isMobileDevice, isTablet } = useMobileDevice();
+  const isMobileOrTablet = isMobileDevice || isTablet;
   
   const { profiles, currentProfile, setCurrentProfile, loading: profilesLoading } = useProfileContext();
   
@@ -339,8 +341,19 @@ const Index = () => {
     );
   }
 
-  // Landing Page (not logged in)
+  // Landing Page (not logged in) - Mobile/Tablet gets mobile landing
   if (!user) {
+    if (isMobileOrTablet) {
+      return (
+        <MobileOnboarding>
+          <MobileLandingPage
+            onSignIn={() => navigate("/auth")}
+            onGetStarted={() => navigate("/auth")}
+          />
+        </MobileOnboarding>
+      );
+    }
+    
     return (
       <LandingPage
         onSignIn={() => navigate("/auth")}
@@ -382,7 +395,7 @@ const Index = () => {
   }
 
   // Mobile PWA Experience
-  if (isMobile) {
+  if (isMobileOrTablet) {
     console.log('[Index] Rendering mobile PWA experience');
     return (
       <MiniPlayerProvider>

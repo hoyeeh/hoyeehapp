@@ -8,6 +8,8 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useMobileDevice } from "@/hooks/useMobileDevice";
+import { MobileAuth } from "@/components/mobile/MobileAuth";
 
 interface PinAuthData {
   mobileNumber: string;
@@ -19,6 +21,12 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp } = useAuth();
+  const { isMobileDevice, isTablet } = useMobileDevice();
+
+  // Render mobile auth for mobile/tablet devices
+  if (isMobileDevice || isTablet) {
+    return <MobileAuth />;
+  }
   
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
