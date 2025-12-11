@@ -26,6 +26,7 @@ import { KidsHomePage } from "@/components/KidsHomePage";
 import { ParentalDashboard } from "@/components/ParentalDashboard";
 import { ParentalPinModal } from "@/components/ParentalPinModal";
 import { isRestrictedForKids, isRestrictedByParentalControls } from "@/components/ContentRatingBadge";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Search, X } from "lucide-react";
@@ -617,6 +618,7 @@ const Index = () => {
         />
       )}
 
+      <PWAInstallBanner />
       <Toaster position="bottom-right" />
       </div>
     </KidsInterface>
