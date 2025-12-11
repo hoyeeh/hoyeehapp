@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { format, addDays, addWeeks, addMonths } from "date-fns";
 
 export const AdminSubscriptionCredits = () => {
   const { user } = useAuth();
+  const { logAction } = useAuditLog();
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState("");
   const [creditType, setCreditType] = useState<"days" | "weeks" | "months">("days");
@@ -114,6 +116,20 @@ export const AdminSubscriptionCredits = () => {
       return { creditDays, newExpiry };
     },
     onSuccess: (data) => {
+      // Log the audit action
+      logAction({
+        action: 'grant_credit',
+        resourceType: 'subscription_credit',
+        resourceId: selectedUser,
+        details: {
+          credit_days: data.creditDays,
+          credit_type: creditType,
+          credit_amount: parseInt(creditAmount),
+          new_expiry: data.newExpiry.toISOString(),
+          reason: reason || null,
+        },
+      });
+      
       toast.success(`Granted ${data.creditDays} days. New expiry: ${format(data.newExpiry, "PPP")}`);
       queryClient.invalidateQueries({ queryKey: ["all-users-credits"] });
       queryClient.invalidateQueries({ queryKey: ["recent-credits"] });
