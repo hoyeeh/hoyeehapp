@@ -11,7 +11,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 // Helper to send confirmation email
-async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, expiryDate: string) {
+async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, planType: string, expiryDate: string) {
   try {
     await fetch(`${SUPABASE_URL}/functions/v1/send-subscription-email`, {
       method: "POST",
@@ -23,7 +23,7 @@ async function sendConfirmationEmail(userEmail: string, userName: string, amount
           userName,
           amount,
           currency: "XAF",
-          planType: "Monthly",
+          planType: planType === "yearly" ? "Yearly" : "Monthly",
           expiryDate,
         },
       }),
@@ -55,19 +55,26 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { action, sessionId } = await req.json();
+    const { action, sessionId, plan_type = "monthly" } = await req.json();
 
     // Fetch current pricing from subscription_settings
     const { data: settings } = await supabase
       .from("subscription_settings")
-      .select("base_price")
-      .eq("plan_type", "monthly")
-      .single();
+      .select("base_price, plan_type")
+      .eq("is_active", true);
 
-    const monthlyPrice = settings?.base_price || 2000;
+    const monthlySettings = settings?.find(s => s.plan_type === "monthly");
+    const yearlySettings = settings?.find(s => s.plan_type === "yearly");
+    
+    const monthlyPrice = monthlySettings?.base_price || 2500;
+    const yearlyPrice = yearlySettings?.base_price || 20000;
+    
+    const selectedPrice = plan_type === "yearly" ? yearlyPrice : monthlyPrice;
+    const interval = plan_type === "yearly" ? "year" : "month";
+    const daysToAdd = plan_type === "yearly" ? 365 : 30;
 
     if (action === "create-checkout") {
-      console.log("Creating Stripe checkout session for user:", user.id);
+      console.log(`Creating Stripe checkout session for user: ${user.id}, plan: ${plan_type}`);
 
       // Create Stripe checkout session
       const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
@@ -81,12 +88,13 @@ serve(async (req) => {
           "success_url": `${req.headers.get("origin")}/subscription?success=true`,
           "cancel_url": `${req.headers.get("origin")}/subscription?canceled=true`,
           "line_items[0][price_data][currency]": "xaf",
-          "line_items[0][price_data][unit_amount]": String(monthlyPrice),
-          "line_items[0][price_data][recurring][interval]": "month",
-          "line_items[0][price_data][product_data][name]": "Hoyeeh Premium Monthly",
+          "line_items[0][price_data][unit_amount]": String(selectedPrice),
+          "line_items[0][price_data][recurring][interval]": interval,
+          "line_items[0][price_data][product_data][name]": `Hoyeeh Premium ${plan_type === "yearly" ? "Yearly" : "Monthly"}`,
           "line_items[0][price_data][product_data][description]": "Unlimited access to all premium content",
           "line_items[0][quantity]": "1",
           "metadata[user_id]": user.id,
+          "metadata[plan_type]": plan_type,
           "customer_email": user.email || "",
         }),
       });
@@ -101,10 +109,10 @@ serve(async (req) => {
       // Create pending subscription record
       const { error: insertError } = await supabase.from("subscriptions").insert({
         user_id: user.id,
-        plan_type: "monthly",
+        plan_type: plan_type,
         payment_provider: "stripe",
         payment_reference: session.id,
-        amount: monthlyPrice,
+        amount: selectedPrice,
         currency: "XAF",
         status: "pending",
       });
@@ -131,8 +139,12 @@ serve(async (req) => {
       const session = await response.json();
 
       if (session.payment_status === "paid") {
+        const verifiedPlanType = session.metadata?.plan_type || "monthly";
+        const verifiedDaysToAdd = verifiedPlanType === "yearly" ? 365 : 30;
+        const verifiedPrice = verifiedPlanType === "yearly" ? yearlyPrice : monthlyPrice;
+        
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const expiresAt = new Date(now.getTime() + verifiedDaysToAdd * 24 * 60 * 60 * 1000);
 
         // Update subscription status
         await supabase
@@ -165,7 +177,8 @@ serve(async (req) => {
           await sendConfirmationEmail(
             user.email,
             profile?.display_name || user.email.split("@")[0],
-            monthlyPrice,
+            verifiedPrice,
+            verifiedPlanType,
             expiresAt.toLocaleDateString()
           );
         }

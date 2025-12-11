@@ -7,9 +7,35 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, CreditCard, Smartphone, Check, ArrowLeft, Crown } from "lucide-react";
+import { Loader2, CreditCard, Smartphone, Check, ArrowLeft, Crown, Star, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-const MONTHLY_PRICE = "2,500 XAF";
+// Currency conversion rates (approximate)
+const CURRENCY_RATES = {
+  XAF: 1,
+  USD: 0.0016,
+  NGN: 2.5,
+  GHS: 0.02,
+  ZAR: 0.03,
+  KES: 0.22,
+};
+
+const formatCurrency = (amountXAF: number, currency: keyof typeof CURRENCY_RATES) => {
+  const converted = amountXAF * CURRENCY_RATES[currency];
+  const symbols: Record<string, string> = {
+    XAF: "XAF",
+    USD: "$",
+    NGN: "₦",
+    GHS: "GH₵",
+    ZAR: "R",
+    KES: "KSh",
+  };
+  
+  if (currency === "XAF") {
+    return `${converted.toLocaleString()} ${symbols[currency]}`;
+  }
+  return `${symbols[currency]}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 const Subscription = () => {
   const navigate = useNavigate();
@@ -18,6 +44,28 @@ const Subscription = () => {
   const { data: profile, refetch: refetchProfile } = useProfile();
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+
+  // Fetch subscription settings from database
+  const { data: subscriptionSettings } = useQuery({
+    queryKey: ["subscription-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("subscription_settings")
+        .select("*")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const monthlyPlan = subscriptionSettings?.find(s => s.plan_type === "monthly");
+  const yearlyPlan = subscriptionSettings?.find(s => s.plan_type === "yearly");
+
+  const monthlyPrice = monthlyPlan?.base_price || 2500;
+  const yearlyPrice = yearlyPlan?.base_price || 20000;
+  const yearlySavings = (monthlyPrice * 12) - yearlyPrice;
+  const savingsPercent = Math.round((yearlySavings / (monthlyPrice * 12)) * 100);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -40,7 +88,6 @@ const Subscription = () => {
         toast.error("Payment was canceled");
         navigate("/subscription", { replace: true });
       } else if (txRef) {
-        // Verify Flutterwave payment
         setVerifying(true);
         try {
           const { data: session } = await supabase.auth.getSession();
@@ -75,7 +122,7 @@ const Subscription = () => {
     try {
       const { data: session } = await supabase.auth.getSession();
       const response = await supabase.functions.invoke("stripe-payment", {
-        body: { action: "create-checkout" },
+        body: { action: "create-checkout", plan_type: selectedPlan },
         headers: {
           Authorization: `Bearer ${session.session?.access_token}`,
         },
@@ -99,7 +146,7 @@ const Subscription = () => {
     try {
       const { data: session } = await supabase.auth.getSession();
       const response = await supabase.functions.invoke("flutterwave-payment", {
-        body: { action: "initialize" },
+        body: { action: "initialize", plan_type: selectedPlan },
         headers: {
           Authorization: `Bearer ${session.session?.access_token}`,
         },
@@ -127,6 +174,7 @@ const Subscription = () => {
   }
 
   const isSubscribed = profile?.is_subscribed;
+  const currentPrice = selectedPlan === "yearly" ? yearlyPrice : monthlyPrice;
 
   return (
     <div className="min-h-screen bg-background">
@@ -199,16 +247,105 @@ const Subscription = () => {
               ))}
             </div>
 
-            {/* Pricing Card */}
+            {/* Plan Selection */}
+            <div className="grid md:grid-cols-2 gap-4 mb-8">
+              {/* Monthly Plan */}
+              <Card 
+                className={`cursor-pointer transition-all ${
+                  selectedPlan === "monthly" 
+                    ? "border-primary ring-2 ring-primary/20" 
+                    : "border-border hover:border-muted-foreground"
+                }`}
+                onClick={() => setSelectedPlan("monthly")}
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl flex items-center justify-between">
+                    Monthly
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedPlan === "monthly" ? "border-primary bg-primary" : "border-muted-foreground"
+                    }`}>
+                      {selectedPlan === "monthly" && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-foreground">
+                    {formatCurrency(monthlyPrice, "XAF")}
+                  </p>
+                  <p className="text-sm text-muted-foreground">per month</p>
+                  <div className="mt-3 text-xs text-muted-foreground space-y-1">
+                    <p>≈ {formatCurrency(monthlyPrice, "USD")} • {formatCurrency(monthlyPrice, "NGN")}</p>
+                    <p>≈ {formatCurrency(monthlyPrice, "GHS")} • {formatCurrency(monthlyPrice, "ZAR")} • {formatCurrency(monthlyPrice, "KES")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Yearly Plan - Recommended */}
+              <Card 
+                className={`cursor-pointer transition-all relative overflow-hidden ${
+                  selectedPlan === "yearly" 
+                    ? "border-primary ring-2 ring-primary/20" 
+                    : "border-border hover:border-muted-foreground"
+                }`}
+                onClick={() => setSelectedPlan("yearly")}
+              >
+                {/* Recommended Badge */}
+                <div className="absolute top-0 right-0">
+                  <div className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    BEST VALUE
+                  </div>
+                </div>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      Yearly
+                      <Star className="h-4 w-4 text-primary fill-primary" />
+                    </span>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedPlan === "yearly" ? "border-primary bg-primary" : "border-muted-foreground"
+                    }`}>
+                      {selectedPlan === "yearly" && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-foreground">
+                    {formatCurrency(yearlyPrice, "XAF")}
+                  </p>
+                  <p className="text-sm text-muted-foreground">per year</p>
+                  <div className="mt-2 inline-flex items-center gap-1 bg-green-500/20 text-green-400 text-xs font-medium px-2 py-1 rounded">
+                    Save {savingsPercent}% ({formatCurrency(yearlySavings, "XAF")})
+                  </div>
+                  <div className="mt-3 text-xs text-muted-foreground space-y-1">
+                    <p>≈ {formatCurrency(yearlyPrice, "USD")} • {formatCurrency(yearlyPrice, "NGN")}</p>
+                    <p>≈ {formatCurrency(yearlyPrice, "GHS")} • {formatCurrency(yearlyPrice, "ZAR")} • {formatCurrency(yearlyPrice, "KES")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Payment Methods */}
             <Card className="bg-card border-primary/20 mb-8">
               <CardHeader className="text-center pb-2">
-                <CardTitle className="text-3xl">{MONTHLY_PRICE}</CardTitle>
-                <CardDescription>per month</CardDescription>
+                <CardTitle className="text-2xl">
+                  {selectedPlan === "yearly" ? "Yearly" : "Monthly"} Plan: {formatCurrency(currentPrice, "XAF")}
+                </CardTitle>
+                <CardDescription>
+                  {selectedPlan === "yearly" 
+                    ? `That's only ${formatCurrency(Math.round(yearlyPrice / 12), "XAF")}/month!`
+                    : "Flexible monthly billing"
+                  }
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-center text-muted-foreground text-sm">
-                  Cancel anytime. No hidden fees.
-                </p>
+                {/* Recommended Payment Notice */}
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
+                  <p className="text-sm text-primary font-medium flex items-center justify-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Card payment recommended for faster processing
+                  </p>
+                </div>
 
                 <div className="grid gap-3">
                   <Button
@@ -222,7 +359,7 @@ const Subscription = () => {
                     ) : (
                       <CreditCard className="h-4 w-4" />
                     )}
-                    Pay with Card (Stripe)
+                    Pay with Card (Recommended)
                   </Button>
 
                   <Button
@@ -242,7 +379,7 @@ const Subscription = () => {
                 </div>
 
                 <p className="text-center text-xs text-muted-foreground">
-                  Secure payment powered by Stripe and Flutterwave
+                  Secure payment powered by Stripe and Flutterwave. Cancel anytime.
                 </p>
               </CardContent>
             </Card>
