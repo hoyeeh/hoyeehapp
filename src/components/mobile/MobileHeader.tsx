@@ -17,8 +17,8 @@ interface MobileHeaderProps {
 
 const filters = [
   { id: "all", label: "All" },
-  { id: "series", label: "Series" },
-  { id: "movie", label: "Films" },
+  { id: "series", label: "TV Shows" },
+  { id: "movie", label: "Movies" },
 ];
 
 export function MobileHeader({ 
