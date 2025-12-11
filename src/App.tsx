@@ -30,6 +30,7 @@ import Contact from "./pages/Contact";
 import Support from "./pages/Support";
 import Copyright from "./pages/Copyright";
 import Install from "./pages/Install";
+import NotificationPreferences from "./pages/NotificationPreferences";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
                 <Route path="/support" element={<Support />} />
                 <Route path="/copyright" element={<Copyright />} />
                 <Route path="/install" element={<Install />} />
+                <Route path="/notifications" element={<NotificationPreferences />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CastProvider>

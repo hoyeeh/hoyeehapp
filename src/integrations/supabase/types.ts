@@ -613,6 +613,50 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          coming_soon_alerts: boolean
+          created_at: string
+          id: string
+          new_releases: boolean
+          promotional: boolean
+          subscription_reminders: boolean
+          updated_at: string
+          user_id: string
+          weekly_digest: boolean
+        }
+        Insert: {
+          coming_soon_alerts?: boolean
+          created_at?: string
+          id?: string
+          new_releases?: boolean
+          promotional?: boolean
+          subscription_reminders?: boolean
+          updated_at?: string
+          user_id: string
+          weekly_digest?: boolean
+        }
+        Update: {
+          coming_soon_alerts?: boolean
+          created_at?: string
+          id?: string
+          new_releases?: boolean
+          promotional?: boolean
+          subscription_reminders?: boolean
+          updated_at?: string
+          user_id?: string
+          weekly_digest?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string
