@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileSearch } from "@/components/mobile/MobileSearch";
 
 // Parse cast members from content
 const parseCastMembers = (castMembers: any): { name: string }[] => {
@@ -35,6 +37,7 @@ const parseCastMembers = (castMembers: any): { name: string }[] => {
 
 const Search = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
@@ -42,6 +45,11 @@ const Search = () => {
   const { data: watchlistIds = [] } = useWatchlist();
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
+
+  // Return mobile version for mobile devices
+  if (isMobile) {
+    return <MobileSearch />;
+  }
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);

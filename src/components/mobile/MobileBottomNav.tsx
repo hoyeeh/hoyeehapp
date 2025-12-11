@@ -78,9 +78,50 @@ const UserIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
+// Simple outline Search icon
+const SearchIcon = ({ active }: { active: boolean }) => (
+  <svg 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24" 
+    fill="none"
+    stroke="currentColor" 
+    strokeWidth={active ? "2" : "1.5"}
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className="transition-all duration-300"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21L16.5 16.5" />
+  </svg>
+);
+
+// Simple outline List icon
+const ListIcon = ({ active }: { active: boolean }) => (
+  <svg 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24" 
+    fill="none"
+    stroke="currentColor" 
+    strokeWidth={active ? "2" : "1.5"}
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className="transition-all duration-300"
+  >
+    <path d="M8 6H21" />
+    <path d="M8 12H21" />
+    <path d="M8 18H21" />
+    <circle cx="4" cy="6" r="1" fill={active ? "currentColor" : "none"} />
+    <circle cx="4" cy="12" r="1" fill={active ? "currentColor" : "none"} />
+    <circle cx="4" cy="18" r="1" fill={active ? "currentColor" : "none"} />
+  </svg>
+);
+
 const navItems: NavItem[] = [
   { label: "Home", path: "/", icon: (active) => <HomeIcon active={active} /> },
-  { label: "New & Hot", path: "/genres", icon: (active) => <FlameIcon active={active} /> },
+  { label: "Search", path: "/search", icon: (active) => <SearchIcon active={active} /> },
+  { label: "My List", path: "/my-list", icon: (active) => <ListIcon active={active} /> },
   { label: "Downloads", path: "/downloads", icon: (active) => <DownloadIcon active={active} /> },
   { label: "My Hoyeeh", path: "/profile", icon: (active) => <UserIcon active={active} /> },
 ];
