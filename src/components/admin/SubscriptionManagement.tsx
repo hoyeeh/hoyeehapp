@@ -48,35 +48,42 @@ interface SubscriptionManagementProps {
 export const SubscriptionManagement = ({ users, subscriptions }: SubscriptionManagementProps) => {
   const queryClient = useQueryClient();
   const [editingSettings, setEditingSettings] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [editingSub, setEditingSub] = useState<Subscription | null>(null);
   const [newPrice, setNewPrice] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [planActive, setPlanActive] = useState(true);
   const [discountPercent, setDiscountPercent] = useState("");
   const [discountReason, setDiscountReason] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [newStatus, setNewStatus] = useState("");
 
-  // Fetch subscription settings
-  const { data: settings, isLoading: settingsLoading } = useQuery({
+  // Fetch subscription settings (all plans)
+  const { data: settingsList = [], isLoading: settingsLoading } = useQuery({
     queryKey: ["subscription-settings"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("subscription_settings")
         .select("*")
-        .single();
+        .order("plan_type", { ascending: true });
       
       if (error) throw error;
-      return data as SubscriptionSettings;
+      return data as SubscriptionSettings[];
     },
   });
 
   // Update settings mutation
   const updateSettings = useMutation({
-    mutationFn: async ({ base_price, description }: { base_price: number; description: string }) => {
+    mutationFn: async ({ id, base_price, description, is_active }: { 
+      id: string; 
+      base_price: number; 
+      description: string;
+      is_active: boolean;
+    }) => {
       const { error } = await supabase
         .from("subscription_settings")
-        .update({ base_price, description })
-        .eq("plan_type", "monthly");
+        .update({ base_price, description, is_active })
+        .eq("id", id);
       
       if (error) throw error;
     },
@@ -84,6 +91,7 @@ export const SubscriptionManagement = ({ users, subscriptions }: SubscriptionMan
       queryClient.invalidateQueries({ queryKey: ["subscription-settings"] });
       toast.success("Pricing updated successfully");
       setEditingSettings(false);
+      setEditingPlanId(null);
     },
     onError: () => {
       toast.error("Failed to update pricing");
@@ -118,19 +126,25 @@ export const SubscriptionManagement = ({ users, subscriptions }: SubscriptionMan
   });
 
   const handleSaveSettings = () => {
+    if (!editingPlanId) return;
     const price = parseFloat(newPrice);
     if (isNaN(price) || price <= 0) {
       toast.error("Please enter a valid price");
       return;
     }
-    updateSettings.mutate({ base_price: price, description: newDescription });
+    updateSettings.mutate({ 
+      id: editingPlanId, 
+      base_price: price, 
+      description: newDescription,
+      is_active: planActive,
+    });
   };
 
-  const handleOpenEditSettings = () => {
-    if (settings) {
-      setNewPrice(settings.base_price.toString());
-      setNewDescription(settings.description || "");
-    }
+  const handleOpenEditSettings = (plan: SubscriptionSettings) => {
+    setEditingPlanId(plan.id);
+    setNewPrice(plan.base_price.toString());
+    setNewDescription(plan.description || "");
+    setPlanActive(plan.is_active);
     setEditingSettings(true);
   };
 
@@ -180,69 +194,98 @@ export const SubscriptionManagement = ({ users, subscriptions }: SubscriptionMan
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Subscription Pricing
+            Subscription Plans
           </CardTitle>
-          <CardDescription>Configure the monthly subscription price</CardDescription>
+          <CardDescription>Configure subscription pricing for all plans</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-3xl font-bold text-brand">
-                {settings?.base_price?.toLocaleString()} {settings?.currency}
-              </p>
-              <p className="text-sm text-muted-foreground">Monthly subscription</p>
-              {settings?.description && (
-                <p className="text-sm mt-2">{settings.description}</p>
-              )}
+        <CardContent className="space-y-4">
+          {settingsList.map((plan) => (
+            <div key={plan.id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-xl font-bold text-brand">
+                    {plan.base_price?.toLocaleString()} {plan.currency}
+                  </p>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    plan.plan_type === 'yearly' 
+                      ? 'bg-green-500/20 text-green-500' 
+                      : 'bg-blue-500/20 text-blue-500'
+                  }`}>
+                    {plan.plan_type.toUpperCase()}
+                    {plan.plan_type === 'yearly' && ' - RECOMMENDED'}
+                  </span>
+                  {!plan.is_active && (
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-500">
+                      INACTIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground capitalize">{plan.plan_type} subscription</p>
+                {plan.description && (
+                  <p className="text-sm mt-1">{plan.description}</p>
+                )}
+              </div>
+              <Button variant="outline" onClick={() => handleOpenEditSettings(plan)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
             </div>
-            <Dialog open={editingSettings} onOpenChange={setEditingSettings}>
-              <DialogTrigger asChild>
-                <Button variant="outline" onClick={handleOpenEditSettings}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Pricing
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit Subscription Pricing</DialogTitle>
-                  <DialogDescription>Set the monthly subscription price and description</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Monthly Price (XAF)</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="price"
-                        type="number"
-                        value={newPrice}
-                        onChange={(e) => setNewPrice(e.target.value)}
-                        className="pl-10"
-                        placeholder="2000"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={newDescription}
-                      onChange={(e) => setNewDescription(e.target.value)}
-                      placeholder="Monthly subscription with full access..."
+          ))}
+          
+          <Dialog open={editingSettings} onOpenChange={(open) => {
+            setEditingSettings(open);
+            if (!open) setEditingPlanId(null);
+          }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Subscription Plan</DialogTitle>
+                <DialogDescription>Set the pricing and description for this plan</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price (XAF)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="price"
+                      type="number"
+                      value={newPrice}
+                      onChange={(e) => setNewPrice(e.target.value)}
+                      className="pl-10"
+                      placeholder="2000"
                     />
                   </div>
-                  <Button
-                    onClick={handleSaveSettings}
-                    disabled={updateSettings.isPending}
-                    className="w-full bg-brand hover:bg-brand/90"
-                  >
-                    {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Save Changes
-                  </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    placeholder="Subscription description..."
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="active">Plan Active</Label>
+                  <input
+                    id="active"
+                    type="checkbox"
+                    checked={planActive}
+                    onChange={(e) => setPlanActive(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <Button
+                  onClick={handleSaveSettings}
+                  disabled={updateSettings.isPending}
+                  className="w-full bg-brand hover:bg-brand/90"
+                >
+                  {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Save Changes
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
 

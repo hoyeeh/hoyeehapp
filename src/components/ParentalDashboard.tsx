@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { 
   Baby, Clock, Eye, Calendar, ChevronLeft, 
-  Trash2, Settings, History, Shield
+  Trash2, Settings, History, Shield, Moon
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
@@ -75,6 +75,22 @@ export const ParentalDashboard = ({ onBack }: ParentalDashboardProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kids-profiles"] });
       toast.success("Time limit updated!");
+    },
+  });
+
+  // Update bedtime mutation
+  const updateBedtimeMutation = useMutation({
+    mutationFn: async ({ profileId, bedtime }: { profileId: string; bedtime: string | null }) => {
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ bedtime_time: bedtime })
+        .eq("id", profileId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["kids-profiles"] });
+      toast.success("Bedtime updated!");
     },
   });
 
@@ -290,6 +306,55 @@ export const ParentalDashboard = ({ onBack }: ParentalDashboardProps) => {
                         }}
                       />
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Bedtime Settings */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Moon className="h-5 w-5" />
+                  Bedtime Mode
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Enable Bedtime</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically stop playback at a set time
+                    </p>
+                  </div>
+                  <Switch
+                    checked={!!(selectedProfile as any).bedtime_time}
+                    onCheckedChange={(checked) => {
+                      updateBedtimeMutation.mutate({
+                        profileId: selectedProfile.id,
+                        bedtime: checked ? "20:00" : null,
+                      });
+                    }}
+                  />
+                </div>
+
+                {(selectedProfile as any).bedtime_time && (
+                  <div className="space-y-2">
+                    <Label>Bedtime</Label>
+                    <Input
+                      type="time"
+                      value={(selectedProfile as any).bedtime_time?.slice(0, 5) || "20:00"}
+                      onChange={(e) => {
+                        updateBedtimeMutation.mutate({
+                          profileId: selectedProfile.id,
+                          bedtime: e.target.value,
+                        });
+                      }}
+                      className="w-32"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Playback will automatically stop at this time
+                    </p>
                   </div>
                 )}
               </CardContent>

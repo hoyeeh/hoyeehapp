@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsContentCard } from "./KidsContentCard";
-import { Sparkles, Clock } from "lucide-react";
+import { Sparkles, Clock, Moon } from "lucide-react";
 import { useKidsSounds } from "@/hooks/useKidsSounds";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
+import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 
 interface KidsHomePageProps {
@@ -19,6 +20,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   const { playSuccessSound } = useKidsSounds();
   const { currentProfile } = useProfileContext();
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
+  const { isBedtime, bedtimeTime } = useBedtimeMode();
 
   // Fetch kids-appropriate content
   const { data: kidsContent = [], isLoading } = useQuery({
@@ -96,6 +98,28 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
             <Sparkles className="h-16 w-16 text-cyan-400 mx-auto mb-4" />
           </div>
           <p className="text-xl text-white font-display animate-pulse">Loading fun stuff...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Bedtime screen
+  if (isBedtime) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="text-center max-w-md">
+          <div className="text-8xl mb-6 animate-float">🌙</div>
+          <h1 className="text-3xl md:text-4xl font-display text-white mb-4">
+            It's Bedtime!
+          </h1>
+          <p className="text-white/80 text-lg mb-6">
+            Time to rest up for more adventures tomorrow. Sweet dreams! 💤
+          </p>
+          <div className="flex items-center justify-center gap-2 text-white/60">
+            <Moon className="h-5 w-5" />
+            <span>Bedtime is set for {bedtimeTime?.slice(0, 5)}</span>
+          </div>
+          <div className="text-6xl mt-6 animate-twinkle">⭐ 🌙 ⭐</div>
         </div>
       </div>
     );

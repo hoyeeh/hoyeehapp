@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.pusher-notify]
 verify_jwt = true
+
+[functions.weekly-viewing-report]
+verify_jwt = false
