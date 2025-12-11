@@ -1,42 +1,31 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PageTransitionProps {
   children: ReactNode;
 }
 
+// Enhanced page transition with framer-motion
 export function PageTransition({ children }: PageTransitionProps) {
   const location = useLocation();
-  const [displayChildren, setDisplayChildren] = useState(children);
-  const [transitionStage, setTransitionStage] = useState<"enter" | "exit">("enter");
-
-  useEffect(() => {
-    if (children !== displayChildren) {
-      setTransitionStage("exit");
-    }
-  }, [children, displayChildren]);
-
-  useEffect(() => {
-    if (transitionStage === "exit") {
-      const timer = setTimeout(() => {
-        setDisplayChildren(children);
-        setTransitionStage("enter");
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [transitionStage, children]);
 
   return (
-    <div
-      className={cn(
-        "transition-all duration-200 ease-out",
-        transitionStage === "enter" && "animate-fade-in opacity-100",
-        transitionStage === "exit" && "opacity-0 translate-y-2"
-      )}
-    >
-      {displayChildren}
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ 
+          duration: 0.2, 
+          ease: [0.25, 0.46, 0.45, 0.94] 
+        }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -50,23 +39,19 @@ export function FadeIn({
   delay?: number;
   className?: string;
 }) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
   return (
-    <div
-      className={cn(
-        "transition-all duration-300 ease-out",
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
-        className
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ 
+        duration: 0.3, 
+        delay: delay / 1000,
+        ease: "easeOut" 
+      }}
+      className={className}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -79,13 +64,31 @@ export function StaggerList({
   staggerDelay?: number;
 }) {
   return (
-    <>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: {},
+        visible: {
+          transition: {
+            staggerChildren: staggerDelay / 1000
+          }
+        }
+      }}
+    >
       {children.map((child, index) => (
-        <FadeIn key={index} delay={index * staggerDelay}>
+        <motion.div
+          key={index}
+          variants={{
+            hidden: { opacity: 0, y: 10 },
+            visible: { opacity: 1, y: 0 }
+          }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
           {child}
-        </FadeIn>
+        </motion.div>
       ))}
-    </>
+    </motion.div>
   );
 }
 
@@ -101,31 +104,33 @@ export function SlideIn({
   delay?: number;
   className?: string;
 }) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  const directionClasses = {
-    left: isVisible ? "translate-x-0" : "-translate-x-full",
-    right: isVisible ? "translate-x-0" : "translate-x-full",
-    up: isVisible ? "translate-y-0" : "-translate-y-full",
-    down: isVisible ? "translate-y-0" : "translate-y-full",
+  const directionOffset = {
+    left: { x: -50, y: 0 },
+    right: { x: 50, y: 0 },
+    up: { x: 0, y: -50 },
+    down: { x: 0, y: 50 },
   };
 
   return (
-    <div
-      className={cn(
-        "transition-all duration-300 ease-out",
-        isVisible ? "opacity-100" : "opacity-0",
-        directionClasses[direction],
-        className
-      )}
+    <motion.div
+      initial={{ 
+        opacity: 0, 
+        ...directionOffset[direction] 
+      }}
+      animate={{ 
+        opacity: 1, 
+        x: 0, 
+        y: 0 
+      }}
+      transition={{ 
+        duration: 0.3, 
+        delay: delay / 1000,
+        ease: [0.25, 0.46, 0.45, 0.94]
+      }}
+      className={className}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -139,22 +144,39 @@ export function ScaleIn({
   delay?: number;
   className?: string;
 }) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
   return (
-    <div
-      className={cn(
-        "transition-all duration-200 ease-out",
-        isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95",
-        className
-      )}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ 
+        duration: 0.2, 
+        delay: delay / 1000,
+        ease: "easeOut" 
+      }}
+      className={className}
     >
       {children}
-    </div>
+    </motion.div>
+  );
+}
+
+// Smooth navigation wrapper for mobile pages
+export function MobilePageWrapper({ 
+  children,
+  className
+}: { 
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className={cn("min-h-screen bg-background", className)}
+    >
+      {children}
+    </motion.div>
   );
 }
