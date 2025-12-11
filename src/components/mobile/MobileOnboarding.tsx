@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWalkthroughScreens } from "@/hooks/useWalkthroughScreens";
 import { MobileSplashScreen } from "./MobileSplashScreen";
 import { MobileWalkthrough } from "./MobileWalkthrough";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const WALKTHROUGH_SEEN_KEY = "hoyeeh_walkthrough_seen";
 
@@ -11,40 +12,59 @@ interface MobileOnboardingProps {
   children: React.ReactNode;
 }
 
+type OnboardingState = 'splash' | 'walkthrough' | 'loading' | 'complete';
+
 export const MobileOnboarding = ({ children }: MobileOnboardingProps) => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { data: screens = [], isLoading: screensLoading } = useWalkthroughScreens();
   
-  const [showSplash, setShowSplash] = useState(true);
-  const [showWalkthrough, setShowWalkthrough] = useState(false);
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [state, setState] = useState<OnboardingState>('splash');
 
   // Check if walkthrough has been seen before
   const walkthroughSeen = localStorage.getItem(WALKTHROUGH_SEEN_KEY) === "true";
 
   useEffect(() => {
-    // If walkthrough already seen, skip it
-    if (walkthroughSeen) {
-      setShowWalkthrough(false);
-    }
-  }, [walkthroughSeen]);
+    console.log('[MobileOnboarding] State:', state, 'User:', !!user, 'AuthLoading:', authLoading, 'WalkthroughSeen:', walkthroughSeen);
+  }, [state, user, authLoading, walkthroughSeen]);
 
   const handleSplashComplete = () => {
-    setShowSplash(false);
+    console.log('[MobileOnboarding] Splash complete');
     
-    // If user is logged in or walkthrough already seen, skip walkthrough
+    // If user is logged in or walkthrough already seen, go to complete
     if (user || walkthroughSeen) {
-      setOnboardingComplete(true);
+      console.log('[MobileOnboarding] Skipping walkthrough, going to complete');
+      setState('complete');
+    } else if (!screensLoading && screens.length > 0) {
+      console.log('[MobileOnboarding] Showing walkthrough');
+      setState('walkthrough');
+    } else if (screensLoading) {
+      console.log('[MobileOnboarding] Waiting for screens to load');
+      setState('loading');
     } else {
-      setShowWalkthrough(true);
+      // No screens available, skip walkthrough
+      console.log('[MobileOnboarding] No screens, going to complete');
+      setState('complete');
     }
   };
 
+  // Handle transition from loading to walkthrough when screens load
+  useEffect(() => {
+    if (state === 'loading' && !screensLoading) {
+      if (screens.length > 0 && !user && !walkthroughSeen) {
+        console.log('[MobileOnboarding] Screens loaded, showing walkthrough');
+        setState('walkthrough');
+      } else {
+        console.log('[MobileOnboarding] Screens loaded, going to complete');
+        setState('complete');
+      }
+    }
+  }, [state, screensLoading, screens.length, user, walkthroughSeen]);
+
   const handleWalkthroughComplete = () => {
+    console.log('[MobileOnboarding] Walkthrough complete');
     localStorage.setItem(WALKTHROUGH_SEEN_KEY, "true");
-    setShowWalkthrough(false);
-    setOnboardingComplete(true);
+    setState('complete');
     
     // Redirect to auth page after walkthrough
     if (!user && !authLoading) {
@@ -52,25 +72,34 @@ export const MobileOnboarding = ({ children }: MobileOnboardingProps) => {
     }
   };
 
-  // Show splash screen
-  if (showSplash) {
-    return <MobileSplashScreen onComplete={handleSplashComplete} />;
+  // Render based on state
+  switch (state) {
+    case 'splash':
+      return <MobileSplashScreen onComplete={handleSplashComplete} />;
+    
+    case 'loading':
+      return (
+        <div className="fixed inset-0 bg-background flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      );
+    
+    case 'walkthrough':
+      if (screens.length > 0) {
+        return (
+          <MobileWalkthrough 
+            screens={screens} 
+            onComplete={handleWalkthroughComplete} 
+          />
+        );
+      }
+      // Fallback to complete if no screens
+      setState('complete');
+      return null;
+    
+    case 'complete':
+    default:
+      console.log('[MobileOnboarding] Rendering children');
+      return <>{children}</>;
   }
-
-  // Show walkthrough screens (only if not seen before and not logged in)
-  if (showWalkthrough && !screensLoading && screens.length > 0) {
-    return (
-      <MobileWalkthrough 
-        screens={screens} 
-        onComplete={handleWalkthroughComplete} 
-      />
-    );
-  }
-
-  // After walkthrough, if not logged in, redirect to auth
-  if (onboardingComplete && !user && !authLoading) {
-    // Let the auth redirect happen naturally
-  }
-
-  return <>{children}</>;
 };
