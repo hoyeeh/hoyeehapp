@@ -161,48 +161,52 @@ export const EnhancedHeroBanner = ({
         )}
 
         {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
       </div>
 
-      {/* Content */}
-      <div className="absolute inset-0 flex items-center">
-        <div className="container mx-auto px-4 md:px-12 max-w-3xl">
+      {/* Content - Positioned at bottom left */}
+      <div className="absolute inset-0 flex items-end">
+        <div className="container mx-auto px-4 md:px-12 pb-16 md:pb-24 max-w-4xl">
           {/* Subtitle */}
           {displaySubtitle && (
-            <p className="text-brand font-semibold text-sm md:text-base mb-2 animate-fade-in">
+            <p className="text-brand font-bold text-base md:text-lg mb-3 animate-fade-in tracking-wide uppercase">
               {displaySubtitle}
             </p>
           )}
 
-          {/* Title */}
-          <h1 className="font-display text-4xl md:text-6xl lg:text-7xl mb-4 animate-fade-in leading-tight">
+          {/* Title - Much bigger and bolder */}
+          <h1 
+            className="font-hero text-5xl md:text-7xl lg:text-8xl xl:text-9xl mb-4 animate-fade-in leading-none tracking-tight"
+            style={{ 
+              textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
+            }}
+          >
             {displayTitle}
           </h1>
 
           {/* Meta Info */}
           {content && (
-            <div className="flex flex-wrap items-center gap-2 md:gap-4 text-sm md:text-base text-muted-foreground mb-4 animate-fade-in">
-              {content.year && <span>{content.year}</span>}
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm md:text-lg text-muted-foreground mb-4 animate-fade-in">
+              {content.year && <span className="font-medium">{content.year}</span>}
               {content.rating && (
-                <span className="border border-muted-foreground/30 px-2 py-0.5 rounded">
+                <span className="border border-muted-foreground/30 px-2 py-0.5 rounded font-medium">
                   {content.rating}
                 </span>
               )}
               {content.duration && (
-                <span>
+                <span className="font-medium">
                   {Math.floor(content.duration / 3600)}h{" "}
                   {Math.floor((content.duration % 3600) / 60)}m
                 </span>
               )}
-              <span className="text-brand capitalize">{content.contentType}</span>
-              {content.genre && <span>{content.genre}</span>}
+              <span className="text-brand capitalize font-semibold">{content.contentType}</span>
+              {content.genre && <span className="font-medium">{content.genre}</span>}
             </div>
           )}
 
-          {/* Description */}
-          <p className="text-base md:text-lg text-muted-foreground mb-6 line-clamp-3 max-w-2xl animate-fade-in">
+          {/* Description - Larger */}
+          <p className="text-base md:text-xl text-foreground/80 mb-8 line-clamp-3 max-w-2xl animate-fade-in leading-relaxed">
             {displayDescription}
           </p>
 

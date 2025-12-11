@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Content } from "@/types";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const DB_NAME = "hoyeeh_offline_db";
 const DB_VERSION = 1;
@@ -108,7 +109,27 @@ export const useOfflineDownloads = () => {
       toast.info(`Starting download: ${episodeTitle || content.title}`);
 
       try {
-        const response = await fetch(videoUrl);
+        // Use edge function to proxy the download (bypasses CORS)
+        const { data, error } = await supabase.functions.invoke('download-video', {
+          body: { videoUrl },
+        });
+
+        if (error) {
+          throw new Error(error.message || "Failed to fetch video");
+        }
+
+        // The response comes as a blob from the edge function
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ videoUrl }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch video");

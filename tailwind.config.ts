@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Bebas Neue', 'Inter', 'sans-serif'],
+        hero: ['Bebas Neue', 'Impact', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

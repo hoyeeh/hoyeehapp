@@ -1,10 +1,12 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Info, Lock, Volume2, VolumeX } from "lucide-react";
+import { Play, Plus, Check, Info, Lock, Volume2, VolumeX, Download, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import hoyeehBadge from "@/assets/hoyeeh-badge.png";
+import { DownloadButton } from "./DownloadButton";
+import { SocialShare } from "./SocialShare";
 
 interface ContentCardWithPreviewProps {
   content: Content;
@@ -320,6 +322,16 @@ export const ContentCardWithPreview = ({
             >
               {isInList ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </button>
+
+            {/* Download Button */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <DownloadButton content={content} variant="icon" />
+            </div>
+
+            {/* Share Button */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <SocialShare content={content} variant="icon" />
+            </div>
 
             <button
               onClick={(e) => {
