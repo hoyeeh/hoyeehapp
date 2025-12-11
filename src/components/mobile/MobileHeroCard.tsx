@@ -50,9 +50,9 @@ export function MobileHeroCard({
   isInList = false 
 }: MobileHeroCardProps) {
   return (
-    <div className="relative mx-4 rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 animate-fade-in">
-      {/* Background Image - Card format with rounded edges */}
-      <div className="relative aspect-[2/3] max-h-[65vh]">
+    <div className="relative mx-4 rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 animate-fade-in border border-border/20">
+      {/* Background Image - Card format with rounded edges and visible borders */}
+      <div className="relative aspect-[2/3] max-h-[60vh]">
         <img
           src={content.thumbnailUrl}
           alt={content.title}

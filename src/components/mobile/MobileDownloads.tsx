@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Settings, Play, Trash2, AlertCircle, CheckCircle, HardDrive } from "lucide-react";
+import { ArrowLeft, Settings, Play, Trash2, AlertCircle, CheckCircle, HardDrive, Wifi } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { MobileBottomNav } from "./MobileBottomNav";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 interface DownloadItem {
   id: string;
@@ -30,6 +31,8 @@ export function MobileDownloads() {
   const { currentProfile } = useProfileContext();
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [wifiOnly, setWifiOnly] = useState(() => localStorage.getItem("wifi-only-download") === "true");
   const { lightTap, selectionTap, warningFeedback, successFeedback } = useHaptics();
 
   // Fetch download licenses
@@ -121,6 +124,18 @@ export function MobileDownloads() {
     if (isEditMode) setSelectedItems([]);
   };
 
+  const handleToggleSettings = () => {
+    lightTap();
+    setShowSettings(!showSettings);
+  };
+
+  const handleWifiToggle = (checked: boolean) => {
+    selectionTap();
+    setWifiOnly(checked);
+    localStorage.setItem("wifi-only-download", checked.toString());
+    toast.success(checked ? "Downloads will only use Wi-Fi" : "Downloads can use mobile data");
+  };
+
   return (
     <SwipeNavigation enableBackGesture>
       <div className="min-h-screen bg-background pb-20">
@@ -137,13 +152,42 @@ export function MobileDownloads() {
               <h1 className="text-lg font-bold">Downloads</h1>
             </div>
             <button
-              onClick={handleToggleEdit}
-              className="p-2 hover:bg-secondary rounded-xl transition-colors active:scale-95"
+              onClick={handleToggleSettings}
+              className={cn(
+                "p-2 hover:bg-secondary rounded-xl transition-colors active:scale-95",
+                showSettings && "bg-secondary text-primary"
+              )}
             >
               <Settings className="h-5 w-5" />
             </button>
           </div>
         </header>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="px-4 py-3 space-y-3 border-b border-border/30 animate-in slide-in-from-top duration-200">
+            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Wifi className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Wi-Fi Only</p>
+                  <p className="text-xs text-muted-foreground">Download only on Wi-Fi</p>
+                </div>
+              </div>
+              <Switch checked={wifiOnly} onCheckedChange={handleWifiToggle} />
+            </div>
+            <button
+              onClick={handleToggleEdit}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 p-3 rounded-xl transition-colors",
+                isEditMode ? "bg-primary text-primary-foreground" : "bg-secondary/50"
+              )}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="text-sm font-medium">{isEditMode ? "Done Editing" : "Edit Downloads"}</span>
+            </button>
+          </div>
+        )}
 
         {/* Storage Info Card */}
         <div className="mx-4 mt-4 p-4 bg-secondary/50 rounded-2xl border border-border/30">

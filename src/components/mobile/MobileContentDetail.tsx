@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { MobileContentCard } from "./MobileContentCard";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import logo from "@/assets/hoyeeh-logo-web.png";
+import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 
 interface MobileContentDetailProps {
   content: Content;
@@ -26,6 +27,19 @@ export function MobileContentDetail({
 }: MobileContentDetailProps) {
   const [activeTab, setActiveTab] = useState<"episodes" | "more">("more");
   const { lightTap, mediumTap, successFeedback, selectionTap } = useHaptics();
+  
+  // Swipe to dismiss
+  const y = useMotionValue(0);
+  const opacity = useTransform(y, [0, 300], [1, 0]);
+  const scale = useTransform(y, [0, 300], [1, 0.9]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    if (info.offset.y > 100 && info.velocity.y > 0) {
+      lightTap();
+      onClose();
+    }
+  };
 
   // Fetch similar content
   const { data: similarContent = [] } = useQuery({
@@ -140,7 +154,22 @@ export function MobileContentDetail({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background animate-in fade-in slide-in-from-bottom duration-300">
+    <motion.div 
+      ref={containerRef}
+      className="fixed inset-0 z-[100] bg-background"
+      style={{ opacity, scale }}
+      initial={{ y: "100%" }}
+      animate={{ y: 0 }}
+      exit={{ y: "100%" }}
+      transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0, bottom: 0.5 }}
+      onDragEnd={handleDragEnd}
+    >
+      {/* Swipe indicator */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-muted-foreground/30 rounded-full z-10" />
+      
       {/* Video Preview Area */}
       <div className="relative aspect-video bg-secondary">
         <img
@@ -374,6 +403,6 @@ export function MobileContentDetail({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
