@@ -1,6 +1,8 @@
 import { Content } from "@/types";
+import { useNavigate } from "react-router-dom";
 import { X, Play, Plus, Check, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DownloadButton } from "./DownloadButton";
 import { ContentReviews } from "./ContentReviews";
 import { SocialShare } from "./SocialShare";
@@ -40,6 +42,8 @@ export const ContentDetailsModal = ({
   onToggleList,
   isInList,
 }: ContentDetailsModalProps) => {
+  const navigate = useNavigate();
+
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -48,6 +52,11 @@ export const ContentDetailsModal = ({
 
   const cast = parseCast((content as any).cast_members);
   const director = (content as any).director;
+
+  const handleActorClick = (actorName: string) => {
+    onClose();
+    navigate(`/search?actor=${encodeURIComponent(actorName)}`);
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -118,29 +127,31 @@ export const ContentDetailsModal = ({
               {content.description}
             </p>
 
-            {/* Cast Section */}
+            {/* Cast Section with Clickable Chips */}
             {cast.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-muted-foreground mb-3">Cast</h3>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                  {cast.slice(0, 8).map((member) => (
-                    <div key={member.id} className="flex-shrink-0 text-center w-16">
-                      <div className="w-14 h-14 rounded-full overflow-hidden bg-secondary mx-auto mb-1">
+                <div className="flex flex-wrap gap-2">
+                  {cast.slice(0, 10).map((member) => (
+                    <Badge
+                      key={member.id}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-brand hover:text-primary-foreground transition-colors py-1.5 px-3"
+                      onClick={() => handleActorClick(member.name)}
+                    >
+                      <div className="flex items-center gap-2">
                         {member.profile_path ? (
                           <img
                             src={member.profile_path}
                             alt={member.name}
-                            className="w-full h-full object-cover"
+                            className="w-5 h-5 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <User className="h-6 w-6 text-muted-foreground" />
-                          </div>
+                          <User className="h-4 w-4" />
                         )}
+                        <span>{member.name}</span>
                       </div>
-                      <p className="text-xs font-medium truncate">{member.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{member.character}</p>
-                    </div>
+                    </Badge>
                   ))}
                 </div>
               </div>
