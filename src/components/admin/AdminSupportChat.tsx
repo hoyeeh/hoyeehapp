@@ -127,6 +127,9 @@ export const AdminSupportChat = () => {
         throw new Error("Missing required fields");
       }
 
+      const ticket = tickets?.find(t => t.id === selectedTicket);
+      if (!ticket) throw new Error("Ticket not found");
+
       const { error } = await supabase
         .from("support_messages")
         .insert({
@@ -143,9 +146,27 @@ export const AdminSupportChat = () => {
         .from("support_tickets")
         .update({ updated_at: new Date().toISOString() })
         .eq("id", selectedTicket);
+
+      // Send email notification via edge function
+      const userName = users?.find(u => u.id === ticket.user_id)?.display_name || "User";
+      
+      try {
+        await supabase.functions.invoke("send-support-reply-email", {
+          body: {
+            userId: ticket.user_id,
+            userName,
+            ticketSubject: ticket.subject,
+            replyMessage: newMessage.trim(),
+          },
+        });
+      } catch (emailError) {
+        console.error("Failed to send email notification:", emailError);
+        // Don't fail the whole operation if email fails
+      }
     },
     onSuccess: () => {
       setNewMessage("");
+      toast.success("Reply sent with email notification");
       queryClient.invalidateQueries({ queryKey: ["admin-support-messages", selectedTicket] });
       queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
     },
