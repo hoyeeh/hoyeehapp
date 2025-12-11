@@ -27,6 +27,7 @@ import { HeroBannerManagement } from "@/components/admin/HeroBannerManagement";
 import { AdminPushNotifications } from "@/components/admin/AdminPushNotifications";
 import { AdminEmailSender } from "@/components/admin/AdminEmailSender";
 import { BulkThumbnailRegeneration } from "@/components/admin/BulkThumbnailRegeneration";
+import { BulkCastImport } from "@/components/admin/BulkCastImport";
 import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
 import { CDNMigrationTool } from "@/components/admin/CDNMigrationTool";
 import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
@@ -234,6 +235,7 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <TranscodingDashboard />
+            <BulkCastImport />
             <CDNMigrationTool />
             <BulkThumbnailRegeneration />
           </div>

@@ -30,6 +30,7 @@ interface Recommendation {
   thumbnail_url: string | null;
   year: string;
   rating: string;
+  genre_ids?: number[];
 }
 
 interface TMDBDetails {
@@ -66,6 +67,16 @@ interface RecommendationsSectionProps {
   onAddToQueue: (rec: Recommendation) => void;
 }
 
+// TMDB genre ID mapping
+const TMDB_GENRES: Record<number, string> = {
+  28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
+  99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History",
+  27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance", 878: "Sci-Fi",
+  10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western",
+  10759: "Action & Adventure", 10762: "Kids", 10763: "News", 10764: "Reality",
+  10765: "Sci-Fi & Fantasy", 10766: "Soap", 10767: "Talk", 10768: "War & Politics",
+};
+
 const RecommendationsSection = ({ 
   recommendations, 
   allContent, 
@@ -74,11 +85,24 @@ const RecommendationsSection = ({
 }: RecommendationsSectionProps) => {
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [genreFilter, setGenreFilter] = useState<string>("all");
 
   // Get unique years from recommendations
   const years = useMemo(() => {
     const uniqueYears = [...new Set(recommendations.map(r => r.year).filter(Boolean))];
     return uniqueYears.sort((a, b) => parseInt(b) - parseInt(a));
+  }, [recommendations]);
+
+  // Get unique genres from recommendations
+  const genres = useMemo(() => {
+    const genreIds = new Set<number>();
+    recommendations.forEach(r => {
+      r.genre_ids?.forEach(id => genreIds.add(id));
+    });
+    return Array.from(genreIds)
+      .map(id => ({ id, name: TMDB_GENRES[id] || `Genre ${id}` }))
+      .filter(g => g.name)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [recommendations]);
 
   // Filter recommendations
@@ -91,16 +115,41 @@ const RecommendationsSection = ({
         if (ratingFilter === "medium" && (rating < 5 || rating >= 7)) return false;
         if (ratingFilter === "low" && rating >= 5) return false;
       }
+      if (genreFilter !== "all") {
+        const genreId = parseInt(genreFilter);
+        if (!rec.genre_ids?.includes(genreId)) return false;
+      }
       return true;
     });
-  }, [recommendations, yearFilter, ratingFilter]);
+  }, [recommendations, yearFilter, ratingFilter, genreFilter]);
+
+  const clearFilters = () => {
+    setYearFilter("all");
+    setRatingFilter("all");
+    setGenreFilter("all");
+  };
+
+  const hasActiveFilters = yearFilter !== "all" || ratingFilter !== "all" || genreFilter !== "all";
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h2 className="font-display text-2xl">More Like This</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
+          {genres.length > 0 && (
+            <Select value={genreFilter} onValueChange={setGenreFilter}>
+              <SelectTrigger className="w-32 h-8 text-xs">
+                <SelectValue placeholder="Genre" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Genres</SelectItem>
+                {genres.map(genre => (
+                  <SelectItem key={genre.id} value={genre.id.toString()}>{genre.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={yearFilter} onValueChange={setYearFilter}>
             <SelectTrigger className="w-28 h-8 text-xs">
               <SelectValue placeholder="Year" />
@@ -123,6 +172,11 @@ const RecommendationsSection = ({
               <SelectItem value="low">Under 5</SelectItem>
             </SelectContent>
           </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
+              Clear
+            </Button>
+          )}
         </div>
       </div>
       
