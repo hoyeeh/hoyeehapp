@@ -16,11 +16,23 @@ interface PushNotificationRequest {
   url?: string;
 }
 
-// Web Push implementation
+// Convert base64url to Uint8Array
+function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  const padding = '='.repeat((4 - base64Url.length % 4) % 4);
+  const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Web Push implementation using Fetch API
 async function sendWebPush(
   subscription: { endpoint: string; p256dh: string; auth: string },
-  payload: { title: string; body: string; url?: string }
-) {
+  payload: { title: string; body: string; url?: string; contentId?: string }
+): Promise<boolean> {
   const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
   const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
@@ -30,10 +42,60 @@ async function sendWebPush(
   }
 
   try {
-    // For actual web push, you'd use a library like web-push
-    // This is a simplified version that stores notifications in DB
-    console.log(`Would send push to ${subscription.endpoint}:`, payload);
-    return true;
+    // Create the JWT for VAPID authentication
+    const audience = new URL(subscription.endpoint).origin;
+    const expiration = Math.floor(Date.now() / 1000) + 12 * 60 * 60; // 12 hours
+
+    // Create VAPID JWT header
+    const header = {
+      typ: 'JWT',
+      alg: 'ES256'
+    };
+
+    const claims = {
+      aud: audience,
+      exp: expiration,
+      sub: 'mailto:info@hoyeeh.com'
+    };
+
+    // For now, send the notification without encryption (limited browser support)
+    // This approach stores notifications in DB and relies on in-app notifications
+    console.log(`Sending push to ${subscription.endpoint}:`, JSON.stringify(payload));
+
+    // The payload to send
+    const payloadString = JSON.stringify({
+      title: payload.title,
+      body: payload.body,
+      icon: '/pwa-icon-192.png',
+      badge: '/pwa-icon-192.png',
+      url: payload.url || '/',
+      contentId: payload.contentId,
+      tag: 'hoyeeh-notification'
+    });
+
+    // Make the push request
+    // Note: Full Web Push encryption requires complex ECDH key exchange
+    // For production, consider using a push service like Firebase Cloud Messaging
+    // or implementing full encryption with crypto libraries
+    
+    const response = await fetch(subscription.endpoint, {
+      method: 'POST',
+      headers: {
+        'TTL': '86400',
+        'Content-Type': 'application/json',
+        'Urgency': 'normal',
+      },
+      body: payloadString
+    });
+
+    if (response.ok || response.status === 201) {
+      console.log('Push notification sent successfully');
+      return true;
+    } else {
+      console.log(`Push failed with status ${response.status}: ${await response.text()}`);
+      // Don't fail silently - the notification is still stored in DB
+      return false;
+    }
   } catch (error) {
     console.error('Error sending web push:', error);
     return false;
@@ -112,6 +174,8 @@ serve(async (req) => {
 
     let userIds: string[] = [];
     const preferenceField = getPreferenceField(type);
+    let pushAttempts = 0;
+    let pushSuccesses = 0;
 
     if (sendToAll) {
       // Get all users with push subscriptions
@@ -145,10 +209,12 @@ serve(async (req) => {
         // Send web push to opted-in users' subscriptions
         for (const sub of subscriptions) {
           if (optedInUserIds.includes(sub.user_id)) {
-            await sendWebPush(
+            pushAttempts++;
+            const success = await sendWebPush(
               { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-              { title, body, url: url || (contentId ? `/content/${contentId}` : '/') }
+              { title, body, url: url || (contentId ? `/content/${contentId}` : '/'), contentId }
             );
+            if (success) pushSuccesses++;
           }
         }
         userIds = optedInUserIds;
@@ -162,7 +228,6 @@ serve(async (req) => {
         .single();
 
       // Only proceed if user has opted in or has no preference
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prefValue = userPref ? (userPref as any)[preferenceField] : undefined;
       const hasOptedIn = prefValue !== false;
 
@@ -175,10 +240,12 @@ serve(async (req) => {
 
         if (subscriptions) {
           for (const sub of subscriptions) {
-            await sendWebPush(
+            pushAttempts++;
+            const success = await sendWebPush(
               { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-              { title, body, url: url || (contentId ? `/content/${contentId}` : '/') }
+              { title, body, url: url || (contentId ? `/content/${contentId}` : '/'), contentId }
             );
+            if (success) pushSuccesses++;
           }
         }
         userIds = [userId];
@@ -206,12 +273,14 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Created ${notifications.length} notifications (respecting user preferences)`);
+    console.log(`Created ${notifications.length} in-app notifications, sent ${pushSuccesses}/${pushAttempts} push notifications`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        notificationsSent: notifications.length 
+        notificationsSent: notifications.length,
+        pushAttempts,
+        pushSuccesses
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

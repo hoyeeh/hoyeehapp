@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check } from "lucide-react";
+import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check, Bell, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { ParentalControls } from "@/components/ParentalControls";
 import { Separator } from "@/components/ui/separator";
@@ -201,7 +202,7 @@ const Profile = () => {
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-brand" />
+        <LoadingSpinner size="lg" text="Loading profile..." />
       </div>
     );
   }
@@ -432,11 +433,26 @@ const Profile = () => {
         {/* Notifications */}
         <Card className="bg-card mb-6">
           <CardHeader>
-            <CardTitle>Notifications</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Notifications
+            </CardTitle>
             <CardDescription>Manage your notification preferences</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <PushNotificationToggle />
+            <Separator />
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={() => navigate("/notification-preferences")}
+            >
+              <span className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Detailed Notification Settings
+              </span>
+              <ArrowLeft className="h-4 w-4 rotate-180" />
+            </Button>
           </CardContent>
         </Card>
 
