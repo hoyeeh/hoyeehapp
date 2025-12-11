@@ -104,49 +104,17 @@ const PinAuth = () => {
         toast.error("Secret word must be at least 4 characters");
         return;
       }
-      setStep(4);
+      
+      // Store registration data in session storage and redirect to email auth
+      sessionStorage.setItem('pinAuthData', JSON.stringify({
+        mobileNumber: formData.mobileNumber,
+        pin: formData.pin,
+        secretWord: formData.secretWord.toLowerCase(),
+      }));
+      
+      toast.success("PIN and secret word saved! Complete registration with your email.");
+      navigate("/auth", { state: { fromPinRegistration: true } });
       return;
-    }
-
-    // Final step - create account
-    setIsLoading(true);
-    try {
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            display_name: formData.name,
-          },
-        },
-      });
-
-      if (authError) {
-        toast.error(authError.message);
-        setIsLoading(false);
-        return;
-      }
-
-      if (authData.user) {
-        // Update profile with mobile number, PIN, and secret word
-        await supabase
-          .from("profiles")
-          .update({
-            mobile_number: formData.mobileNumber,
-            pin_code: formData.pin,
-            secret_word: formData.secretWord.toLowerCase(),
-          })
-          .eq("id", authData.user.id);
-
-        toast.success("Account created successfully!");
-        navigate("/");
-      }
-    } catch (error) {
-      toast.error("An error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -355,44 +323,13 @@ const PinAuth = () => {
             </div>
           </div>
           <Button type="submit" variant="brand" size="lg" className="w-full h-12">
-            Continue
-          </Button>
-        </>
-      )}
-
-      {step === 4 && (
-        <>
-          <div className="space-y-4">
-            <Input
-              type="text"
-              placeholder="Your name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="h-12 bg-secondary border-border"
-            />
-            <Input
-              type="email"
-              placeholder="Email address"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="h-12 bg-secondary border-border"
-            />
-            <Input
-              type="password"
-              placeholder="Password (for account recovery)"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="h-12 bg-secondary border-border"
-            />
-          </div>
-          <Button type="submit" variant="brand" size="lg" className="w-full h-12" disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Account"}
+            Continue to Email Registration
           </Button>
         </>
       )}
 
       <div className="flex justify-center gap-2">
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3].map((s) => (
           <div
             key={s}
             className={`w-2 h-2 rounded-full ${s === step ? "bg-brand" : "bg-muted"}`}

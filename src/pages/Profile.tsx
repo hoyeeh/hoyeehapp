@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { ParentalControls } from "@/components/ParentalControls";
+import { Separator } from "@/components/ui/separator";
 
 const COUNTRIES = [
   { code: 'CM', name: 'Cameroon' },
@@ -292,7 +293,7 @@ const Profile = () => {
         </Card>
 
         {/* Account Actions */}
-        <Card className="bg-card">
+        <Card className="bg-card mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -305,6 +306,35 @@ const Profile = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Footer Links */}
+        <div className="border-t border-border pt-6">
+          <h3 className="text-sm font-medium text-muted-foreground mb-4">Legal & Support</h3>
+          <div className="flex flex-wrap gap-4">
+            <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Terms of Use
+            </Link>
+            <Separator orientation="vertical" className="h-4" />
+            <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Privacy Policy
+            </Link>
+            <Separator orientation="vertical" className="h-4" />
+            <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Contact Us
+            </Link>
+            <Separator orientation="vertical" className="h-4" />
+            <Link to="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Support
+            </Link>
+            <Separator orientation="vertical" className="h-4" />
+            <Link to="/copyright" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Copyright
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            © {new Date().getFullYear()} Hoyeeh. All rights reserved.
+          </p>
+        </div>
       </main>
     </div>
   );
