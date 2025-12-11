@@ -104,7 +104,8 @@ export function useDownloadManager() {
   const startDownload = useCallback(async (
     content: Content,
     episodeId?: string,
-    episodeTitle?: string
+    episodeTitle?: string,
+    preferredQuality: string = '720p'
   ): Promise<void> => {
     if (!user) {
       toast.error('Please log in to download content');
@@ -143,7 +144,7 @@ export function useDownloadManager() {
         return;
       }
 
-      toast.info(`Starting download: ${episodeTitle || content.title}`);
+      toast.info(`Starting ${preferredQuality} download: ${episodeTitle || content.title}`);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-start`,
@@ -158,7 +159,7 @@ export function useDownloadManager() {
             contentId: content.id,
             episodeId,
             deviceId,
-            preferredQuality: '720p',
+            preferredQuality,
           }),
         }
       );
