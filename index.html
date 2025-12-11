@@ -2,13 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Hoyeeh - African Movies & TV Shows Streaming</title>
     <meta name="description" content="Watch unlimited African movies, TV shows, and documentaries. Stream anywhere, anytime on any device." />
     <meta name="author" content="Hoyeeh" />
     <meta name="keywords" content="African movies, streaming, TV shows, African entertainment, Nollywood, documentaries" />
 
     <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hoyeeh" />
+    <meta name="application-name" content="Hoyeeh" />
+    <meta name="msapplication-TileColor" content="#ff6300" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="format-detection" content="telephone=no" />
 
     <meta property="og:title" content="Hoyeeh - African Movies & TV Shows Streaming" />
     <meta property="og:description" content="Watch unlimited African movies, TV shows, and documentaries. Stream anywhere, anytime." />
@@ -21,10 +33,26 @@
     
     <meta name="theme-color" content="#ff6300" />
     
+    <!-- iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/favicon.png" />
+    
     <!-- Bebas Neue font for hero titles -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    
+    <style>
+      /* Prevent overscroll bounce on iOS */
+      html, body {
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Safe area padding for notched devices */
+      body {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+    </style>
   </head>
 
   <body>

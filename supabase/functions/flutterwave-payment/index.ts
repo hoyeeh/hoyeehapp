@@ -11,7 +11,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 // Helper to send confirmation email
-async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, expiryDate: string) {
+async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, planType: string, expiryDate: string) {
   try {
     await fetch(`${SUPABASE_URL}/functions/v1/send-subscription-email`, {
       method: "POST",
@@ -23,7 +23,7 @@ async function sendConfirmationEmail(userEmail: string, userName: string, amount
           userName,
           amount,
           currency: "XAF",
-          planType: "Monthly",
+          planType: planType === "yearly" ? "Yearly" : "Monthly",
           expiryDate,
         },
       }),
@@ -55,21 +55,27 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { action, ...params } = await req.json();
+    const { action, plan_type = "monthly", ...params } = await req.json();
 
     // Fetch current pricing from subscription_settings
     const { data: settings } = await supabase
       .from("subscription_settings")
-      .select("base_price")
-      .eq("plan_type", "monthly")
-      .single();
+      .select("base_price, plan_type")
+      .eq("is_active", true);
 
-    const monthlyPrice = settings?.base_price || 2000;
+    const monthlySettings = settings?.find(s => s.plan_type === "monthly");
+    const yearlySettings = settings?.find(s => s.plan_type === "yearly");
+    
+    const monthlyPrice = monthlySettings?.base_price || 2500;
+    const yearlyPrice = yearlySettings?.base_price || 20000;
+    
+    const selectedPrice = plan_type === "yearly" ? yearlyPrice : monthlyPrice;
+    const daysToAdd = plan_type === "yearly" ? 365 : 30;
 
     if (action === "initialize") {
-      console.log("Initializing Flutterwave payment for user:", user.id);
+      console.log(`Initializing Flutterwave payment for user: ${user.id}, plan: ${plan_type}`);
 
-      const txRef = `hoyeeh-${user.id}-${Date.now()}`;
+      const txRef = `hoyeeh-${plan_type}-${user.id}-${Date.now()}`;
       const origin = req.headers.get("origin") || "https://hoyeeh.com";
 
       // Initialize Flutterwave payment
@@ -81,7 +87,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           tx_ref: txRef,
-          amount: monthlyPrice,
+          amount: selectedPrice,
           currency: "XAF",
           payment_options: "mobilemoneyrwanda, mobilemoneyghana, mobilemoneyfranco, mobilemoneyuganda, mobilemoneyzambia",
           redirect_url: `${origin}/subscription?tx_ref=${txRef}`,
@@ -91,12 +97,12 @@ serve(async (req) => {
           },
           customizations: {
             title: "Hoyeeh Premium",
-            description: "Monthly Premium Subscription",
+            description: `${plan_type === "yearly" ? "Yearly" : "Monthly"} Premium Subscription`,
             logo: `${origin}/favicon.png`,
           },
           meta: {
             user_id: user.id,
-            plan_type: "monthly",
+            plan_type: plan_type,
           },
         }),
       });
@@ -111,10 +117,10 @@ serve(async (req) => {
       // Create pending subscription record
       const { error: insertError } = await supabase.from("subscriptions").insert({
         user_id: user.id,
-        plan_type: "monthly",
+        plan_type: plan_type,
         payment_provider: "flutterwave",
         payment_reference: txRef,
-        amount: monthlyPrice,
+        amount: selectedPrice,
         currency: "XAF",
         status: "pending",
       });
@@ -148,8 +154,13 @@ serve(async (req) => {
       const result = await response.json();
 
       if (result.status === "success" && result.data.status === "successful") {
+        // Extract plan type from tx_ref (hoyeeh-{plan_type}-{user_id}-{timestamp})
+        const verifiedPlanType = tx_ref.split("-")[1] === "yearly" ? "yearly" : "monthly";
+        const verifiedDaysToAdd = verifiedPlanType === "yearly" ? 365 : 30;
+        const verifiedPrice = verifiedPlanType === "yearly" ? yearlyPrice : monthlyPrice;
+        
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const expiresAt = new Date(now.getTime() + verifiedDaysToAdd * 24 * 60 * 60 * 1000);
 
         // Update subscription status
         await supabase
@@ -182,7 +193,8 @@ serve(async (req) => {
           await sendConfirmationEmail(
             user.email,
             profile?.display_name || user.email.split("@")[0],
-            monthlyPrice,
+            verifiedPrice,
+            verifiedPlanType,
             expiresAt.toLocaleDateString()
           );
         }
