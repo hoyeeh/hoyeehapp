@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw } from "lucide-react";
+import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw, Volume2, VolumeX, SkipForward } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -38,6 +38,7 @@ export function MobileContentDetail({
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(true);
   const [showReplay, setShowReplay] = useState(false);
   const [previewTimer, setPreviewTimer] = useState(20);
+  const [isMuted, setIsMuted] = useState(true);
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -103,6 +104,29 @@ export function MobileContentDetail({
     setIsPreviewPlaying(true);
     setShowReplay(false);
     setPreviewTimer(20);
+  };
+
+  // Toggle mute for video preview
+  const handleToggleMute = () => {
+    lightTap();
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  // Skip preview and go directly to full playback
+  const handleSkipPreview = () => {
+    mediumTap();
+    // Stop preview
+    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    setIsPreviewPlaying(false);
+    // Start full playback
+    onPlay(content);
   };
 
   // Fetch similar content
@@ -309,7 +333,7 @@ export function MobileContentDetail({
             src={content.videoUrl}
             className="w-full h-full object-cover"
             autoPlay
-            muted
+            muted={isMuted}
             playsInline
             loop={false}
             poster={content.thumbnailUrl}
@@ -325,10 +349,48 @@ export function MobileContentDetail({
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         
-        {/* Countdown Timer */}
-        {content.videoUrl && isPreviewPlaying && previewTimer > 0 && (
-          <div className="absolute top-4 left-4 bg-background/70 backdrop-blur-sm px-2 py-1 rounded-full">
-            <span className="text-xs font-medium">{previewTimer}s</span>
+        {/* Preview Controls - Timer, Volume, Skip */}
+        {content.videoUrl && isPreviewPlaying && (
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+            {/* Countdown Timer */}
+            {previewTimer > 0 && (
+              <div className="bg-background/70 backdrop-blur-sm px-2 py-1 rounded-full">
+                <span className="text-xs font-medium">{previewTimer}s</span>
+              </div>
+            )}
+            
+            {/* Right side controls */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Volume Toggle */}
+              <button
+                onClick={handleToggleMute}
+                className={cn(
+                  "flex items-center justify-center w-8 h-8 rounded-full",
+                  "bg-background/70 backdrop-blur-sm",
+                  "active:scale-90 transition-transform"
+                )}
+                aria-label={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ? (
+                  <VolumeX className="h-4 w-4 text-foreground" />
+                ) : (
+                  <Volume2 className="h-4 w-4 text-foreground" />
+                )}
+              </button>
+              
+              {/* Skip Preview */}
+              <button
+                onClick={handleSkipPreview}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full",
+                  "bg-foreground text-background text-xs font-medium",
+                  "active:scale-95 transition-transform"
+                )}
+              >
+                <SkipForward className="h-3.5 w-3.5" />
+                Watch Now
+              </button>
+            </div>
           </div>
         )}
         
