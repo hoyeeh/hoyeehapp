@@ -29,6 +29,7 @@ import HelpCenter from "./pages/HelpCenter";
 import Contact from "./pages/Contact";
 import Support from "./pages/Support";
 import Copyright from "./pages/Copyright";
+import Install from "./pages/Install";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/support" element={<Support />} />
                 <Route path="/copyright" element={<Copyright />} />
+                <Route path="/install" element={<Install />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CastProvider>
