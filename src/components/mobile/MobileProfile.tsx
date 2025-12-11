@@ -16,13 +16,13 @@ import {
   Download,
   Smartphone,
   Info,
-  Trash2,
   Star,
   Users,
   MessageCircle,
   Wifi,
-  Moon,
-  PlayCircle
+  PlayCircle,
+  HardDrive,
+  Globe
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
@@ -36,6 +36,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
+import { MobileManageProfiles } from "./MobileManageProfiles";
+import { MobileParentalControls } from "./MobileParentalControls";
+import { MobileLanguageSettings } from "./MobileLanguageSettings";
+import { MobileStorageSettings } from "./MobileStorageSettings";
 
 // Import avatar images
 import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
@@ -71,6 +75,7 @@ interface MenuSection {
     toggle?: boolean;
     toggleKey?: string;
     action?: () => void;
+    modalKey?: string;
     destructive?: boolean;
   }[];
 }
@@ -88,6 +93,12 @@ export function MobileProfile() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   
+  // Modal states
+  const [showManageProfiles, setShowManageProfiles] = useState(false);
+  const [showParentalControls, setShowParentalControls] = useState(false);
+  const [showLanguageSettings, setShowLanguageSettings] = useState(false);
+  const [showStorageSettings, setShowStorageSettings] = useState(false);
+  
   // Settings toggles
   const [wifiOnly, setWifiOnly] = useState(() => {
     return localStorage.getItem("wifiOnlyDownloads") === "true";
@@ -95,7 +106,6 @@ export function MobileProfile() {
   const [autoPlay, setAutoPlay] = useState(() => {
     return localStorage.getItem("autoPlayPreviews") !== "false";
   });
-  const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {
     if (profile) {
@@ -187,14 +197,22 @@ export function MobileProfile() {
     toast.success(checked ? "Auto-play enabled" : "Auto-play disabled");
   };
 
+  // Get saved language
+  const savedLanguage = localStorage.getItem("hoyeeh_language") || "en";
+  const languageNames: Record<string, string> = {
+    en: "English", fr: "French", es: "Spanish", pt: "Portuguese",
+    de: "German", it: "Italian", ar: "Arabic", zh: "Chinese",
+    ja: "Japanese", ko: "Korean", hi: "Hindi", sw: "Swahili"
+  };
+
   const menuSections: MenuSection[] = [
     {
       title: "Account",
       items: [
-        { icon: User, label: "Manage Profiles", path: "/profile" },
+        { icon: Users, label: "Manage Profiles", modalKey: "profiles" },
         { icon: CreditCard, label: "Subscription", path: "/subscription", value: profile?.is_subscribed ? "Premium" : "Free" },
         { icon: Bell, label: "Notifications", path: "/notification-preferences" },
-        { icon: Shield, label: "Parental Controls", path: "/profile" },
+        { icon: Shield, label: "Parental Controls", modalKey: "parental" },
       ],
     },
     {
@@ -202,8 +220,8 @@ export function MobileProfile() {
       items: [
         { icon: Wifi, label: "WiFi-Only Downloads", toggle: true, toggleKey: "wifiOnly" },
         { icon: PlayCircle, label: "Auto-Play Previews", toggle: true, toggleKey: "autoPlay" },
-        { icon: Download, label: "Downloads", path: "/downloads" },
-        { icon: Smartphone, label: "App Language", value: "English" },
+        { icon: HardDrive, label: "Storage", modalKey: "storage" },
+        { icon: Globe, label: "App Language", modalKey: "language", value: languageNames[savedLanguage] || "English" },
       ],
     },
     {
@@ -248,17 +266,20 @@ export function MobileProfile() {
       );
     }
 
+    const handleClick = () => {
+      lightTap();
+      if (item.modalKey === "profiles") setShowManageProfiles(true);
+      else if (item.modalKey === "parental") setShowParentalControls(true);
+      else if (item.modalKey === "language") setShowLanguageSettings(true);
+      else if (item.modalKey === "storage") setShowStorageSettings(true);
+      else if (item.action) item.action();
+      else if (item.path) navigate(item.path);
+    };
+
     return (
       <button
         key={item.label}
-        onClick={() => {
-          lightTap();
-          if (item.action) {
-            item.action();
-          } else if (item.path) {
-            navigate(item.path);
-          }
-        }}
+        onClick={handleClick}
         className={cn(
           "w-full flex items-center justify-between p-4 bg-muted/20 rounded-xl active:bg-muted/40 active:scale-[0.98] transition-all",
           item.destructive && "bg-destructive/10"
@@ -539,6 +560,22 @@ export function MobileProfile() {
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Components */}
+      <AnimatePresence>
+        {showManageProfiles && (
+          <MobileManageProfiles onClose={() => setShowManageProfiles(false)} />
+        )}
+        {showParentalControls && (
+          <MobileParentalControls onClose={() => setShowParentalControls(false)} />
+        )}
+        {showLanguageSettings && (
+          <MobileLanguageSettings onClose={() => setShowLanguageSettings(false)} />
+        )}
+        {showStorageSettings && (
+          <MobileStorageSettings onClose={() => setShowStorageSettings(false)} />
         )}
       </AnimatePresence>
 
