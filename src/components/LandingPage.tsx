@@ -174,15 +174,15 @@ export const LandingPage = ({ onSignIn, onGetStarted }: LandingPageProps) => {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-sm">
             <a href="#faq" className="hover:underline">FAQ</a>
-            <a href="mailto:support@hoyeeh.com" className="hover:underline">Help Center</a>
+            <a href="/help" className="hover:underline">Help Center</a>
             <a href="/profile" className="hover:underline">Account</a>
-            <a href="#" className="hover:underline">Media Center</a>
-            <a href="#" className="hover:underline">Investor Relations</a>
-            <a href="#" className="hover:underline">Ways to Watch</a>
-            <a href="#" className="hover:underline">Terms of Use</a>
-            <a href="#" className="hover:underline">Privacy</a>
-            <a href="#" className="hover:underline">Cookie Preferences</a>
-            <a href="#" className="hover:underline">Corporate Information</a>
+            <a href="/about" className="hover:underline">About Us</a>
+            <a href="/about" className="hover:underline">Investor Relations</a>
+            <a href="/help" className="hover:underline">Ways to Watch</a>
+            <a href="/terms" className="hover:underline">Terms of Use</a>
+            <a href="/privacy" className="hover:underline">Privacy</a>
+            <a href="/privacy" className="hover:underline">Cookie Preferences</a>
+            <a href="/about" className="hover:underline">Corporate Information</a>
             <a href="mailto:info@hoyeeh.com" className="hover:underline">Contact Us</a>
             <a href="mailto:support@hoyeeh.com" className="hover:underline">Support</a>
           </div>

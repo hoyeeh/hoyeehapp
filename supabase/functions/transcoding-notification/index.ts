@@ -26,7 +26,39 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Verify the request is authorized (must come from service role or have valid service key)
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - missing authorization header" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    
+    const token = authHeader.replace("Bearer ", "");
+    // Only allow service role key to call this endpoint
+    if (token !== supabaseServiceKey) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - invalid credentials" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const { jobId, status, episodeTitle, showTitle, errorMessage }: TranscodingNotificationRequest = await req.json();
+
+    // Verify the job exists in the database to prevent fake notifications
+    const { data: jobData, error: jobError } = await supabase
+      .from("transcoding_jobs")
+      .select("id")
+      .eq("id", jobId)
+      .single();
+
+    if (jobError || !jobData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid job ID - transcoding job not found" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     // Get all admin users
     const { data: adminRoles, error: rolesError } = await supabase
