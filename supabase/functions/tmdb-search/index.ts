@@ -91,9 +91,11 @@ serve(async (req) => {
       );
     }
 
+    // Return 200 with empty results - not an error condition
+    console.log('No results found for query:', query);
     return new Response(
-      JSON.stringify({ error: 'No results found', results: [] }),
-      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ results: [], message: 'No results found' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {

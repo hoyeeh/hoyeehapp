@@ -120,10 +120,9 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       if (data.results && data.results.length > 0) {
         setSearchResults(data.results);
         toast.success(`Found ${data.results.length} results`);
-      } else if (data.error === 'No results found') {
+      } else {
+        // No results found - informational, not an error
         toast.info("No results found. Try a different search term.");
-      } else if (data.error) {
-        throw new Error(data.error);
       }
     } catch (error) {
       console.error('Search error:', error);
