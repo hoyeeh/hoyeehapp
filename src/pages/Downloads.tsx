@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOfflineDownloads } from "@/hooks/useOfflineDownloads";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { Sidebar } from "@/components/Sidebar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ViewState, Content } from "@/types";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -15,6 +15,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StorageManagement } from "@/components/StorageManagement";
 import { GlobalDownloadNotifications } from "@/components/GlobalDownloadNotifications";
 import { WifiOnlyToggle } from "@/components/WifiOnlyToggle";
+import { DownloadExpiryWarning, isExpiringSoon } from "@/components/DownloadExpiryWarning";
+import { useBackgroundDownload } from "@/hooks/useBackgroundDownload";
 
 const STORAGE_LIMIT = 10 * 1024 * 1024 * 1024; // 10GB
 
@@ -38,7 +40,10 @@ const Downloads = () => {
     cancelDownload,
     cleanupExpiredDownloads,
     getProgress,
+    getLicenseExpiry,
   } = useDownloadManager();
+
+  const { getPendingBackgroundDownloads } = useBackgroundDownload();
 
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [playingContent, setPlayingContent] = useState<{
@@ -46,6 +51,41 @@ const Downloads = () => {
     offlineUrl: string;
   } | null>(null);
   const [showStorageManagement, setShowStorageManagement] = useState(false);
+  const [licenseExpiries, setLicenseExpiries] = useState<Record<string, number>>({});
+
+  // Load license expiries for all downloads
+  useEffect(() => {
+    const loadExpiries = async () => {
+      const expiries: Record<string, number> = {};
+      for (const d of downloads) {
+        const expiry = await getLicenseExpiry(d.id);
+        if (expiry) {
+          expiries[d.id] = expiry;
+        }
+      }
+      setLicenseExpiries(expiries);
+    };
+    
+    if (downloads.length > 0) {
+      loadExpiries();
+    }
+  }, [downloads, getLicenseExpiry]);
+
+  // Check for expiring downloads
+  useEffect(() => {
+    const expiringCount = Object.values(licenseExpiries).filter(expiry => isExpiringSoon(expiry)).length;
+    if (expiringCount > 0) {
+      toast.warning(`${expiringCount} download${expiringCount > 1 ? 's' : ''} expiring soon`);
+    }
+  }, [licenseExpiries]);
+
+  // Check for pending background downloads
+  useEffect(() => {
+    const pending = getPendingBackgroundDownloads();
+    if (pending.length > 0) {
+      toast.info(`${pending.length} download${pending.length > 1 ? 's' : ''} ready to resume`);
+    }
+  }, [getPendingBackgroundDownloads]);
 
   const handleLogout = async () => {
     await signOut();
@@ -217,9 +257,13 @@ const Downloads = () => {
                     )}
                     <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                       <span>{formatBytes(download.totalSize)}</span>
-                      <span>
-                        {new Date(download.downloadedAt).toLocaleDateString()}
-                      </span>
+                      {licenseExpiries[download.id] ? (
+                        <DownloadExpiryWarning expiresAt={licenseExpiries[download.id]} variant="badge" />
+                      ) : (
+                        <span>
+                          {new Date(download.downloadedAt).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
