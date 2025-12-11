@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,59 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify the user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Authentication failed' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Authenticated user:', user.id);
+
+    // Check if user has an active subscription or is an admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_expiry')
+      .eq('id', user.id)
+      .single();
+
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+
+    const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
+    const hasActiveSubscription = profile?.subscription_expiry && 
+      new Date(profile.subscription_expiry) > new Date();
+
+    if (!isAdmin && !hasActiveSubscription) {
+      console.error('User does not have active subscription:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'Active subscription required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { videoUrl } = await req.json();
     
     if (!videoUrl) {
@@ -21,7 +75,34 @@ serve(async (req) => {
       );
     }
 
-    console.log('Proxying video download:', videoUrl);
+    // Validate the video URL belongs to allowed domains (CDN or storage)
+    const allowedDomains = [
+      'cdn.digitaloceanspaces.com',
+      'digitaloceanspaces.com',
+      'supabase.co',
+      'supabase.com'
+    ];
+    
+    try {
+      const urlObj = new URL(videoUrl);
+      const isAllowedDomain = allowedDomains.some(domain => urlObj.hostname.includes(domain));
+      
+      if (!isAllowedDomain) {
+        console.error('Invalid video URL domain:', urlObj.hostname);
+        return new Response(
+          JSON.stringify({ error: 'Invalid video source' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch {
+      console.error('Invalid URL format:', videoUrl);
+      return new Response(
+        JSON.stringify({ error: 'Invalid URL format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Proxying video download for user:', user.id, 'URL:', videoUrl);
 
     // Fetch the video from the CDN
     const videoResponse = await fetch(videoUrl);
