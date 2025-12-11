@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,8 +36,10 @@ import Parental from "./pages/Parental";
 
 const queryClient = new QueryClient();
 
-// Run cache migration once on module load (safe - no React hooks)
-migrateLegacyKeys();
+// Run cache migration immediately (safe - no React hooks, pure localStorage operation)
+if (typeof window !== 'undefined') {
+  migrateLegacyKeys();
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
