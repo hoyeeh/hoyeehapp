@@ -15,16 +15,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // All hooks MUST be at the top level, before any conditional logic
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Move useCallback hooks to the top level
+  // Generate a unique session ID for this browser instance - inside component to avoid SSR issues
   const generateSessionId = useCallback(() => {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
   }, []);
 
+  // Get or create session ID for this browser - inside component to avoid SSR issues
   const getLocalSessionId = useCallback(() => {
     if (typeof window === "undefined") return "";
 
