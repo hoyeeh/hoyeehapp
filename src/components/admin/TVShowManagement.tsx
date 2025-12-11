@@ -12,6 +12,7 @@ import { VideoUploadField } from "./VideoUploadField";
 import { BatchVideoUpload } from "./BatchVideoUpload";
 import { BulkEpisodeEdit } from "./BulkEpisodeEdit";
 import { SortableEpisodeList } from "./SortableEpisodeList";
+import { TMDBEpisodeImport } from "./TMDBEpisodeImport";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -284,6 +285,7 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
               <SeasonItem
                 key={season.id}
                 season={season}
+                tmdbId={tmdbId}
                 isExpanded={expandedSeasons.includes(season.id)}
                 onToggle={() => toggleSeason(season.id)}
                 onDelete={() => handleDeleteSeason(season.id)}
@@ -298,12 +300,13 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
 
 interface SeasonItemProps {
   season: Season;
+  tmdbId?: number | null;
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
 }
 
-const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps) => {
+const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonItemProps) => {
   const { toast } = useToast();
   const { data: episodes, isLoading, refetch } = useEpisodes(season.id);
   const createEpisode = useCreateEpisode();
@@ -496,6 +499,22 @@ const SeasonItem = ({ season, isExpanded, onToggle, onDelete }: SeasonItemProps)
                   <DialogTitle>{editingEpisode ? "Edit Episode" : "Add Episode"}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleEpisodeSubmit} className="space-y-4">
+                  {/* TMDB Episode Import */}
+                  {tmdbId && !editingEpisode && (
+                    <TMDBEpisodeImport
+                      tmdbId={tmdbId}
+                      seasonNumber={season.season_number}
+                      onSelectEpisode={(ep) => setEpisodeForm(prev => ({
+                        ...prev,
+                        episode_number: ep.episode_number,
+                        title: ep.title,
+                        description: ep.description,
+                        thumbnail_url: ep.thumbnail_url,
+                        duration: ep.duration,
+                      }))}
+                    />
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Episode Number</Label>
