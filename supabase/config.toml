@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.send-support-reply-email]
 verify_jwt = true
+
+[functions.cleanup-cast-sessions]
+verify_jwt = false
