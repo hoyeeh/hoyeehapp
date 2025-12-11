@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit2, Tv, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Tv, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminOverview } from "@/components/admin/AdminOverview";
@@ -37,6 +38,7 @@ import { KidsCategoryManagement } from "@/components/admin/KidsCategoryManagemen
 import { AdminSubscriptionCredits } from "@/components/admin/AdminSubscriptionCredits";
 import { AdminSupportChat } from "@/components/admin/AdminSupportChat";
 import { AdminTicketAssignments } from "@/components/admin/AdminTicketAssignments";
+import { WalkthroughManagement } from "@/components/admin/WalkthroughManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -52,13 +54,16 @@ const Admin = () => {
   const [editingContent, setEditingContent] = useState<any>(null);
   const [managingTVShow, setManagingTVShow] = useState<{ id: string; title: string; tmdbId?: number } | null>(null);
   
-  // Content grid filters and pagination
+  // Content grid filters, sorting, and pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const itemsPerPage = 12;
   
-  // Filtered and paginated content
+  // Filtered, sorted, and paginated content
   const filteredContent = useMemo(() => {
     let filtered = content;
     
@@ -76,8 +81,27 @@ const Admin = () => {
       filtered = filtered.filter((item) => item.content_type === contentTypeFilter);
     }
     
+    // Sort content
+    filtered = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "title":
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case "created_at":
+          comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          break;
+        case "view_count":
+          comparison = (a.view_count || 0) - (b.view_count || 0);
+          break;
+        default:
+          comparison = 0;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+    
     return filtered;
-  }, [content, searchQuery, contentTypeFilter]);
+  }, [content, searchQuery, contentTypeFilter, sortBy, sortOrder]);
   
   const totalPages = Math.ceil(filteredContent.length / itemsPerPage);
   const paginatedContent = useMemo(() => {
@@ -85,10 +109,47 @@ const Admin = () => {
     return filteredContent.slice(start, start + itemsPerPage);
   }, [filteredContent, currentPage, itemsPerPage]);
   
-  // Reset page when filters change
+  // Reset page and selection when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, contentTypeFilter]);
+    setSelectedItems(new Set());
+  }, [searchQuery, contentTypeFilter, sortBy, sortOrder]);
+
+  // Toggle item selection
+  const toggleItemSelection = (id: string) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  // Select all visible items
+  const toggleSelectAll = () => {
+    if (selectedItems.size === paginatedContent.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(paginatedContent.map(item => item.id)));
+    }
+  };
+
+  // Bulk delete selected items
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedItems.size} items?`)) return;
+    
+    try {
+      const promises = Array.from(selectedItems).map(id => deleteContent.mutateAsync(id));
+      await Promise.all(promises);
+      toast.success(`${selectedItems.size} items deleted successfully`);
+      setSelectedItems(new Set());
+    } catch (error) {
+      toast.error("Failed to delete some items");
+    }
+  };
 
   const handleRefreshUsers = () => {
     window.location.reload();
@@ -148,8 +209,8 @@ const Admin = () => {
               </Button>
             </div>
 
-            {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search, Filters, and Sorting */}
+            <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -169,12 +230,55 @@ const Admin = () => {
                   <SelectItem value="series">TV Series</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[150px]">
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Date Added</SelectItem>
+                  <SelectItem value="title">Title</SelectItem>
+                  <SelectItem value="view_count">View Count</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                title={sortOrder === "asc" ? "Ascending" : "Descending"}
+              >
+                <ArrowUpDown className={`h-4 w-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+              </Button>
             </div>
 
-            {/* Results count */}
-            <p className="text-sm text-muted-foreground">
-              Showing {paginatedContent.length} of {filteredContent.length} items
-            </p>
+            {/* Bulk Actions */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={selectedItems.size === paginatedContent.length && paginatedContent.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {selectedItems.size > 0 ? `${selectedItems.size} selected` : "Select all"}
+                  </span>
+                </div>
+                {selectedItems.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Selected ({selectedItems.size})
+                  </Button>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Showing {paginatedContent.length} of {filteredContent.length} items
+              </p>
+            </div>
 
             {showUploadForm && (
               <ContentUploadForm onClose={() => setShowUploadForm(false)} />
@@ -195,8 +299,16 @@ const Admin = () => {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {paginatedContent.map((item) => (
-                <Card key={item.id} className="bg-card overflow-hidden group">
+                <Card key={item.id} className={`bg-card overflow-hidden group ${selectedItems.has(item.id) ? 'ring-2 ring-primary' : ''}`}>
                   <div className="relative aspect-[2/3]">
+                    {/* Selection Checkbox */}
+                    <div className="absolute top-2 right-2 z-10">
+                      <Checkbox
+                        checked={selectedItems.has(item.id)}
+                        onCheckedChange={() => toggleItemSelection(item.id)}
+                        className="bg-background/80"
+                      />
+                    </div>
                     <img
                       src={item.thumbnail_url || "/placeholder.svg"}
                       alt={item.title}
@@ -415,6 +527,14 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Hero Banner Management</h2>
             <HeroBannerManagement />
+          </div>
+        );
+      
+      case "walkthrough":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Mobile Walkthrough Screens</h2>
+            <WalkthroughManagement />
           </div>
         );
       
