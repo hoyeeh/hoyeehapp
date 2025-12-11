@@ -30,6 +30,11 @@ interface TMDBResult {
   popularity: number;
 }
 
+interface TMDBDetails extends TMDBResult {
+  duration: number;
+  genres: string[];
+}
+
 export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const createContent = useCreateContent();
   const { uploadVideo, uploading, progress, error: uploadError, resetProgress } = useVideoUploadSpaces();
@@ -42,6 +47,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const [searchResults, setSearchResults] = useState<TMDBResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TMDBResult | null>(null);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -96,21 +102,18 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
     try {
       const { data, error } = await supabase.functions.invoke('tmdb-search', {
-        body: { query: searchQuery, type: searchType }
+        body: { query: searchQuery, type: searchType, multi: true }
       });
 
       if (error) throw error;
 
-      if (data.error) {
-        if (data.error === 'No results found') {
-          toast.info("No results found. Try a different search term.");
-        } else {
-          throw new Error(data.error);
-        }
-      } else {
-        // The current API returns a single result, but we can display it
-        setSearchResults([data]);
-        toast.success(`Found: ${data.title}`);
+      if (data.results && data.results.length > 0) {
+        setSearchResults(data.results);
+        toast.success(`Found ${data.results.length} results`);
+      } else if (data.error === 'No results found') {
+        toast.info("No results found. Try a different search term.");
+      } else if (data.error) {
+        throw new Error(data.error);
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -120,10 +123,13 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     }
   };
 
-  const handleSelectResult = (result: TMDBResult) => {
+  const handleSelectResult = async (result: TMDBResult) => {
     setSelectedResult(result);
-    setFormData({
-      ...formData,
+    setFetchingDetails(true);
+    
+    // Immediately set basic data
+    setFormData(prev => ({
+      ...prev,
       title: result.title,
       description: result.description || "",
       year: parseInt(result.year) || new Date().getFullYear(),
@@ -131,7 +137,27 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       content_type: searchType,
       thumbnail_url: result.thumbnail_url || "",
       tmdb_id: result.tmdb_id,
-    });
+    }));
+
+    // Fetch details to get duration and genres
+    try {
+      const { data, error } = await supabase.functions.invoke('tmdb-details', {
+        body: { tmdb_id: result.tmdb_id, type: searchType }
+      });
+
+      if (!error && data) {
+        setFormData(prev => ({
+          ...prev,
+          duration: data.duration || 0,
+          genre: data.genres?.[0] || "",
+        }));
+        toast.success(`Duration: ${data.duration} min`);
+      }
+    } catch (error) {
+      console.error('Failed to fetch details:', error);
+    } finally {
+      setFetchingDetails(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -253,36 +279,41 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                 </Button>
               </div>
 
-              {/* Search Results */}
+              {/* Search Results Grid */}
               {searchResults.length > 0 && (
                 <div className="space-y-2">
-                  <Label>Search Results</Label>
-                  <div className="grid gap-2 max-h-64 overflow-y-auto">
+                  <Label>Search Results ({searchResults.length})</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-1">
                     {searchResults.map((result) => (
                       <div
                         key={result.tmdb_id}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
                           selectedResult?.tmdb_id === result.tmdb_id
-                            ? 'bg-brand/20 border border-brand'
-                            : 'bg-secondary hover:bg-secondary/80'
+                            ? 'border-primary ring-2 ring-primary/50'
+                            : 'border-transparent hover:border-muted-foreground/50'
                         }`}
                         onClick={() => handleSelectResult(result)}
                       >
-                        {result.thumbnail_url && (
+                        {result.thumbnail_url ? (
                           <img
                             src={result.thumbnail_url}
                             alt={result.title}
-                            className="w-12 h-16 object-cover rounded"
+                            className="w-full h-36 object-cover"
                           />
+                        ) : (
+                          <div className="w-full h-36 bg-muted flex items-center justify-center">
+                            <Film className="h-8 w-8 text-muted-foreground" />
+                          </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{result.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {result.year} • ⭐ {result.rating}
-                          </p>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-2">
+                          <p className="text-xs font-medium text-white line-clamp-2">{result.title}</p>
+                          <p className="text-xs text-white/70">{result.year} • ⭐ {result.rating}</p>
                         </div>
                         {selectedResult?.tmdb_id === result.tmdb_id && (
-                          <Check className="h-5 w-5 text-brand flex-shrink-0" />
+                          <div className="absolute top-2 right-2 bg-primary rounded-full p-1">
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          </div>
                         )}
                       </div>
                     ))}
@@ -309,6 +340,13 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                       <div className="flex gap-4 text-sm">
                         <span>Year: {selectedResult.year}</span>
                         <span>Rating: ⭐ {selectedResult.rating}</span>
+                        {fetchingDetails ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Fetching duration...
+                          </span>
+                        ) : formData.duration > 0 && (
+                          <span className="text-primary">Duration: {formData.duration} min</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -362,7 +400,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                     <div className="space-y-1">
                       <div className="h-2 bg-secondary rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-brand transition-all duration-300"
+                          className="h-full bg-primary transition-all duration-300"
                           style={{ width: `${progress.percent}%` }}
                         />
                       </div>
@@ -375,7 +413,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
                 <div className="flex gap-2 justify-end">
                   <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                  <Button onClick={handleSubmit} disabled={submitting || uploading} className="bg-brand hover:bg-brand/90">
+                  <Button onClick={handleSubmit} disabled={submitting || uploading}>
                     {(submitting || uploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Import Content
                   </Button>
@@ -451,7 +489,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                     <div className="space-y-1">
                       <div className="h-2 bg-secondary rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-brand transition-all duration-300"
+                          className="h-full bg-primary transition-all duration-300"
                           style={{ width: `${progress.percent}%` }}
                         />
                       </div>
@@ -460,7 +498,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Thumbnail</Label>
+                  <Label>Thumbnail Image</Label>
                   <Input type="file" accept="image/*" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
                 </div>
               </div>
@@ -469,8 +507,8 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                <Button type="submit" disabled={submitting || uploading} className="bg-brand hover:bg-brand/90">
-                  {(submitting || uploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Button type="submit" disabled={submitting || uploading || thumbnailUploading}>
+                  {(submitting || uploading || thumbnailUploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create Content
                 </Button>
               </div>

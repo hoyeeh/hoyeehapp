@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -30,7 +31,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check } from "lucide-react";
+import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check, ListPlus } from "lucide-react";
 import { format } from "date-fns";
 
 interface TMDBResult {
@@ -59,6 +60,10 @@ export const ComingSoonManagement = () => {
   const [searchResults, setSearchResults] = useState<TMDBResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedResult, setSelectedResult] = useState<TMDBResult | null>(null);
+  
+  // Bulk import state
+  const [selectedForBulk, setSelectedForBulk] = useState<Set<number>>(new Set());
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -95,6 +100,7 @@ export const ComingSoonManagement = () => {
 
     setIsSearching(true);
     setSelectedResult(null);
+    setSelectedForBulk(new Set());
     
     try {
       const { data, error } = await supabase.functions.invoke("tmdb-coming-soon-search", {
@@ -129,6 +135,62 @@ export const ComingSoonManagement = () => {
       is_active: true,
       tmdb_id: result.tmdb_id,
     });
+  };
+
+  const toggleBulkSelection = (tmdbId: number) => {
+    const newSelection = new Set(selectedForBulk);
+    if (newSelection.has(tmdbId)) {
+      newSelection.delete(tmdbId);
+    } else {
+      newSelection.add(tmdbId);
+    }
+    setSelectedForBulk(newSelection);
+  };
+
+  const selectAllForBulk = () => {
+    if (selectedForBulk.size === searchResults.length) {
+      setSelectedForBulk(new Set());
+    } else {
+      setSelectedForBulk(new Set(searchResults.map(r => r.tmdb_id)));
+    }
+  };
+
+  // Bulk import mutation
+  const handleBulkImport = async () => {
+    if (selectedForBulk.size === 0) {
+      toast.error("Select at least one item to import");
+      return;
+    }
+
+    setIsBulkImporting(true);
+    try {
+      const itemsToImport = searchResults.filter(r => selectedForBulk.has(r.tmdb_id));
+      
+      const insertData = itemsToImport.map(result => ({
+        title: result.title,
+        description: result.description || null,
+        thumbnail_url: result.thumbnail_url || null,
+        backdrop_url: result.backdrop_url || null,
+        trailer_url: result.trailer_url || null,
+        content_type: result.content_type,
+        genre: result.genre || null,
+        expected_release_date: result.release_date || null,
+        is_active: true,
+        tmdb_id: result.tmdb_id,
+      }));
+
+      const { error } = await supabase.from("coming_soon").insert(insertData);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["admin-coming-soon"] });
+      toast.success(`Imported ${insertData.length} items!`);
+      resetForm();
+    } catch (error: any) {
+      console.error("Bulk import error:", error);
+      toast.error("Failed to import: " + error.message);
+    } finally {
+      setIsBulkImporting(false);
+    }
   };
 
   // Create mutation
@@ -242,6 +304,7 @@ export const ComingSoonManagement = () => {
     setSearchQuery("");
     setSearchResults([]);
     setSelectedResult(null);
+    setSelectedForBulk(new Set());
     setActiveTab("import");
   };
 
@@ -295,7 +358,7 @@ export const ComingSoonManagement = () => {
               Add Coming Soon
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? "Edit Coming Soon" : "Add Coming Soon"}
@@ -347,42 +410,89 @@ export const ComingSoonManagement = () => {
                   </Button>
                 </div>
 
+                {/* Bulk Import Controls */}
+                {searchResults.length > 0 && (
+                  <div className="flex items-center justify-between bg-muted/50 p-2 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedForBulk.size === searchResults.length && searchResults.length > 0}
+                        onCheckedChange={selectAllForBulk}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {selectedForBulk.size} selected
+                      </span>
+                    </div>
+                    {selectedForBulk.size > 0 && (
+                      <Button
+                        size="sm"
+                        onClick={handleBulkImport}
+                        disabled={isBulkImporting}
+                        className="gap-2"
+                      >
+                        {isBulkImporting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ListPlus className="h-4 w-4" />
+                        )}
+                        Import {selectedForBulk.size} Items
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 {/* Search Results */}
                 {searchResults.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-72 overflow-y-auto">
                     {searchResults.map((result) => (
                       <div
                         key={result.tmdb_id}
-                        onClick={() => selectTMDBResult(result)}
                         className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
                           selectedResult?.tmdb_id === result.tmdb_id
                             ? "border-primary ring-2 ring-primary/50"
+                            : selectedForBulk.has(result.tmdb_id)
+                            ? "border-primary/50"
                             : "border-transparent hover:border-muted-foreground/50"
                         }`}
                       >
-                        {result.thumbnail_url ? (
-                          <img
-                            src={result.thumbnail_url}
-                            alt={result.title}
-                            className="w-full h-32 object-cover"
+                        {/* Bulk Selection Checkbox */}
+                        <div
+                          className="absolute top-2 left-2 z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleBulkSelection(result.tmdb_id);
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedForBulk.has(result.tmdb_id)}
+                            className="bg-black/50 border-white"
                           />
-                        ) : (
-                          <div className="w-full h-32 bg-muted flex items-center justify-center">
-                            <Film className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        
+                        <div onClick={() => selectTMDBResult(result)}>
+                          {result.thumbnail_url ? (
+                            <img
+                              src={result.thumbnail_url}
+                              alt={result.title}
+                              className="w-full h-32 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-32 bg-muted flex items-center justify-center">
+                              <Film className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                          <div className="absolute bottom-0 left-0 right-0 p-2">
+                            <p className="text-xs font-medium text-white line-clamp-2">{result.title}</p>
+                            {result.release_date && (
+                              <p className="text-xs text-white/70">{result.release_date.split("-")[0]}</p>
+                            )}
                           </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                        <div className="absolute bottom-0 left-0 right-0 p-2">
-                          <p className="text-xs font-medium text-white line-clamp-2">{result.title}</p>
-                          {result.release_date && (
-                            <p className="text-xs text-white/70">{result.release_date.split("-")[0]}</p>
+                          {selectedResult?.tmdb_id === result.tmdb_id && (
+                            <div className="absolute top-2 right-2 bg-primary rounded-full p-1">
+                              <Check className="h-3 w-3 text-primary-foreground" />
+                            </div>
                           )}
                         </div>
-                        {selectedResult?.tmdb_id === result.tmdb_id && (
-                          <div className="absolute top-2 right-2 bg-primary rounded-full p-1">
-                            <Check className="h-3 w-3 text-primary-foreground" />
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
