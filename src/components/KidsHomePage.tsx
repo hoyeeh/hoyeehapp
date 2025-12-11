@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsContentCard } from "./KidsContentCard";
-import { LoadingSpinner } from "./LoadingSpinner";
-import { Sparkles, Star, Heart, Rocket, Gamepad2 } from "lucide-react";
+import { Sparkles, Clock } from "lucide-react";
 import { useKidsSounds } from "@/hooks/useKidsSounds";
+import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
@@ -16,6 +17,8 @@ const KIDS_RATINGS = ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG"];
 
 export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   const { playSuccessSound } = useKidsSounds();
+  const { currentProfile } = useProfileContext();
+  const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
 
   // Fetch kids-appropriate content
   const { data: kidsContent = [], isLoading } = useQuery({
@@ -44,17 +47,46 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     },
   });
 
-  // Categorize content
+  // Fetch kids categories
+  const { data: kidsCategories = [] } = useQuery({
+    queryKey: ["kids-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("kids_categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order");
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch category mappings
+  const { data: categoryMappings = [] } = useQuery({
+    queryKey: ["kids-content-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("kids_content_categories")
+        .select("content_id, category_id");
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Get content for a category
+  const getContentForCategory = (categoryId: string): Content[] => {
+    const contentIds = categoryMappings
+      .filter((m: any) => m.category_id === categoryId)
+      .map((m: any) => m.content_id);
+    
+    return kidsContent.filter((c) => contentIds.includes(c.id));
+  };
+
+  // Categorize remaining content by genre
   const movies = kidsContent.filter((c) => c.contentType === "movie");
   const shows = kidsContent.filter((c) => c.contentType === "series");
-  const animation = kidsContent.filter((c) => 
-    c.genre?.toLowerCase().includes("animation") || 
-    c.genre?.toLowerCase().includes("cartoon")
-  );
-  const adventure = kidsContent.filter((c) => 
-    c.genre?.toLowerCase().includes("adventure") || 
-    c.genre?.toLowerCase().includes("action")
-  );
 
   if (isLoading) {
     return (
@@ -69,16 +101,56 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     );
   }
 
-  const sections = [
-    { title: "Watch Now!", icon: Rocket, content: kidsContent.slice(0, 10), color: "text-pink-400" },
-    { title: "Movies", icon: Star, content: movies.slice(0, 10), color: "text-yellow-400" },
-    { title: "TV Shows", icon: Gamepad2, content: shows.slice(0, 10), color: "text-green-400" },
-    { title: "Cartoons", icon: Heart, content: animation.slice(0, 10), color: "text-purple-400" },
-    { title: "Adventures", icon: Rocket, content: adventure.slice(0, 10), color: "text-cyan-400" },
-  ].filter((section) => section.content.length > 0);
+  // Time limit reached screen
+  if (isTimeLimitReached) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="text-center max-w-md">
+          <div className="text-8xl mb-6 animate-bounce-slow">😴</div>
+          <h1 className="text-3xl md:text-4xl font-display text-white mb-4">
+            Time's Up for Today!
+          </h1>
+          <p className="text-white/80 text-lg mb-6">
+            You've watched all your shows for today. Come back tomorrow for more fun!
+          </p>
+          <div className="text-6xl animate-float">🌙 💤 ⭐</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Build sections from categories
+  const categorySections = kidsCategories.map((category: any) => ({
+    title: category.name,
+    emoji: category.emoji,
+    content: getContentForCategory(category.id),
+    color: category.color,
+  })).filter((s) => s.content.length > 0);
+
+  // Add default sections
+  const defaultSections = [
+    { title: "Watch Now!", emoji: "🎬", content: kidsContent.slice(0, 10), color: "from-pink-500 to-rose-500" },
+    { title: "Movies", emoji: "🍿", content: movies.slice(0, 10), color: "from-yellow-500 to-orange-500" },
+    { title: "TV Shows", emoji: "📺", content: shows.slice(0, 10), color: "from-green-500 to-emerald-500" },
+  ].filter((s) => s.content.length > 0);
+
+  const allSections = [...categorySections, ...defaultSections];
 
   return (
     <div className="px-4 md:px-8 space-y-12 pb-24">
+      {/* Time Remaining Banner */}
+      {timeRemaining !== null && (
+        <div className="bg-gradient-to-r from-purple-600/80 to-pink-600/80 rounded-2xl p-4 flex items-center justify-center gap-3 backdrop-blur-sm">
+          <Clock className="h-6 w-6 text-white animate-pulse" />
+          <span className="text-white font-medium">
+            {timeRemaining > 0 
+              ? `${timeRemaining} minutes of watch time left today!`
+              : "Watch time is almost up!"}
+          </span>
+          <span className="text-2xl">⏰</span>
+        </div>
+      )}
+
       {/* Animated Banner */}
       <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-400 p-8 md:p-12 mt-4">
         <div className="absolute inset-0 overflow-hidden">
@@ -101,7 +173,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
         
         <div className="relative z-10 text-center">
           <h1 className="font-display text-4xl md:text-6xl text-white mb-4 animate-bounce-slow">
-            🎬 Welcome to Kids Zone! 🌟
+            🎬 Welcome{currentProfile?.name ? `, ${currentProfile.name}` : ""}! 🌟
           </h1>
           <p className="text-white/90 text-lg md:text-xl max-w-2xl mx-auto">
             Discover amazing shows and movies just for you!
@@ -109,15 +181,38 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
         </div>
       </div>
 
+      {/* Kids Categories */}
+      {kidsCategories.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-4">
+          {kidsCategories.map((category: any) => (
+            <button
+              key={category.id}
+              className={`px-6 py-3 rounded-full bg-gradient-to-r ${category.color} text-white font-medium text-lg shadow-lg hover:scale-105 transition-transform flex items-center gap-2`}
+              onClick={() => {
+                const section = document.getElementById(`category-${category.slug}`);
+                section?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              <span className="text-2xl">{category.emoji}</span>
+              {category.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Content Sections */}
-      {sections.map((section, sectionIndex) => (
-        <section key={section.title} className="relative">
+      {allSections.map((section, sectionIndex) => (
+        <section 
+          key={section.title} 
+          id={`category-${section.title.toLowerCase().replace(/\s+/g, '-')}`}
+          className="relative"
+        >
           <div className="flex items-center gap-3 mb-6">
-            <section.icon className={`h-8 w-8 ${section.color} animate-bounce-slow`} />
+            <span className="text-3xl animate-bounce-slow">{section.emoji}</span>
             <h2 className="font-display text-2xl md:text-3xl text-white">
               {section.title}
             </h2>
-            <div className="flex-1 h-1 bg-gradient-to-r from-current to-transparent opacity-30 rounded-full" style={{ color: section.color.replace("text-", "") }} />
+            <div className="flex-1 h-1 bg-gradient-to-r from-white/30 to-transparent rounded-full" />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">

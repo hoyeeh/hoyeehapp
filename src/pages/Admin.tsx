@@ -30,6 +30,7 @@ import { BulkThumbnailRegeneration } from "@/components/admin/BulkThumbnailRegen
 import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
 import { CDNMigrationTool } from "@/components/admin/CDNMigrationTool";
 import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
+import { KidsCategoryManagement } from "@/components/admin/KidsCategoryManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -283,6 +284,14 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Hero Banner Management</h2>
             <HeroBannerManagement />
+          </div>
+        );
+      
+      case "kids":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Kids Zone Management</h2>
+            <KidsCategoryManagement />
           </div>
         );
       
