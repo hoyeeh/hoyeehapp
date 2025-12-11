@@ -1,9 +1,10 @@
-import { Play, Info, MoreVertical } from "lucide-react";
+import { Play, Info, MoreVertical, CloudOff } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import badge from "@/assets/hoyeeh-badge.png";
 import { subDays } from "date-fns";
 import { useState } from "react";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 interface MobileContentCardProps {
   content: Content;
@@ -13,6 +14,7 @@ interface MobileContentCardProps {
   rank?: number;
   progress?: number;
   showBadges?: boolean;
+  isDownloaded?: boolean;
 }
 
 // Fallback placeholder for broken images
@@ -25,14 +27,18 @@ export function MobileContentCard({
   variant = "poster",
   rank,
   progress,
-  showBadges = true
+  showBadges = true,
+  isDownloaded = false
 }: MobileContentCardProps) {
   const [imageError, setImageError] = useState(false);
   const [badgeError, setBadgeError] = useState(false);
+  const { isOnline } = useNetworkStatus();
   
   const isNewlyAdded = content.createdAt && 
     new Date(content.createdAt) > subDays(new Date(), 14);
-
+  
+  // Show offline badge when device is offline and content is downloaded
+  const showOfflineBadge = !isOnline && isDownloaded;
   const handleImageError = () => {
     setImageError(true);
   };
@@ -171,6 +177,13 @@ export function MobileContentCard({
               className="h-3 w-auto opacity-80"
               onError={() => setBadgeError(true)}
             />
+          </div>
+        )}
+        
+        {/* Offline Available Badge */}
+        {showOfflineBadge && (
+          <div className="absolute top-1.5 right-1.5 bg-green-600 rounded-full p-1">
+            <CloudOff className="h-3 w-3 text-white" />
           </div>
         )}
 

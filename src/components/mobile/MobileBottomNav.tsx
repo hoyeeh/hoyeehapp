@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useDownloadManager } from "@/hooks/useDownloadManager";
 
 interface NavItem {
   label: string;
@@ -88,6 +89,21 @@ export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { selectionTap } = useHaptics();
+  const { downloads, getProgress } = useDownloadManager();
+  
+  // Calculate aggregate download progress
+  const activeDownloads = downloads.filter(d => {
+    const progress = getProgress(d.id);
+    return progress && progress.status === 'downloading';
+  });
+  
+  const hasActiveDownloads = activeDownloads.length > 0;
+  const aggregateProgress = hasActiveDownloads
+    ? activeDownloads.reduce((sum, d) => {
+        const progress = getProgress(d.id);
+        return sum + (progress?.progress || 0);
+      }, 0) / activeDownloads.length
+    : 0;
 
   const handleNavClick = (path: string) => {
     selectionTap();
@@ -100,6 +116,7 @@ export function MobileBottomNav() {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || 
             (item.path === "/" && location.pathname === "/");
+          const isDownloadsTab = item.path === "/downloads";
           
           return (
             <button
@@ -118,7 +135,46 @@ export function MobileBottomNav() {
                 isActive && "scale-110"
               )}>
                 {item.icon(isActive)}
-                {isActive && (
+                
+                {/* Download Progress Indicator */}
+                {isDownloadsTab && hasActiveDownloads && (
+                  <>
+                    {/* Circular progress ring */}
+                    <svg 
+                      className="absolute -inset-0.5 w-7 h-7 -rotate-90"
+                      viewBox="0 0 28 28"
+                    >
+                      <circle
+                        cx="14"
+                        cy="14"
+                        r="12"
+                        fill="none"
+                        stroke="hsl(var(--muted))"
+                        strokeWidth="2"
+                        opacity="0.3"
+                      />
+                      <circle
+                        cx="14"
+                        cy="14"
+                        r="12"
+                        fill="none"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeDasharray={`${aggregateProgress * 0.754} 75.4`}
+                        className="transition-all duration-300"
+                      />
+                    </svg>
+                    
+                    {/* Pulsing dot */}
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  </>
+                )}
+                
+                {isActive && !isDownloadsTab && (
+                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                )}
+                {isActive && isDownloadsTab && !hasActiveDownloads && (
                   <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
                 )}
               </div>
