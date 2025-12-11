@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useProfileContext, UserProfile } from "@/contexts/ProfileContext";
-import { Plus, Edit2, Trash2, Check, Baby, User } from "lucide-react";
+import { Plus, Edit2, Trash2, Check, Baby } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -16,15 +16,27 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 
-const AVATAR_COLORS = [
-  "bg-red-500",
-  "bg-orange-500",
-  "bg-yellow-500",
-  "bg-green-500",
-  "bg-blue-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-cyan-500",
+// Import avatar images
+import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
+import avatarGold from "@/assets/avatars/avatar-gold.png";
+import avatarBlue from "@/assets/avatars/avatar-blue.png";
+import avatarPurple from "@/assets/avatars/avatar-purple.png";
+import avatarGreen from "@/assets/avatars/avatar-green.png";
+import avatarYellow from "@/assets/avatars/avatar-yellow.png";
+import avatarRed from "@/assets/avatars/avatar-red.png";
+import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
+import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
+
+const PROFILE_AVATARS = [
+  { src: avatarBasketball, name: "Basketball" },
+  { src: avatarGold, name: "Gold" },
+  { src: avatarBlue, name: "Blue" },
+  { src: avatarPurple, name: "Purple" },
+  { src: avatarGreen, name: "Green" },
+  { src: avatarYellow, name: "Yellow" },
+  { src: avatarRed, name: "Red" },
+  { src: avatarCowboy, name: "Cowboy" },
+  { src: avatarUnicorn, name: "Unicorn" },
 ];
 
 interface ProfilePickerProps {
@@ -38,7 +50,7 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
   const [name, setName] = useState("");
   const [isKids, setIsKids] = useState(false);
-  const [selectedColor, setSelectedColor] = useState(0);
+  const [selectedAvatar, setSelectedAvatar] = useState(0);
 
   const handleCreateOrUpdate = async () => {
     if (!name.trim()) {
@@ -51,11 +63,11 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
         await updateProfile(editingProfile.id, {
           name: name.trim(),
           is_kids: isKids,
-          avatar_url: AVATAR_COLORS[selectedColor],
+          avatar_url: PROFILE_AVATARS[selectedAvatar].src,
         });
         toast.success("Profile updated");
       } else {
-        await createProfile(name.trim(), isKids, AVATAR_COLORS[selectedColor]);
+        await createProfile(name.trim(), isKids, PROFILE_AVATARS[selectedAvatar].src);
         toast.success("Profile created");
       }
       setDialogOpen(false);
@@ -83,7 +95,9 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
     setEditingProfile(profile);
     setName(profile.name);
     setIsKids(profile.is_kids);
-    setSelectedColor(AVATAR_COLORS.indexOf(profile.avatar_url || "") || 0);
+    // Find matching avatar or default to first
+    const avatarIndex = PROFILE_AVATARS.findIndex(a => a.src === profile.avatar_url);
+    setSelectedAvatar(avatarIndex >= 0 ? avatarIndex : 0);
     setDialogOpen(true);
   };
 
@@ -96,7 +110,38 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
     setEditingProfile(null);
     setName("");
     setIsKids(false);
-    setSelectedColor(Math.floor(Math.random() * AVATAR_COLORS.length));
+    setSelectedAvatar(Math.floor(Math.random() * PROFILE_AVATARS.length));
+  };
+
+  // Get avatar for display - check if it's an old color class or new image URL
+  const getAvatarDisplay = (profile: UserProfile) => {
+    const avatarUrl = profile.avatar_url;
+    
+    // Check if it's one of the new avatar images
+    const matchingAvatar = PROFILE_AVATARS.find(a => a.src === avatarUrl);
+    if (matchingAvatar) {
+      return (
+        <img 
+          src={matchingAvatar.src} 
+          alt={profile.name}
+          className="w-full h-full object-cover rounded-lg"
+        />
+      );
+    }
+    
+    // Fallback for old color-based avatars or no avatar
+    return (
+      <div className={cn(
+        "w-full h-full rounded-lg flex items-center justify-center text-4xl md:text-5xl font-bold text-white",
+        avatarUrl?.startsWith("bg-") ? avatarUrl : "bg-brand"
+      )}>
+        {profile.is_kids ? (
+          <Baby className="w-12 h-12 md:w-16 md:h-16" />
+        ) : (
+          profile.name.charAt(0).toUpperCase()
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -124,18 +169,11 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
             )}
             onClick={() => !isManaging && onProfileSelected(profile)}
           >
-            <div
-              className={cn(
-                "w-24 h-24 md:w-32 md:h-32 rounded-lg flex items-center justify-center text-4xl md:text-5xl font-bold text-white shadow-lg",
-                profile.avatar_url || "bg-brand",
-                isManaging && "opacity-50"
-              )}
-            >
-              {profile.is_kids ? (
-                <Baby className="w-12 h-12 md:w-16 md:h-16" />
-              ) : (
-                profile.name.charAt(0).toUpperCase()
-              )}
+            <div className={cn(
+              "w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden shadow-lg",
+              isManaging && "opacity-50"
+            )}>
+              {getAvatarDisplay(profile)}
             </div>
             
             <p className={cn(
@@ -210,7 +248,7 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingProfile ? "Edit Profile" : "Add Profile"}
@@ -218,32 +256,36 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Selected Avatar Preview */}
             <div className="flex justify-center">
-              <div
-                className={cn(
-                  "w-24 h-24 rounded-lg flex items-center justify-center text-4xl font-bold text-white",
-                  AVATAR_COLORS[selectedColor]
-                )}
-              >
-                {isKids ? (
-                  <Baby className="w-12 h-12" />
-                ) : (
-                  name.charAt(0).toUpperCase() || <User className="w-12 h-12" />
-                )}
+              <div className="w-24 h-24 rounded-lg overflow-hidden shadow-lg">
+                <img 
+                  src={PROFILE_AVATARS[selectedAvatar].src} 
+                  alt="Selected avatar"
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
 
-            <div className="flex justify-center gap-2">
-              {AVATAR_COLORS.map((color, i) => (
+            {/* Avatar Selection Grid */}
+            <div className="grid grid-cols-5 gap-3 justify-items-center">
+              {PROFILE_AVATARS.map((avatar, i) => (
                 <button
-                  key={color}
+                  key={avatar.name}
                   className={cn(
-                    "w-8 h-8 rounded-full transition-transform",
-                    color,
-                    selectedColor === i && "ring-2 ring-offset-2 ring-foreground scale-110"
+                    "w-12 h-12 rounded-lg overflow-hidden transition-all",
+                    selectedAvatar === i 
+                      ? "ring-2 ring-offset-2 ring-brand scale-110" 
+                      : "hover:scale-105 opacity-70 hover:opacity-100"
                   )}
-                  onClick={() => setSelectedColor(i)}
-                />
+                  onClick={() => setSelectedAvatar(i)}
+                >
+                  <img 
+                    src={avatar.src} 
+                    alt={avatar.name}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
               ))}
             </div>
 
