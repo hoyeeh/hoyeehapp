@@ -156,7 +156,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-      <div className="min-h-screen bg-background pb-20">
+      <div className="fixed inset-0 bg-background flex flex-col overflow-hidden">
         {/* Header */}
         <MobileHeader
           onSearchClick={() => setShowSearch(true)}
@@ -166,120 +166,120 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
           onFilterChange={setActiveFilter}
         />
 
-        {/* Main Content */}
-        <main className="pt-28">
-        {/* Hero Card */}
-        {featuredContent && (
-          <div className="mb-6">
-            <MobileHeroCard
-              content={featuredContent}
-              onPlay={handlePlay}
-              onToggleList={handleToggleList}
-              onDetails={handleDetails}
-              isInList={watchlistIds.includes(featuredContent.id)}
-            />
-          </div>
-        )}
+        {/* Main Content - Scrollable area */}
+        <main className="flex-1 overflow-y-auto pt-28 pb-20 overscroll-contain">
+          {/* Hero Card */}
+          {featuredContent && (
+            <div className="mb-6">
+              <MobileHeroCard
+                content={featuredContent}
+                onPlay={handlePlay}
+                onToggleList={handleToggleList}
+                onDetails={handleDetails}
+                isInList={watchlistIds.includes(featuredContent.id)}
+              />
+            </div>
+          )}
 
-        {/* Continue Watching */}
-        <MobileContinueWatching
-          onPlay={(c, progress) => handlePlay(c, progress)}
-          onDetails={handleDetails}
-        />
-
-        {/* New Releases */}
-        {newContent.length > 0 && (
-          <MobileContentRow
-            title="New Releases"
-            content={newContent}
+          {/* Continue Watching */}
+          <MobileContinueWatching
+            onPlay={(c, progress) => handlePlay(c, progress)}
             onDetails={handleDetails}
-            showSeeAll
           />
-        )}
 
-        {/* Top 10 */}
-        {top10Content.length > 0 && (
-          <MobileContentRow
-            title="Top 10 in Hoyeeh"
-            content={top10Content}
-            onDetails={handleDetails}
-            showRank
-            variant="poster"
-          />
-        )}
-
-        {/* Trending */}
-        {trending.length > 0 && (
-          <MobileContentRow
-            title="Trending Now"
-            content={trending}
-            onDetails={handleDetails}
-            variant="landscape"
-          />
-        )}
-
-        {/* Movies */}
-        {movies.length > 0 && (
-          <MobileContentRow
-            title="Movies"
-            content={movies.slice(0, 15)}
-            onDetails={handleDetails}
-            showSeeAll
-            onSeeAll={() => navigate("/genres?type=movie")}
-          />
-        )}
-
-        {/* Series */}
-        {series.length > 0 && (
-          <MobileContentRow
-            title="TV Series"
-            content={series.slice(0, 15)}
-            onDetails={handleDetails}
-            showSeeAll
-            onSeeAll={() => navigate("/genres?type=series")}
-          />
-        )}
-
-        {/* Genre-based rows */}
-        {["Action", "Drama", "Comedy", "Romance"].map((genre) => {
-          const genreContent = content.filter((c) =>
-            c.genre?.toLowerCase().includes(genre.toLowerCase())
-          ).slice(0, 15);
-          
-          if (genreContent.length === 0) return null;
-          
-          return (
+          {/* New Releases */}
+          {newContent.length > 0 && (
             <MobileContentRow
-              key={genre}
-              title={genre}
-              content={genreContent}
+              title="New Releases"
+              content={newContent}
               onDetails={handleDetails}
               showSeeAll
             />
-          );
-        })}
-      </main>
+          )}
 
-      {/* Bottom Navigation */}
-      <MobileBottomNav />
+          {/* Top 10 */}
+          {top10Content.length > 0 && (
+            <MobileContentRow
+              title="Top 10 in Hoyeeh"
+              content={top10Content}
+              onDetails={handleDetails}
+              showRank
+              variant="poster"
+            />
+          )}
 
-      {/* Search Overlay */}
-      <MobileSearchOverlay
-        open={showSearch}
-        onClose={() => setShowSearch(false)}
-        onSelect={handleDetails}
-      />
+          {/* Trending */}
+          {trending.length > 0 && (
+            <MobileContentRow
+              title="Trending Now"
+              content={trending}
+              onDetails={handleDetails}
+              variant="landscape"
+            />
+          )}
 
-      {/* Content Detail Modal */}
-      {selectedContent && (
-        <MobileContentDetail
-          content={selectedContent}
-          onClose={() => setSelectedContent(null)}
-          onPlay={handlePlay}
-          isInList={watchlistIds.includes(selectedContent.id)}
+          {/* Movies */}
+          {movies.length > 0 && (
+            <MobileContentRow
+              title="Movies"
+              content={movies.slice(0, 15)}
+              onDetails={handleDetails}
+              showSeeAll
+              onSeeAll={() => navigate("/genres?type=movie")}
+            />
+          )}
+
+          {/* Series */}
+          {series.length > 0 && (
+            <MobileContentRow
+              title="TV Series"
+              content={series.slice(0, 15)}
+              onDetails={handleDetails}
+              showSeeAll
+              onSeeAll={() => navigate("/genres?type=series")}
+            />
+          )}
+
+          {/* Genre-based rows */}
+          {["Action", "Drama", "Comedy", "Romance"].map((genre) => {
+            const genreContent = content.filter((c) =>
+              c.genre?.toLowerCase().includes(genre.toLowerCase())
+            ).slice(0, 15);
+            
+            if (genreContent.length === 0) return null;
+            
+            return (
+              <MobileContentRow
+                key={genre}
+                title={genre}
+                content={genreContent}
+                onDetails={handleDetails}
+                showSeeAll
+              />
+            );
+          })}
+        </main>
+
+        {/* Bottom Navigation - Fixed at bottom */}
+        <MobileBottomNav />
+
+        {/* Search Overlay */}
+        <MobileSearchOverlay
+          open={showSearch}
+          onClose={() => setShowSearch(false)}
+          onSelect={handleDetails}
         />
-      )}
-    </div>
+
+        {/* Content Detail Modal */}
+        {selectedContent && (
+          <MobileContentDetail
+            content={selectedContent}
+            onClose={() => setSelectedContent(null)}
+            onPlay={handlePlay}
+            isInList={watchlistIds.includes(selectedContent.id)}
+          />
+        )}
+      </div>
     </PullToRefresh>
   );
 }
