@@ -46,6 +46,17 @@ interface TMDBDetails {
   tagline: string;
 }
 
+// Helper to parse cast_members from database (stored as JSON)
+const parseDatabaseCast = (castMembers: any): CastMember[] => {
+  if (!castMembers) return [];
+  if (Array.isArray(castMembers)) return castMembers;
+  try {
+    return typeof castMembers === 'string' ? JSON.parse(castMembers) : [];
+  } catch {
+    return [];
+  }
+};
+
 const ContentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -217,7 +228,11 @@ const ContentDetail = () => {
 
   const backdropUrl = tmdbDetails?.backdrop_url || content.thumbnailUrl;
   const genres = tmdbDetails?.genres || [content.genre];
-  const cast = tmdbDetails?.cast || [];
+  // Prefer database cast_members/director, fall back to TMDB
+  const databaseCast = parseDatabaseCast((content as any).cast_members);
+  const databaseDirector = (content as any).director;
+  const cast = databaseCast.length > 0 ? databaseCast : (tmdbDetails?.cast || []);
+  const director = databaseDirector || tmdbDetails?.director;
   const recommendations = tmdbDetails?.recommendations || [];
 
   return (
@@ -341,10 +356,10 @@ const ContentDetail = () => {
             <p className="text-muted-foreground leading-relaxed max-w-3xl">
               {content.description || tmdbDetails?.description}
             </p>
-            {tmdbDetails?.director && (
+            {director && (
               <p className="mt-4 text-sm">
                 <span className="text-muted-foreground">Director:</span>{" "}
-                <span className="font-medium">{tmdbDetails.director}</span>
+                <span className="font-medium">{director}</span>
               </p>
             )}
           </div>
