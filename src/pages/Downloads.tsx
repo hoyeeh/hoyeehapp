@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOfflineDownloads } from "@/hooks/useOfflineDownloads";
+import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { Sidebar } from "@/components/Sidebar";
 import { useState } from "react";
 import { ViewState, Content } from "@/types";
@@ -8,9 +9,13 @@ import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/useDatabase";
-import { Download, Trash2, Play, HardDrive, Loader2 } from "lucide-react";
+import { Download, Trash2, Play, HardDrive, Loader2, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { StorageManagement } from "@/components/StorageManagement";
+import { GlobalDownloadNotifications } from "@/components/GlobalDownloadNotifications";
+
+const STORAGE_LIMIT = 10 * 1024 * 1024 * 1024; // 10GB
 
 const Downloads = () => {
   const navigate = useNavigate();
@@ -25,11 +30,21 @@ const Downloads = () => {
     formatBytes,
   } = useOfflineDownloads();
 
+  const {
+    downloads: downloadQueue,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
+    cleanupExpiredDownloads,
+    getProgress,
+  } = useDownloadManager();
+
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [playingContent, setPlayingContent] = useState<{
     content: Content;
     offlineUrl: string;
   } | null>(null);
+  const [showStorageManagement, setShowStorageManagement] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -78,7 +93,7 @@ const Downloads = () => {
 
       <main className="ml-16 md:ml-64 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
             <div>
               <h1 className="font-display text-3xl md:text-4xl flex items-center gap-3">
                 <Download className="h-8 w-8 text-brand" />
@@ -89,19 +104,57 @@ const Downloads = () => {
               </p>
             </div>
 
-            {/* Storage Info */}
-            <Card className="bg-secondary border-border">
-              <CardContent className="p-4 flex items-center gap-3">
-                <HardDrive className="h-5 w-5 text-brand" />
-                <div>
-                  <p className="text-sm font-medium">Storage Used</p>
-                  <p className="text-lg font-bold text-brand">
-                    {formatBytes(getTotalStorageUsed())}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-3">
+              {/* Storage Management Toggle */}
+              <Button
+                variant={showStorageManagement ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowStorageManagement(!showStorageManagement)}
+              >
+                <Settings2 className="h-4 w-4 mr-2" />
+                Manage Storage
+              </Button>
+
+              {/* Storage Info */}
+              <Card className="bg-secondary border-border">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <HardDrive className="h-5 w-5 text-brand" />
+                  <div>
+                    <p className="text-sm font-medium">Storage Used</p>
+                    <p className="text-lg font-bold text-brand">
+                      {formatBytes(getTotalStorageUsed())} / {formatBytes(STORAGE_LIMIT)}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
+
+          {/* Storage Management Panel */}
+          {showStorageManagement && (
+            <div className="mb-8">
+              <StorageManagement
+                downloads={downloads.map(d => ({
+                  id: d.id,
+                  title: d.episodeTitle || d.content.title,
+                  size: d.totalSize,
+                  status: 'completed',
+                  createdAt: new Date(d.downloadedAt).getTime(),
+                  lastWatchedAt: undefined,
+                  isExpired: false,
+                }))}
+                storageUsed={getTotalStorageUsed()}
+                storageLimit={STORAGE_LIMIT}
+                onRemoveDownloads={async (ids) => {
+                  for (const id of ids) {
+                    await removeDownload(id);
+                  }
+                }}
+                onCleanupExpired={cleanupExpiredDownloads}
+                formatBytes={formatBytes}
+              />
+            </div>
+          )}
 
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
@@ -181,6 +234,24 @@ const Downloads = () => {
           isInList={false}
         />
       )}
+
+      {/* Global Download Notifications */}
+      <GlobalDownloadNotifications
+        activeDownloads={downloadQueue.map(d => {
+          const progress = getProgress(d.contentId, d.episodeId);
+          return {
+            id: d.id,
+            title: d.title,
+            progress: progress?.progress || 0,
+            status: d.status,
+            speed: progress?.speed,
+            eta: progress?.eta,
+          };
+        })}
+        onPause={pauseDownload}
+        onResume={resumeDownload}
+        onCancel={cancelDownload}
+      />
     </div>
   );
 };
