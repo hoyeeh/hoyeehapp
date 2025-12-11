@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -8,6 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { subDays } from "date-fns";
 import { toast } from "sonner";
+
+// Storage key for persistent random banner
+const HERO_BANNER_KEY = "hoyeeh-featured-banner";
+const HERO_BANNER_EXPIRY = 6 * 60 * 60 * 1000; // 6 hours
 
 import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
@@ -134,8 +138,38 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   const movies = content.filter((c) => c.contentType === "movie");
   const series = content.filter((c) => c.contentType === "series");
 
-  // Featured content for hero
-  const featuredContent = top10Content[0] || content[0];
+  // Random persistent featured content for hero
+  const featuredContent = useMemo(() => {
+    // Combine all featured-worthy content
+    const allFeatured = [...top10Content, ...trending.slice(0, 5), ...newContent.slice(0, 5)];
+    if (allFeatured.length === 0) return content[0];
+
+    // Check localStorage for persisted selection
+    try {
+      const stored = localStorage.getItem(HERO_BANNER_KEY);
+      if (stored) {
+        const { contentId, timestamp } = JSON.parse(stored);
+        // Check if not expired
+        if (Date.now() - timestamp < HERO_BANNER_EXPIRY) {
+          const found = allFeatured.find((c) => c.id === contentId);
+          if (found) return found;
+        }
+      }
+    } catch {}
+
+    // Select random content and persist
+    const randomIndex = Math.floor(Math.random() * allFeatured.length);
+    const selected = allFeatured[randomIndex];
+    
+    try {
+      localStorage.setItem(
+        HERO_BANNER_KEY,
+        JSON.stringify({ contentId: selected.id, timestamp: Date.now() })
+      );
+    } catch {}
+
+    return selected;
+  }, [top10Content, trending, newContent, content]);
 
   const handlePlay = (item: Content, progress?: number) => {
     onPlay(item, progress);

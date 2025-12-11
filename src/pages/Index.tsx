@@ -38,6 +38,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHome } from "@/components/mobile";
 import { MobileOnboarding } from "@/components/mobile/MobileOnboarding";
 import { MobileErrorBoundary } from "@/components/mobile/MobileErrorBoundary";
+import { MiniPlayerProvider } from "@/contexts/MiniPlayerContext";
+import { MiniPlayer } from "@/components/MiniPlayer";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -383,15 +385,18 @@ const Index = () => {
   if (isMobile) {
     console.log('[Index] Rendering mobile PWA experience');
     return (
-      <MobileErrorBoundary>
-        <MobileOnboarding>
-          <MobileHome 
-            onPlay={(item, progress) => setPlayingContent({ content: item, progress: progress || 0 })} 
-          />
-          <PWAInstallBanner />
-          <Toaster position="top-center" />
-        </MobileOnboarding>
-      </MobileErrorBoundary>
+      <MiniPlayerProvider>
+        <MobileErrorBoundary>
+          <MobileOnboarding>
+            <MobileHome 
+              onPlay={(item, progress) => setPlayingContent({ content: item, progress: progress || 0 })} 
+            />
+            <MiniPlayer onRestore={(content, progress) => setPlayingContent({ content, progress })} />
+            <PWAInstallBanner />
+            <Toaster position="top-center" />
+          </MobileOnboarding>
+        </MobileErrorBoundary>
+      </MiniPlayerProvider>
     );
   }
 

@@ -88,6 +88,26 @@ self.addEventListener("notificationclick", (event) => {
 
   const urlToOpen = event.notification.data?.url || "/";
   const contentId = event.notification.data?.contentId;
+  const status = event.notification.data?.status;
+  
+  // Handle download notification actions
+  if (event.action === "watch" && contentId) {
+    const targetUrl = `/content/${contentId}`;
+    event.waitUntil(
+      clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && "focus" in client) {
+            client.navigate(targetUrl);
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
+    );
+    return;
+  }
   
   // If there's a content ID, go to that content
   const targetUrl = contentId ? `/content/${contentId}` : urlToOpen;
@@ -119,9 +139,41 @@ self.addEventListener("sync", (event) => {
 });
 
 async function syncWatchlist() {
-  // Placeholder for syncing watchlist when back online
+  // Placeholder for syncing watchlist data
   console.log("Syncing watchlist data...");
 }
+
+// Download progress notification handling
+self.addEventListener("message", (event) => {
+  console.log("SW received message:", event.data);
+  
+  if (event.data && event.data.type === "DOWNLOAD_PROGRESS") {
+    const { contentId, title, progress, status } = event.data.payload;
+    
+    // Only show notifications for significant events
+    if (status === "completed" || status === "failed") {
+      const notificationTitle = status === "completed" 
+        ? "Download Complete" 
+        : "Download Failed";
+      const body = status === "completed"
+        ? `${title} is ready to watch offline`
+        : `Failed to download ${title}`;
+      
+      self.registration.showNotification(notificationTitle, {
+        body,
+        icon: "/pwa-icon-192.png",
+        badge: "/pwa-icon-192.png",
+        tag: `download-${contentId}`,
+        renotify: true,
+        requireInteraction: status === "failed",
+        actions: status === "completed" 
+          ? [{ action: "watch", title: "Watch Now" }]
+          : [{ action: "retry", title: "Retry" }],
+        data: { contentId, status },
+      });
+    }
+  }
+});
 
 // Fetch handler for offline support
 self.addEventListener("fetch", (event) => {
