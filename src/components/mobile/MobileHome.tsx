@@ -1,20 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useContent, useWatchlist, useProfile } from "@/hooks/useDatabase";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { subDays } from "date-fns";
+import { toast } from "sonner";
 
 import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeroCard } from "./MobileHeroCard";
 import { MobileContentRow } from "./MobileContentRow";
+import { SwipeableContentRow } from "./SwipeableContentRow";
 import { MobileContinueWatching } from "./MobileContinueWatching";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MobileContentDetail } from "./MobileContentDetail";
+import { PullToRefresh } from "./PullToRefresh";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface MobileHomeProps {
@@ -23,6 +26,7 @@ interface MobileHomeProps {
 
 export function MobileHome({ onPlay }: MobileHomeProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { currentProfile } = useProfileContext();
   const { data: content = [], isLoading } = useContent();
@@ -40,6 +44,16 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Pull to refresh handler
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ["content"] });
+    await queryClient.invalidateQueries({ queryKey: ["mobile-top-10"] });
+    await queryClient.invalidateQueries({ queryKey: ["mobile-trending"] });
+    await queryClient.invalidateQueries({ queryKey: ["mobile-new-releases"] });
+    await queryClient.invalidateQueries({ queryKey: ["mobile-continue-watching"] });
+    toast.success("Content refreshed!");
+  }, [queryClient]);
 
   // Fetch Top 10
   const { data: top10Data = [] } = useQuery({
@@ -142,18 +156,19 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <MobileHeader
-        onSearchClick={() => setShowSearch(true)}
-        transparent={scrollY < 100}
-        showFilters={true}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-      />
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="min-h-screen bg-background pb-20">
+        {/* Header */}
+        <MobileHeader
+          onSearchClick={() => setShowSearch(true)}
+          transparent={scrollY < 100}
+          showFilters={true}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+        />
 
-      {/* Main Content */}
-      <main className="pt-28">
+        {/* Main Content */}
+        <main className="pt-28">
         {/* Hero Card */}
         {featuredContent && (
           <div className="mb-6">
@@ -266,5 +281,6 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
         />
       )}
     </div>
+    </PullToRefresh>
   );
 }
