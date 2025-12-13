@@ -6,6 +6,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Simple in-memory rate limiter (10 requests per minute per user)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 10;
+const RATE_WINDOW = 60 * 1000; // 1 minute
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+  
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_WINDOW });
+    return true;
+  }
+  
+  if (userLimit.count >= RATE_LIMIT) {
+    return false;
+  }
+  
+  userLimit.count++;
+  return true;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -19,6 +41,15 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Check rate limit
+    if (!checkRateLimit(userId)) {
+      console.log(`Rate limit exceeded for user: ${userId}`);
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please wait a minute before requesting more recommendations." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
