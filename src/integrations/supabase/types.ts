@@ -245,6 +245,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "coming_soon_watchlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       content: {
@@ -718,6 +725,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications: {
@@ -764,6 +778,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -899,6 +920,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       reviews: {
@@ -942,6 +970,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -1461,9 +1496,95 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_safe: {
+        Row: {
+          avatar_url: string | null
+          country: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          is_subscribed: boolean | null
+          last_login_at: string | null
+          parental_controls_enabled: boolean | null
+          parental_rating_limit: string | null
+          subscription_expiry: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_subscribed?: boolean | null
+          last_login_at?: string | null
+          parental_controls_enabled?: boolean | null
+          parental_rating_limit?: string | null
+          subscription_expiry?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_subscribed?: boolean | null
+          last_login_at?: string | null
+          parental_controls_enabled?: boolean | null
+          parental_rating_limit?: string | null
+          subscription_expiry?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subscriptions_safe: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string | null
+          plan_type: string | null
+          starts_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string | null
+          plan_type?: string | null
+          starts_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string | null
+          plan_type?: string | null
+          starts_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
+      get_masked_mobile: { Args: { user_uuid: string }; Returns: string }
+      get_subscription_summary: {
+        Args: { user_uuid: string }
+        Returns: {
+          expires_at: string
+          is_active: boolean
+          plan_type: string
+          starts_at: string
+          status: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1479,6 +1600,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      update_mobile_number: { Args: { new_mobile: string }; Returns: boolean }
       verify_parental_pin: {
         Args: { input_pin: string; user_uuid: string }
         Returns: boolean
