@@ -1,9 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Simple in-memory rate limiter (10 requests per minute per user)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 10;
+const RATE_WINDOW = 60 * 1000; // 1 minute
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+  
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_WINDOW });
+    return true;
+  }
+  
+  if (userLimit.count >= RATE_LIMIT) {
+    return false;
+  }
+  
+  userLimit.count++;
+  return true;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -11,6 +34,31 @@ serve(async (req) => {
   }
 
   try {
+    // Get user from authorization header for rate limiting
+    const authHeader = req.headers.get("authorization");
+    let userId = "anonymous";
+    
+    if (authHeader) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        userId = user.id;
+      }
+    }
+
+    // Check rate limit
+    if (!checkRateLimit(userId)) {
+      console.log(`Rate limit exceeded for user: ${userId}`);
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please wait a minute before requesting more recommendations.", recommendations: [] }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { watchHistory, preferences, isKids } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
