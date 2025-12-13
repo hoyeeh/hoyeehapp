@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-// Pusher client-side configuration
-const PUSHER_KEY = "your-pusher-key"; // This will be replaced with actual key from env
-const PUSHER_CLUSTER = "us2";
+// Pusher client-side configuration from environment variables
+const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY || '';
+const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'us2';
 
 interface PusherNotification {
   title: string;
@@ -24,6 +24,12 @@ export const usePusher = () => {
     // Dynamically load Pusher
     const loadPusher = async () => {
       try {
+        // Skip if no Pusher key configured
+        if (!PUSHER_KEY) {
+          console.warn("Pusher key not configured - real-time notifications disabled");
+          return;
+        }
+
         // Check if Pusher is already loaded
         if ((window as any).Pusher) {
           initializePusher((window as any).Pusher);
