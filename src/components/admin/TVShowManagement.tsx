@@ -87,19 +87,42 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
 
       console.log('TMDB Seasons:', seasonsData);
 
+      // Fetch existing seasons for this content to avoid duplicates
+      const { data: existingSeasons } = await supabase
+        .from('seasons')
+        .select('season_number, id')
+        .eq('content_id', contentId);
+
+      const existingSeasonNumbers = new Set((existingSeasons || []).map(s => s.season_number));
+      const existingSeasonMap = new Map((existingSeasons || []).map(s => [s.season_number, s.id]));
+
       let totalEpisodes = 0;
+      let seasonsImported = 0;
+      let seasonsSkipped = 0;
 
       // Import each season and its episodes
       for (const tmdbSeason of seasonsData.seasons || []) {
-        // Create season
-        const seasonResult = await createSeason.mutateAsync({
-          content_id: contentId,
-          season_number: tmdbSeason.season_number,
-          title: tmdbSeason.name,
-          description: tmdbSeason.overview,
-          thumbnail_url: tmdbSeason.poster_path,
-          year: tmdbSeason.air_date ? parseInt(tmdbSeason.air_date.split('-')[0]) : null,
-        });
+        let seasonId: string;
+
+        // Check if season already exists
+        if (existingSeasonNumbers.has(tmdbSeason.season_number)) {
+          // Season exists, use existing ID and skip to importing episodes
+          seasonId = existingSeasonMap.get(tmdbSeason.season_number)!;
+          seasonsSkipped++;
+          console.log(`Season ${tmdbSeason.season_number} already exists, skipping creation`);
+        } else {
+          // Create new season
+          const seasonResult = await createSeason.mutateAsync({
+            content_id: contentId,
+            season_number: tmdbSeason.season_number,
+            title: tmdbSeason.name,
+            description: tmdbSeason.overview,
+            thumbnail_url: tmdbSeason.poster_path,
+            year: tmdbSeason.air_date ? parseInt(tmdbSeason.air_date.split('-')[0]) : null,
+          });
+          seasonId = seasonResult.id;
+          seasonsImported++;
+        }
 
         // Fetch episodes for this season
         const { data: episodesData } = await supabase.functions.invoke('tmdb-seasons', {
@@ -107,10 +130,23 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
         });
 
         if (episodesData?.episodes) {
-          // Create episodes
+          // Fetch existing episodes for this season to avoid duplicates
+          const { data: existingEpisodes } = await supabase
+            .from('episodes')
+            .select('episode_number')
+            .eq('season_id', seasonId);
+
+          const existingEpisodeNumbers = new Set((existingEpisodes || []).map(e => e.episode_number));
+
+          // Create only new episodes
           for (const ep of episodesData.episodes) {
-            await supabase.from('episodes').insert({
-              season_id: seasonResult.id,
+            if (existingEpisodeNumbers.has(ep.episode_number)) {
+              console.log(`Episode ${ep.episode_number} already exists in season ${tmdbSeason.season_number}, skipping`);
+              continue;
+            }
+
+            const { error: insertError } = await supabase.from('episodes').insert({
+              season_id: seasonId,
               episode_number: ep.episode_number,
               title: ep.title,
               description: ep.description,
@@ -118,19 +154,29 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
               duration: ep.duration || 0,
               is_premium: false,
             });
-            totalEpisodes++;
+
+            if (insertError) {
+              console.error(`Failed to insert episode ${ep.episode_number}:`, insertError);
+            } else {
+              totalEpisodes++;
+            }
           }
         }
       }
 
       refetch();
+      
+      const message = seasonsSkipped > 0 
+        ? `Imported ${seasonsImported} new seasons, skipped ${seasonsSkipped} existing, added ${totalEpisodes} episodes`
+        : `Imported ${seasonsImported} seasons with ${totalEpisodes} episodes from TMDB`;
+      
       toast({ 
         title: "Import Complete", 
-        description: `Imported ${seasonsData.seasons?.length || 0} seasons with ${totalEpisodes} episodes from TMDB` 
+        description: message
       });
     } catch (error) {
       console.error('Import error:', error);
-      toast({ title: "Failed to import from TMDB", variant: "destructive" });
+      toast({ title: "Failed to import from TMDB", description: String(error), variant: "destructive" });
     } finally {
       setImporting(false);
     }

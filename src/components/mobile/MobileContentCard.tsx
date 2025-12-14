@@ -150,7 +150,69 @@ export function MobileContentCard({
     );
   }
 
-  // Default poster variant
+  // Default poster variant - with Top 10 style ranking
+  if (rank) {
+    return (
+      <div 
+        className="relative flex-shrink-0 active:scale-95 transition-transform"
+        onClick={() => onDetails(content)}
+      >
+        <div className="flex items-end">
+          {/* Large rank number - Netflix/Desktop style */}
+          <div className="relative z-10 -mr-2">
+            <span 
+              className="text-[80px] font-black leading-none select-none"
+              style={{
+                WebkitTextStroke: "2px hsl(var(--muted-foreground) / 0.5)",
+                WebkitTextFillColor: "transparent",
+                textShadow: "3px 3px 6px rgba(0,0,0,0.5)",
+              }}
+            >
+              {rank}
+            </span>
+          </div>
+          
+          {/* Poster */}
+          <div className="relative w-24 aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
+            <img
+              src={thumbnailSrc}
+              alt={content.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              onError={handleImageError}
+            />
+            
+            {/* Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+            
+            {/* Badge */}
+            {!badgeError && (
+              <div className="absolute top-1.5 left-1.5">
+                <img 
+                  src={badge} 
+                  alt="Hoyeeh" 
+                  className="h-3 w-auto opacity-80"
+                  onError={() => setBadgeError(true)}
+                />
+              </div>
+            )}
+
+            {/* Top 10 Badge */}
+            <div className="absolute bottom-0 right-0 bg-destructive text-destructive-foreground px-1.5 py-0.5 text-[9px] font-bold rounded-tl">
+              TOP 10
+            </div>
+          </div>
+        </div>
+
+        {/* Title */}
+        <h4 className="mt-1.5 text-xs font-medium line-clamp-2 px-0.5 text-foreground/90 ml-8">
+          {content.title}
+        </h4>
+      </div>
+    );
+  }
+
+  // Standard poster variant (no rank)
   return (
     <div 
       className="relative flex-shrink-0 w-28 active:scale-95 transition-transform"
@@ -184,15 +246,6 @@ export function MobileContentCard({
         {showOfflineBadge && (
           <div className="absolute top-1.5 right-1.5 bg-green-600 rounded-full p-1">
             <CloudOff className="h-3 w-3 text-white" />
-          </div>
-        )}
-
-        {/* Rank Badge */}
-        {rank && (
-          <div className="absolute top-1.5 right-1.5">
-            <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">
-              {rank}
-            </span>
           </div>
         )}
 
