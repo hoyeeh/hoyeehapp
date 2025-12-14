@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2, Upload, Settings2 } from "lucide-react";
+import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2, Upload, Settings2, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoUploadField } from "./VideoUploadField";
 import { BatchVideoUpload } from "./BatchVideoUpload";
 import { BulkEpisodeEdit } from "./BulkEpisodeEdit";
 import { SortableEpisodeList } from "./SortableEpisodeList";
 import { TMDBEpisodeImport } from "./TMDBEpisodeImport";
+import { TMDBImportPreview, ImportOptions } from "./TMDBImportPreview";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -38,6 +39,23 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
+interface TMDBEpisode {
+  episode_number: number;
+  title: string;
+  description: string;
+  thumbnail_url: string;
+  duration: number;
+}
+
+interface TMDBSeason {
+  season_number: number;
+  name: string;
+  overview: string;
+  poster_path: string;
+  air_date: string;
+  episodes?: TMDBEpisode[];
+}
+
 interface TVShowManagementProps {
   contentId: string;
   contentTitle: string;
@@ -54,6 +72,10 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
   const [expandedSeasons, setExpandedSeasons] = useState<string[]>([]);
   const [showSeasonForm, setShowSeasonForm] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [tmdbSeasons, setTmdbSeasons] = useState<TMDBSeason[]>([]);
+  const [existingEpisodesBySeason, setExistingEpisodesBySeason] = useState<Record<string, any[]>>({});
   const [seasonForm, setSeasonForm] = useState({
     season_number: 1,
     title: "",
@@ -70,13 +92,13 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
     );
   };
 
-  const handleImportFromTMDB = async () => {
+  const handlePreviewTMDB = async () => {
     if (!tmdbId) {
       toast({ title: "No TMDB ID available for this show", variant: "destructive" });
       return;
     }
 
-    setImporting(true);
+    setLoadingPreview(true);
     try {
       // Fetch seasons from TMDB
       const { data: seasonsData, error: seasonsError } = await supabase.functions.invoke('tmdb-seasons', {
@@ -85,33 +107,62 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
 
       if (seasonsError) throw seasonsError;
 
-      console.log('TMDB Seasons:', seasonsData);
-
-      // Fetch existing seasons for this content to avoid duplicates
-      const { data: existingSeasons } = await supabase
-        .from('seasons')
-        .select('season_number, id')
-        .eq('content_id', contentId);
-
-      const existingSeasonNumbers = new Set((existingSeasons || []).map(s => s.season_number));
-      const existingSeasonMap = new Map((existingSeasons || []).map(s => [s.season_number, s.id]));
-
-      let totalEpisodes = 0;
-      let seasonsImported = 0;
-      let seasonsSkipped = 0;
-
-      // Import each season and its episodes
+      // Fetch episodes for each season
+      const seasonsWithEpisodes: TMDBSeason[] = [];
       for (const tmdbSeason of seasonsData.seasons || []) {
+        const { data: episodesData } = await supabase.functions.invoke('tmdb-seasons', {
+          body: { tmdb_id: tmdbId, season_number: tmdbSeason.season_number }
+        });
+        
+        seasonsWithEpisodes.push({
+          ...tmdbSeason,
+          episodes: episodesData?.episodes || []
+        });
+      }
+
+      setTmdbSeasons(seasonsWithEpisodes);
+
+      // Fetch existing episodes for each season
+      const episodesBySeason: Record<string, any[]> = {};
+      if (seasons) {
+        for (const season of seasons) {
+          const { data: episodes } = await supabase
+            .from('episodes')
+            .select('id, episode_number, title, thumbnail_url, description')
+            .eq('season_id', season.id);
+          
+          episodesBySeason[season.id] = episodes || [];
+        }
+      }
+      setExistingEpisodesBySeason(episodesBySeason);
+
+      setShowPreview(true);
+    } catch (error) {
+      console.error('Preview error:', error);
+      toast({ title: "Failed to load TMDB data", description: String(error), variant: "destructive" });
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const handleConfirmImport = async (options: ImportOptions) => {
+    setImporting(true);
+    try {
+      const existingSeasonNumbers = new Set((seasons || []).map(s => s.season_number));
+      const existingSeasonMap = new Map((seasons || []).map(s => [s.season_number, s.id]));
+
+      let totalEpisodesAdded = 0;
+      let totalEpisodesUpdated = 0;
+      let seasonsImported = 0;
+
+      for (const tmdbSeason of tmdbSeasons) {
+        if (!options.selectedSeasons.includes(tmdbSeason.season_number)) continue;
+
         let seasonId: string;
 
-        // Check if season already exists
         if (existingSeasonNumbers.has(tmdbSeason.season_number)) {
-          // Season exists, use existing ID and skip to importing episodes
           seasonId = existingSeasonMap.get(tmdbSeason.season_number)!;
-          seasonsSkipped++;
-          console.log(`Season ${tmdbSeason.season_number} already exists, skipping creation`);
         } else {
-          // Create new season
           const seasonResult = await createSeason.mutateAsync({
             content_id: contentId,
             season_number: tmdbSeason.season_number,
@@ -124,27 +175,34 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
           seasonsImported++;
         }
 
-        // Fetch episodes for this season
-        const { data: episodesData } = await supabase.functions.invoke('tmdb-seasons', {
-          body: { tmdb_id: tmdbId, season_number: tmdbSeason.season_number }
-        });
+        // Fetch existing episodes
+        const { data: existingEpisodes } = await supabase
+          .from('episodes')
+          .select('id, episode_number')
+          .eq('season_id', seasonId);
 
-        if (episodesData?.episodes) {
-          // Fetch existing episodes for this season to avoid duplicates
-          const { data: existingEpisodes } = await supabase
-            .from('episodes')
-            .select('episode_number')
-            .eq('season_id', seasonId);
+        const existingEpisodeMap = new Map((existingEpisodes || []).map(e => [e.episode_number, e.id]));
 
-          const existingEpisodeNumbers = new Set((existingEpisodes || []).map(e => e.episode_number));
+        for (const ep of tmdbSeason.episodes || []) {
+          const existingEpisodeId = existingEpisodeMap.get(ep.episode_number);
 
-          // Create only new episodes
-          for (const ep of episodesData.episodes) {
-            if (existingEpisodeNumbers.has(ep.episode_number)) {
-              console.log(`Episode ${ep.episode_number} already exists in season ${tmdbSeason.season_number}, skipping`);
-              continue;
+          if (existingEpisodeId) {
+            if (options.updateExisting) {
+              // Update existing episode with TMDB data
+              const { error: updateError } = await supabase
+                .from('episodes')
+                .update({
+                  title: ep.title,
+                  description: ep.description,
+                  thumbnail_url: ep.thumbnail_url,
+                  duration: ep.duration || 0,
+                })
+                .eq('id', existingEpisodeId);
+
+              if (!updateError) totalEpisodesUpdated++;
             }
-
+          } else {
+            // Insert new episode
             const { error: insertError } = await supabase.from('episodes').insert({
               season_id: seasonId,
               episode_number: ep.episode_number,
@@ -155,24 +213,22 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
               is_premium: false,
             });
 
-            if (insertError) {
-              console.error(`Failed to insert episode ${ep.episode_number}:`, insertError);
-            } else {
-              totalEpisodes++;
-            }
+            if (!insertError) totalEpisodesAdded++;
           }
         }
       }
 
       refetch();
-      
-      const message = seasonsSkipped > 0 
-        ? `Imported ${seasonsImported} new seasons, skipped ${seasonsSkipped} existing, added ${totalEpisodes} episodes`
-        : `Imported ${seasonsImported} seasons with ${totalEpisodes} episodes from TMDB`;
-      
-      toast({ 
-        title: "Import Complete", 
-        description: message
+      setShowPreview(false);
+
+      const messages = [];
+      if (seasonsImported > 0) messages.push(`${seasonsImported} new seasons`);
+      if (totalEpisodesAdded > 0) messages.push(`${totalEpisodesAdded} episodes added`);
+      if (totalEpisodesUpdated > 0) messages.push(`${totalEpisodesUpdated} episodes updated`);
+
+      toast({
+        title: "Import Complete",
+        description: messages.join(', ') || 'No changes made',
       });
     } catch (error) {
       console.error('Import error:', error);
@@ -233,11 +289,11 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
             {tmdbId && (
               <Button 
                 variant="outline"
-                onClick={handleImportFromTMDB}
-                disabled={importing}
+                onClick={handlePreviewTMDB}
+                disabled={loadingPreview || importing}
                 className="gap-2"
               >
-                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
                 Import from TMDB
               </Button>
             )}
@@ -339,6 +395,17 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
             ))}
           </div>
         )}
+
+        {/* TMDB Import Preview Dialog */}
+        <TMDBImportPreview
+          open={showPreview}
+          onOpenChange={setShowPreview}
+          tmdbSeasons={tmdbSeasons}
+          existingSeasons={(seasons || []).map(s => ({ id: s.id, season_number: s.season_number }))}
+          existingEpisodesBySeason={existingEpisodesBySeason}
+          onConfirmImport={handleConfirmImport}
+          isImporting={importing}
+        />
       </CardContent>
     </Card>
   );
