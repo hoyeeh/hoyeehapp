@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,8 @@ import { toast } from "sonner";
 import logo from "@/assets/hoyeeh-logo-web.png";
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 interface MobileContentDetailProps {
   content: Content;
@@ -26,12 +29,15 @@ export function MobileContentDetail({
   isInList = false,
   onToggleList
 }: MobileContentDetailProps) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"episodes" | "more">("more");
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const { lightTap, mediumTap, successFeedback, selectionTap } = useHaptics();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { canAccessPremium } = useSubscriptionAccess();
+  const { currentProfile } = useProfileContext();
   
   // Preview video state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -219,6 +225,23 @@ export function MobileContentDetail({
 
   const handlePlay = () => {
     mediumTap();
+    
+    // Check kids profile restrictions
+    if (currentProfile?.is_kids) {
+      const rating = (content as any).contentRating;
+      if (rating && !['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G'].includes(rating)) {
+        toast.error("This content is not available for Kids profiles");
+        return;
+      }
+    }
+    
+    // Check subscription for premium content
+    if (content.isPremium && !canAccessPremium) {
+      toast.error("This content requires a premium subscription");
+      navigate("/subscription");
+      return;
+    }
+    
     onPlay(content);
   };
 

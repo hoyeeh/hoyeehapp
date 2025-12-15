@@ -29,19 +29,46 @@ export function CastPairingDialog({
   // Start camera for QR scanning
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
+      // Check if mediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error('Camera not supported on this device');
+        return;
+      }
+      
+      // Request camera permission with proper constraints
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        // Wait for video to be ready before playing
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(err => {
+            console.error('Video play error:', err);
+          });
+        };
       }
       setShowScanner(true);
       startScanning();
-    } catch (err) {
-      toast.error('Camera access denied');
+    } catch (err: any) {
       console.error('Camera error:', err);
+      if (err.name === 'NotAllowedError') {
+        toast.error('Camera permission denied. Please allow camera access in your browser settings.');
+      } else if (err.name === 'NotFoundError') {
+        toast.error('No camera found on this device');
+      } else if (err.name === 'NotSupportedError' || err.name === 'TypeError') {
+        toast.error('Camera not supported. Please use HTTPS or localhost.');
+      } else {
+        toast.error('Failed to access camera. Please try again.');
+      }
     }
   };
 
@@ -60,6 +87,13 @@ export function CastPairingDialog({
 
   // Scan QR code from video feed
   const startScanning = () => {
+    // Check if BarcodeDetector is available
+    const hasBarcodeDetector = 'BarcodeDetector' in window;
+    
+    if (!hasBarcodeDetector) {
+      toast.info('QR scanning not fully supported. Please enter the code manually.');
+    }
+    
     scanIntervalRef.current = window.setInterval(() => {
       if (!videoRef.current || !canvasRef.current) return;
       
@@ -69,19 +103,29 @@ export function CastPairingDialog({
       
       if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) return;
       
+      // Ensure video has valid dimensions
+      if (video.videoWidth === 0 || video.videoHeight === 0) return;
+      
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
       // Use BarcodeDetector API if available
-      if ('BarcodeDetector' in window) {
-        const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-        barcodeDetector.detect(canvas).then((barcodes: any[]) => {
-          if (barcodes.length > 0) {
-            const qrData = barcodes[0].rawValue;
-            handleQRCode(qrData);
-          }
-        }).catch(() => {});
+      if (hasBarcodeDetector) {
+        try {
+          const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+          barcodeDetector.detect(canvas).then((barcodes: any[]) => {
+            if (barcodes.length > 0) {
+              const qrData = barcodes[0].rawValue;
+              handleQRCode(qrData);
+            }
+          }).catch((err: any) => {
+            // Silently handle detection errors
+            console.debug('Barcode detection error:', err);
+          });
+        } catch (err) {
+          console.debug('BarcodeDetector error:', err);
+        }
       }
     }, 500);
   };
