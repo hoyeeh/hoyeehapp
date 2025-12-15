@@ -60,6 +60,15 @@ export const MobileAuth = () => {
     const newErrors = { email: "", password: "", confirmPassword: "" };
     let isValid = true;
 
+    // For PIN registration, only validate name
+    if (pinAuthData && isRegistering) {
+      if (!formData.name.trim()) {
+        toast.error("Please enter your name");
+        return false;
+      }
+      return true;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email) {
       newErrors.email = "Email is required";
@@ -94,6 +103,47 @@ export const MobileAuth = () => {
     setIsLoading(true);
     
     try {
+      // For PIN registration, create account with just the name (no email/password required)
+      if (isRegistering && pinAuthData) {
+        // Create a temporary email based on mobile number for PIN-only users
+        const tempEmail = `${pinAuthData.mobileNumber.replace(/[^0-9]/g, '')}@hoyeeh.pin`;
+        const tempPassword = `pin_${pinAuthData.pin}_${Date.now()}`;
+        
+        const { error } = await signUp(tempEmail, tempPassword, formData.name);
+        if (error) {
+          toast.error(error.message);
+          setIsLoading(false);
+          return;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({
+              display_name: formData.name,
+              mobile_number: pinAuthData.mobileNumber,
+              pin_code: pinAuthData.pin,
+              secret_word: pinAuthData.secretWord,
+            })
+            .eq("id", user.id);
+
+          if (updateError) {
+            console.error('Failed to update profile with PIN data:', updateError);
+            toast.error("Account created but PIN setup failed.");
+          } else {
+            toast.success("Account created successfully!");
+          }
+          
+          sessionStorage.removeItem('pinAuthData');
+        }
+        
+        navigate("/");
+        return;
+      }
+      
       if (isRegistering) {
         const { error } = await signUp(formData.email, formData.password, formData.name);
         if (error) {
@@ -106,33 +156,7 @@ export const MobileAuth = () => {
           return;
         }
         
-        if (pinAuthData) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { error: updateError } = await supabase
-              .from("profiles")
-              .update({
-                mobile_number: pinAuthData.mobileNumber,
-                pin_code: pinAuthData.pin,
-                secret_word: pinAuthData.secretWord,
-              })
-              .eq("id", user.id);
-
-            if (updateError) {
-              console.error('Failed to update profile with PIN data:', updateError);
-              toast.error("Account created but PIN setup failed.");
-            } else {
-              toast.success("Account created with PIN authentication!");
-            }
-            
-            sessionStorage.removeItem('pinAuthData');
-          }
-        } else {
-          toast.success("Account created successfully!");
-        }
-        
+        toast.success("Account created successfully!");
         navigate("/");
       } else {
         const { error } = await signIn(formData.email, formData.password);
@@ -193,7 +217,8 @@ export const MobileAuth = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isRegistering && (
+          {/* For PIN registration, only show name field */}
+          {isRegistering && pinAuthData ? (
             <Input
               type="text"
               placeholder="Your name"
@@ -201,50 +226,62 @@ export const MobileAuth = () => {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="h-14 bg-secondary border-border text-base"
             />
-          )}
+          ) : (
+            <>
+              {isRegistering && (
+                <Input
+                  type="text"
+                  placeholder="Your name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="h-14 bg-secondary border-border text-base"
+                />
+              )}
           
-          <div>
-            <Input
-              type="email"
-              placeholder="Email address"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className={`h-14 bg-secondary border-border text-base ${errors.email ? 'border-destructive' : ''}`}
-            />
-            {errors.email && <p className="text-destructive text-sm mt-1">{errors.email}</p>}
-          </div>
+              <div>
+                <Input
+                  type="email"
+                  placeholder="Email address"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={`h-14 bg-secondary border-border text-base ${errors.email ? 'border-destructive' : ''}`}
+                />
+                {errors.email && <p className="text-destructive text-sm mt-1">{errors.email}</p>}
+              </div>
           
-          <div>
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className={`h-14 bg-secondary border-border pr-12 text-base ${errors.password ? 'border-destructive' : ''}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-            {errors.password && <p className="text-destructive text-sm mt-1">{errors.password}</p>}
-          </div>
+              <div>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className={`h-14 bg-secondary border-border pr-12 text-base ${errors.password ? 'border-destructive' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-destructive text-sm mt-1">{errors.password}</p>}
+              </div>
 
-          {isRegistering && (
-            <div>
-              <Input
-                type="password"
-                placeholder="Confirm password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className={`h-14 bg-secondary border-border text-base ${errors.confirmPassword ? 'border-destructive' : ''}`}
-              />
-              {errors.confirmPassword && <p className="text-destructive text-sm mt-1">{errors.confirmPassword}</p>}
-            </div>
+              {isRegistering && (
+                <div>
+                  <Input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className={`h-14 bg-secondary border-border text-base ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                  />
+                  {errors.confirmPassword && <p className="text-destructive text-sm mt-1">{errors.confirmPassword}</p>}
+                </div>
+              )}
+            </>
           )}
 
           <Button

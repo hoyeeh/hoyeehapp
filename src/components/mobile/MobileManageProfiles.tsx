@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Plus, Edit2, Trash2, Check, User, Baby } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProfileContext, UserProfile } from "@/contexts/ProfileContext";
+import { useProfile } from "@/hooks/useDatabase";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ interface MobileManageProfilesProps {
 export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   const navigate = useNavigate();
   const { profiles, currentProfile, setCurrentProfile, createProfile, updateProfile, deleteProfile } = useProfileContext();
+  const { data: userProfile } = useProfile(); // Get user's main profile for name
   const { lightTap, successFeedback, selectionTap, mediumTap } = useHaptics();
 
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
@@ -86,7 +88,14 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
       return;
     }
     lightTap();
-    resetForm();
+    // Auto-populate name from user's profile if this is the first profile
+    if (profiles.length === 0 && userProfile?.display_name) {
+      setName(userProfile.display_name);
+    } else {
+      setName("");
+    }
+    setIsKids(false);
+    setSelectedAvatar(AVATARS[0].src);
     setIsCreating(true);
   };
 
@@ -187,7 +196,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
             </Avatar>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mb-8">
             {AVATARS.map((avatar) => (
               <button
                 key={avatar.name}
@@ -196,14 +205,16 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
                   setSelectedAvatar(avatar.src);
                 }}
                 className={cn(
-                  "aspect-square rounded-2xl overflow-hidden bg-muted/30 active:scale-95 transition-all",
-                  selectedAvatar === avatar.src && "ring-4 ring-primary"
+                  "relative w-16 h-16 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-muted/30 active:scale-95 transition-all mx-auto",
+                  selectedAvatar === avatar.src && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                 )}
               >
                 <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover" />
                 {selectedAvatar === avatar.src && (
                   <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                    <Check className="w-6 h-6 text-primary" />
+                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-3 h-3 text-primary-foreground" />
+                    </div>
                   </div>
                 )}
               </button>

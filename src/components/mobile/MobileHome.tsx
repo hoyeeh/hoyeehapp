@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { subDays } from "date-fns";
 import { toast } from "sonner";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 
 // Storage key for persistent random banner
 const HERO_BANNER_KEY = "hoyeeh-featured-banner";
@@ -38,6 +39,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   const { data: profile } = useProfile();
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
+  const { canAccessPremium, isLoading: subscriptionLoading } = useSubscriptionAccess();
 
   const [showSearch, setShowSearch] = useState(false);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
@@ -172,6 +174,22 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   }, [top10Content, trending, newContent, content]);
 
   const handlePlay = (item: Content, progress?: number) => {
+    // Check kids profile restrictions
+    if (currentProfile?.is_kids) {
+      const rating = (item as any).contentRating;
+      if (rating && !['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G'].includes(rating)) {
+        toast.error("This content is not available for Kids profiles");
+        return;
+      }
+    }
+    
+    // Check subscription for premium content - all content is premium by default
+    if (item.isPremium && !canAccessPremium) {
+      toast.error("This content requires a premium subscription");
+      navigate("/subscription");
+      return;
+    }
+    
     onPlay(item, progress);
   };
 
@@ -247,10 +265,10 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             />
           </FadeIn>
 
-          {/* New Releases */}
+          {/* New Releases - Same title as desktop: "Recently Added" or "New Releases" */}
           <FadeIn delay={100}>
             <MobileContentRow
-              title="New Releases"
+              title="Recently Added"
               content={newContent}
               onDetails={handleDetails}
               showSeeAll
@@ -258,10 +276,10 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             />
           </FadeIn>
 
-          {/* Top 10 */}
+          {/* Top 10 - Same title as desktop */}
           <FadeIn delay={150}>
             <MobileContentRow
-              title="Top 10 in Hoyeeh"
+              title="Top 10 Today"
               content={top10Content}
               onDetails={handleDetails}
               showRank
@@ -270,7 +288,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             />
           </FadeIn>
 
-          {/* Trending */}
+          {/* Trending - Same title as desktop */}
           <FadeIn delay={200}>
             <MobileContentRow
               title="Trending Now"
