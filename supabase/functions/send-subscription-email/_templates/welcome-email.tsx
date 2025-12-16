@@ -41,7 +41,7 @@ export const WelcomeEmail = ({
       Upgrade to <span style={emailStyles.highlightText}>Hoyeeh Premium</span> to unlock exclusive content, HD streaming, and offline downloads.
     </Text>
     
-    <Button href="https://hoyeeh.lovable.app" style={emailStyles.button}>
+    <Button href="https://hoyeeh.com" style={emailStyles.button}>
       Start Exploring
     </Button>
     

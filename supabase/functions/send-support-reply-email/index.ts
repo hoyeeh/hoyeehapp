@@ -52,7 +52,7 @@ const emailWrapper = (content: string, previewText: string) => `
         © ${new Date().getFullYear()} Hoyeeh. All rights reserved.
       </p>
       <p style="color: #666; font-size: 12px; margin: 0;">
-        <a href="https://hoyeeh.lovable.app" style="color: #ff6300; text-decoration: none;">Visit Hoyeeh</a>
+        <a href="https://hoyeeh.com" style="color: #ff6300; text-decoration: none;">Visit Hoyeeh</a>
       </p>
     </div>
   </div>
@@ -123,7 +123,7 @@ serve(async (req: Request): Promise<Response> => {
         <p style="color: #e0e0e0; font-size: 14px; margin: 0; white-space: pre-wrap;">${replyMessage}</p>
       </div>
       <p style="${styles.text}">You can reply to this message in the app.</p>
-      <a href="https://hoyeeh.lovable.app" style="${styles.button}">View Conversation</a>
+      <a href="https://hoyeeh.com" style="${styles.button}">View Conversation</a>
       <p style="${styles.muted}">Thank you for contacting Hoyeeh Support!</p>
     `, "Support Reply");
 

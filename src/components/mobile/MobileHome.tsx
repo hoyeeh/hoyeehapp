@@ -60,8 +60,35 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
     await queryClient.invalidateQueries({ queryKey: ["mobile-trending"] });
     await queryClient.invalidateQueries({ queryKey: ["mobile-new-releases"] });
     await queryClient.invalidateQueries({ queryKey: ["mobile-continue-watching"] });
+    await queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
     toast.success("Content refreshed!");
   }, [queryClient]);
+
+  // Fetch home sections from database - same as desktop
+  const { data: homeSections = [] } = useQuery({
+    queryKey: ["mobile-home-sections"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("home_sections")
+        .select("*, genre:genre_id(name)")
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch section content for curated sections
+  const { data: sectionContentData = [] } = useQuery({
+    queryKey: ["mobile-section-content"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("section_content")
+        .select("*, content:content_id(*)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   // Fetch Top 10
   const { data: top10Data = [], isLoading: isLoadingTop10 } = useQuery({
@@ -139,6 +166,37 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
 
   const movies = content.filter((c) => c.contentType === "movie");
   const series = content.filter((c) => c.contentType === "series");
+
+  // Get section content helper - same logic as desktop
+  const getSectionContent = (section: any): Content[] => {
+    if (section.section_type === "recently_added") {
+      return newContent.slice(0, section.max_items || 15);
+    }
+    
+    if (section.section_type === "genre" && section.genre) {
+      return content.filter((c) =>
+        c.genre?.toLowerCase().includes(section.genre.name.toLowerCase())
+      ).slice(0, section.max_items || 15);
+    }
+    
+    if (section.section_type === "curated") {
+      const sectionItems = sectionContentData
+        .filter((sc: any) => sc.section_id === section.id && sc.content)
+        .sort((a: any, b: any) => a.display_order - b.display_order)
+        .map((sc: any) => transformContent([sc.content])[0]);
+      return sectionItems.slice(0, section.max_items || 15);
+    }
+    
+    // Filter by content type if specified
+    let filtered = [...content];
+    if (section.content_type_filter === "movie") {
+      filtered = movies;
+    } else if (section.content_type_filter === "series") {
+      filtered = series;
+    }
+    
+    return filtered.slice(0, section.max_items || 15);
+  };
 
   // Random persistent featured content for hero
   const featuredContent = useMemo(() => {
@@ -265,85 +323,106 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             />
           </FadeIn>
 
-          {/* New Releases - Same title as desktop: "Recently Added" or "New Releases" */}
-          <FadeIn delay={100}>
-            <MobileContentRow
-              title="Recently Added"
-              content={newContent}
-              onDetails={handleDetails}
-              showSeeAll
-              isLoading={isLoadingNewReleases}
-            />
-          </FadeIn>
+          {/* Dynamic sections from database - same order and titles as desktop */}
+          {homeSections.map((section: any, index: number) => {
+            // Top 10 section
+            if (section.section_type === "top10") {
+              return top10Content.length > 0 ? (
+                <FadeIn key={section.id} delay={100 + index * 50}>
+                  <MobileContentRow
+                    title={section.title}
+                    content={top10Content}
+                    onDetails={handleDetails}
+                    showRank
+                    variant="poster"
+                    isLoading={isLoadingTop10}
+                  />
+                </FadeIn>
+              ) : null;
+            }
 
-          {/* Top 10 - Same title as desktop */}
-          <FadeIn delay={150}>
-            <MobileContentRow
-              title="Top 10 Today"
-              content={top10Content}
-              onDetails={handleDetails}
-              showRank
-              variant="poster"
-              isLoading={isLoadingTop10}
-            />
-          </FadeIn>
+            // My List section
+            if (section.section_type === "my_list") {
+              const myListContent = content.filter((c) => watchlistIds.includes(c.id));
+              return myListContent.length > 0 ? (
+                <FadeIn key={section.id} delay={100 + index * 50}>
+                  <MobileContentRow
+                    title={section.title}
+                    content={myListContent}
+                    onDetails={handleDetails}
+                    showSeeAll
+                    onSeeAll={() => navigate("/my-list")}
+                  />
+                </FadeIn>
+              ) : null;
+            }
 
-          {/* Trending - Same title as desktop */}
-          <FadeIn delay={200}>
-            <MobileContentRow
-              title="Trending Now"
-              content={trending}
-              onDetails={handleDetails}
-              variant="landscape"
-              isLoading={isLoadingTrending}
-            />
-          </FadeIn>
+            // Recently added section
+            if (section.section_type === "recently_added") {
+              return newContent.length > 0 ? (
+                <FadeIn key={section.id} delay={100 + index * 50}>
+                  <MobileContentRow
+                    title={section.title}
+                    content={newContent.slice(0, section.max_items || 15)}
+                    onDetails={handleDetails}
+                    showSeeAll
+                    isLoading={isLoadingNewReleases}
+                  />
+                </FadeIn>
+              ) : null;
+            }
 
-          {/* Movies */}
-          {movies.length > 0 && (
-            <FadeIn delay={250}>
-              <MobileContentRow
-                title="Movies"
-                content={movies.slice(0, 15)}
-                onDetails={handleDetails}
-                showSeeAll
-                onSeeAll={() => navigate("/genres?type=movie")}
-              />
-            </FadeIn>
-          )}
+            // Genre and other sections
+            const sectionContent = getSectionContent(section);
+            if (sectionContent.length === 0) return null;
 
-          {/* Series */}
-          {series.length > 0 && (
-            <FadeIn delay={300}>
-              <MobileContentRow
-                title="TV Series"
-                content={series.slice(0, 15)}
-                onDetails={handleDetails}
-                showSeeAll
-                onSeeAll={() => navigate("/genres?type=series")}
-              />
-            </FadeIn>
-          )}
-
-          {/* Genre-based rows */}
-          {["Action", "Drama", "Comedy", "Romance"].map((genre, index) => {
-            const genreContent = content.filter((c) =>
-              c.genre?.toLowerCase().includes(genre.toLowerCase())
-            ).slice(0, 15);
-            
-            if (genreContent.length === 0) return null;
-            
             return (
-              <FadeIn key={genre} delay={350 + index * 50}>
+              <FadeIn key={section.id} delay={100 + index * 50}>
                 <MobileContentRow
-                  title={genre}
-                  content={genreContent}
+                  title={section.title}
+                  content={sectionContent}
                   onDetails={handleDetails}
                   showSeeAll
                 />
               </FadeIn>
             );
           })}
+
+          {/* Fallback sections if no home_sections configured */}
+          {homeSections.length === 0 && (
+            <>
+              <FadeIn delay={100}>
+                <MobileContentRow
+                  title="Recently Added"
+                  content={newContent}
+                  onDetails={handleDetails}
+                  showSeeAll
+                  isLoading={isLoadingNewReleases}
+                />
+              </FadeIn>
+
+              <FadeIn delay={150}>
+                <MobileContentRow
+                  title="Top 10 Today"
+                  content={top10Content}
+                  onDetails={handleDetails}
+                  showRank
+                  variant="poster"
+                  isLoading={isLoadingTop10}
+                />
+              </FadeIn>
+
+              <FadeIn delay={200}>
+                <MobileContentRow
+                  title="Trending Now"
+                  content={trending}
+                  onDetails={handleDetails}
+                  variant="landscape"
+                  isLoading={isLoadingTrending}
+                />
+              </FadeIn>
+            </>
+          )}
         </main>
       </PullToRefresh>
 
