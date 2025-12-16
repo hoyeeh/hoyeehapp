@@ -39,6 +39,7 @@ import { AdminSubscriptionCredits } from "@/components/admin/AdminSubscriptionCr
 import { AdminSupportChat } from "@/components/admin/AdminSupportChat";
 import { AdminTicketAssignments } from "@/components/admin/AdminTicketAssignments";
 import { WalkthroughManagement } from "@/components/admin/WalkthroughManagement";
+import { VideoUrlMigrationTool } from "@/components/admin/VideoUrlMigrationTool";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -476,6 +477,7 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <TranscodingDashboard />
+            <VideoUrlMigrationTool />
             <BulkCastImport />
             <CDNMigrationTool />
             <BulkThumbnailRegeneration />
