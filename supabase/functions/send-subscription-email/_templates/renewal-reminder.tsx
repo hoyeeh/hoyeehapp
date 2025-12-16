@@ -52,7 +52,7 @@ export const RenewalReminder = ({
       Make sure your payment method is up to date to continue enjoying uninterrupted access to all premium content.
     </Text>
     
-    <Button href="https://hoyeeh.lovable.app/subscription" style={emailStyles.button}>
+    <Button href="https://hoyeeh.com/subscription" style={emailStyles.button}>
       Manage Subscription
     </Button>
     

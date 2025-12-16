@@ -48,9 +48,9 @@ export const BaseEmail = ({ previewText, children }: BaseEmailProps) => (
             © {new Date().getFullYear()} Hoyeeh. All rights reserved.
           </Text>
           <Text style={footerLinks}>
-            <Link href="https://hoyeeh.lovable.app" style={footerLink}>Visit Hoyeeh</Link>
+            <Link href="https://hoyeeh.com" style={footerLink}>Visit Hoyeeh</Link>
             {' • '}
-            <Link href="https://hoyeeh.lovable.app/subscription" style={footerLink}>Manage Subscription</Link>
+            <Link href="https://hoyeeh.com/subscription" style={footerLink}>Manage Subscription</Link>
           </Text>
         </Section>
       </Container>

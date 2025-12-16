@@ -57,7 +57,7 @@ export const ExpirationWarning = ({
       </ul>
     </Section>
     
-    <Button href="https://hoyeeh.lovable.app/subscription" style={emailStyles.button}>
+    <Button href="https://hoyeeh.com/subscription" style={emailStyles.button}>
       Renew Now for {amount?.toLocaleString()} {currency}
     </Button>
     

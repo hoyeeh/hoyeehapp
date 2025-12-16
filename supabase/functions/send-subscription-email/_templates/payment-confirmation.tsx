@@ -56,7 +56,7 @@ export const PaymentConfirmation = ({
       <li>Ad-free viewing experience</li>
     </ul>
     
-    <Button href="https://hoyeeh.lovable.app" style={emailStyles.button}>
+    <Button href="https://hoyeeh.com" style={emailStyles.button}>
       Start Watching Now
     </Button>
     

@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tv, Loader2, Link2, ExternalLink, Smartphone, Camera, X } from 'lucide-react';
+import { Tv, Loader2, Link2, ExternalLink, Camera, X } from 'lucide-react';
 import { toast } from 'sonner';
+import jsQR from 'jsqr';
 
 interface CastPairingDialogProps {
   open: boolean;
@@ -85,14 +86,10 @@ export function CastPairingDialog({
     setShowScanner(false);
   };
 
-  // Scan QR code from video feed
+  // Scan QR code from video feed using jsQR as fallback
   const startScanning = () => {
     // Check if BarcodeDetector is available
     const hasBarcodeDetector = 'BarcodeDetector' in window;
-    
-    if (!hasBarcodeDetector) {
-      toast.info('QR scanning not fully supported. Please enter the code manually.');
-    }
     
     scanIntervalRef.current = window.setInterval(() => {
       if (!videoRef.current || !canvasRef.current) return;
@@ -110,7 +107,7 @@ export function CastPairingDialog({
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Use BarcodeDetector API if available
+      // Try BarcodeDetector API first if available
       if (hasBarcodeDetector) {
         try {
           const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
@@ -120,14 +117,28 @@ export function CastPairingDialog({
               handleQRCode(qrData);
             }
           }).catch((err: any) => {
-            // Silently handle detection errors
-            console.debug('Barcode detection error:', err);
+            // Silently handle detection errors, fall through to jsQR
+            console.debug('BarcodeDetector error:', err);
           });
         } catch (err) {
-          console.debug('BarcodeDetector error:', err);
+          console.debug('BarcodeDetector initialization error:', err);
         }
       }
-    }, 500);
+      
+      // Always try jsQR as fallback (works on all browsers)
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
+        
+        if (qrCode) {
+          handleQRCode(qrCode.data);
+        }
+      } catch (err) {
+        console.debug('jsQR error:', err);
+      }
+    }, 300); // Scan every 300ms for better performance
   };
 
   // Handle detected QR code

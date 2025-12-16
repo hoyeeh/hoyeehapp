@@ -42,7 +42,7 @@ export const SubscriptionCancelled = ({
       Changed your mind? You can resubscribe anytime to regain access to all premium features.
     </Text>
     
-    <Button href="https://hoyeeh.lovable.app/subscription" style={emailStyles.button}>
+    <Button href="https://hoyeeh.com/subscription" style={emailStyles.button}>
       Resubscribe to Premium
     </Button>
     
