@@ -4,9 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useVideoUploadSpaces } from "@/hooks/useVideoUploadSpaces";
-import { Upload, X, Check, Film, AlertCircle } from "lucide-react";
+import { Upload, X, Check, Film, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getVideoDuration } from "@/utils/videoDuration";
+import { validateVideoUrl } from "@/utils/videoUrlValidation";
+import { toast } from "sonner";
 
 const VIDEO_UPLOAD_MODE_KEY = "admin-video-upload-mode";
 
@@ -32,6 +34,9 @@ export const VideoUploadField = ({
     return (saved === "upload" || saved === "url") ? saved : "url";
   });
   const [isDragging, setIsDragging] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [urlValidated, setUrlValidated] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Persist upload mode preference
@@ -148,11 +153,67 @@ export const VideoUploadField = ({
       </div>
 
       {uploadMode === "url" ? (
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="https://..."
-        />
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Input
+              value={value}
+              onChange={(e) => {
+                onChange(e.target.value);
+                setUrlValidated(false);
+                setUrlError(null);
+              }}
+              placeholder="https://..."
+              className={cn(
+                urlValidated && "border-green-500",
+                urlError && "border-destructive"
+              )}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!value) {
+                  toast.error("Enter a URL first");
+                  return;
+                }
+                setValidating(true);
+                setUrlError(null);
+                const result = await validateVideoUrl(value);
+                setValidating(false);
+                if (result.valid) {
+                  setUrlValidated(true);
+                  toast.success("Video URL is accessible");
+                } else {
+                  setUrlError(result.error || "URL validation failed");
+                  toast.error(result.error || "URL validation failed");
+                }
+              }}
+              disabled={validating || !value}
+              className="shrink-0"
+            >
+              {validating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : urlValidated ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              ) : (
+                "Verify"
+              )}
+            </Button>
+          </div>
+          {urlValidated && (
+            <p className="text-xs text-green-500 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              URL verified and accessible
+            </p>
+          )}
+          {urlError && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {urlError}
+            </p>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
           {/* Current video preview */}
