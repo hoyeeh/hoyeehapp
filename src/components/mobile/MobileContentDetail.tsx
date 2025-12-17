@@ -548,8 +548,8 @@ export function MobileContentDetail({
                           navigate("/subscription");
                           return;
                         }
-                        // Navigate to video player with episode
-                        navigate(`/watch/${content.id}?episodeId=${ep.id}`);
+                        // Navigate to content detail with episode to play
+                        navigate(`/content/${content.id}?episodeId=${ep.id}`);
                       }}
                     >
                       <div className="relative w-32 aspect-video rounded-md overflow-hidden bg-secondary flex-shrink-0">

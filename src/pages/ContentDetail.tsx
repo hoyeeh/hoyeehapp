@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { supabase } from "@/integrations/supabase/client";
@@ -235,6 +235,8 @@ const RecommendationsSection = ({
 
 const ContentDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const episodeIdFromUrl = searchParams.get('episodeId');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: allContent = [] } = useContent();
@@ -251,6 +253,7 @@ const ContentDetail = () => {
   const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
+  const [episodeAutoPlayAttempted, setEpisodeAutoPlayAttempted] = useState(false);
 
   const content = allContent.find(c => c.id === id);
   const isInList = id ? watchlistIds.includes(id) : false;
@@ -283,6 +286,46 @@ const ContentDetail = () => {
 
     fetchTMDBDetails();
   }, [content]);
+
+  // Auto-play episode from URL parameter
+  useEffect(() => {
+    const fetchAndPlayEpisode = async () => {
+      if (!episodeIdFromUrl || episodeAutoPlayAttempted || !content) return;
+      
+      setEpisodeAutoPlayAttempted(true);
+      
+      try {
+        const { data: episode, error } = await supabase
+          .from('episodes')
+          .select('*')
+          .eq('id', episodeIdFromUrl)
+          .single();
+        
+        if (error || !episode) {
+          toast.error("Episode not found");
+          return;
+        }
+        
+        if (!episode.video_url) {
+          toast.error("This episode is not yet available");
+          return;
+        }
+        
+        if (episode.is_premium && !profile?.is_subscribed) {
+          toast.error("This episode requires a premium subscription");
+          navigate("/subscription");
+          return;
+        }
+        
+        setPlayingEpisode(episode as Episode);
+      } catch (e) {
+        console.error('Failed to fetch episode:', e);
+        toast.error("Failed to load episode");
+      }
+    };
+    
+    fetchAndPlayEpisode();
+  }, [episodeIdFromUrl, episodeAutoPlayAttempted, content, profile, navigate]);
 
   const handleToggleList = async () => {
     if (!user || !id) {
