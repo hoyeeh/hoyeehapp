@@ -3,18 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowLeft, Phone, Key, Shield } from "lucide-react";
+import { Loader2, ArrowLeft, Phone, Key, Shield, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useAuth } from "@/contexts/AuthContext";
+import { MobileWelcomeScreen } from "@/components/mobile/MobileWelcomeScreen";
 
 type AuthMode = "login" | "register" | "reset-pin";
 
 const PinAuth = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [showWelcome, setShowWelcome] = useState(false);
   
   const [formData, setFormData] = useState({
     mobileNumber: "",
@@ -22,14 +26,11 @@ const PinAuth = () => {
     confirmPin: "",
     secretWord: "",
     name: "",
-    email: "",
-    password: "",
   });
 
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      // Use secure RPC function to verify PIN (hashed comparison on server)
       const { data: result, error } = await supabase
         .rpc('verify_pin_code', {
           user_mobile: formData.mobileNumber,
@@ -62,8 +63,6 @@ const PinAuth = () => {
         return;
       }
 
-      // Sign in with email/password (stored during registration)
-      // For PIN login, we use a special flow - redirect to main auth with stored credentials
       toast.success("PIN verified! Please complete sign in.");
       navigate("/auth", { state: { fromPin: true, mobileNumber: formData.mobileNumber } });
     } catch (error) {
@@ -75,17 +74,26 @@ const PinAuth = () => {
 
   const handleRegister = async () => {
     if (step === 1) {
-      // Validate mobile number
       if (!/^\+?[0-9]{10,15}$/.test(formData.mobileNumber.replace(/\s/g, ""))) {
         toast.error("Please enter a valid mobile number");
         return;
       }
+      
+      // Check if mobile already exists
+      const { data: exists } = await supabase.rpc('check_mobile_exists', {
+        check_mobile: formData.mobileNumber
+      });
+      
+      if (exists) {
+        toast.error("This mobile number is already registered");
+        return;
+      }
+      
       setStep(2);
       return;
     }
 
     if (step === 2) {
-      // Validate PIN
       if (formData.pin.length !== 6) {
         toast.error("PIN must be 6 digits");
         return;
@@ -99,28 +107,84 @@ const PinAuth = () => {
     }
 
     if (step === 3) {
-      // Validate secret word
       if (formData.secretWord.length < 4) {
         toast.error("Secret word must be at least 4 characters");
         return;
       }
-      
-      // Store registration data in session storage and redirect to email auth
-      sessionStorage.setItem('pinAuthData', JSON.stringify({
-        mobileNumber: formData.mobileNumber,
-        pin: formData.pin,
-        secretWord: formData.secretWord.toLowerCase(),
-      }));
-      
-      toast.success("PIN and secret word saved! Complete registration with your email.");
-      navigate("/auth", { state: { fromPinRegistration: true } });
+      setStep(4);
       return;
+    }
+
+    if (step === 4) {
+      if (formData.name.trim().length < 2) {
+        toast.error("Please enter your name");
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        // Create account with temporary email/password
+        const tempEmail = `${formData.mobileNumber.replace(/\+/g, '')}@hoyeeh.pin`;
+        const tempPassword = `pin_${formData.pin}_${Date.now()}`;
+        
+        const { error: signUpError } = await signUp(tempEmail, tempPassword, formData.name.trim());
+        
+        if (signUpError) {
+          if (signUpError.message.includes('already registered')) {
+            toast.error("This mobile number is already registered");
+          } else {
+            toast.error("Failed to create account. Please try again.");
+          }
+          setIsLoading(false);
+          return;
+        }
+        
+        // Wait for user to be created and get their ID
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast.error("Failed to create account. Please try again.");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Update profile with PIN data
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            mobile_number: formData.mobileNumber,
+            pin_code: formData.pin,
+            secret_word: formData.secretWord.toLowerCase(),
+            display_name: formData.name.trim(),
+          })
+          .eq('id', user.id);
+        
+        if (profileError) {
+          console.error('Profile update error:', profileError);
+        }
+        
+        // Create user profile in user_profiles table
+        await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            name: formData.name.trim(),
+            is_kids: false,
+          });
+        
+        toast.success("Account created successfully!");
+        setShowWelcome(true);
+      } catch (error) {
+        console.error('Registration error:', error);
+        toast.error("An error occurred. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   const handleResetPin = async () => {
     if (step === 1) {
-      // Just validate mobile number format and proceed
       if (!/^\+?[0-9]{10,15}$/.test(formData.mobileNumber.replace(/\s/g, ""))) {
         toast.error("Please enter a valid mobile number");
         return;
@@ -130,7 +194,6 @@ const PinAuth = () => {
     }
 
     if (step === 2) {
-      // Just validate secret word format and proceed
       if (formData.secretWord.length < 4) {
         toast.error("Secret word must be at least 4 characters");
         return;
@@ -139,7 +202,6 @@ const PinAuth = () => {
       return;
     }
 
-    // Final step - use secure edge function with rate limiting
     if (formData.pin.length !== 6) {
       toast.error("PIN must be 6 digits");
       return;
@@ -151,7 +213,6 @@ const PinAuth = () => {
 
     setIsLoading(true);
     try {
-      // Call secure edge function for PIN reset with server-side validation
       const { data, error } = await supabase.functions.invoke('reset-pin', {
         body: {
           mobileNumber: formData.mobileNumber,
@@ -187,6 +248,16 @@ const PinAuth = () => {
     else if (mode === "register") handleRegister();
     else handleResetPin();
   };
+
+  // Show welcome screen after successful registration
+  if (showWelcome) {
+    return (
+      <MobileWelcomeScreen
+        userName={formData.name.trim()}
+        onStartExploring={() => navigate("/")}
+      />
+    );
+  }
 
   const renderLoginForm = () => (
     <div className="space-y-6">
@@ -323,13 +394,42 @@ const PinAuth = () => {
             </div>
           </div>
           <Button type="submit" variant="brand" size="lg" className="w-full h-12">
-            Continue to Email Registration
+            Continue
+          </Button>
+        </>
+      )}
+
+      {step === 4 && (
+        <>
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground">What's your name?</label>
+            <p className="text-xs text-muted-foreground">This will be displayed on your profile.</p>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Enter your name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="h-12 pl-10 bg-secondary border-border"
+                autoFocus
+              />
+            </div>
+          </div>
+          <Button 
+            type="submit" 
+            variant="brand" 
+            size="lg" 
+            className="w-full h-12"
+            disabled={isLoading}
+          >
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Account"}
           </Button>
         </>
       )}
 
       <div className="flex justify-center gap-2">
-        {[1, 2, 3].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <div
             key={s}
             className={`w-2 h-2 rounded-full ${s === step ? "bg-brand" : "bg-muted"}`}
