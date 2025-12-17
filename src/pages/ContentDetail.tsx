@@ -351,6 +351,10 @@ const ContentDetail = () => {
   };
 
   const handlePlayEpisode = (episode: Episode) => {
+    if (!episode.video_url) {
+      toast.error("This episode is not yet available");
+      return;
+    }
     if (episode.is_premium && !profile?.is_subscribed) {
       toast.error("This episode requires a premium subscription");
       navigate("/subscription");

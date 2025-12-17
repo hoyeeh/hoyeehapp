@@ -30,7 +30,9 @@ export function MobileContentDetail({
   onToggleList
 }: MobileContentDetailProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"episodes" | "more">("more");
+  const [activeTab, setActiveTab] = useState<"episodes" | "more">(
+    content.contentType === "series" ? "episodes" : "more"
+  );
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const { lightTap, mediumTap, successFeedback, selectionTap } = useHaptics();
@@ -532,7 +534,24 @@ export function MobileContentDetail({
               {episodes.length > 0 ? (
                 <div className="space-y-4">
                   {episodes.map((ep: any) => (
-                    <div key={ep.id} className="flex gap-3 active:opacity-70 transition-opacity">
+                    <div 
+                      key={ep.id} 
+                      className="flex gap-3 active:opacity-70 transition-opacity cursor-pointer"
+                      onClick={() => {
+                        mediumTap();
+                        if (!ep.video_url) {
+                          toast.error("This episode is not yet available");
+                          return;
+                        }
+                        if (ep.is_premium && !canAccessPremium) {
+                          toast.error("This episode requires a premium subscription");
+                          navigate("/subscription");
+                          return;
+                        }
+                        // Navigate to video player with episode
+                        navigate(`/watch/${content.id}?episodeId=${ep.id}`);
+                      }}
+                    >
                       <div className="relative w-32 aspect-video rounded-md overflow-hidden bg-secondary flex-shrink-0">
                         <img
                           src={ep.thumbnail_url || content.thumbnailUrl}
@@ -540,7 +559,7 @@ export function MobileContentDetail({
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                          <Play className="h-6 w-6" />
+                          <Play className="h-6 w-6 text-white" fill="currentColor" />
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -551,6 +570,7 @@ export function MobileContentDetail({
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
+                              lightTap();
                               toast.info("Episode download started");
                             }}
                             className="active:scale-95 transition-transform"
