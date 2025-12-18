@@ -127,9 +127,12 @@ export const useCreateEpisode = () => {
     mutationFn: async (episode: Omit<Episode, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('episodes')
-        .insert(episode)
+        .insert({
+          ...episode,
+          video_url: episode.video_url?.trim() || null,
+        })
         .select()
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
@@ -145,12 +148,19 @@ export const useUpdateEpisode = () => {
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Episode> & { id: string }) => {
+      const nextUpdates: Partial<Episode> = {
+        ...updates,
+        ...(updates.video_url !== undefined
+          ? { video_url: updates.video_url?.trim() || null }
+          : null),
+      };
+
       const { data, error } = await supabase
         .from('episodes')
-        .update(updates)
+        .update(nextUpdates)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
