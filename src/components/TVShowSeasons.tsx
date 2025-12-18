@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSeasons, useEpisodes, Season, Episode } from "@/hooks/useSeasons";
 import { Content } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DownloadButton } from "./DownloadButton";
 import { SeasonDownloadButton } from "./SeasonDownloadButton";
 import { Play, Clock, ChevronDown, ChevronUp } from "lucide-react";
@@ -84,13 +85,18 @@ const EpisodeList = ({
                 <h4 className="font-medium">
                   {episode.episode_number}. {episode.title}
                 </h4>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {formatDuration(episode.duration)}
                   </span>
                   {episode.is_premium && (
                     <span className="text-brand text-xs font-medium">PREMIUM</span>
+                  )}
+                  {episode.video_url ? (
+                    <Badge variant="secondary" className="h-5 px-2 text-[10px]">Available</Badge>
+                  ) : (
+                    <Badge variant="outline" className="h-5 px-2 text-[10px]">Coming soon</Badge>
                   )}
                 </div>
               </div>

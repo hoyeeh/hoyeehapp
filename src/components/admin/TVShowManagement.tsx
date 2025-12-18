@@ -453,22 +453,32 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
   const handleEpisodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...episodeForm,
+        video_url: episodeForm.video_url?.trim() || null,
+      };
+
       if (editingEpisode) {
         await updateEpisode.mutateAsync({
           id: editingEpisode.id,
-          ...episodeForm,
+          ...payload,
         });
         toast({ title: "Episode updated" });
       } else {
         await createEpisode.mutateAsync({
           season_id: season.id,
-          ...episodeForm,
+          ...payload,
         });
         toast({ title: "Episode created" });
       }
       resetEpisodeForm();
     } catch (error) {
-      toast({ title: "Error saving episode", variant: "destructive" });
+      console.error('Episode save error:', error);
+      toast({
+        title: "Error saving episode",
+        description: (error as any)?.message ? String((error as any).message) : String(error),
+        variant: "destructive",
+      });
     }
   };
 
@@ -510,6 +520,8 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
     setShowEpisodeForm(true);
   };
 
+  const missingVideoCount = (episodes || []).filter((ep) => !ep.video_url).length;
+
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <div className="border border-border rounded-lg overflow-hidden">
@@ -521,7 +533,7 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
                 <span className="font-medium">Season {season.season_number}</span>
                 {season.title && <span className="text-muted-foreground ml-2">- {season.title}</span>}
                 <span className="text-sm text-muted-foreground ml-4">
-                  ({episodes?.length || 0} episodes)
+                  ({episodes?.length || 0} episodes{missingVideoCount > 0 ? ` • ${missingVideoCount} missing video` : ""})
                 </span>
               </div>
             </div>

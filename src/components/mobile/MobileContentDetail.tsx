@@ -563,21 +563,31 @@ export function MobileContentDetail({
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
                           <h4 className="text-sm font-medium line-clamp-1">
                             {ep.episode_number}. {ep.title}
                           </h4>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              lightTap();
-                              toast.info("Episode download started");
-                            }}
-                            className="active:scale-95 transition-transform"
-                          >
-                            <Download className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                          </button>
+                          <span className={cn(
+                            "inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
+                            ep.video_url
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {ep.video_url ? "Available" : "Coming soon"}
+                          </span>
                         </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            lightTap();
+                            toast.info("Episode download started");
+                          }}
+                          className="active:scale-95 transition-transform"
+                        >
+                          <Download className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        </button>
+                      </div>
                         <span className="text-xs text-muted-foreground">
                           {ep.duration ? `${Math.floor(ep.duration / 60)}m` : ""}
                         </span>

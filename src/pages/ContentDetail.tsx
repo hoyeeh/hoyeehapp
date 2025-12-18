@@ -291,39 +291,44 @@ const ContentDetail = () => {
   useEffect(() => {
     const fetchAndPlayEpisode = async () => {
       if (!episodeIdFromUrl || episodeAutoPlayAttempted || !content) return;
-      
+
       setEpisodeAutoPlayAttempted(true);
-      
+
       try {
         const { data: episode, error } = await supabase
           .from('episodes')
           .select('*')
           .eq('id', episodeIdFromUrl)
-          .single();
-        
-        if (error || !episode) {
+          .maybeSingle();
+
+        if (error) {
+          toast.error("Failed to load episode");
+          return;
+        }
+
+        if (!episode) {
           toast.error("Episode not found");
           return;
         }
-        
+
         if (!episode.video_url) {
           toast.error("This episode is not yet available");
           return;
         }
-        
+
         if (episode.is_premium && !profile?.is_subscribed) {
           toast.error("This episode requires a premium subscription");
           navigate("/subscription");
           return;
         }
-        
+
         setPlayingEpisode(episode as Episode);
       } catch (e) {
         console.error('Failed to fetch episode:', e);
         toast.error("Failed to load episode");
       }
     };
-    
+
     fetchAndPlayEpisode();
   }, [episodeIdFromUrl, episodeAutoPlayAttempted, content, profile, navigate]);
 

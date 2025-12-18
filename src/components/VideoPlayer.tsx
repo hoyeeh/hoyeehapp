@@ -145,7 +145,7 @@ export const VideoPlayer = ({
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
-      
+
       // Save progress every 10 seconds
       const now = Date.now();
       if (now - lastSaveTimeRef.current >= 10000) {
@@ -160,9 +160,15 @@ export const VideoPlayer = ({
       setIsPlaying(true); // Sync isPlaying state when video actually starts playing
     };
     const handleCanPlay = () => setIsBuffering(false);
+    const handleLoadedData = () => setIsBuffering(false);
     const handlePlay = () => setIsPlaying(true);
     const handlePauseEvent = () => setIsPlaying(false);
-    
+
+    const handleError = () => {
+      setIsBuffering(false);
+      toast.error("Video failed to load. Please verify the episode link.");
+    };
+
     const handlePause = () => {
       // Save progress immediately on pause
       saveProgressImmediately(video.currentTime, video.duration);
@@ -173,6 +179,8 @@ export const VideoPlayer = ({
     video.addEventListener("waiting", handleWaiting);
     video.addEventListener("playing", handlePlaying);
     video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("error", handleError);
     video.addEventListener("pause", handlePause);
     video.addEventListener("play", handlePlay);
     video.addEventListener("pause", handlePauseEvent);
@@ -187,6 +195,8 @@ export const VideoPlayer = ({
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);
       video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadeddata", handleLoadedData);
+      video.removeEventListener("error", handleError);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("play", handlePlay);
       video.removeEventListener("pause", handlePauseEvent);
