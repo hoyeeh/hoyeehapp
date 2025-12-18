@@ -15,6 +15,7 @@ import {
   PictureInPicture2,
   ListVideo,
   Tv,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -77,6 +78,7 @@ export const VideoPlayer = ({
   const [loadedProgress, setLoadedProgress] = useState<number | null>(null);
   const [isCasting, setIsCasting] = useState(false);
   const [isDLNACasting, setIsDLNACasting] = useState(false);
+  const [mediaError, setMediaError] = useState<{ code: number; message: string } | null>(null);
 
   // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
@@ -166,7 +168,31 @@ export const VideoPlayer = ({
 
     const handleError = () => {
       setIsBuffering(false);
-      toast.error("Video failed to load. Please verify the episode link.");
+      const videoError = video.error;
+      let errorMessage = "Video failed to load";
+      let errorCode = 0;
+      
+      if (videoError) {
+        errorCode = videoError.code;
+        switch (videoError.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMessage = "Video playback was aborted";
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage = "Network error - check your connection or video URL";
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage = "Video format not supported or file corrupted";
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = "Video source not found (404) or format not supported";
+            break;
+          default:
+            errorMessage = videoError.message || "Unknown video error";
+        }
+      }
+      
+      setMediaError({ code: errorCode, message: errorMessage });
     };
 
     const handlePause = () => {
@@ -362,6 +388,48 @@ export const VideoPlayer = ({
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  const handleRetry = () => {
+    setMediaError(null);
+    setIsBuffering(true);
+    if (videoRef.current) {
+      videoRef.current.load();
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  // Show error screen if media failed to load
+  if (mediaError) {
+    return (
+      <div
+        ref={containerRef}
+        className="relative w-full h-screen bg-background flex flex-col items-center justify-center gap-6"
+      >
+        <div className="text-center space-y-4 px-6 max-w-md">
+          <div className="w-16 h-16 mx-auto rounded-full bg-destructive/20 flex items-center justify-center">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
+          <h2 className="font-display text-xl">Video Playback Error</h2>
+          <p className="text-muted-foreground text-sm">{mediaError.message}</p>
+          <p className="text-xs text-muted-foreground/70">Error code: {mediaError.code}</p>
+          <div className="flex gap-3 justify-center pt-4">
+            <button
+              onClick={handleRetry}
+              className="px-6 py-2.5 rounded-lg bg-brand text-white font-medium hover:bg-brand/90 transition-colors"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={onBack}
+              className="px-6 py-2.5 rounded-lg bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

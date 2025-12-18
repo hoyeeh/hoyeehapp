@@ -125,11 +125,15 @@ export const useCreateEpisode = () => {
   
   return useMutation({
     mutationFn: async (episode: Omit<Episode, 'id' | 'created_at' | 'updated_at'>) => {
+      // Use upsert to handle duplicate episode numbers gracefully
       const { data, error } = await supabase
         .from('episodes')
-        .insert({
+        .upsert({
           ...episode,
           video_url: episode.video_url?.trim() || null,
+        }, {
+          onConflict: 'season_id,episode_number',
+          ignoreDuplicates: false,
         })
         .select()
         .maybeSingle();
