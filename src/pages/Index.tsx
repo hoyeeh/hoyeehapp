@@ -228,6 +228,20 @@ const Index = () => {
       toast.error("This content requires a premium subscription");
       return;
     }
+    
+    // For TV series, navigate to content detail to select an episode
+    if (item.contentType === "series") {
+      setSelectedContent(null);
+      navigate(`/content/${item.id}`);
+      return;
+    }
+    
+    // For movies, check if video URL exists
+    if (!item.videoUrl) {
+      toast.error("This content is not yet available");
+      return;
+    }
+    
     setSelectedContent(null);
     setPlayingContent({ content: item, progress: 0 });
   };
