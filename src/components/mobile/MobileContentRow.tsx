@@ -92,7 +92,7 @@ export function MobileContentRow({
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <h3 className="text-lg font-bold text-foreground">{title}</h3>
-        {showSeeAll && (
+        {showSeeAll && onSeeAll && (
           <button 
             onClick={onSeeAll}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-95"

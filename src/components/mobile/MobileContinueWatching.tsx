@@ -32,7 +32,7 @@ export function MobileContinueWatching({ onPlay, onDetails }: MobileContinueWatc
         .gt("progress", 0)
         .lt("progress", 95)
         .order("last_watched", { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (error) throw error;
       return data || [];

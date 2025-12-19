@@ -241,9 +241,9 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
       }
     }
     
-    // Check subscription for premium content - all content is premium by default
-    if (item.isPremium && !canAccessPremium) {
-      toast.error("This content requires a premium subscription");
+    // All content requires premium subscription except for admins
+    if (!canAccessPremium) {
+      toast.error("Subscribe to watch this content");
       navigate("/subscription");
       return;
     }
