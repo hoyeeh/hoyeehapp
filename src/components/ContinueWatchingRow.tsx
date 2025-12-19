@@ -62,7 +62,7 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
         .eq("user_id", user.id)
         .gt("progress", 0)
         .order("last_watched", { ascending: false })
-        .limit(15);
+        .limit(20);
 
       if (error) throw error;
       return (data || []) as WatchHistoryItem[];

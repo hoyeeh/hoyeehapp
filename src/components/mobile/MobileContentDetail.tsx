@@ -237,9 +237,9 @@ export function MobileContentDetail({
       }
     }
     
-    // Check subscription for premium content
-    if (content.isPremium && !canAccessPremium) {
-      toast.error("This content requires a premium subscription");
+    // All content requires premium subscription except for admins
+    if (!canAccessPremium) {
+      toast.error("Subscribe to watch this content");
       navigate("/subscription");
       return;
     }

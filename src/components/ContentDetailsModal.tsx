@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Content } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { X, Play, Plus, Check, Clock, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { X, Play, Plus, Check, Clock, User, PlayCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DownloadButton } from "./DownloadButton";
@@ -8,6 +11,8 @@ import { ContentReviews } from "./ContentReviews";
 import { SocialShare } from "./SocialShare";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ContentRatingBadge } from "./ContentRatingBadge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 interface CastMember {
   id: number;
@@ -16,12 +21,23 @@ interface CastMember {
   profile_path: string | null;
 }
 
+interface Episode {
+  id: string;
+  title: string;
+  episode_number: number;
+  thumbnail_url: string | null;
+  video_url: string | null;
+  duration: number | null;
+  description: string | null;
+}
+
 interface ContentDetailsModalProps {
   content: Content;
   onClose: () => void;
   onPlay: (content: Content) => void;
   onToggleList: (content: Content) => void;
   isInList: boolean;
+  onPlayEpisode?: (content: Content, episodeVideoUrl: string, episodeTitle: string) => void;
 }
 
 // Helper to parse cast_members from database
@@ -41,8 +57,10 @@ export const ContentDetailsModal = ({
   onPlay,
   onToggleList,
   isInList,
+  onPlayEpisode,
 }: ContentDetailsModalProps) => {
   const navigate = useNavigate();
+  const [playingFirstEpisode, setPlayingFirstEpisode] = useState(false);
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -53,9 +71,78 @@ export const ContentDetailsModal = ({
   const cast = parseCast((content as any).cast_members);
   const director = (content as any).director;
 
+  // Fetch episodes for TV series
+  const { data: episodes = [], isLoading: episodesLoading } = useQuery({
+    queryKey: ["modal-episodes", content.id],
+    queryFn: async () => {
+      // Get first season
+      const { data: seasons } = await supabase
+        .from("seasons")
+        .select("id")
+        .eq("content_id", content.id)
+        .order("season_number")
+        .limit(1);
+      
+      if (!seasons?.length) return [];
+
+      // Get episodes from first season
+      const { data: eps } = await supabase
+        .from("episodes")
+        .select("id, title, episode_number, thumbnail_url, video_url, duration, description")
+        .eq("season_id", seasons[0].id)
+        .order("episode_number")
+        .limit(6);
+      
+      return (eps || []) as Episode[];
+    },
+    enabled: content.contentType === "series",
+  });
+
   const handleActorClick = (actorName: string) => {
     onClose();
     navigate(`/search?actor=${encodeURIComponent(actorName)}`);
+  };
+
+  const handlePlayFirstEpisode = async () => {
+    if (episodes.length === 0) {
+      toast.error("No episodes available yet");
+      return;
+    }
+    
+    const firstWithVideo = episodes.find(ep => ep.video_url);
+    if (!firstWithVideo) {
+      toast.error("No playable episodes available");
+      navigate(`/content/${content.id}`);
+      onClose();
+      return;
+    }
+
+    setPlayingFirstEpisode(true);
+    if (onPlayEpisode) {
+      onPlayEpisode(content, firstWithVideo.video_url!, `S1E${firstWithVideo.episode_number}: ${firstWithVideo.title}`);
+    } else {
+      navigate(`/content/${content.id}?episode=${firstWithVideo.id}&autoplay=true`);
+      onClose();
+    }
+  };
+
+  const handlePlayEpisode = (episode: Episode) => {
+    if (!episode.video_url) {
+      toast.error("This episode is not available yet");
+      return;
+    }
+    
+    if (onPlayEpisode) {
+      onPlayEpisode(content, episode.video_url, `S1E${episode.episode_number}: ${episode.title}`);
+    } else {
+      navigate(`/content/${content.id}?episode=${episode.id}&autoplay=true`);
+      onClose();
+    }
+  };
+
+  const handleViewAllEpisodes = () => {
+    onClose();
+    navigate(`/content/${content.id}`);
   };
 
   return (
@@ -127,6 +214,82 @@ export const ContentDetailsModal = ({
               {content.description}
             </p>
 
+            {/* Episode Preview Section for TV Series */}
+            {content.contentType === "series" && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium">Episodes - Season 1</h3>
+                  <button
+                    onClick={handleViewAllEpisodes}
+                    className="flex items-center gap-1 text-sm text-brand hover:underline"
+                  >
+                    View All <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                {episodesLoading ? (
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex-shrink-0 w-48">
+                        <Skeleton className="w-full aspect-video rounded-lg" />
+                        <Skeleton className="h-4 w-3/4 mt-2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : episodes.length > 0 ? (
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {episodes.map((episode) => (
+                      <div
+                        key={episode.id}
+                        className="flex-shrink-0 w-48 cursor-pointer group"
+                        onClick={() => handlePlayEpisode(episode)}
+                      >
+                        <div className="relative aspect-video rounded-lg overflow-hidden bg-secondary">
+                          {episode.thumbnail_url ? (
+                            <img
+                              src={episode.thumbnail_url}
+                              alt={episode.title}
+                              className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-muted to-secondary flex items-center justify-center">
+                              <span className="text-2xl font-bold text-muted-foreground">
+                                E{episode.episode_number}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Play Overlay */}
+                          <div className="absolute inset-0 bg-background/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-foreground/90 flex items-center justify-center">
+                              <Play className="h-5 w-5 ml-0.5 text-background" fill="currentColor" />
+                            </div>
+                          </div>
+                          
+                          {/* Availability badge */}
+                          {!episode.video_url && (
+                            <div className="absolute top-2 right-2 bg-background/80 px-2 py-0.5 rounded text-xs">
+                              Coming Soon
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium mt-2 line-clamp-1">
+                          E{episode.episode_number}: {episode.title}
+                        </p>
+                        {episode.duration && (
+                          <p className="text-xs text-muted-foreground">
+                            {Math.floor(episode.duration / 60)}m
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No episodes available yet</p>
+                )}
+              </div>
+            )}
+
             {/* Cast Section with Clickable Chips */}
             {cast.length > 0 && (
               <div className="mb-6">
@@ -158,15 +321,28 @@ export const ContentDetailsModal = ({
             )}
 
             <div className="flex flex-wrap items-center gap-3 mb-8">
-              <Button
-                variant="brand"
-                size="lg"
-                onClick={() => onPlay(content)}
-                className="gap-2"
-              >
-                <Play className="h-5 w-5" fill="currentColor" />
-                Play Now
-              </Button>
+              {content.contentType === "series" ? (
+                <Button
+                  variant="brand"
+                  size="lg"
+                  onClick={handlePlayFirstEpisode}
+                  className="gap-2"
+                  disabled={playingFirstEpisode || episodesLoading}
+                >
+                  <PlayCircle className="h-5 w-5" />
+                  Play First Episode
+                </Button>
+              ) : (
+                <Button
+                  variant="brand"
+                  size="lg"
+                  onClick={() => onPlay(content)}
+                  className="gap-2"
+                >
+                  <Play className="h-5 w-5" fill="currentColor" />
+                  Play Now
+                </Button>
+              )}
               
               <Button
                 variant="secondary"

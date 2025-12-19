@@ -1,7 +1,10 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Info, Lock } from "lucide-react";
+import { Play, Plus, Check, Info, Lock, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface ContentCardProps {
   content: Content;
@@ -12,6 +15,7 @@ interface ContentCardProps {
   size?: "sm" | "md" | "lg";
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
   isRestricted?: boolean;
+  onPlayFirstEpisode?: (content: Content, episodeVideoUrl: string, episodeTitle: string) => void;
 }
 
 export const ContentCard = ({
@@ -23,7 +27,55 @@ export const ContentCard = ({
   size = "md",
   cardStyle = "poster",
   isRestricted = false,
+  onPlayFirstEpisode,
 }: ContentCardProps) => {
+  const navigate = useNavigate();
+  
+  const handlePlayFirstEpisode = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      // Fetch first season
+      const { data: seasons } = await supabase
+        .from("seasons")
+        .select("id")
+        .eq("content_id", content.id)
+        .order("season_number")
+        .limit(1);
+      
+      if (!seasons?.length) {
+        toast.error("No episodes available yet");
+        navigate(`/content/${content.id}`);
+        return;
+      }
+      
+      // Fetch first episode with video
+      const { data: episodes } = await supabase
+        .from("episodes")
+        .select("id, title, video_url, episode_number")
+        .eq("season_id", seasons[0].id)
+        .not("video_url", "is", null)
+        .order("episode_number")
+        .limit(1);
+      
+      if (!episodes?.length || !episodes[0].video_url) {
+        toast.error("No playable episodes available yet");
+        navigate(`/content/${content.id}`);
+        return;
+      }
+      
+      const episode = episodes[0];
+      if (onPlayFirstEpisode) {
+        onPlayFirstEpisode(content, episode.video_url, `S1E${episode.episode_number}: ${episode.title}`);
+      } else {
+        // Navigate to content detail with autoplay
+        navigate(`/content/${content.id}?episode=${episode.id}&autoplay=true`);
+      }
+    } catch (error) {
+      console.error("Error fetching first episode:", error);
+      toast.error("Failed to load episode");
+    }
+  };
   const sizeClasses = {
     sm: "w-32 md:w-40",
     md: "w-40 md:w-52",
@@ -143,15 +195,25 @@ export const ContentCard = ({
         <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
           {/* Action Buttons */}
           <div className="flex items-center gap-2 mb-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onPlay(content);
-              }}
-              className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-all hover:scale-110 shadow-lg"
-            >
-              <Play className="h-4 w-4 ml-0.5" fill="currentColor" />
-            </button>
+            {content.contentType === "series" ? (
+              <button
+                onClick={handlePlayFirstEpisode}
+                className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-all hover:scale-110 shadow-lg"
+                title="Play First Episode"
+              >
+                <PlayCircle className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPlay(content);
+                }}
+                className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-all hover:scale-110 shadow-lg"
+              >
+                <Play className="h-4 w-4 ml-0.5" fill="currentColor" />
+              </button>
+            )}
             
             <button
               onClick={(e) => {
