@@ -22,6 +22,12 @@ import {
   Monitor,
   Loader,
   HelpCircle,
+  FolderOpen,
+  Home,
+  Bed,
+  Sofa,
+  UtensilsCrossed,
+  Folder,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -42,6 +48,7 @@ import { useAirPlay } from "@/hooks/useAirPlay";
 import { useCastHistory } from "@/hooks/useCastHistory";
 import { CastController } from "@/components/CastController";
 import { CastSetupGuide } from "@/components/cast/CastSetupGuide";
+import { DeviceGroupManager } from "@/components/cast/DeviceGroupManager";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 
@@ -1088,14 +1095,67 @@ export const VideoPlayer = ({
                     </div>
                   </DropdownMenuItem>
                   
-                  {/* Recent Devices */}
-                  {castHistory.devices.length > 0 && (
+                  {/* Device Groups */}
+                  {castHistory.groups.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        Device Groups
+                      </DropdownMenuLabel>
+                      {castHistory.groups.map((group) => {
+                        const groupDevices = castHistory.getDevicesByGroup(group.id);
+                        if (groupDevices.length === 0) return null;
+                        
+                        const getGroupIcon = () => {
+                          switch (group.icon) {
+                            case 'home': return Home;
+                            case 'living': return Sofa;
+                            case 'bedroom': return Bed;
+                            case 'kitchen': return UtensilsCrossed;
+                            case 'office': return Monitor;
+                            case 'tv': return Tv;
+                            default: return Folder;
+                          }
+                        };
+                        const GroupIcon = getGroupIcon();
+                        
+                        return (
+                          <DropdownMenuItem
+                            key={group.id}
+                            onClick={() => {
+                              const device = groupDevices[0];
+                              if (device.type === 'chromecast') {
+                                cast.connect();
+                              } else if (device.type === 'dlna') {
+                                dlna.scanForDevices();
+                                toast.info(`Looking for ${castHistory.getDeviceDisplayName(device)}...`);
+                              } else if (device.type === 'airplay' && airPlay.isAvailable) {
+                                airPlay.showPicker();
+                              }
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <GroupIcon className="mr-2 h-4 w-4 text-brand" />
+                            <div className="flex flex-col">
+                              <span>{group.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {groupDevices.length} device{groupDevices.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* Recent Devices (ungrouped) */}
+                  {castHistory.getUngroupedDevices().length > 0 && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel className="text-xs text-muted-foreground">
                         Recent Devices
                       </DropdownMenuLabel>
-                      {castHistory.devices.slice(0, 3).map((device) => (
+                      {castHistory.getUngroupedDevices().slice(0, 3).map((device) => (
                         <DropdownMenuItem
                           key={`${device.type}-${device.id}`}
                           onClick={() => {
@@ -1103,7 +1163,7 @@ export const VideoPlayer = ({
                               cast.connect();
                             } else if (device.type === 'dlna') {
                               dlna.scanForDevices();
-                              toast.info(`Looking for ${device.name}...`);
+                              toast.info(`Looking for ${castHistory.getDeviceDisplayName(device)}...`);
                             } else if (device.type === 'airplay' && airPlay.isAvailable) {
                               airPlay.showPicker();
                             }
@@ -1113,7 +1173,7 @@ export const VideoPlayer = ({
                           {device.type === 'chromecast' && <Cast className="mr-2 h-4 w-4" />}
                           {device.type === 'dlna' && <Tv className="mr-2 h-4 w-4" />}
                           {device.type === 'airplay' && <Airplay className="mr-2 h-4 w-4" />}
-                          <span className="truncate">{device.name}</span>
+                          <span className="truncate">{castHistory.getDeviceDisplayName(device)}</span>
                         </DropdownMenuItem>
                       ))}
                     </>
@@ -1121,8 +1181,16 @@ export const VideoPlayer = ({
                   
                   <DropdownMenuSeparator />
                   
-                  {/* Setup Guide Link */}
-                  <div className="px-2 py-1.5">
+                  {/* Management Links */}
+                  <div className="px-2 py-1.5 space-y-1">
+                    <DeviceGroupManager
+                      trigger={
+                        <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
+                          <FolderOpen className="h-3.5 w-3.5" />
+                          Manage device groups
+                        </button>
+                      }
+                    />
                     <CastSetupGuide
                       trigger={
                         <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
