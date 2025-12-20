@@ -1,21 +1,45 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { Baby, Home, Search, List, Sparkles, Lock } from "lucide-react";
+import { Home, Search, Heart, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useKidsSounds } from "@/hooks/useKidsSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { KidsMobileInterface } from "./mobile/KidsMobileInterface";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface KidsInterfaceProps {
   children: ReactNode;
 }
 
+const pageVariants = {
+  initial: (direction: number) => ({
+    x: direction > 0 ? 60 : -60,
+    opacity: 0,
+  }),
+  animate: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      x: { type: "spring" as const, stiffness: 300, damping: 30 },
+      opacity: { duration: 0.2 },
+    },
+  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -60 : 60,
+    opacity: 0,
+    transition: {
+      x: { type: "spring" as const, stiffness: 300, damping: 30 },
+      opacity: { duration: 0.15 },
+    },
+  }),
+};
+
+const tabOrder = ["home", "search", "list"] as const;
+
 export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   const { currentProfile, setCurrentProfile } = useProfileContext();
   const navigate = useNavigate();
   const location = useLocation();
-  const { playClickSound, playPopSound } = useKidsSounds();
   const isMobile = useIsMobile();
 
   if (!currentProfile?.is_kids) {
@@ -34,117 +58,108 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   };
 
   const activeTab = getActiveTab();
+  const currentIndex = tabOrder.indexOf(activeTab);
+  
+  const getPrevIndex = () => {
+    const prevPath = sessionStorage.getItem("kids_desktop_prev_tab") || "home";
+    return tabOrder.indexOf(prevPath as typeof activeTab);
+  };
+  
+  const direction = currentIndex > getPrevIndex() ? 1 : -1;
+  sessionStorage.setItem("kids_desktop_prev_tab", activeTab);
 
-  // Kids mode wrapper with colorful UI
+  const handleExit = () => {
+    localStorage.removeItem("hoyeeh_current_profile");
+    setCurrentProfile(null as any);
+    navigate("/");
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-pink-950 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Stars */}
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={`star-${i}`}
-            className="absolute text-yellow-300 animate-twinkle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              fontSize: `${10 + Math.random() * 15}px`,
-            }}
-          >
-            <Sparkles className="h-3 w-3" />
-          </div>
-        ))}
-        
-        {/* Floating clouds */}
-        {[...Array(5)].map((_, i) => (
-          <div
-            key={`cloud-${i}`}
-            className="absolute text-white/10 animate-float-slow"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${20 + Math.random() * 60}%`,
-              animationDelay: `${i * 2}s`,
-            }}
-          >
-            <Sparkles className="h-10 w-10" />
-          </div>
-        ))}
+    <div className="min-h-screen bg-[#0A0A0F] relative overflow-hidden">
+      {/* Subtle gradient background */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-violet-950/20 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-950/10 via-transparent to-fuchsia-950/10" />
       </div>
 
       {/* Kids Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-gradient-to-b from-indigo-900/90 via-indigo-900/70 to-transparent backdrop-blur-sm">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div 
-            className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => {
-              playClickSound();
-              navigate("/");
-            }}
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-[#0A0A0F]/80 backdrop-blur-xl border-b border-white/[0.06]">
+        <div className="flex items-center justify-between h-full max-w-7xl mx-auto px-6">
+          {/* Logo */}
+          <button 
+            className="flex items-center gap-3 group"
+            onClick={() => navigate("/")}
           >
-            <div className="relative">
-              <Baby className="h-10 w-10 text-cyan-400 animate-bounce-slow" />
-              <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-400 animate-twinkle" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-shadow">
+              <span className="text-white font-bold text-lg">K</span>
             </div>
-            <span className="font-display text-3xl bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent animate-gradient">
+            <span className="text-lg font-semibold text-white tracking-[-0.02em]">
               Kids
             </span>
-          </div>
-          
-          <button
-            onClick={() => {
-              playPopSound();
-              localStorage.removeItem("hoyeeh_current_profile");
-              setCurrentProfile(null as any);
-              navigate("/");
-            }}
-            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all hover:scale-105 active:scale-95 border border-white/20 flex items-center gap-2"
-          >
-            <Lock className="h-4 w-4" />
-            Exit Kids
           </button>
+
+          {/* Navigation */}
+          <nav className="flex items-center gap-1 bg-white/[0.04] rounded-2xl p-1 border border-white/[0.06]">
+            <NavButton 
+              icon={Home} 
+              label="Home" 
+              onClick={() => navigate("/")}
+              active={activeTab === "home"}
+            />
+            <NavButton 
+              icon={Search} 
+              label="Search" 
+              onClick={() => navigate("/search")}
+              active={activeTab === "search"}
+            />
+            <NavButton 
+              icon={Heart} 
+              label="Favorites" 
+              onClick={() => navigate("/my-list")}
+              active={activeTab === "list"}
+            />
+          </nav>
+
+          {/* Profile & Exit */}
+          <div className="flex items-center gap-4">
+            {currentProfile?.name && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                  <span className="text-white text-sm font-semibold">
+                    {currentProfile.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <span className="text-[14px] text-white/70 font-medium">
+                  {currentProfile.name}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleExit}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white/80 hover:text-white text-[13px] font-medium transition-all border border-white/[0.06]"
+            >
+              <LogOut className="h-4 w-4" strokeWidth={2} />
+              Exit Kids
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Kids Navigation - Bottom */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-indigo-900/95 via-indigo-900/80 to-transparent backdrop-blur-md px-4 py-2 safe-area-bottom">
-        <div className="flex justify-around max-w-md mx-auto">
-          <NavButton 
-            icon={Home} 
-            label="Home" 
-            onClick={() => {
-              playClickSound();
-              navigate("/");
-            }}
-            active={activeTab === "home"}
-            color="from-pink-500 to-rose-500"
-          />
-          <NavButton 
-            icon={Search} 
-            label="Search" 
-            onClick={() => {
-              playClickSound();
-              navigate("/search");
-            }}
-            active={activeTab === "search"}
-            color="from-purple-500 to-violet-500"
-          />
-          <NavButton 
-            icon={List} 
-            label="My List" 
-            onClick={() => {
-              playClickSound();
-              navigate("/my-list");
-            }}
-            active={activeTab === "list"}
-            color="from-cyan-500 to-blue-500"
-          />
-        </div>
-      </nav>
-
-      {/* Content with padding for header/nav */}
-      <main className="pt-20 pb-24 relative z-10">
-        {children}
+      {/* Content with padding for header */}
+      <main className="pt-20 pb-12 relative z-10 min-h-screen overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={activeTab}
+            custom={direction}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="w-full"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
@@ -155,29 +170,24 @@ const NavButton = ({
   label, 
   onClick,
   active = false,
-  color,
 }: { 
   icon: typeof Home; 
   label: string;
   onClick: () => void;
   active?: boolean;
-  color: string;
 }) => {
-  const { playHoverSound } = useKidsSounds();
-
   return (
     <button
       onClick={onClick}
-      onMouseEnter={playHoverSound}
       className={cn(
-        "flex flex-col items-center gap-1 px-6 py-3 rounded-2xl transition-all duration-300 transform",
+        "flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
         active 
-          ? `bg-gradient-to-br ${color} text-white scale-110 shadow-lg shadow-purple-500/30` 
-          : "text-white/70 hover:text-white hover:bg-white/10 hover:scale-105"
+          ? "bg-white text-[#0A0A0F] shadow-lg" 
+          : "text-white/60 hover:text-white hover:bg-white/[0.06]"
       )}
     >
-      <Icon className={cn("h-6 w-6 transition-transform stroke-[1.5]", active && "animate-bounce-slow")} />
-      <span className="text-xs font-bold">{label}</span>
+      <Icon className="h-4 w-4" strokeWidth={2} />
+      <span>{label}</span>
     </button>
   );
 };
