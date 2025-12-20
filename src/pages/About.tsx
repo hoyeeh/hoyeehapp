@@ -2,9 +2,26 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Users, Globe, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSEO } from "@/hooks/useSEO";
 
 const About = () => {
   const navigate = useNavigate();
+
+  // SEO meta tags
+  useSEO({
+    title: 'About Hoyeeh - Africa\'s Premier Streaming Platform',
+    description: 'Learn about Hoyeeh, Africa\'s leading streaming service dedicated to bringing the best African entertainment to audiences worldwide. Discover our mission, vision, and values.',
+    url: 'https://hoyeeh.com/about',
+    keywords: [
+      'about Hoyeeh',
+      'African streaming',
+      'African entertainment',
+      'streaming platform',
+      'African movies',
+      'African TV shows',
+      'company',
+    ],
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
