@@ -2,6 +2,8 @@ import { Home, Search, Download, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useKidsSounds } from "@/hooks/useKidsSounds";
+import { useHaptics } from "@/hooks/useHaptics";
 
 interface NavItemProps {
   icon: typeof Home;
@@ -12,9 +14,18 @@ interface NavItemProps {
 }
 
 const NavItem = ({ icon: Icon, isActive, color, onClick }: NavItemProps) => {
+  const { playClickSound } = useKidsSounds();
+  const { lightTap } = useHaptics();
+
+  const handleClick = () => {
+    playClickSound();
+    lightTap();
+    onClick();
+  };
+
   return (
     <motion.button
-      onClick={onClick}
+      onClick={handleClick}
       whileTap={{ scale: 0.9 }}
       className={cn(
         "relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300",

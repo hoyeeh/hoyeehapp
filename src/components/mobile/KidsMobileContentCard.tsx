@@ -1,6 +1,8 @@
 import { Content } from "@/types";
-import { Play, Star } from "lucide-react";
+import { Play } from "lucide-react";
 import { motion } from "framer-motion";
+import { useKidsSounds } from "@/hooks/useKidsSounds";
+import { useHaptics } from "@/hooks/useHaptics";
 
 interface KidsMobileContentCardProps {
   content: Content;
@@ -27,11 +29,26 @@ export const KidsMobileContentCard = ({
   variant = "default" 
 }: KidsMobileContentCardProps) => {
   const colors = colorPairs[index % colorPairs.length];
+  const { playPopSound, playSuccessSound } = useKidsSounds();
+  const { lightTap, mediumTap } = useHaptics();
   
   const cardSizes = {
     default: "w-32",
     large: "w-40",
     wide: "w-44",
+  };
+
+  const handleCardClick = () => {
+    playPopSound();
+    lightTap();
+    onDetails(content);
+  };
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    playSuccessSound();
+    mediumTap();
+    onPlay(content);
   };
 
   return (
@@ -41,7 +58,7 @@ export const KidsMobileContentCard = ({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
       whileTap={{ scale: 0.98 }}
-      onClick={() => onDetails(content)}
+      onClick={handleCardClick}
     >
       <div className={`relative rounded-2xl overflow-hidden bg-gradient-to-br ${colors.border} p-[2px] ${colors.shadow} shadow-lg`}>
         <div className="relative aspect-[2/3] rounded-[14px] overflow-hidden bg-slate-800">
@@ -57,10 +74,7 @@ export const KidsMobileContentCard = ({
           
           {/* Play button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPlay(content);
-            }}
+            onClick={handlePlayClick}
             className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg transition-transform active:scale-90"
           >
             <Play className="h-5 w-5 text-slate-900 fill-slate-900 ml-0.5" />
