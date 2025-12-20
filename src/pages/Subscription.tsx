@@ -118,15 +118,32 @@ const Subscription = () => {
   }, [searchParams, refetchProfile, navigate]);
 
   const handleStripePayment = async () => {
+    if (!user) {
+      toast.error("Please sign in first");
+      navigate("/auth");
+      return;
+    }
+    
     setLoading(true);
     try {
-      const { data: session } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session?.access_token) {
+        toast.error("Session expired. Please sign in again.");
+        navigate("/auth");
+        return;
+      }
+      
       const response = await supabase.functions.invoke("stripe-payment", {
         body: { action: "create-checkout", plan_type: selectedPlan },
         headers: {
-          Authorization: `Bearer ${session.session?.access_token}`,
+          Authorization: `Bearer ${sessionData.session.access_token}`,
         },
       });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to create checkout session");
+      }
 
       if (response.data?.url) {
         window.location.href = response.data.url;

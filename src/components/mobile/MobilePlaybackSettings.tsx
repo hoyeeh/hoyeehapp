@@ -17,10 +17,19 @@ const QUALITY_OPTIONS = [
   { id: "low", label: "Low", description: "480p - Saves data, lower quality" },
 ];
 
+const DOWNLOAD_QUALITY_OPTIONS = [
+  { id: "high", label: "High Quality", description: "1080p - Best quality, larger file size (~2GB/hr)" },
+  { id: "medium", label: "Standard", description: "720p - Good quality, medium file size (~1GB/hr)" },
+  { id: "low", label: "Data Saver", description: "480p - Smaller file size (~500MB/hr)" },
+];
+
 export function MobilePlaybackSettings({ open, onClose }: MobilePlaybackSettingsProps) {
   const { lightTap, selectionTap } = useHaptics();
   const [quality, setQuality] = useState(() => {
     return localStorage.getItem("hoyeeh_playback_quality") || "auto";
+  });
+  const [downloadQuality, setDownloadQuality] = useState(() => {
+    return localStorage.getItem("hoyeeh_download_quality") || "medium";
   });
   const [dataSaver, setDataSaver] = useState(() => {
     return localStorage.getItem("hoyeeh_data_saver") === "true";
@@ -31,6 +40,13 @@ export function MobilePlaybackSettings({ open, onClose }: MobilePlaybackSettings
     setQuality(newQuality);
     localStorage.setItem("hoyeeh_playback_quality", newQuality);
     toast.success(`Video quality set to ${QUALITY_OPTIONS.find(q => q.id === newQuality)?.label}`);
+  };
+
+  const handleDownloadQualityChange = (newQuality: string) => {
+    selectionTap();
+    setDownloadQuality(newQuality);
+    localStorage.setItem("hoyeeh_download_quality", newQuality);
+    toast.success(`Download quality set to ${DOWNLOAD_QUALITY_OPTIONS.find(q => q.id === newQuality)?.label}`);
   };
 
   const handleDataSaverToggle = () => {
@@ -90,6 +106,37 @@ export function MobilePlaybackSettings({ open, onClose }: MobilePlaybackSettings
                       <p className="text-xs text-muted-foreground">{option.description}</p>
                     </div>
                     {quality === option.id && (
+                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-4 h-4 text-primary-foreground" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Download Quality Section */}
+            <div className="mb-8">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                Download Quality
+              </h3>
+              <div className="space-y-2">
+                {DOWNLOAD_QUALITY_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => handleDownloadQualityChange(option.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between p-4 rounded-xl transition-all active:scale-[0.98]",
+                      downloadQuality === option.id
+                        ? "bg-primary/10 border border-primary/30"
+                        : "bg-muted/20 border border-transparent"
+                    )}
+                  >
+                    <div className="text-left">
+                      <p className="font-medium text-foreground">{option.label}</p>
+                      <p className="text-xs text-muted-foreground">{option.description}</p>
+                    </div>
+                    {downloadQuality === option.id && (
                       <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                         <Check className="w-4 h-4 text-primary-foreground" />
                       </div>
