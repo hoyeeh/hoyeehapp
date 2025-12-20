@@ -8,6 +8,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { migrateLegacyKeys } from "@/utils/cacheManager";
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -123,6 +125,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <SubscriptionExpiryChecker />
+          <OfflineIndicator />
+          <PWAInstallBanner />
           <BrowserRouter>
             <PWAUpdateHandler />
             <PWANavigationHandler />
