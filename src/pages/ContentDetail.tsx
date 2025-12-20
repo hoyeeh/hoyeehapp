@@ -418,6 +418,22 @@ const ContentDetail = () => {
       return;
     }
 
+    // For TV series, play the first available episode with a video URL
+    if (isTVShow) {
+      if (allEpisodes.length === 0) {
+        toast.error("No episodes available yet");
+        return;
+      }
+      const firstWithVideo = allEpisodes.find(ep => ep.video_url);
+      if (!firstWithVideo) {
+        toast.error("No playable episodes available");
+        return;
+      }
+      handlePlayEpisode(firstWithVideo);
+      return;
+    }
+
+    // For movies, check video URL
     if (!content?.videoUrl) {
       toast.error("This video is not yet available");
       return;
@@ -608,7 +624,7 @@ const ContentDetail = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(-1)}
+          onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}
           className="absolute top-4 left-4 z-10 bg-background/50 hover:bg-background/80"
         >
           <ArrowLeft className="h-5 w-5" />
