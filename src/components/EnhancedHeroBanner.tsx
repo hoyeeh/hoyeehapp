@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Storage key for persistent random banner index
 const DESKTOP_BANNER_KEY = "hoyeeh-desktop-banner";
@@ -25,7 +26,6 @@ export const EnhancedHeroBanner = ({
 }: EnhancedHeroBannerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentIndex, setCurrentIndex] = useState(() => {
-    // Get persisted random index on mount
     try {
       const stored = localStorage.getItem(DESKTOP_BANNER_KEY);
       if (stored) {
@@ -39,6 +39,7 @@ export const EnhancedHeroBanner = ({
   });
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const hasInitialized = useRef(false);
   
   const { data: watchlistIds = [] } = useWatchlist();
@@ -94,7 +95,6 @@ export const EnhancedHeroBanner = ({
   useEffect(() => {
     if (banners.length <= 1 || hasInitialized.current) return;
     
-    // Check if we need to set a random index
     try {
       const stored = localStorage.getItem(DESKTOP_BANNER_KEY);
       if (!stored || Date.now() - JSON.parse(stored).timestamp >= BANNER_EXPIRY) {
@@ -114,13 +114,12 @@ export const EnhancedHeroBanner = ({
     const interval = setInterval(() => {
       setCurrentIndex((prev) => {
         const newIndex = (prev + 1) % banners.length;
-        // Update persisted index
         try {
           localStorage.setItem(DESKTOP_BANNER_KEY, JSON.stringify({ index: newIndex, timestamp: Date.now() }));
         } catch {}
         return newIndex;
       });
-    }, 10000);
+    }, 8000);
 
     return () => clearInterval(interval);
   }, [banners.length]);
@@ -177,166 +176,266 @@ export const EnhancedHeroBanner = ({
   const displayDescription = activeBanner?.description || content?.description;
   const displayImage = activeBanner?.image_url || content?.thumbnailUrl;
   const displayVideo = activeBanner?.video_url;
-  const ctaText = activeBanner?.cta_text || "Watch Now";
+  const ctaText = activeBanner?.cta_text || "Play";
+
+  // Animation variants
+  const contentVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        duration: 0.8, 
+        ease: "easeOut" as const
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      y: -20,
+      transition: { duration: 0.4 }
+    }
+  };
+
+  const staggerChildren = {
+    visible: {
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const childVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.6, ease: "easeOut" as const }
+    }
+  };
 
   return (
-    <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden">
-      {/* Background Video or Image */}
-      <div className="absolute inset-0">
-        {displayVideo ? (
-          <video
-            ref={videoRef}
-            src={displayVideo}
-            className="w-full h-full object-cover"
-            autoPlay
-            loop
-            muted={isMuted}
-            playsInline
-          />
-        ) : (
-          <img
-            src={displayImage}
-            alt={displayTitle}
-            className="w-full h-full object-cover animate-scale-in"
-          />
-        )}
-
-        {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-      </div>
-
-      {/* Content - Positioned at bottom left */}
-      <div className="absolute inset-0 flex items-end">
-        <div className="container mx-auto px-4 md:px-12 pb-16 md:pb-24 max-w-4xl">
-          {/* Subtitle */}
-          {displaySubtitle && (
-            <p className="text-brand font-bold text-base md:text-lg mb-3 animate-fade-in tracking-wide uppercase">
-              {displaySubtitle}
-            </p>
+    <div 
+      className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      {/* Background with smooth transition */}
+      <AnimatePresence mode="wait">
+        <motion.div 
+          key={currentIndex}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="absolute inset-0"
+        >
+          {displayVideo ? (
+            <video
+              ref={videoRef}
+              src={displayVideo}
+              className="w-full h-full object-cover"
+              autoPlay
+              loop
+              muted={isMuted}
+              playsInline
+            />
+          ) : (
+            <img
+              src={displayImage}
+              alt={displayTitle}
+              className="w-full h-full object-cover"
+            />
           )}
+        </motion.div>
+      </AnimatePresence>
 
-          {/* Title - Much bigger and bolder */}
-          <h1 
-            className="font-hero text-5xl md:text-7xl lg:text-8xl xl:text-9xl mb-4 animate-fade-in leading-none tracking-tight"
-            style={{ 
-              textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
-            }}
+      {/* Apple-style gradient overlays - subtle and refined */}
+      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-90" />
+      <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background to-transparent" />
+
+      {/* Content with AnimatePresence */}
+      <AnimatePresence mode="wait">
+        <motion.div 
+          key={currentIndex}
+          variants={contentVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="absolute inset-0 flex items-end"
+        >
+          <motion.div 
+            variants={staggerChildren}
+            initial="hidden"
+            animate="visible"
+            className="container mx-auto px-6 md:px-16 pb-20 md:pb-32 max-w-5xl"
           >
-            {displayTitle}
-          </h1>
-
-          {/* Meta Info */}
-          {content && (
-            <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm md:text-lg text-muted-foreground mb-4 animate-fade-in">
-              {content.year && <span className="font-medium">{content.year}</span>}
-              {content.rating && (
-                <span className="border border-muted-foreground/30 px-2 py-0.5 rounded font-medium">
-                  {content.rating}
-                </span>
-              )}
-              {content.duration && (
-                <span className="font-medium">
-                  {Math.floor(content.duration / 3600)}h{" "}
-                  {Math.floor((content.duration % 3600) / 60)}m
-                </span>
-              )}
-              <span className="text-brand capitalize font-semibold">{content.contentType}</span>
-              {content.genre && <span className="font-medium">{content.genre}</span>}
-            </div>
-          )}
-
-          {/* Description - Larger */}
-          <p className="text-base md:text-xl text-foreground/80 mb-8 line-clamp-3 max-w-2xl animate-fade-in leading-relaxed">
-            {displayDescription}
-          </p>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 animate-fade-in">
-            {content && (
-              <>
-                <Button
-                  size="lg"
-                  variant="brand"
-                  onClick={() => onPlay(content)}
-                  className="gap-2 text-base px-8 shadow-lg shadow-brand/30"
-                >
-                  <Play className="h-5 w-5" fill="currentColor" />
-                  {ctaText}
-                </Button>
-
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  onClick={() => onDetails(content)}
-                  className="gap-2 text-base"
-                >
-                  <Info className="h-5 w-5" />
-                  More Info
-                </Button>
-
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={handleToggleList}
-                  className="gap-2"
-                >
-                  {isInList ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    <Plus className="h-5 w-5" />
-                  )}
-                  My List
-                </Button>
-              </>
+            {/* Subtitle - Apple-style uppercase tracking */}
+            {displaySubtitle && (
+              <motion.p 
+                variants={childVariants}
+                className="text-primary font-semibold text-xs md:text-sm mb-3 tracking-[0.2em] uppercase"
+              >
+                {displaySubtitle}
+              </motion.p>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* Video Controls */}
+            {/* Title - Apple-style large, bold, tight tracking */}
+            <motion.h1 
+              variants={childVariants}
+              className="font-bold text-4xl md:text-6xl lg:text-7xl mb-4 leading-[0.95] tracking-[-0.03em] text-foreground"
+            >
+              {displayTitle}
+            </motion.h1>
+
+            {/* Meta Info - Glass morphism pill style */}
+            {content && (
+              <motion.div 
+                variants={childVariants}
+                className="flex flex-wrap items-center gap-2 md:gap-3 mb-5"
+              >
+                {content.year && (
+                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-sm font-medium text-foreground/90">
+                    {content.year}
+                  </span>
+                )}
+                {content.rating && (
+                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-sm font-medium text-foreground/90">
+                    {content.rating}
+                  </span>
+                )}
+                {content.duration && (
+                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-sm font-medium text-foreground/90">
+                    {Math.floor(content.duration / 3600)}h {Math.floor((content.duration % 3600) / 60)}m
+                  </span>
+                )}
+                <span className="px-3 py-1 rounded-full bg-primary/20 backdrop-blur-sm text-sm font-semibold text-primary capitalize">
+                  {content.contentType}
+                </span>
+                {content.genre && (
+                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-sm font-medium text-foreground/90">
+                    {content.genre}
+                  </span>
+                )}
+              </motion.div>
+            )}
+
+            {/* Description - Clean, refined typography */}
+            <motion.p 
+              variants={childVariants}
+              className="text-sm md:text-base text-foreground/70 mb-8 line-clamp-2 max-w-xl leading-relaxed font-normal"
+            >
+              {displayDescription}
+            </motion.p>
+
+            {/* Action Buttons - Apple-style */}
+            <motion.div 
+              variants={childVariants}
+              className="flex flex-wrap items-center gap-3"
+            >
+              {content && (
+                <>
+                  {/* Primary Button - White, clean */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => onPlay(content)}
+                    className="flex items-center gap-2 px-6 py-3 bg-white text-black font-semibold rounded-xl shadow-lg shadow-black/20 hover:bg-white/95 transition-colors"
+                  >
+                    <Play className="h-5 w-5" fill="currentColor" />
+                    <span>{ctaText}</span>
+                  </motion.button>
+
+                  {/* Secondary Button - Glass morphism */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => onDetails(content)}
+                    className="flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-md text-foreground font-semibold rounded-xl border border-white/20 hover:bg-white/20 transition-colors"
+                  >
+                    <Info className="h-5 w-5" />
+                    <span>More Info</span>
+                  </motion.button>
+
+                  {/* Tertiary Button - Glass with subtle border */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleToggleList}
+                    className="flex items-center gap-2 px-5 py-3 bg-white/5 backdrop-blur-md text-foreground font-medium rounded-xl border border-white/10 hover:bg-white/15 transition-colors"
+                  >
+                    {isInList ? (
+                      <Check className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Plus className="h-5 w-5" />
+                    )}
+                    <span>My List</span>
+                  </motion.button>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Video Mute Control - Glass morphism */}
       {displayVideo && isVideoPlaying && (
-        <button
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={toggleMute}
-          className="absolute bottom-8 right-8 w-12 h-12 rounded-full bg-background/50 border border-border flex items-center justify-center hover:bg-background/70 transition-colors"
+          className="absolute bottom-8 right-8 w-11 h-11 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
         >
           {isMuted ? (
-            <VolumeX className="h-5 w-5" />
+            <VolumeX className="h-5 w-5 text-foreground" />
           ) : (
-            <Volume2 className="h-5 w-5" />
+            <Volume2 className="h-5 w-5 text-foreground" />
           )}
-        </button>
+        </motion.button>
       )}
 
       {/* Banner Navigation */}
       {banners.length > 1 && (
         <>
-          {/* Navigation Arrows */}
-          <button
+          {/* Navigation Arrows - Glass morphism, appear on hover */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isHovering ? 1 : 0 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors opacity-0 hover:opacity-100 md:opacity-50"
+            className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <button
+            <ChevronLeft className="h-6 w-6 text-foreground" />
+          </motion.button>
+          
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isHovering ? 1 : 0 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors opacity-0 hover:opacity-100 md:opacity-50"
+            className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
-            <ChevronRight className="h-6 w-6" />
-          </button>
+            <ChevronRight className="h-6 w-6 text-foreground" />
+          </motion.button>
 
-          {/* Dots Indicator */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
+          {/* Dots Indicator - Apple-style with animated width */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md">
             {banners.map((_, index) => (
-              <button
+              <motion.button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all",
-                  index === currentIndex
-                    ? "w-8 bg-brand"
-                    : "bg-foreground/30 hover:bg-foreground/50"
-                )}
+                className="relative h-1.5 rounded-full bg-white/30 overflow-hidden"
+                animate={{
+                  width: index === currentIndex ? 24 : 8,
+                  backgroundColor: index === currentIndex ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)"
+                }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                whileHover={{ backgroundColor: "rgba(255,255,255,0.5)" }}
               />
             ))}
           </div>
