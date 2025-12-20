@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check, Bell, Settings } from "lucide-react";
+import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check, Bell, Settings, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -250,7 +250,15 @@ const Profile = () => {
               </button>
             </div>
             <div>
-              <p className="font-medium">{displayName || "Set your display name"}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{displayName || "Set your display name"}</p>
+                {profile?.is_subscribed && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold">
+                    <Crown className="h-3 w-3" />
+                    Premium
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
               <Button 
                 variant="outline" 

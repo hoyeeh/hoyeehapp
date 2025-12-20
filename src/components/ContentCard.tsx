@@ -1,10 +1,11 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Info, Lock, PlayCircle } from "lucide-react";
+import { Play, Plus, Check, Info, Lock, PlayCircle, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useProfile } from "@/hooks/useDatabase";
 
 interface ContentCardProps {
   content: Content;
@@ -30,6 +31,9 @@ export const ContentCard = ({
   onPlayFirstEpisode,
 }: ContentCardProps) => {
   const navigate = useNavigate();
+  const { data: userProfile } = useProfile();
+  const isSubscribed = userProfile?.is_subscribed;
+  const isPremiumLocked = content.isPremium && !isSubscribed;
   
   const handlePlayFirstEpisode = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -123,7 +127,8 @@ export const ContentCard = ({
               </div>
               <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{content.description}</p>
               {content.isPremium && (
-                <span className="inline-block mt-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
+                <span className="inline-flex items-center gap-1 mt-2 bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 rounded text-xs font-semibold text-white">
+                  <Crown className="h-3 w-3" />
                   PREMIUM
                 </span>
               )}
@@ -174,7 +179,8 @@ export const ContentCard = ({
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {content.isPremium && (
-            <div className="bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground shadow-lg">
+            <div className="flex items-center gap-1 bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 rounded text-xs font-semibold text-white shadow-lg">
+              <Crown className="h-3 w-3" />
               PREMIUM
             </div>
           )}
@@ -188,11 +194,28 @@ export const ContentCard = ({
           </div>
         )}
 
+        {/* Premium Lock Overlay for non-subscribers */}
+        {isPremiumLocked && !isRestricted && (
+          <div 
+            className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate("/subscription");
+            }}
+          >
+            <Crown className="h-10 w-10 text-amber-500 mb-2" />
+            <span className="text-sm font-semibold text-white">Subscribe to Watch</span>
+          </div>
+        )}
+
         {/* Netflix-style gradient overlay on hover */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
         {/* Hover Info Panel - Netflix Style */}
-        <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+        <div className={cn(
+          "absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out",
+          isPremiumLocked && "pointer-events-none"
+        )}>
           {/* Action Buttons */}
           <div className="flex items-center gap-2 mb-2">
             {content.contentType === "series" ? (
