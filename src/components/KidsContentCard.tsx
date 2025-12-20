@@ -1,6 +1,6 @@
 import { Content } from "@/types";
-import { Play, Sparkles } from "lucide-react";
-import { useKidsSounds } from "@/hooks/useKidsSounds";
+import { Play } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface KidsContentCardProps {
   content: Content;
@@ -10,68 +10,54 @@ interface KidsContentCardProps {
 }
 
 export const KidsContentCard = ({ content, onPlay, onDetails, index }: KidsContentCardProps) => {
-  const { playPopSound, playHoverSound } = useKidsSounds();
-
-  const colors = [
-    "from-pink-500 to-rose-500",
-    "from-purple-500 to-violet-500",
-    "from-blue-500 to-cyan-500",
-    "from-green-500 to-emerald-500",
-    "from-yellow-500 to-orange-500",
-    "from-red-500 to-pink-500",
-  ];
-
-  const borderColor = colors[index % colors.length];
-
   return (
-    <div
-      className="group cursor-pointer transform transition-all duration-300 hover:scale-110 hover:-rotate-1"
-      onClick={() => {
-        playPopSound();
-        onDetails(content);
-      }}
-      onMouseEnter={playHoverSound}
-      style={{ animationDelay: `${index * 100}ms` }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+      className="group cursor-pointer"
+      onClick={() => onDetails(content)}
     >
-      <div className={`relative rounded-2xl overflow-hidden bg-gradient-to-br ${borderColor} p-1 shadow-lg hover:shadow-2xl transition-shadow animate-bounce-in`}>
-        <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-background">
+      <div className="relative rounded-2xl overflow-hidden bg-white/[0.04] border border-white/[0.06] shadow-lg hover:shadow-xl transition-all duration-300 hover:border-white/[0.12] hover:scale-[1.02]">
+        <div className="relative aspect-[2/3] overflow-hidden">
           <img
             src={content.thumbnailUrl}
             alt={content.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           
-          {/* Playful overlay on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
-            <button
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+          {/* Play button on hover */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={(e) => {
                 e.stopPropagation();
-                playPopSound();
                 onPlay(content);
               }}
-              className="bg-white text-black rounded-full p-4 transform scale-0 group-hover:scale-100 transition-transform duration-300 hover:bg-cyan-400 shadow-lg"
+              className="w-14 h-14 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-xl"
             >
-              <Play className="h-8 w-8 fill-current stroke-[1.5]" />
-            </button>
-          </div>
-
-          {/* Sparkle effect */}
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Sparkles className="h-5 w-5 text-yellow-400 animate-pulse stroke-[1.5]" />
+              <Play className="h-6 w-6 text-[#0A0A0F] ml-1" fill="currentColor" strokeWidth={0} />
+            </motion.button>
           </div>
 
           {/* Rating badge */}
           {content.contentRating && (
-            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm">
-              <span className="text-xs font-medium text-white/90">{content.contentRating}</span>
+            <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/50 backdrop-blur-sm">
+              <span className="text-[11px] font-semibold text-white/90">{content.contentRating}</span>
             </div>
           )}
         </div>
       </div>
       
-      <h3 className="mt-3 text-center font-display text-lg text-white truncate px-2 group-hover:text-cyan-400 transition-colors">
+      <h3 className="mt-3 text-[14px] font-semibold text-white/90 truncate group-hover:text-white transition-colors tracking-[-0.01em]">
         {content.title}
       </h3>
-    </div>
+      {content.genre && (
+        <p className="text-[12px] text-white/40 truncate font-medium">{content.genre}</p>
+      )}
+    </motion.div>
   );
 };

@@ -2,34 +2,177 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsContentCard } from "./KidsContentCard";
-import { Sparkles, Clock, Moon, Film, Tv, Zap, Star } from "lucide-react";
-import { useKidsSounds } from "@/hooks/useKidsSounds";
+import { Clock, Moon, Film, Tv, TrendingUp, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
+import { KIDS_RATINGS } from "@/constants/kidsRatings";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
 }
 
-import { KIDS_RATINGS } from "@/constants/kidsRatings";
-
-const SectionIcon = ({ icon: Icon, color }: { icon: typeof Film; color: string }) => (
-  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg`}>
-    <Icon className="h-5 w-5 text-white stroke-[1.5]" />
+const SectionHeader = ({ 
+  icon: Icon, 
+  title, 
+  color 
+}: { 
+  icon: typeof Film; 
+  title: string; 
+  color: string;
+}) => (
+  <div className="flex items-center gap-3 mb-6">
+    <div className={`w-10 h-10 rounded-2xl ${color} flex items-center justify-center shadow-lg`}>
+      <Icon className="h-5 w-5 text-white" strokeWidth={2} />
+    </div>
+    <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">{title}</h2>
   </div>
 );
 
+// Hero Carousel Component for Desktop
+const HeroCarousel = ({ 
+  content, 
+  onPlay, 
+  onDetails 
+}: { 
+  content: Content[]; 
+  onPlay: (content: Content) => void;
+  onDetails: (content: Content) => void;
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const featuredContent = content.slice(0, 5);
+
+  const nextSlide = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % featuredContent.length);
+  }, [featuredContent.length]);
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + featuredContent.length) % featuredContent.length);
+  };
+
+  useEffect(() => {
+    if (featuredContent.length <= 1) return;
+    const interval = setInterval(nextSlide, 6000);
+    return () => clearInterval(interval);
+  }, [nextSlide, featuredContent.length]);
+
+  if (featuredContent.length === 0) return null;
+
+  const current = featuredContent[currentIndex];
+
+  return (
+    <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#1a1a2e] to-[#16162a] aspect-[21/9]">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, scale: 1.02 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="absolute inset-0"
+        >
+          <img
+            src={current.thumbnailUrl}
+            alt={current.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0F] via-[#0A0A0F]/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0F]/90 via-[#0A0A0F]/30 to-transparent" />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Content */}
+      <div className="absolute inset-0 flex items-end p-10">
+        <motion.div
+          key={currentIndex + "-content"}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="max-w-xl"
+        >
+          {current.contentRating && (
+            <span className="inline-block px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm text-xs font-semibold text-white/80 mb-4">
+              {current.contentRating}
+            </span>
+          )}
+          <h2 className="text-4xl font-bold text-white tracking-[-0.02em] mb-3">
+            {current.title}
+          </h2>
+          <p className="text-[15px] text-white/60 line-clamp-2 mb-6 font-medium leading-relaxed">
+            {current.description}
+          </p>
+
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onPlay(current)}
+              className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-white text-[#0A0A0F] text-[14px] font-semibold shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Play className="h-5 w-5" fill="currentColor" strokeWidth={0} />
+              Play Now
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onDetails(current)}
+              className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-white/10 backdrop-blur-sm text-white text-[14px] font-semibold border border-white/10 hover:bg-white/15 transition-colors"
+            >
+              More Info
+            </motion.button>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Navigation Arrows */}
+      {featuredContent.length > 1 && (
+        <>
+          <button
+            onClick={prevSlide}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 hover:bg-black/60 transition-colors"
+          >
+            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 hover:bg-black/60 transition-colors"
+          >
+            <ChevronRight className="h-6 w-6" strokeWidth={2} />
+          </button>
+        </>
+      )}
+
+      {/* Dots Indicator */}
+      {featuredContent.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          {featuredContent.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                index === currentIndex 
+                  ? "w-8 bg-white" 
+                  : "w-2 bg-white/40 hover:bg-white/60"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
-  const { playSuccessSound } = useKidsSounds();
   const { currentProfile } = useProfileContext();
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
 
-  // Fetch kids-appropriate content
   const { data: kidsContent = [], isLoading } = useQuery({
-    queryKey: ["kids-content"],
+    queryKey: ["kids-content-desktop"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content")
@@ -54,232 +197,175 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     },
   });
 
-  // Fetch kids categories
-  const { data: kidsCategories = [] } = useQuery({
-    queryKey: ["kids-categories"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("kids_categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("display_order");
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Fetch category mappings
-  const { data: categoryMappings = [] } = useQuery({
-    queryKey: ["kids-content-categories"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("kids_content_categories")
-        .select("content_id, category_id");
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Get content for a category
-  const getContentForCategory = (categoryId: string): Content[] => {
-    const contentIds = categoryMappings
-      .filter((m: any) => m.category_id === categoryId)
-      .map((m: any) => m.content_id);
-    
-    return kidsContent.filter((c) => contentIds.includes(c.id));
-  };
-
-  // Categorize remaining content by genre
   const movies = kidsContent.filter((c) => c.contentType === "movie");
   const shows = kidsContent.filter((c) => c.contentType === "series");
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-bounce-slow">
-            <Sparkles className="h-16 w-16 text-cyan-400 mx-auto mb-4" />
-          </div>
-          <p className="text-xl text-white font-display animate-pulse">Loading fun stuff...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Bedtime screen
   if (isBedtime) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4">
+      <div className="flex items-center justify-center min-h-[60vh] px-8">
         <div className="text-center max-w-md">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-xl shadow-purple-500/30 animate-float">
-            <Moon className="h-12 w-12 text-white stroke-[1.5]" />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-display text-white mb-4">
-            It's Bedtime!
-          </h1>
-          <p className="text-white/80 text-lg mb-6">
-            Time to rest up for more adventures tomorrow. Sweet dreams!
-          </p>
-          <div className="flex items-center justify-center gap-2 text-white/60">
-            <Moon className="h-5 w-5 stroke-[1.5]" />
-            <span>Bedtime is set for {bedtimeTime?.slice(0, 5)}</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <Sparkles className="h-6 w-6 text-yellow-400 animate-twinkle" />
-            <Moon className="h-8 w-8 text-purple-400 animate-float" />
-            <Sparkles className="h-6 w-6 text-yellow-400 animate-twinkle" />
-          </div>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="w-28 h-28 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-purple-500/30"
+          >
+            <Moon className="h-14 w-14 text-white" strokeWidth={1.5} />
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-3xl font-bold text-white mb-4 tracking-[-0.02em]"
+          >
+            Time for Bed
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-[17px] text-white/50 mb-6 font-medium"
+          >
+            Rest up for more adventures tomorrow!
+          </motion.p>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center justify-center gap-2 text-white/30 text-[15px] font-medium"
+          >
+            <Clock className="h-5 w-5" strokeWidth={2} />
+            <span>Bedtime is {bedtimeTime?.slice(0, 5)}</span>
+          </motion.div>
         </div>
       </div>
     );
   }
 
-  // Time limit reached screen
+  // Time limit reached
   if (isTimeLimitReached) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4">
+      <div className="flex items-center justify-center min-h-[60vh] px-8">
         <div className="text-center max-w-md">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-xl shadow-orange-500/30 animate-bounce-slow">
-            <Clock className="h-12 w-12 text-white stroke-[1.5]" />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-display text-white mb-4">
-            Time's Up for Today!
-          </h1>
-          <p className="text-white/80 text-lg mb-6">
-            You've watched all your shows for today. Come back tomorrow for more fun!
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-28 h-28 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-2xl shadow-orange-500/30"
+          >
+            <Clock className="h-14 w-14 text-white" strokeWidth={1.5} />
+          </motion.div>
+          <h1 className="text-3xl font-bold text-white mb-4 tracking-[-0.02em]">All Done for Today</h1>
+          <p className="text-[17px] text-white/50 font-medium">
+            Come back tomorrow for more fun!
           </p>
-          <div className="flex items-center justify-center gap-2">
-            <Moon className="h-6 w-6 text-purple-400 animate-float" />
-            <Sparkles className="h-8 w-8 text-yellow-400 animate-twinkle" />
-          </div>
         </div>
       </div>
     );
   }
 
-  // Build sections from categories
-  const categorySections = kidsCategories.map((category: any) => ({
-    title: category.name,
-    content: getContentForCategory(category.id),
-    color: category.color,
-    icon: Star,
-  })).filter((s) => s.content.length > 0);
-
-  // Add default sections
-  const defaultSections = [
-    { title: "Watch Now", content: kidsContent.slice(0, 10), color: "from-pink-500 to-rose-500", icon: Zap },
-    { title: "Movies", content: movies.slice(0, 10), color: "from-yellow-500 to-orange-500", icon: Film },
-    { title: "TV Shows", content: shows.slice(0, 10), color: "from-green-500 to-emerald-500", icon: Tv },
-  ].filter((s) => s.content.length > 0);
-
-  const allSections = [...categorySections, ...defaultSections];
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 space-y-10">
+        <Skeleton className="w-full aspect-[21/9] rounded-3xl bg-white/[0.04]" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-2xl bg-white/[0.04]" />
+              <Skeleton className="w-32 h-6 bg-white/[0.04]" />
+            </div>
+            <div className="grid grid-cols-6 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((j) => (
+                <Skeleton key={j} className="aspect-[2/3] rounded-2xl bg-white/[0.04]" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="px-4 md:px-8 space-y-12 pb-24">
-      {/* Time Remaining Banner */}
+    <div className="max-w-7xl mx-auto px-6 space-y-10 pb-12">
+      {/* Hero Carousel */}
+      <HeroCarousel content={kidsContent} onPlay={onPlay} onDetails={onDetails} />
+
+      {/* Time Remaining Badge */}
       {timeRemaining !== null && (
-        <div className="bg-gradient-to-r from-purple-600/80 to-pink-600/80 rounded-2xl p-4 flex items-center justify-center gap-3 backdrop-blur-sm">
-          <Clock className="h-6 w-6 text-white animate-pulse stroke-[1.5]" />
-          <span className="text-white font-medium">
-            {timeRemaining > 0 
-              ? `${timeRemaining} minutes of watch time left today!`
-              : "Watch time is almost up!"}
-          </span>
-        </div>
-      )}
-
-      {/* Animated Banner */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-400 p-8 md:p-12 mt-4">
-        <div className="absolute inset-0 overflow-hidden">
-          {/* Floating bubbles */}
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full bg-white/20 animate-float"
-              style={{
-                width: `${20 + Math.random() * 40}px`,
-                height: `${20 + Math.random() * 40}px`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 0.5}s`,
-                animationDuration: `${3 + Math.random() * 2}s`,
-              }}
-            />
-          ))}
-        </div>
-        
-        <div className="relative z-10 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Film className="h-8 w-8 text-white stroke-[1.5]" />
-            <h1 className="font-display text-4xl md:text-6xl text-white">
-              Welcome{currentProfile?.name ? `, ${currentProfile.name}` : ""}!
-            </h1>
-            <Sparkles className="h-8 w-8 text-white stroke-[1.5]" />
-          </div>
-          <p className="text-white/90 text-lg md:text-xl max-w-2xl mx-auto">
-            Discover amazing shows and movies just for you!
-          </p>
-        </div>
-      </div>
-
-      {/* Kids Categories */}
-      {kidsCategories.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-4">
-          {kidsCategories.map((category: any) => (
-            <button
-              key={category.id}
-              className={`px-6 py-3 rounded-full bg-gradient-to-r ${category.color} text-white font-medium text-lg shadow-lg hover:scale-105 transition-transform flex items-center gap-2`}
-              onClick={() => {
-                const section = document.getElementById(`category-${category.slug}`);
-                section?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              <Star className="h-5 w-5 stroke-[1.5]" />
-              {category.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Content Sections */}
-      {allSections.map((section, sectionIndex) => (
-        <section 
-          key={section.title} 
-          id={`category-${section.title.toLowerCase().replace(/\s+/g, '-')}`}
-          className="relative"
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-center gap-2 py-3 px-5 rounded-2xl bg-violet-500/15 border border-violet-500/20 max-w-md mx-auto"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <SectionIcon icon={section.icon} color={section.color} />
-            <h2 className="font-display text-2xl md:text-3xl text-white">
-              {section.title}
-            </h2>
-            <div className="flex-1 h-1 bg-gradient-to-r from-white/30 to-transparent rounded-full" />
-          </div>
+          <Clock className="h-5 w-5 text-violet-400" strokeWidth={2} />
+          <span className="text-[14px] text-violet-300 font-semibold">
+            {timeRemaining} minutes left today
+          </span>
+        </motion.div>
+      )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-            {section.content.map((item, index) => (
+      {/* Trending Now */}
+      {kidsContent.length > 0 && (
+        <section>
+          <SectionHeader icon={TrendingUp} title="Trending Now" color="bg-gradient-to-br from-rose-500 to-pink-600" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {kidsContent.slice(0, 12).map((item, index) => (
               <KidsContentCard
                 key={item.id}
                 content={item}
                 onPlay={onPlay}
                 onDetails={onDetails}
-                index={sectionIndex * 10 + index}
+                index={index}
               />
             ))}
           </div>
         </section>
-      ))}
+      )}
+
+      {/* Movies */}
+      {movies.length > 0 && (
+        <section>
+          <SectionHeader icon={Film} title="Movies" color="bg-gradient-to-br from-blue-500 to-cyan-600" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {movies.slice(0, 12).map((item, index) => (
+              <KidsContentCard
+                key={item.id}
+                content={item}
+                onPlay={onPlay}
+                onDetails={onDetails}
+                index={index}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* TV Shows */}
+      {shows.length > 0 && (
+        <section>
+          <SectionHeader icon={Tv} title="TV Shows" color="bg-gradient-to-br from-emerald-500 to-green-600" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {shows.slice(0, 12).map((item, index) => (
+              <KidsContentCard
+                key={item.id}
+                content={item}
+                onPlay={onPlay}
+                onDetails={onDetails}
+                index={index}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Empty State */}
       {kidsContent.length === 0 && (
-        <div className="text-center py-20">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow-lg animate-bounce">
-            <Film className="h-10 w-10 text-white stroke-[1.5]" />
+        <div className="flex flex-col items-center justify-center min-h-[50vh] px-8 text-center">
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center mb-8 shadow-2xl shadow-violet-500/30">
+            <Film className="h-12 w-12 text-white" strokeWidth={1.5} />
           </div>
-          <h2 className="text-2xl text-white font-display mb-2">No shows yet!</h2>
-          <p className="text-white/70">Check back soon for awesome content!</p>
+          <h2 className="text-2xl font-semibold text-white mb-3 tracking-[-0.02em]">No Shows Yet</h2>
+          <p className="text-[17px] text-white/50 font-medium">Check back soon for fun content!</p>
         </div>
       )}
     </div>

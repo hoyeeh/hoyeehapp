@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsMobileContentCard } from "./KidsMobileContentCard";
-import { Film, Tv, Clock, Moon, Sparkles, TrendingUp } from "lucide-react";
+import { KidsHeroCarousel } from "./KidsHeroCarousel";
+import { Film, Tv, Clock, Moon, TrendingUp } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -130,7 +131,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
     return (
       <div className="space-y-8 pt-4">
         <div className="px-5">
-          <Skeleton className="h-40 w-full rounded-3xl bg-white/[0.04]" />
+          <Skeleton className="h-48 w-full rounded-3xl bg-white/[0.04]" />
         </div>
         {[1, 2, 3].map((i) => (
           <div key={i} className="space-y-4">
@@ -150,34 +151,27 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   }
 
   return (
-    <div className="space-y-8 pb-8">
-      {/* Welcome Card */}
-      <motion.div 
-        className="mx-5 mt-4 rounded-3xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-transparent border border-white/[0.06] p-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="h-7 w-7 text-white" strokeWidth={1.5} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold text-white tracking-[-0.02em]">
-              {currentProfile?.name ? `Hey, ${currentProfile.name}!` : "Hey there!"}
-            </h2>
-            <p className="text-[13px] text-white/50 mt-1 font-medium">
-              Ready to watch something fun?
-            </p>
-            {timeRemaining !== null && (
-              <div className="flex items-center gap-1.5 mt-3 text-[12px] text-violet-300 font-semibold">
-                <Clock className="h-3.5 w-3.5" strokeWidth={2} />
-                <span>{timeRemaining} min left today</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </motion.div>
+    <div className="space-y-6 pb-8">
+      {/* Hero Carousel */}
+      <KidsHeroCarousel 
+        content={kidsContent} 
+        onPlay={onPlay} 
+        onDetails={onDetails} 
+      />
+
+      {/* Time Remaining Badge */}
+      {timeRemaining !== null && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-5 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-violet-500/20 border border-violet-500/20"
+        >
+          <Clock className="h-4 w-4 text-violet-400" strokeWidth={2} />
+          <span className="text-[13px] text-violet-300 font-semibold">
+            {timeRemaining} min left today
+          </span>
+        </motion.div>
+      )}
 
       {/* Trending Now */}
       {kidsContent.length > 0 && (
