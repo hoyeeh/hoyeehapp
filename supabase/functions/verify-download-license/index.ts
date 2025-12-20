@@ -112,6 +112,9 @@ serve(async (req) => {
       (!profile.subscription_expiry || new Date(profile.subscription_expiry) > new Date());
 
     if (!isSubscribed) {
+      // Log failed attempt - potential abuse
+      console.warn(`[SECURITY] License denied - subscription expired for user ${user.id}, content ${contentId}, device ${deviceId}`);
+      
       // Revoke all licenses for this user
       await supabase
         .from('download_licenses')
@@ -153,6 +156,9 @@ serve(async (req) => {
     }
 
     if (!license) {
+      // Log failed attempt - potential brute force
+      console.warn(`[SECURITY] License not found - user ${user.id} attempted access to content ${contentId} on device ${deviceId}${episodeId ? `, episode ${episodeId}` : ''}`);
+      
       return new Response(
         JSON.stringify({ 
           canPlay: false, 

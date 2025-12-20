@@ -126,12 +126,6 @@ export const ContentCard = ({
                 {content.rating && <span>⭐ {content.rating}</span>}
               </div>
               <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{content.description}</p>
-              {content.isPremium && (
-                <span className="inline-flex items-center gap-1 mt-2 bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 rounded text-xs font-semibold text-white">
-                  <Crown className="h-3 w-3" />
-                  PREMIUM
-                </span>
-              )}
             </div>
           </div>
           <div className="flex gap-2 mt-3">
