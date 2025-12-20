@@ -253,6 +253,7 @@ const ContentDetail = () => {
   const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
+  const [episodeResumeAt, setEpisodeResumeAt] = useState<number>(0);
   const [episodeAutoPlayAttempted, setEpisodeAutoPlayAttempted] = useState(false);
 
   const content = allContent.find(c => c.id === id);
@@ -398,7 +399,7 @@ const ContentDetail = () => {
     }
   };
 
-  const handlePlayEpisode = (episode: Episode) => {
+  const handlePlayEpisode = (episode: Episode, resumeAt?: number) => {
     if (!episode.video_url) {
       toast.error("This episode is not yet available");
       return;
@@ -408,6 +409,7 @@ const ContentDetail = () => {
       navigate("/subscription");
       return;
     }
+    setEpisodeResumeAt(resumeAt || 0);
     setPlayingEpisode(episode);
   };
 
@@ -417,9 +419,12 @@ const ContentDetail = () => {
       <VideoPlayer
         src={playingEpisode.video_url || ''}
         title={`${content.title} - S${playingEpisode.episode_number} ${playingEpisode.title}`}
-        contentId={content.id}
-        initialProgress={0}
-        onBack={() => setPlayingEpisode(null)}
+        contentId={playingEpisode.id}
+        initialProgress={episodeResumeAt}
+        onBack={() => {
+          setPlayingEpisode(null);
+          setEpisodeResumeAt(0);
+        }}
       />
     );
   }
