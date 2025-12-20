@@ -208,3 +208,112 @@ export function getCacheStats(): {
     sessionKeys: sessionStorage.length,
   };
 }
+
+/**
+ * Clear service worker caches for production deployment
+ */
+export async function clearServiceWorkerCaches(): Promise<number> {
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      let cleared = 0;
+      for (const cacheName of cacheNames) {
+        // Don't clear downloads cache
+        if (!cacheName.includes('download')) {
+          await caches.delete(cacheName);
+          cleared++;
+        }
+      }
+      return cleared;
+    } catch (e) {
+      console.warn('Could not clear caches:', e);
+      return 0;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Force service worker update
+ */
+export async function forceServiceWorkerUpdate(): Promise<boolean> {
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.update();
+        // Tell waiting SW to skip waiting
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        return true;
+      }
+    } catch (e) {
+      console.warn('Could not update service worker:', e);
+    }
+  }
+  return false;
+}
+
+/**
+ * Production cache clear - clears all caches while preserving auth and critical data
+ */
+export async function productionCacheClear(): Promise<{
+  localStorageCleared: number;
+  swCachesCleared: number;
+  swUpdated: boolean;
+}> {
+  // Step 1: Migrate legacy keys first
+  migrateLegacyKeys();
+  
+  // Step 2: Clear orphaned localStorage data
+  const localStorageCleared = clearOrphanedData();
+  
+  // Step 3: Clear session storage
+  sessionStorage.clear();
+  
+  // Step 4: Clear service worker caches (except downloads)
+  const swCachesCleared = await clearServiceWorkerCaches();
+  
+  // Step 5: Force service worker update
+  const swUpdated = await forceServiceWorkerUpdate();
+  
+  return {
+    localStorageCleared,
+    swCachesCleared,
+    swUpdated,
+  };
+}
+
+/**
+ * App version tracking for cache invalidation
+ */
+const APP_VERSION_KEY = 'hoyeeh-app-version';
+const CURRENT_VERSION = '2.0.0'; // Increment this for each major release
+
+export function checkAppVersion(): { isNew: boolean; previousVersion: string | null } {
+  const previousVersion = localStorage.getItem(APP_VERSION_KEY);
+  const isNew = previousVersion !== CURRENT_VERSION;
+  
+  if (isNew) {
+    localStorage.setItem(APP_VERSION_KEY, CURRENT_VERSION);
+  }
+  
+  return { isNew, previousVersion };
+}
+
+/**
+ * Run on app startup - clears stale caches on version update
+ */
+export async function initializeCacheManagement(): Promise<void> {
+  const { isNew, previousVersion } = checkAppVersion();
+  
+  if (isNew && previousVersion) {
+    console.log(`App updated from ${previousVersion} to ${CURRENT_VERSION}. Clearing caches...`);
+    const result = await productionCacheClear();
+    console.log('Cache cleared:', result);
+  } else {
+    // Just migrate legacy keys on normal startup
+    migrateLegacyKeys();
+  }
+}
