@@ -14,7 +14,7 @@ interface KidsMobileHomeProps {
   onDetails: (content: Content) => void;
 }
 
-const KIDS_RATINGS = ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG"];
+import { KIDS_RATINGS } from "@/constants/kidsRatings";
 
 const SectionIcon = ({ icon: Icon, color }: { icon: typeof Film; color: string }) => (
   <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg`}>

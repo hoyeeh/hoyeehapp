@@ -13,8 +13,7 @@ interface KidsHomePageProps {
   onDetails: (content: Content) => void;
 }
 
-// Filter for kids-appropriate content (G and PG ratings only)
-const KIDS_RATINGS = ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG"];
+import { KIDS_RATINGS } from "@/constants/kidsRatings";
 
 export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   const { playSuccessSound } = useKidsSounds();
