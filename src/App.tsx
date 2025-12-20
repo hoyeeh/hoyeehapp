@@ -3,12 +3,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { migrateLegacyKeys } from "@/utils/cacheManager";
+import { usePWAUpdates } from "@/hooks/usePWAUpdates";
+import { usePWANavigation } from "@/hooks/usePWANavigation";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PinAuth from "./pages/PinAuth";
@@ -43,23 +45,44 @@ if (typeof window !== 'undefined') {
   migrateLegacyKeys();
 }
 
-// Global back button handler for Capacitor native apps
+// PWA Update Handler - auto-updates the app when new version is available
+function PWAUpdateHandler() {
+  usePWAUpdates();
+  return null;
+}
+
+// PWA Navigation Handler - manages back button and navigation within PWA
+function PWANavigationHandler() {
+  usePWANavigation();
+  return null;
+}
+
+// Global back button handler for Capacitor native apps and PWA
 function CapacitorBackHandler() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
+
+    // Check if running as standalone PWA
+    const isStandalonePWA = 
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
 
     const setupBackHandler = async () => {
       try {
         const { App } = await import('@capacitor/app');
         
         const listener = App.addListener('backButton', ({ canGoBack }) => {
-          if (canGoBack && window.history.length > 1) {
+          // If on home page, minimize app
+          if (location.pathname === '/') {
+            App.minimizeApp?.() || App.exitApp();
+          } else if (canGoBack && window.history.length > 1) {
             window.history.back();
           } else {
-            // On home page, minimize the app or exit
-            App.minimizeApp?.() || App.exitApp();
+            // Navigate to home as fallback
+            navigate('/', { replace: true });
           }
         });
 
@@ -67,7 +90,18 @@ function CapacitorBackHandler() {
           listener.then(l => l.remove());
         };
       } catch (e) {
-        // Capacitor not available (web environment) - no-op
+        // Capacitor not available - handle PWA back navigation
+        if (isStandalonePWA) {
+          const handlePopState = () => {
+            // If trying to exit the app (no more history), go to home
+            if (window.history.length <= 1 && location.pathname !== '/') {
+              navigate('/', { replace: true });
+            }
+          };
+          
+          window.addEventListener('popstate', handlePopState);
+          cleanup = () => window.removeEventListener('popstate', handlePopState);
+        }
       }
     };
 
@@ -76,7 +110,7 @@ function CapacitorBackHandler() {
     return () => {
       cleanup?.();
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   return null;
 }
@@ -90,6 +124,8 @@ const App = () => (
           <Sonner />
           <SubscriptionExpiryChecker />
           <BrowserRouter>
+            <PWAUpdateHandler />
+            <PWANavigationHandler />
             <CapacitorBackHandler />
             <CastProvider>
               <Routes>
