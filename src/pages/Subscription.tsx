@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { supabase } from "@/integrations/supabase/client";
+import { useSEO } from "@/hooks/useSEO";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,23 @@ const Subscription = () => {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+
+  // SEO meta tags
+  useSEO({
+    title: 'Subscribe to Hoyeeh Premium',
+    description: 'Get unlimited access to African movies, TV shows, and exclusive content with Hoyeeh Premium. Stream in HD & 4K, download for offline viewing, and enjoy ad-free entertainment.',
+    url: 'https://hoyeeh.com/subscription',
+    keywords: [
+      'Hoyeeh subscription',
+      'premium streaming',
+      'African movies',
+      'TV shows',
+      'HD streaming',
+      '4K content',
+      'ad-free',
+      'offline downloads',
+    ],
+  });
 
   // Fetch subscription settings from database
   const { data: subscriptionSettings } = useQuery({

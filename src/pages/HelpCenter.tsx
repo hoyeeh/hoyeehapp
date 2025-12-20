@@ -4,6 +4,7 @@ import { ArrowLeft, Search, Mail, MessageSquare, FileText, CreditCard, User, Tv,
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { useSEO } from "@/hooks/useSEO";
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +15,23 @@ import {
 const HelpCenter = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // SEO meta tags
+  useSEO({
+    title: 'Help Center - Support & FAQs',
+    description: 'Find answers to common questions about Hoyeeh. Get help with your account, billing, streaming, downloads, parental controls, and troubleshooting.',
+    url: 'https://hoyeeh.com/help',
+    keywords: [
+      'Hoyeeh help',
+      'support center',
+      'FAQ',
+      'frequently asked questions',
+      'troubleshooting',
+      'streaming help',
+      'account help',
+      'billing support',
+    ],
+  });
 
   const categories = [
     {

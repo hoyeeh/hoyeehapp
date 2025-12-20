@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useSEO } from "@/hooks/useSEO";
 import {
   Select,
   SelectContent,
@@ -33,6 +34,21 @@ const Contact = () => {
     message: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // SEO meta tags
+  useSEO({
+    title: 'Contact Us',
+    description: 'Get in touch with Hoyeeh customer support. We\'re here to help with your questions about subscriptions, technical issues, partnerships, and more.',
+    url: 'https://hoyeeh.com/contact',
+    keywords: [
+      'contact Hoyeeh',
+      'customer support',
+      'help',
+      'email support',
+      'technical support',
+      'billing help',
+    ],
+  });
 
   const subjects = [
     { value: "general", label: "General Inquiry" },

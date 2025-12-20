@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface SEOProps {
   title?: string;
   description?: string;
   image?: string;
   url?: string;
+  canonicalUrl?: string;
   type?: 'website' | 'video.movie' | 'video.tv_show' | 'article';
   keywords?: string[];
   // Movie/Show specific
@@ -14,13 +16,26 @@ interface SEOProps {
   director?: string;
   actors?: string[];
   genre?: string;
+  // Additional meta
+  noindex?: boolean;
+  author?: string;
 }
+
+const BASE_URL = 'https://hoyeeh.com';
+
+// Helper to generate canonical URL from path
+export const getCanonicalUrl = (path: string): string => {
+  // Remove query params and trailing slashes for canonical
+  const cleanPath = path.split('?')[0].replace(/\/$/, '') || '/';
+  return `${BASE_URL}${cleanPath}`;
+};
 
 export const useSEO = ({
   title,
   description,
   image,
   url,
+  canonicalUrl,
   type = 'website',
   keywords = [],
   releaseDate,
@@ -29,7 +44,10 @@ export const useSEO = ({
   director,
   actors = [],
   genre,
+  noindex = false,
+  author,
 }: SEOProps) => {
+  const location = useLocation();
   useEffect(() => {
     const baseTitle = 'Hoyeeh';
     const fullTitle = title ? `${title} | ${baseTitle}` : baseTitle;
@@ -49,6 +67,28 @@ export const useSEO = ({
       meta.content = content;
     };
 
+    // Helper to update or create link tag
+    const setLink = (rel: string, href: string) => {
+      let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = rel;
+        document.head.appendChild(link);
+      }
+      link.href = href;
+    };
+
+    // Canonical URL - use provided or generate from current path
+    const canonical = canonicalUrl || url || getCanonicalUrl(location.pathname);
+    setLink('canonical', canonical);
+
+    // Robots meta
+    if (noindex) {
+      setMeta('robots', 'noindex, nofollow');
+    } else {
+      setMeta('robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+    }
+
     // Basic meta tags
     if (description) {
       setMeta('description', description);
@@ -56,6 +96,10 @@ export const useSEO = ({
 
     if (keywords.length > 0) {
       setMeta('keywords', keywords.join(', '));
+    }
+
+    if (author) {
+      setMeta('author', author);
     }
 
     // Open Graph tags
