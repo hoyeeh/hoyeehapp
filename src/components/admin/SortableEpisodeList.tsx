@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Edit2, Trash2, GripVertical, Clock, SkipForward } from "lucide-react";
+import { Play, Edit2, Trash2, GripVertical, Clock, SkipForward, CheckCircle, XCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DndContext,
@@ -47,6 +47,7 @@ interface SortableEpisodeListProps {
   onEdit: (episode: Episode) => void;
   onDelete: (episodeId: string) => void;
   onReorder: (episodes: { id: string; episode_number: number }[]) => void;
+  urlCheckResults?: Record<string, { valid: boolean; error?: string }>;
 }
 
 interface SortableEpisodeProps {
@@ -54,9 +55,10 @@ interface SortableEpisodeProps {
   onEdit: () => void;
   onDelete: () => void;
   onPreview: () => void;
+  urlCheckResult?: { valid: boolean; error?: string };
 }
 
-const SortableEpisode = ({ episode, onEdit, onDelete, onPreview }: SortableEpisodeProps) => {
+const SortableEpisode = ({ episode, onEdit, onDelete, onPreview, urlCheckResult }: SortableEpisodeProps) => {
   const {
     attributes,
     listeners,
@@ -123,6 +125,20 @@ const SortableEpisode = ({ episode, onEdit, onDelete, onPreview }: SortableEpiso
             ) : (
               <span className="text-yellow-500">No Video</span>
             )}
+            {/* URL check result indicator */}
+            {urlCheckResult && episode.video_url && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={`flex items-center gap-0.5 cursor-help ${urlCheckResult.valid ? 'text-green-500' : 'text-red-500'}`}>
+                    {urlCheckResult.valid ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                    {urlCheckResult.valid ? 'OK' : 'Broken'}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{urlCheckResult.valid ? 'URL verified' : (urlCheckResult.error || 'URL not accessible')}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             {/* Intro times indicator */}
             {(episode.intro_end_time && episode.intro_end_time !== 90) && (
               <Tooltip>
@@ -176,7 +192,8 @@ export const SortableEpisodeList = ({
   episodes, 
   onEdit, 
   onDelete, 
-  onReorder 
+  onReorder,
+  urlCheckResults = {},
 }: SortableEpisodeListProps) => {
   const [previewEpisode, setPreviewEpisode] = useState<Episode | null>(null);
   
@@ -229,6 +246,7 @@ export const SortableEpisodeList = ({
                 onEdit={() => onEdit(episode)}
                 onDelete={() => onDelete(episode.id)}
                 onPreview={() => setPreviewEpisode(episode)}
+                urlCheckResult={episode.video_url ? urlCheckResults[episode.video_url] : undefined}
               />
             ))}
           </div>
