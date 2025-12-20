@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,7 +10,8 @@ import { CastProvider } from "@/contexts/CastContext";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
-import { DownloadManagerPanel } from "@/components/DownloadManagerPanel";
+import { EnhancedDownloadQueue } from "@/components/EnhancedDownloadQueue";
+import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { migrateLegacyKeys } from "@/utils/cacheManager";
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -118,6 +119,30 @@ function CapacitorBackHandler() {
   return null;
 }
 
+// Download Queue Wrapper Component
+function DownloadQueueWrapper() {
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const { downloads } = useDownloadManager();
+  
+  // Auto-show when downloads are active
+  const hasActiveDownloads = downloads.some(d => 
+    ['downloading', 'paused', 'pending', 'queued'].includes(d.status)
+  );
+  
+  useEffect(() => {
+    if (hasActiveDownloads && !isQueueOpen) {
+      setIsQueueOpen(true);
+    }
+  }, [hasActiveDownloads]);
+
+  return (
+    <EnhancedDownloadQueue 
+      isOpen={isQueueOpen || hasActiveDownloads} 
+      onClose={() => setIsQueueOpen(false)} 
+    />
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -128,7 +153,7 @@ const App = () => (
           <SubscriptionExpiryChecker />
           <OfflineIndicator />
           <PWAInstallBanner />
-          <DownloadManagerPanel />
+          <DownloadQueueWrapper />
           <BrowserRouter>
             <PWAUpdateHandler />
             <PWANavigationHandler />
