@@ -82,20 +82,33 @@ export function useNetworkQuality(): NetworkQuality {
     
     if (connection) {
       const recommended = getRecommendedQuality(connection.downlink || 10, connection.effectiveType || '4g');
-      setNetworkQuality({
-        effectiveType: connection.effectiveType || 'unknown',
-        downlink: connection.downlink || 10,
-        rtt: connection.rtt || 50,
-        saveData: connection.saveData || false,
-        recommendedQuality: connection.saveData ? '480' : recommended,
-        connectionType: connection.type || 'unknown',
-        isOnline: navigator.onLine,
+      setNetworkQuality(prev => {
+        const newState = {
+          effectiveType: connection.effectiveType || 'unknown' as const,
+          downlink: connection.downlink || 10,
+          rtt: connection.rtt || 50,
+          saveData: connection.saveData || false,
+          recommendedQuality: connection.saveData ? '480' as const : recommended,
+          connectionType: connection.type || 'unknown',
+          isOnline: navigator.onLine,
+        };
+        // Only update if values actually changed to prevent infinite loops
+        if (
+          prev.effectiveType === newState.effectiveType &&
+          prev.downlink === newState.downlink &&
+          prev.rtt === newState.rtt &&
+          prev.saveData === newState.saveData &&
+          prev.isOnline === newState.isOnline
+        ) {
+          return prev;
+        }
+        return newState;
       });
     } else {
-      setNetworkQuality(prev => ({
-        ...prev,
-        isOnline: navigator.onLine,
-      }));
+      setNetworkQuality(prev => {
+        if (prev.isOnline === navigator.onLine) return prev;
+        return { ...prev, isOnline: navigator.onLine };
+      });
     }
   }, []);
 

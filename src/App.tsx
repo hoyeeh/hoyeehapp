@@ -12,6 +12,7 @@ import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { EnhancedDownloadQueue } from "@/components/EnhancedDownloadQueue";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
+import { useScheduledDownloadNotifications } from "@/hooks/useScheduledDownloadNotifications";
 import { migrateLegacyKeys } from "@/utils/cacheManager";
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -123,6 +124,14 @@ function CapacitorBackHandler() {
 function DownloadQueueWrapper() {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const { downloads } = useDownloadManager();
+  const { requestPermission } = useScheduledDownloadNotifications();
+  
+  // Request notification permission on first download
+  useEffect(() => {
+    if (downloads.length > 0) {
+      requestPermission();
+    }
+  }, [downloads.length, requestPermission]);
   
   // Auto-show when downloads are active
   const hasActiveDownloads = downloads.some(d => 

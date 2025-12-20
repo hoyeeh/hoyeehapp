@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Content } from '@/types';
 
@@ -164,6 +164,27 @@ export function useDownloadScheduler() {
         window.dispatchEvent(new CustomEvent('scheduled-download-ready', { 
           detail: download 
         }));
+        
+        // Show notification
+        const reason = download.scheduleType === 'off-peak' 
+          ? 'Off-peak hours started'
+          : download.scheduleType === 'wifi-only'
+          ? 'Connected to Wi-Fi'
+          : download.scheduleType === 'specific-time'
+          ? 'Scheduled time reached'
+          : '';
+        
+        // Notify via service worker for background notifications
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SCHEDULED_DOWNLOAD_STARTED',
+            payload: {
+              title: download.title,
+              episodeTitle: download.episodeTitle,
+              reason,
+            }
+          });
+        }
       });
       
       if (readyDownloads.length === 1) {
