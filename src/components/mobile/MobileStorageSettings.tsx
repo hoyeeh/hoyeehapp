@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, HardDrive, Trash2, Download, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { ArrowLeft, HardDrive, Trash2, Download, AlertTriangle, Sparkles, Film, Smartphone } from "lucide-react";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,15 @@ import {
 
 interface MobileStorageSettingsProps {
   onClose: () => void;
+}
+
+interface QualityBreakdown {
+  quality: string;
+  label: string;
+  count: number;
+  size: number;
+  color: string;
+  icon: React.ReactNode;
 }
 
 export function MobileStorageSettings({ onClose }: MobileStorageSettingsProps) {
@@ -55,6 +64,58 @@ export function MobileStorageSettings({ onClose }: MobileStorageSettingsProps) {
       console.error("Failed to load storage data:", error);
     }
   };
+
+  // Calculate storage breakdown by quality
+  const qualityBreakdown = useMemo((): QualityBreakdown[] => {
+    const breakdown: Record<string, { count: number; size: number }> = {
+      high: { count: 0, size: 0 },
+      medium: { count: 0, size: 0 },
+      low: { count: 0, size: 0 },
+    };
+
+    downloads.forEach(download => {
+      const quality = download.quality?.toLowerCase() || 'medium';
+      const normalizedQuality = quality.includes('1080') || quality === 'high' 
+        ? 'high' 
+        : quality.includes('720') || quality === 'medium' 
+          ? 'medium' 
+          : 'low';
+      
+      if (breakdown[normalizedQuality]) {
+        breakdown[normalizedQuality].count++;
+        breakdown[normalizedQuality].size += download.downloadedSize || 0;
+      }
+    });
+
+    return [
+      {
+        quality: 'high',
+        label: 'High Quality (1080p)',
+        count: breakdown.high.count,
+        size: breakdown.high.size,
+        color: 'bg-purple-500',
+        icon: <Sparkles className="w-4 h-4 text-purple-500" />,
+      },
+      {
+        quality: 'medium',
+        label: 'Standard (720p)',
+        count: breakdown.medium.count,
+        size: breakdown.medium.size,
+        color: 'bg-blue-500',
+        icon: <Film className="w-4 h-4 text-blue-500" />,
+      },
+      {
+        quality: 'low',
+        label: 'Data Saver (480p)',
+        count: breakdown.low.count,
+        size: breakdown.low.size,
+        color: 'bg-green-500',
+        icon: <Smartphone className="w-4 h-4 text-green-500" />,
+      },
+    ];
+  }, [downloads]);
+
+  const totalQualitySize = qualityBreakdown.reduce((acc, q) => acc + q.size, 0);
 
   const handleBack = () => {
     lightTap();
@@ -141,6 +202,71 @@ export function MobileStorageSettings({ onClose }: MobileStorageSettingsProps) {
             </div>
           )}
         </motion.div>
+
+        {/* Storage by Quality Section */}
+        {downloads.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-6"
+          >
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+              Storage by Quality
+            </h3>
+            
+            {/* Quality Breakdown Bar */}
+            <div className="bg-muted/20 rounded-2xl p-4 mb-3">
+              <div className="h-4 rounded-full overflow-hidden flex bg-muted/30">
+                {qualityBreakdown.map((item, index) => (
+                  item.size > 0 && (
+                    <motion.div
+                      key={item.quality}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(item.size / Math.max(totalQualitySize, 1)) * 100}%` }}
+                      transition={{ delay: 0.1 + index * 0.1, duration: 0.5 }}
+                      className={cn("h-full", item.color)}
+                    />
+                  )
+                ))}
+              </div>
+            </div>
+
+            {/* Quality Breakdown List */}
+            <div className="space-y-2">
+              {qualityBreakdown.map((item, index) => (
+                <motion.div
+                  key={item.quality}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 + index * 0.05 }}
+                  className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl"
+                >
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    item.quality === 'high' && "bg-purple-500/20",
+                    item.quality === 'medium' && "bg-blue-500/20",
+                    item.quality === 'low' && "bg-green-500/20"
+                  )}>
+                    {item.icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.count} {item.count === 1 ? 'item' : 'items'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-sm">{formatBytes(item.size)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {totalQualitySize > 0 ? ((item.size / totalQualitySize) * 100).toFixed(0) : 0}%
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Download Stats */}
         <motion.div

@@ -3,15 +3,39 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { CACHE_KEYS } from "@/utils/cacheManager";
+
+interface SmartDownloadQueue {
+  episodeId: string;
+  title: string;
+  status: 'queued' | 'downloading' | 'completed' | 'failed';
+  progress?: number;
+  showTitle?: string;
+}
+
 export function useSmartDownload() {
   const { user } = useAuth();
   const [smartDownloadEnabled, setSmartDownloadEnabled] = useState(() => 
     localStorage.getItem("smart-download") === "true"
   );
+  const [downloadQueue, setDownloadQueue] = useState<SmartDownloadQueue[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const toggleSmartDownload = useCallback((enabled: boolean) => {
     setSmartDownloadEnabled(enabled);
     localStorage.setItem("smart-download", enabled.toString());
+  }, []);
+
+  // Check if on WiFi
+  const checkWifiConnection = useCallback(() => {
+    const connection = (navigator as any).connection;
+    const isWifi = !connection || connection.type === "wifi" || connection.effectiveType === "4g";
+    const wifiOnly = localStorage.getItem(CACHE_KEYS.downloads.wifiOnly) === "true";
+    return !wifiOnly || isWifi;
+  }, []);
+
+  // Get preferred download quality
+  const getDownloadQuality = useCallback(() => {
+    return localStorage.getItem("hoyeeh_download_quality") || "medium";
   }, []);
 
   // Check for next episode and queue download
@@ -21,14 +45,14 @@ export function useSmartDownload() {
   ) => {
     if (!smartDownloadEnabled || !user) return;
 
-    // Check if on WiFi
-    const connection = (navigator as any).connection;
-    const isWifi = !connection || connection.type === "wifi" || connection.effectiveType === "4g";
-    const wifiOnly = localStorage.getItem(CACHE_KEYS.downloads.wifiOnly) === "true";
-    
-    if (wifiOnly && !isWifi) return;
+    if (!checkWifiConnection()) {
+      console.log("Smart Download: Skipped - not on WiFi");
+      return;
+    }
 
     try {
+      setIsProcessing(true);
+      
       // Get current episode number
       const { data: currentEp } = await supabase
         .from("episodes")
@@ -41,12 +65,23 @@ export function useSmartDownload() {
       // Get next episode
       const { data: nextEp } = await supabase
         .from("episodes")
-        .select("id, title, episode_number, season:season_id(content:content_id(title))")
+        .select(`
+          id, 
+          title, 
+          episode_number, 
+          season:season_id (
+            season_number,
+            content:content_id (title)
+          )
+        `)
         .eq("season_id", seasonId)
         .eq("episode_number", currentEp.episode_number + 1)
         .single();
 
-      if (!nextEp) return;
+      if (!nextEp) {
+        console.log("Smart Download: No next episode available");
+        return;
+      }
 
       // Check if already downloaded
       const { data: existingLicense } = await supabase
@@ -56,25 +91,69 @@ export function useSmartDownload() {
         .eq("episode_id", nextEp.id)
         .maybeSingle();
 
-      if (existingLicense) return;
+      if (existingLicense) {
+        console.log("Smart Download: Episode already downloaded");
+        return;
+      }
 
-      // Queue the next episode for download
+      // Check if already in queue
+      const alreadyQueued = downloadQueue.some(item => item.episodeId === nextEp.id);
+      if (alreadyQueued) {
+        console.log("Smart Download: Episode already in queue");
+        return;
+      }
+
+      // Add to queue
+      const seasonData = nextEp.season as any;
+      const showTitle = seasonData?.content?.title || "Unknown Show";
+      
+      const queueItem: SmartDownloadQueue = {
+        episodeId: nextEp.id,
+        title: nextEp.title,
+        status: 'queued',
+        showTitle,
+      };
+
+      setDownloadQueue(prev => [...prev, queueItem]);
+
       toast.info(`Smart Download: Queuing "${nextEp.title}"`, {
-        description: "Next episode will download automatically"
+        description: `Next episode of ${showTitle} will download automatically`
       });
 
-      // Trigger download start via edge function
-      await supabase.functions.invoke("download-start", {
+      // Trigger download
+      const { error } = await supabase.functions.invoke("download-start", {
         body: {
           episodeId: nextEp.id,
-          quality: localStorage.getItem("preferred-download-quality") || "720p"
+          quality: getDownloadQuality(),
+          deviceId: localStorage.getItem("device-id") || "web"
         }
       });
 
+      if (error) {
+        setDownloadQueue(prev => 
+          prev.map(item => 
+            item.episodeId === nextEp.id 
+              ? { ...item, status: 'failed' }
+              : item
+          )
+        );
+        console.error("Smart download error:", error);
+      } else {
+        setDownloadQueue(prev => 
+          prev.map(item => 
+            item.episodeId === nextEp.id 
+              ? { ...item, status: 'downloading' }
+              : item
+          )
+        );
+      }
+
     } catch (error) {
       console.error("Smart download error:", error);
+    } finally {
+      setIsProcessing(false);
     }
-  }, [smartDownloadEnabled, user]);
+  }, [smartDownloadEnabled, user, downloadQueue, checkWifiConnection, getDownloadQuality]);
 
   // Listen for completed downloads
   useEffect(() => {
@@ -95,7 +174,16 @@ export function useSmartDownload() {
           
           // Check if download just completed
           if (license.status === "active" && license.episode_id) {
-            // Get season info
+            // Update queue status
+            setDownloadQueue(prev => 
+              prev.map(item => 
+                item.episodeId === license.episode_id 
+                  ? { ...item, status: 'completed' }
+                  : item
+              )
+            );
+
+            // Get season info for next episode
             const { data: episode } = await supabase
               .from("episodes")
               .select("season_id")
@@ -115,9 +203,24 @@ export function useSmartDownload() {
     };
   }, [smartDownloadEnabled, user, checkAndQueueNextEpisode]);
 
+  // Clear completed items from queue periodically
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      setDownloadQueue(prev => 
+        prev.filter(item => item.status !== 'completed' && item.status !== 'failed')
+      );
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(cleanup);
+  }, []);
+
   return {
     smartDownloadEnabled,
     toggleSmartDownload,
-    checkAndQueueNextEpisode
+    checkAndQueueNextEpisode,
+    downloadQueue,
+    isProcessing,
+    checkWifiConnection,
+    getDownloadQuality,
   };
 }
