@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Shield, Lock, Eye, EyeOff, Check } from "lucide-react";
+import { ArrowLeft, Shield, Lock, Eye, EyeOff, Check, Users, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +9,12 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 const CONTENT_RATINGS = [
   { value: "G", label: "G", description: "General Audiences - All ages" },
@@ -26,7 +31,7 @@ interface MobileParentalControlsProps {
 export function MobileParentalControls({ onClose }: MobileParentalControlsProps) {
   const { user } = useAuth();
   const { data: profile, refetch } = useProfile();
-  const { lightTap, successFeedback, selectionTap } = useHaptics();
+  const { lightTap, successFeedback, selectionTap, warningFeedback } = useHaptics();
 
   const [enabled, setEnabled] = useState(false);
   const [ratingLimit, setRatingLimit] = useState("R");
@@ -34,6 +39,8 @@ export function MobileParentalControls({ onClose }: MobileParentalControlsProps)
   const [confirmPin, setConfirmPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pinStep, setPinStep] = useState<"enter" | "confirm">("enter");
 
   useEffect(() => {
     if (profile) {
@@ -47,21 +54,55 @@ export function MobileParentalControls({ onClose }: MobileParentalControlsProps)
     onClose();
   };
 
+  const handleEnableToggle = (checked: boolean) => {
+    selectionTap();
+    if (checked) {
+      const hasExistingPin = !!(profile as any)?.parental_pin;
+      if (!hasExistingPin) {
+        setShowPinSetup(true);
+        setPinStep("enter");
+        setPin("");
+        setConfirmPin("");
+      } else {
+        setEnabled(true);
+      }
+    } else {
+      setEnabled(false);
+    }
+  };
+
+  const handlePinEntered = (value: string) => {
+    if (pinStep === "enter") {
+      setPin(value);
+      if (value.length === 4) {
+        setTimeout(() => {
+          setPinStep("confirm");
+        }, 300);
+      }
+    } else {
+      setConfirmPin(value);
+      if (value.length === 4) {
+        if (value === pin) {
+          successFeedback();
+          setShowPinSetup(false);
+          setEnabled(true);
+          toast.success("PIN set successfully! Kids mode is now enabled.");
+        } else {
+          warningFeedback();
+          toast.error("PINs don't match. Try again.");
+          setPinStep("enter");
+          setPin("");
+          setConfirmPin("");
+        }
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
-    if (enabled && pin && pin !== confirmPin) {
-      toast.error("PINs do not match");
-      return;
-    }
-
-    if (enabled && pin && (pin.length < 4 || pin.length > 6)) {
-      toast.error("PIN must be 4-6 digits");
-      return;
-    }
-
-    if (enabled && pin && !/^\d+$/.test(pin)) {
-      toast.error("PIN must contain only numbers");
+    if (enabled && !hasExistingPin && !pin) {
+      toast.error("Please set a PIN to enable parental controls");
       return;
     }
 
@@ -74,7 +115,7 @@ export function MobileParentalControls({ onClose }: MobileParentalControlsProps)
         parental_rating_limit: ratingLimit,
       };
 
-      if (pin) {
+      if (pin && pin.length === 4) {
         updates.parental_pin = pin;
       }
 
@@ -136,10 +177,7 @@ export function MobileParentalControls({ onClose }: MobileParentalControlsProps)
           </div>
           <Switch
             checked={enabled}
-            onCheckedChange={(checked) => {
-              selectionTap();
-              setEnabled(checked);
-            }}
+            onCheckedChange={handleEnableToggle}
           />
         </motion.div>
 
@@ -253,13 +291,110 @@ export function MobileParentalControls({ onClose }: MobileParentalControlsProps)
         >
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || (enabled && !hasExistingPin && !pin)}
             className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90"
           >
             {isSaving ? "Saving..." : "Save Settings"}
           </Button>
         </motion.div>
       </main>
+
+      {/* PIN Setup Modal */}
+      <AnimatePresence>
+        {showPinSetup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-xl"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-sm mx-4 p-6 bg-card rounded-3xl border border-border/30 shadow-2xl"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center mb-4">
+                  <Users className="w-8 h-8 text-primary-foreground" />
+                </div>
+                
+                <h2 className="text-xl font-bold mb-2">
+                  {pinStep === "enter" ? "Create Kids PIN" : "Confirm Your PIN"}
+                </h2>
+                <p className="text-sm text-muted-foreground mb-6">
+                  {pinStep === "enter" 
+                    ? "Enter a 4-digit PIN to protect Kids mode settings" 
+                    : "Enter the same PIN again to confirm"
+                  }
+                </p>
+
+                <div className="mb-6">
+                  <InputOTP
+                    maxLength={4}
+                    value={pinStep === "enter" ? pin : confirmPin}
+                    onChange={handlePinEntered}
+                    autoFocus
+                  >
+                    <InputOTPGroup className="gap-3">
+                      <InputOTPSlot index={0} className="w-14 h-14 text-2xl rounded-xl border-2 border-primary/30 bg-muted/50" />
+                      <InputOTPSlot index={1} className="w-14 h-14 text-2xl rounded-xl border-2 border-primary/30 bg-muted/50" />
+                      <InputOTPSlot index={2} className="w-14 h-14 text-2xl rounded-xl border-2 border-primary/30 bg-muted/50" />
+                      <InputOTPSlot index={3} className="w-14 h-14 text-2xl rounded-xl border-2 border-primary/30 bg-muted/50" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                {/* Step indicator */}
+                <div className="flex gap-2 mb-6">
+                  <div className={cn(
+                    "w-2 h-2 rounded-full transition-colors",
+                    pinStep === "enter" ? "bg-primary" : "bg-primary/30"
+                  )} />
+                  <div className={cn(
+                    "w-2 h-2 rounded-full transition-colors",
+                    pinStep === "confirm" ? "bg-primary" : "bg-primary/30"
+                  )} />
+                </div>
+
+                <div className="flex gap-3 w-full">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      lightTap();
+                      setShowPinSetup(false);
+                      setPin("");
+                      setConfirmPin("");
+                    }}
+                    className="flex-1 h-11 rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  {pinStep === "confirm" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        lightTap();
+                        setPinStep("enter");
+                        setPin("");
+                        setConfirmPin("");
+                      }}
+                      className="flex-1 h-11 rounded-xl"
+                    >
+                      Start Over
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>This PIN is required to exit Kids mode</span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
