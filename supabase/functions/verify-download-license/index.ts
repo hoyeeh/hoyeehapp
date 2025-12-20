@@ -6,6 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Simple in-memory rate limiter
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 30; // 30 requests per minute per user
+
+function isRateLimited(userId: string): { limited: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+
+  // Clean up expired entries periodically
+  if (rateLimitMap.size > 10000) {
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (now > value.resetTime) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return { limited: false };
+  }
+
+  if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
+    const retryAfter = Math.ceil((userLimit.resetTime - now) / 1000);
+    return { limited: true, retryAfter };
+  }
+
+  userLimit.count++;
+  return { limited: false };
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -33,6 +65,27 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ canPlay: false, reason: 'Invalid authentication' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Rate limiting check
+    const rateCheck = isRateLimited(user.id);
+    if (rateCheck.limited) {
+      console.warn(`[verify-license] Rate limit exceeded for user ${user.id}`);
+      return new Response(
+        JSON.stringify({ 
+          canPlay: false, 
+          reason: 'Too many requests. Please try again later.',
+          code: 'RATE_LIMITED'
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateCheck.retryAfter || 60)
+          } 
+        }
       );
     }
 

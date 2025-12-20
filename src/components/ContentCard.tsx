@@ -178,12 +178,6 @@ export const ContentCard = ({
         
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {content.isPremium && (
-            <div className="flex items-center gap-1 bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 rounded text-xs font-semibold text-white shadow-lg">
-              <Crown className="h-3 w-3" />
-              PREMIUM
-            </div>
-          )}
           <ContentRatingBadge rating={content.contentRating} size="sm" />
         </div>
 
