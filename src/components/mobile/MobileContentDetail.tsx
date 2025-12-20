@@ -225,7 +225,7 @@ export function MobileContentDetail({
     onClose();
   };
 
-  const handlePlay = () => {
+  const handlePlay = async () => {
     mediumTap();
     
     // Check kids profile restrictions
@@ -241,6 +241,31 @@ export function MobileContentDetail({
     if (!canAccessPremium) {
       toast.error("Subscribe to watch this content");
       navigate("/subscription");
+      return;
+    }
+    
+    // For series, play first available episode
+    if (content.contentType === "series") {
+      if (episodes.length === 0) {
+        toast.error("No episodes available yet");
+        return;
+      }
+      const firstWithVideo = episodes.find((ep: any) => ep.video_url);
+      if (!firstWithVideo) {
+        toast.error("No playable episodes available");
+        navigate(`/content/${content.id}`);
+        onClose();
+        return;
+      }
+      // Navigate to content detail with episode autoplay
+      navigate(`/content/${content.id}?episodeId=${firstWithVideo.id}&autoplay=true`);
+      onClose();
+      return;
+    }
+    
+    // For movies, check if video URL exists
+    if (!content.videoUrl) {
+      toast.error("Video not available yet");
       return;
     }
     

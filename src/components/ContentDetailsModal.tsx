@@ -336,7 +336,13 @@ export const ContentDetailsModal = ({
                 <Button
                   variant="brand"
                   size="lg"
-                  onClick={() => onPlay(content)}
+                  onClick={() => {
+                    if (!content.videoUrl) {
+                      toast.error("Video not available yet");
+                      return;
+                    }
+                    onPlay(content);
+                  }}
                   className="gap-2"
                 >
                   <Play className="h-5 w-5" fill="currentColor" />

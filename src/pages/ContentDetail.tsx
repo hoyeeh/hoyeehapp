@@ -255,6 +255,7 @@ const ContentDetail = () => {
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [episodeResumeAt, setEpisodeResumeAt] = useState<number>(0);
   const [episodeAutoPlayAttempted, setEpisodeAutoPlayAttempted] = useState(false);
+  const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
 
   const content = allContent.find(c => c.id === id);
   const isInList = id ? watchlistIds.includes(id) : false;
@@ -332,6 +333,60 @@ const ContentDetail = () => {
 
     fetchAndPlayEpisode();
   }, [episodeIdFromUrl, episodeAutoPlayAttempted, content, profile, navigate]);
+
+  // Fetch all episodes for next episode functionality
+  useEffect(() => {
+    const fetchAllEpisodes = async () => {
+      if (!content || content.contentType !== 'series') return;
+
+      const { data: seasons } = await supabase
+        .from('seasons')
+        .select('id, season_number')
+        .eq('content_id', content.id)
+        .order('season_number');
+
+      if (!seasons?.length) return;
+
+      const episodesPromises = seasons.map(async (season) => {
+        const { data: eps } = await supabase
+          .from('episodes')
+          .select('*')
+          .eq('season_id', season.id)
+          .order('episode_number');
+        return (eps || []).map(ep => ({ ...ep, season_number: season.season_number }));
+      });
+
+      const allEps = (await Promise.all(episodesPromises)).flat();
+      setAllEpisodes(allEps as Episode[]);
+    };
+
+    fetchAllEpisodes();
+  }, [content]);
+
+  // Find next episode
+  const getNextEpisode = useMemo(() => {
+    if (!playingEpisode || allEpisodes.length === 0) return null;
+    
+    const currentIndex = allEpisodes.findIndex(ep => ep.id === playingEpisode.id);
+    if (currentIndex === -1 || currentIndex >= allEpisodes.length - 1) return null;
+    
+    // Find next episode with a video URL
+    for (let i = currentIndex + 1; i < allEpisodes.length; i++) {
+      if (allEpisodes[i].video_url) {
+        return allEpisodes[i];
+      }
+    }
+    return null;
+  }, [playingEpisode, allEpisodes]);
+
+  const handlePlayNextEpisode = (nextEp: { id: string; title: string; episodeNumber: number; videoUrl: string }) => {
+    const episode = allEpisodes.find(ep => ep.id === nextEp.id);
+    if (episode) {
+      setEpisodeResumeAt(0);
+      setPlayingEpisode(episode);
+      toast.success(`Now playing: E${episode.episode_number} - ${episode.title}`);
+    }
+  };
 
   const handleToggleList = async () => {
     if (!user || !id) {
@@ -415,16 +470,26 @@ const ContentDetail = () => {
 
   // Playing episode
   if (playingEpisode && content) {
+    const nextEpisodeInfo = getNextEpisode ? {
+      id: getNextEpisode.id,
+      title: getNextEpisode.title,
+      episodeNumber: getNextEpisode.episode_number,
+      videoUrl: getNextEpisode.video_url || '',
+      thumbnailUrl: getNextEpisode.thumbnail_url || undefined,
+    } : undefined;
+
     return (
       <VideoPlayer
         src={playingEpisode.video_url || ''}
-        title={`${content.title} - S${playingEpisode.episode_number} ${playingEpisode.title}`}
+        title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
         contentId={playingEpisode.id}
         initialProgress={episodeResumeAt}
         onBack={() => {
           setPlayingEpisode(null);
           setEpisodeResumeAt(0);
         }}
+        nextEpisode={nextEpisodeInfo}
+        onPlayNextEpisode={handlePlayNextEpisode}
       />
     );
   }
