@@ -12,7 +12,7 @@ interface KidsMobileSearchProps {
   onDetails: (content: Content) => void;
 }
 
-const KIDS_RATINGS = ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG"];
+import { KIDS_RATINGS } from "@/constants/kidsRatings";
 
 export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
