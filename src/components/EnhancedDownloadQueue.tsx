@@ -17,7 +17,9 @@ import {
   HardDrive,
   Zap,
   Settings,
-  RefreshCw
+  RefreshCw,
+  Moon,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { useBackgroundDownload, isBackgroundFetchSupported } from "@/hooks/useBackgroundDownload";
 import { useAutoDownloadQuality } from "@/hooks/useAutoDownloadQuality";
+import { useDownloadScheduler } from "@/hooks/useDownloadScheduler";
+import { SchedulerSettingsDialog } from "@/components/DownloadScheduler";
 import { motion, AnimatePresence } from "framer-motion";
+import { format } from "date-fns";
 
 interface EnhancedDownloadQueueProps {
   isOpen: boolean;
@@ -86,7 +91,7 @@ function formatBytes(bytes: number): string {
 
 export function EnhancedDownloadQueue({ isOpen, onClose }: EnhancedDownloadQueueProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'scheduled' | 'completed'>('active');
   
   const {
     downloads,
@@ -100,6 +105,14 @@ export function EnhancedDownloadQueue({ isOpen, onClose }: EnhancedDownloadQueue
 
   const { pendingDownloads, isInBackground } = useBackgroundDownload();
   const { autoQuality, storageLimit, refreshStorageInfo } = useAutoDownloadQuality();
+  const { 
+    scheduledDownloads, 
+    cancelScheduledDownload, 
+    removeScheduledDownload, 
+    isOffPeakNow, 
+    isOnWifi,
+    settings: schedulerSettings,
+  } = useDownloadScheduler();
   const backgroundFetchSupported = isBackgroundFetchSupported();
 
   // Refresh storage info periodically
@@ -142,12 +155,45 @@ export function EnhancedDownloadQueue({ isOpen, onClose }: EnhancedDownloadQueue
   const failedDownloads = allDownloads.filter(d => 
     ['failed', 'expired'].includes(d.status)
   );
+  
+  // Filter scheduled downloads
+  const pendingScheduled = scheduledDownloads.filter(d => 
+    d.status === 'pending' || d.status === 'ready'
+  );
 
   const displayedDownloads = activeTab === 'active' 
     ? activeDownloads 
     : activeTab === 'completed' 
     ? completedDownloads 
     : allDownloads;
+
+  const getScheduleIcon = (scheduleType: string) => {
+    switch (scheduleType) {
+      case 'off-peak':
+        return <Moon className="w-3 h-3" />;
+      case 'wifi-only':
+        return <Wifi className="w-3 h-3" />;
+      case 'specific-time':
+        return <Calendar className="w-3 h-3" />;
+      default:
+        return <Zap className="w-3 h-3" />;
+    }
+  };
+
+  const getScheduleLabel = (download: typeof scheduledDownloads[0]) => {
+    switch (download.scheduleType) {
+      case 'off-peak':
+        return `Off-peak (${schedulerSettings.offPeakStart} - ${schedulerSettings.offPeakEnd})`;
+      case 'wifi-only':
+        return 'When on Wi-Fi';
+      case 'specific-time':
+        return download.scheduledTime 
+          ? `At ${format(new Date(download.scheduledTime), 'HH:mm')}`
+          : 'Scheduled';
+      default:
+        return 'Immediate';
+    }
+  };
 
   const getStatusIcon = (download: UnifiedDownload) => {
     if (download.isBackgroundFetch && download.status === 'downloading') {
@@ -248,24 +294,30 @@ export function EnhancedDownloadQueue({ isOpen, onClose }: EnhancedDownloadQueue
           {backgroundFetchSupported && (
             <div className="flex items-center gap-1.5 text-primary">
               <CloudDownload className="w-3.5 h-3.5" />
-              <span>Background downloads</span>
+              <span>Background</span>
             </div>
           )}
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Zap className="w-3.5 h-3.5" />
             <span>Auto: {autoQuality.recommendedQuality}</span>
           </div>
-          {navigator.onLine ? (
-            <div className="flex items-center gap-1.5 text-green-500 ml-auto">
+          <div className={cn(
+            "flex items-center gap-1.5 ml-auto",
+            isOffPeakNow ? "text-primary" : "text-muted-foreground"
+          )}>
+            <Moon className="w-3.5 h-3.5" />
+            <span>{isOffPeakNow ? 'Off-peak' : 'Peak'}</span>
+          </div>
+          {isOnWifi ? (
+            <div className="flex items-center gap-1.5 text-green-500">
               <Wifi className="w-3.5 h-3.5" />
-              <span>Online</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-destructive ml-auto">
+            <div className="flex items-center gap-1.5 text-amber-500">
               <WifiOff className="w-3.5 h-3.5" />
-              <span>Offline</span>
             </div>
           )}
+          <SchedulerSettingsDialog />
         </div>
 
         <AnimatePresence>
@@ -287,161 +339,176 @@ export function EnhancedDownloadQueue({ isOpen, onClose }: EnhancedDownloadQueue
                       </Badge>
                     )}
                   </TabsTrigger>
+                  <TabsTrigger value="scheduled" className="text-xs">
+                    Scheduled
+                    {pendingScheduled.length > 0 && (
+                      <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-[10px]">
+                        {pendingScheduled.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                   <TabsTrigger value="completed" className="text-xs">
-                    Completed
+                    Done
                     {completedDownloads.length > 0 && (
                       <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-[10px]">
                         {completedDownloads.length}
                       </Badge>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="all" className="text-xs">
-                    All
-                    <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-[10px]">
-                      {allDownloads.length}
-                    </Badge>
-                  </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value={activeTab} className="mt-0">
+                {/* Active Downloads Tab */}
+                <TabsContent value="active" className="mt-0">
                   <div className="max-h-[280px] overflow-y-auto">
-                    {displayedDownloads.length === 0 ? (
+                    {activeDownloads.length === 0 ? (
                       <div className="py-8 text-center text-muted-foreground">
                         <Download className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">
-                          {activeTab === 'active' ? 'No active downloads' : 
-                           activeTab === 'completed' ? 'No completed downloads' : 
-                           'No downloads yet'}
-                        </p>
+                        <p className="text-sm">No active downloads</p>
                       </div>
                     ) : (
-                      displayedDownloads.map((download, index) => (
+                      activeDownloads.map((download, index) => (
                         <motion.div
                           key={download.id}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
                           transition={{ delay: index * 0.03 }}
-                          className={cn(
-                            "px-4 py-3 border-b border-border/30 last:border-0",
-                            download.status === 'completed' && "bg-green-500/5",
-                            download.status === 'failed' && "bg-destructive/5",
-                            download.status === 'expired' && "bg-amber-500/5"
-                          )}
+                          className="px-4 py-3 border-b border-border/30 last:border-0"
                         >
                           <div className="flex items-start gap-3">
-                            {/* Status Icon */}
-                            <div className="mt-0.5">
-                              {getStatusIcon(download)}
-                            </div>
-
-                            {/* Content */}
+                            <div className="mt-0.5">{getStatusIcon(download)}</div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium truncate">
-                                  {download.episodeTitle || download.title}
-                                </p>
-                                {download.isBackgroundFetch && (
-                                  <CloudDownload className="w-3 h-3 text-primary flex-shrink-0" />
-                                )}
-                              </div>
-                              {download.episodeTitle && (
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {download.title}
-                                </p>
-                              )}
-                              
-                              {/* Quality Badge */}
-                              {download.quality && (
-                                <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0">
-                                  {download.quality}
-                                </Badge>
-                              )}
-
-                              {/* Progress Bar */}
+                              <p className="text-sm font-medium truncate">
+                                {download.episodeTitle || download.title}
+                              </p>
                               {['downloading', 'paused', 'pending'].includes(download.status) && (
                                 <div className="mt-2 space-y-1">
                                   <Progress value={download.progress} className="h-1.5" />
                                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                                     <span>{download.progress.toFixed(0)}%</span>
-                                    <div className="flex items-center gap-2">
-                                      {download.status === 'downloading' && download.speed && (
-                                        <span>{formatSpeed(download.speed)}</span>
-                                      )}
-                                      {download.status === 'downloading' && download.eta && (
-                                        <span>• {formatEta(download.eta)} left</span>
-                                      )}
-                                      {download.downloadedSize > 0 && download.totalSize > 0 && (
-                                        <span className="ml-1">
-                                          {formatBytes(download.downloadedSize)} / {formatBytes(download.totalSize)}
-                                        </span>
-                                      )}
-                                    </div>
+                                    {download.speed && (
+                                      <span>{formatSpeed(download.speed)}</span>
+                                    )}
                                   </div>
                                 </div>
                               )}
-
-                              {/* Status Text */}
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                {getStatusLabel(download)}
-                                {download.status === 'completed' && download.totalSize > 0 && (
-                                  <span className="ml-1">• {formatBytes(download.totalSize)}</span>
-                                )}
-                              </p>
                             </div>
-
-                            {/* Actions */}
                             <div className="flex items-center gap-1">
                               {download.status === 'downloading' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => pauseDownload(download.contentId, download.episodeId)}
-                                >
+                                <Button variant="ghost" size="icon" className="h-7 w-7"
+                                  onClick={() => pauseDownload(download.contentId, download.episodeId)}>
                                   <Pause className="w-3.5 h-3.5" />
                                 </Button>
                               )}
                               {download.status === 'paused' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => resumeDownload(download.contentId, download.episodeId)}
-                                >
+                                <Button variant="ghost" size="icon" className="h-7 w-7"
+                                  onClick={() => resumeDownload(download.contentId, download.episodeId)}>
                                   <Play className="w-3.5 h-3.5" />
                                 </Button>
                               )}
-                              {download.status === 'failed' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => resumeDownload(download.contentId, download.episodeId)}
-                                >
-                                  <RefreshCw className="w-3.5 h-3.5" />
-                                </Button>
-                              )}
-                              {download.status !== 'completed' ? (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-destructive hover:text-destructive"
-                                  onClick={() => cancelDownload(download.contentId, download.episodeId)}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
+                              <Button variant="ghost" size="icon" 
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => cancelDownload(download.contentId, download.episodeId)}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Scheduled Downloads Tab */}
+                <TabsContent value="scheduled" className="mt-0">
+                  <div className="max-h-[280px] overflow-y-auto">
+                    {pendingScheduled.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No scheduled downloads</p>
+                        <p className="text-xs mt-1">Use the schedule option when downloading</p>
+                      </div>
+                    ) : (
+                      pendingScheduled.map((download, index) => (
+                        <motion.div
+                          key={download.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.03 }}
+                          className={cn(
+                            "px-4 py-3 border-b border-border/30 last:border-0",
+                            download.status === 'ready' && "bg-primary/5"
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {download.status === 'ready' ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
                               ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-destructive hover:text-destructive"
-                                  onClick={() => deleteDownload(download.contentId, download.episodeId)}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
+                                <Clock className="w-4 h-4 text-muted-foreground" />
                               )}
                             </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {download.episodeTitle || download.title}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+                                {getScheduleIcon(download.scheduleType)}
+                                <span>{getScheduleLabel(download)}</span>
+                                <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                                  {download.quality}
+                                </Badge>
+                              </div>
+                              {download.status === 'ready' && (
+                                <p className="text-[10px] text-primary mt-1">Starting download...</p>
+                              )}
+                            </div>
+                            <Button variant="ghost" size="icon" 
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                cancelScheduledDownload(download.id);
+                                removeScheduledDownload(download.id);
+                              }}>
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Completed Downloads Tab */}
+                <TabsContent value="completed" className="mt-0">
+                  <div className="max-h-[280px] overflow-y-auto">
+                    {completedDownloads.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No completed downloads</p>
+                      </div>
+                    ) : (
+                      completedDownloads.map((download, index) => (
+                        <motion.div
+                          key={download.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.03 }}
+                          className="px-4 py-3 border-b border-border/30 last:border-0 bg-green-500/5"
+                        >
+                          <div className="flex items-start gap-3">
+                            <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {download.episodeTitle || download.title}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {formatBytes(download.totalSize)} • {download.quality}
+                              </p>
+                            </div>
+                            <Button variant="ghost" size="icon" 
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => deleteDownload(download.contentId, download.episodeId)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
                         </motion.div>
                       ))
