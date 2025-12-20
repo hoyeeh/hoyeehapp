@@ -40,7 +40,7 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
     <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-pink-950 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Stars - replaced emoji with CSS */}
+        {/* Stars */}
         {[...Array(20)].map((_, i) => (
           <div
             key={`star-${i}`}
@@ -65,10 +65,9 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
               left: `${Math.random() * 100}%`,
               top: `${20 + Math.random() * 60}%`,
               animationDelay: `${i * 2}s`,
-              fontSize: `${40 + Math.random() * 60}px`,
             }}
           >
-            ☁️
+            <Sparkles className="h-10 w-10" />
           </div>
         ))}
       </div>
@@ -113,7 +112,6 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
           <NavButton 
             icon={Home} 
             label="Home" 
-            emoji="🏠"
             onClick={() => {
               playClickSound();
               navigate("/");
@@ -124,7 +122,6 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
           <NavButton 
             icon={Search} 
             label="Search" 
-            emoji="🔍"
             onClick={() => {
               playClickSound();
               navigate("/search");
@@ -135,7 +132,6 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
           <NavButton 
             icon={List} 
             label="My List" 
-            emoji="💖"
             onClick={() => {
               playClickSound();
               navigate("/my-list");
@@ -157,14 +153,12 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
 const NavButton = ({ 
   icon: Icon, 
   label, 
-  emoji,
   onClick,
   active = false,
   color,
 }: { 
   icon: typeof Home; 
   label: string;
-  emoji: string;
   onClick: () => void;
   active?: boolean;
   color: string;
@@ -182,12 +176,7 @@ const NavButton = ({
           : "text-white/70 hover:text-white hover:bg-white/10 hover:scale-105"
       )}
     >
-      <div className="relative">
-        <Icon className={cn("h-6 w-6 transition-transform", active && "animate-bounce-slow")} />
-        {active && (
-          <span className="absolute -top-2 -right-2 text-lg animate-bounce">{emoji}</span>
-        )}
-      </div>
+      <Icon className={cn("h-6 w-6 transition-transform stroke-[1.5]", active && "animate-bounce-slow")} />
       <span className="text-xs font-bold">{label}</span>
     </button>
   );
