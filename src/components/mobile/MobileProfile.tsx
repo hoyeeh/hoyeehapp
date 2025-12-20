@@ -22,7 +22,11 @@ import {
   Wifi,
   PlayCircle,
   HardDrive,
-  Globe
+  Globe,
+  Palette,
+  Clock,
+  Lock,
+  BellRing
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
@@ -40,6 +44,11 @@ import { MobileManageProfiles } from "./MobileManageProfiles";
 import { MobileParentalControls } from "./MobileParentalControls";
 import { MobileLanguageSettings } from "./MobileLanguageSettings";
 import { MobileStorageSettings } from "./MobileStorageSettings";
+import { MobilePlaybackSettings } from "./MobilePlaybackSettings";
+import { MobileAppearanceSettings } from "./MobileAppearanceSettings";
+import { MobileWatchHistory } from "./MobileWatchHistory";
+import { MobileAccountSecurity } from "./MobileAccountSecurity";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 // Import avatar images
 import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
@@ -98,6 +107,10 @@ export function MobileProfile() {
   const [showParentalControls, setShowParentalControls] = useState(false);
   const [showLanguageSettings, setShowLanguageSettings] = useState(false);
   const [showStorageSettings, setShowStorageSettings] = useState(false);
+  const [showPlaybackSettings, setShowPlaybackSettings] = useState(false);
+  const [showAppearanceSettings, setShowAppearanceSettings] = useState(false);
+  const [showWatchHistory, setShowWatchHistory] = useState(false);
+  const [showAccountSecurity, setShowAccountSecurity] = useState(false);
   
   // Settings toggles
   const [wifiOnly, setWifiOnly] = useState(() => {
@@ -211,16 +224,36 @@ export function MobileProfile() {
       items: [
         { icon: Users, label: "Manage Profiles", modalKey: "profiles" },
         { icon: CreditCard, label: "Subscription", path: "/subscription", value: profile?.is_subscribed ? "Premium" : "Free" },
-        { icon: Bell, label: "Notifications", path: "/notification-preferences" },
+        { icon: Lock, label: "Account Security", modalKey: "security" },
         { icon: Shield, label: "Parental Controls", path: "/parental" },
       ],
     },
     {
-      title: "App Settings",
+      title: "Notifications",
+      items: [
+        { icon: BellRing, label: "Push Notifications", toggleKey: "push" },
+        { icon: Bell, label: "Notification Preferences", path: "/notification-preferences" },
+      ],
+    },
+    {
+      title: "Playback & Display",
+      items: [
+        { icon: PlayCircle, label: "Playback Quality", modalKey: "playback" },
+        { icon: Palette, label: "App Appearance", modalKey: "appearance" },
+        { icon: PlayCircle, label: "Auto-Play Previews", toggle: true, toggleKey: "autoPlay" },
+      ],
+    },
+    {
+      title: "Downloads & Storage",
       items: [
         { icon: Wifi, label: "WiFi-Only Downloads", toggle: true, toggleKey: "wifiOnly" },
-        { icon: PlayCircle, label: "Auto-Play Previews", toggle: true, toggleKey: "autoPlay" },
-        { icon: HardDrive, label: "Storage", modalKey: "storage" },
+        { icon: HardDrive, label: "Storage Management", modalKey: "storage" },
+        { icon: Clock, label: "Watch History", modalKey: "watchHistory" },
+      ],
+    },
+    {
+      title: "Language & Region",
+      items: [
         { icon: Globe, label: "App Language", modalKey: "language", value: languageNames[savedLanguage] || "English" },
       ],
     },
@@ -243,6 +276,15 @@ export function MobileProfile() {
   ];
 
   const renderMenuItem = (item: MenuSection["items"][0]) => {
+    // Special case for push notifications toggle
+    if (item.toggleKey === "push") {
+      return (
+        <div key={item.label} className="p-1">
+          <PushNotificationToggle />
+        </div>
+      );
+    }
+
     if (item.toggle) {
       const isChecked = item.toggleKey === "wifiOnly" ? wifiOnly : autoPlay;
       const handleToggle = item.toggleKey === "wifiOnly" ? handleWifiToggle : handleAutoPlayToggle;
@@ -272,6 +314,10 @@ export function MobileProfile() {
       else if (item.modalKey === "parental") setShowParentalControls(true);
       else if (item.modalKey === "language") setShowLanguageSettings(true);
       else if (item.modalKey === "storage") setShowStorageSettings(true);
+      else if (item.modalKey === "playback") setShowPlaybackSettings(true);
+      else if (item.modalKey === "appearance") setShowAppearanceSettings(true);
+      else if (item.modalKey === "watchHistory") setShowWatchHistory(true);
+      else if (item.modalKey === "security") setShowAccountSecurity(true);
       else if (item.action) item.action();
       else if (item.path) navigate(item.path);
     };
@@ -578,6 +624,23 @@ export function MobileProfile() {
           <MobileStorageSettings onClose={() => setShowStorageSettings(false)} />
         )}
       </AnimatePresence>
+      
+      <MobilePlaybackSettings 
+        open={showPlaybackSettings} 
+        onClose={() => setShowPlaybackSettings(false)} 
+      />
+      <MobileAppearanceSettings 
+        open={showAppearanceSettings} 
+        onClose={() => setShowAppearanceSettings(false)} 
+      />
+      <MobileWatchHistory 
+        open={showWatchHistory} 
+        onClose={() => setShowWatchHistory(false)} 
+      />
+      <MobileAccountSecurity 
+        open={showAccountSecurity} 
+        onClose={() => setShowAccountSecurity(false)} 
+      />
 
       {/* Bottom Nav */}
       <MobileBottomNav />
