@@ -21,6 +21,7 @@ import {
   Airplay,
   Monitor,
   Loader,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -38,7 +39,9 @@ import { usePictureInPicture } from "@/hooks/usePictureInPicture";
 import { useDLNA } from "@/hooks/useDLNA";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useAirPlay } from "@/hooks/useAirPlay";
+import { useCastHistory } from "@/hooks/useCastHistory";
 import { CastController } from "@/components/CastController";
+import { CastSetupGuide } from "@/components/cast/CastSetupGuide";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 
@@ -139,13 +142,21 @@ export const VideoPlayer = ({
   // DLNA hook
   const dlna = useDLNA();
 
+  // Cast history hook for device memory and auto-reconnect
+  const castHistory = useCastHistory();
+  const [autoReconnectAttempted, setAutoReconnectAttempted] = useState(false);
+
   // AirPlay hook
   const airPlay = useAirPlay({
     onConnect: () => {
       const video = videoRef.current;
       if (video) {
-        // Video continues playing on AirPlay device
         toast.success('Connected to AirPlay');
+        castHistory.addDevice({
+          id: 'airplay-device',
+          name: airPlay.deviceName || 'AirPlay Device',
+          type: 'airplay',
+        });
       }
     },
     onDisconnect: () => {
@@ -159,6 +170,58 @@ export const VideoPlayer = ({
       airPlay.setupVideo(videoRef.current);
     }
   }, [airPlay.setupVideo]);
+
+  // Track Chromecast connections in history
+  useEffect(() => {
+    if (cast.isConnected && cast.deviceName) {
+      castHistory.addDevice({
+        id: `chromecast-${cast.deviceName}`,
+        name: cast.deviceName,
+        type: 'chromecast',
+      });
+    }
+  }, [cast.isConnected, cast.deviceName]);
+
+  // Track DLNA connections in history
+  useEffect(() => {
+    if (dlna.connectedDevice) {
+      castHistory.addDevice({
+        id: dlna.connectedDevice.id,
+        name: dlna.connectedDevice.name,
+        type: 'dlna',
+      });
+    }
+  }, [dlna.connectedDevice]);
+
+  // Auto-reconnect to last used device on player load
+  useEffect(() => {
+    if (autoReconnectAttempted || !castHistory.lastUsedDevice) return;
+    
+    const attemptAutoReconnect = async () => {
+      setAutoReconnectAttempted(true);
+      const lastDevice = castHistory.lastUsedDevice;
+      
+      if (!lastDevice) return;
+
+      // Only attempt reconnect if the device was used recently (within 24 hours)
+      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+      if (lastDevice.lastUsed < twentyFourHoursAgo) return;
+
+      if (lastDevice.type === 'chromecast' && cast.isAvailable) {
+        toast.info(`Reconnecting to ${lastDevice.name}...`, { duration: 2000 });
+        // Chromecast will auto-connect if device is available
+        cast.connect();
+      } else if (lastDevice.type === 'dlna') {
+        toast.info('Scanning for your last DLNA device...', { duration: 2000 });
+        dlna.scanForDevices();
+      }
+      // AirPlay doesn't support programmatic reconnection
+    };
+
+    // Delay auto-reconnect slightly to let video load first
+    const timer = setTimeout(attemptAutoReconnect, 2000);
+    return () => clearTimeout(timer);
+  }, [castHistory.lastUsedDevice, autoReconnectAttempted, cast.isAvailable]);
 
   // Network quality for adaptive streaming
   const networkQuality = useNetworkQuality();
@@ -1024,6 +1087,51 @@ export const VideoPlayer = ({
                       </span>
                     </div>
                   </DropdownMenuItem>
+                  
+                  {/* Recent Devices */}
+                  {castHistory.devices.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        Recent Devices
+                      </DropdownMenuLabel>
+                      {castHistory.devices.slice(0, 3).map((device) => (
+                        <DropdownMenuItem
+                          key={`${device.type}-${device.id}`}
+                          onClick={() => {
+                            if (device.type === 'chromecast') {
+                              cast.connect();
+                            } else if (device.type === 'dlna') {
+                              dlna.scanForDevices();
+                              toast.info(`Looking for ${device.name}...`);
+                            } else if (device.type === 'airplay' && airPlay.isAvailable) {
+                              airPlay.showPicker();
+                            }
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {device.type === 'chromecast' && <Cast className="mr-2 h-4 w-4" />}
+                          {device.type === 'dlna' && <Tv className="mr-2 h-4 w-4" />}
+                          {device.type === 'airplay' && <Airplay className="mr-2 h-4 w-4" />}
+                          <span className="truncate">{device.name}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* Setup Guide Link */}
+                  <div className="px-2 py-1.5">
+                    <CastSetupGuide
+                      trigger={
+                        <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                          Need help setting up?
+                        </button>
+                      }
+                    />
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
