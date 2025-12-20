@@ -18,6 +18,9 @@ import {
   AlertCircle,
   Wifi,
   WifiOff,
+  Airplay,
+  Monitor,
+  Loader,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +37,7 @@ import { useGoogleCast } from "@/hooks/useGoogleCast";
 import { usePictureInPicture } from "@/hooks/usePictureInPicture";
 import { useDLNA } from "@/hooks/useDLNA";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
+import { useAirPlay } from "@/hooks/useAirPlay";
 import { CastController } from "@/components/CastController";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
@@ -134,6 +138,27 @@ export const VideoPlayer = ({
 
   // DLNA hook
   const dlna = useDLNA();
+
+  // AirPlay hook
+  const airPlay = useAirPlay({
+    onConnect: () => {
+      const video = videoRef.current;
+      if (video) {
+        // Video continues playing on AirPlay device
+        toast.success('Connected to AirPlay');
+      }
+    },
+    onDisconnect: () => {
+      toast.info('Disconnected from AirPlay');
+    },
+  });
+
+  // Set up AirPlay with video element
+  useEffect(() => {
+    if (videoRef.current) {
+      airPlay.setupVideo(videoRef.current);
+    }
+  }, [airPlay.setupVideo]);
 
   // Network quality for adaptive streaming
   const networkQuality = useNetworkQuality();
@@ -861,43 +886,59 @@ export const VideoPlayer = ({
                   <button
                     className={cn(
                       "p-2 rounded-full transition-colors",
-                      (cast.isConnected || isDLNACasting)
+                      (cast.isConnected || isDLNACasting || airPlay.isConnected)
                         ? "text-brand bg-brand/20 hover:bg-brand/30" 
                         : "hover:text-brand hover:bg-muted"
                     )}
                     title="Cast to device"
                   >
-                    <Cast className={cn("h-5 w-5", (cast.isConnected || isDLNACasting) && "fill-current")} />
+                    <Cast className={cn("h-5 w-5", (cast.isConnected || isDLNACasting || airPlay.isConnected) && "fill-current")} />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card min-w-[200px]">
-                  {/* Google Cast */}
-                  {cast.isAvailable && (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (cast.isConnected) {
-                            const video = videoRef.current;
-                            if (video) {
-                              video.pause();
-                              setIsPlaying(false);
-                              setIsCasting(true);
-                              cast.loadMedia(src, title, undefined, video.currentTime);
-                            }
-                          } else {
-                            cast.connect();
-                          }
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <Cast className="mr-2 h-4 w-4" />
-                        {cast.isConnected ? `Cast to ${cast.deviceName}` : 'Chromecast'}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
+                <DropdownMenuContent align="end" className="bg-card min-w-[220px]">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Cast to Device
+                  </DropdownMenuLabel>
                   
-                  {/* DLNA */}
+                  {/* Google Chromecast - Always visible */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (cast.isConnected) {
+                        const video = videoRef.current;
+                        if (video) {
+                          video.pause();
+                          setIsPlaying(false);
+                          setIsCasting(true);
+                          cast.loadMedia(src, title, undefined, video.currentTime);
+                        }
+                      } else {
+                        cast.connect();
+                      }
+                    }}
+                    className="cursor-pointer"
+                    disabled={!cast.isAvailable && !cast.isConnected}
+                  >
+                    <Cast className={cn(
+                      "mr-2 h-4 w-4",
+                      cast.isConnected && "text-brand"
+                    )} />
+                    <div className="flex flex-col">
+                      <span className={cn(cast.isConnected && "text-brand font-medium")}>
+                        {cast.isConnected 
+                          ? `Casting to ${cast.deviceName}` 
+                          : 'Chromecast'}
+                      </span>
+                      {!cast.isAvailable && !cast.isConnected && (
+                        <span className="text-xs text-muted-foreground">
+                          No devices found
+                        </span>
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* DLNA/UPnP - Always visible */}
                   <DropdownMenuItem
                     onClick={() => {
                       if (dlna.connectedDevice) {
@@ -914,25 +955,75 @@ export const VideoPlayer = ({
                     }}
                     className="cursor-pointer"
                   >
-                    <Tv className="mr-2 h-4 w-4" />
-                    {dlna.isScanning ? 'Scanning...' : dlna.connectedDevice ? `DLNA: ${dlna.connectedDevice.name}` : 'DLNA/UPnP TV'}
+                    <Tv className={cn(
+                      "mr-2 h-4 w-4",
+                      dlna.connectedDevice && "text-brand"
+                    )} />
+                    <div className="flex flex-col">
+                      <span className={cn(dlna.connectedDevice && "text-brand font-medium")}>
+                        {dlna.connectedDevice 
+                          ? `Connected: ${dlna.connectedDevice.name}` 
+                          : 'DLNA/UPnP TV'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {dlna.isScanning 
+                          ? 'Scanning for devices...' 
+                          : dlna.devices.length > 0 
+                            ? `${dlna.devices.length} device(s) found`
+                            : 'Tap to scan'}
+                      </span>
+                    </div>
+                    {dlna.isScanning && (
+                      <Loader className="ml-auto h-3 w-3 animate-spin text-muted-foreground" />
+                    )}
                   </DropdownMenuItem>
                   
+                  {/* DLNA Device List */}
                   {dlna.devices.length > 0 && (
                     <>
-                      <DropdownMenuSeparator />
                       {dlna.devices.map((device) => (
                         <DropdownMenuItem
                           key={device.id}
                           onClick={() => dlna.connectToDevice(device)}
-                          className="cursor-pointer"
+                          className="cursor-pointer pl-8"
                         >
-                          <Tv className="mr-2 h-4 w-4" />
+                          <Monitor className="mr-2 h-4 w-4" />
                           {device.name}
                         </DropdownMenuItem>
                       ))}
                     </>
                   )}
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* AirPlay - Always visible */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (airPlay.isAvailable) {
+                        airPlay.showPicker();
+                      } else {
+                        toast.info('AirPlay is only available in Safari on Mac/iOS');
+                      }
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Airplay className={cn(
+                      "mr-2 h-4 w-4",
+                      airPlay.isConnected && "text-brand"
+                    )} />
+                    <div className="flex flex-col">
+                      <span className={cn(airPlay.isConnected && "text-brand font-medium")}>
+                        {airPlay.isConnected 
+                          ? `AirPlay: ${airPlay.deviceName || 'Connected'}` 
+                          : 'AirPlay'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {airPlay.isAvailable 
+                          ? 'Tap to select device' 
+                          : 'Safari only'}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
