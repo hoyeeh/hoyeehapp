@@ -98,3 +98,6 @@ verify_jwt = true
 
 [functions.sitemap]
 verify_jwt = false
+
+[functions.og-image]
+verify_jwt = false
