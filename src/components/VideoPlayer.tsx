@@ -49,6 +49,9 @@ import { useCastHistory } from "@/hooks/useCastHistory";
 import { CastController } from "@/components/CastController";
 import { CastSetupGuide } from "@/components/cast/CastSetupGuide";
 import { DeviceGroupManager } from "@/components/cast/DeviceGroupManager";
+import { NativeCastButton } from "@/components/cast/NativeCastButton";
+import { AirPlayButton } from "@/components/cast/AirPlayButton";
+import { CastPanel } from "@/components/cast/CastPanel";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 
@@ -950,12 +953,41 @@ export const VideoPlayer = ({
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Native Cast Buttons */}
+              <NativeCastButton
+                videoUrl={src}
+                videoTitle={title}
+                startTime={currentTime}
+                onConnect={() => {
+                  const video = videoRef.current;
+                  if (video) {
+                    video.pause();
+                    setIsPlaying(false);
+                    setIsCasting(true);
+                  }
+                }}
+                onDisconnect={() => setIsCasting(false)}
+                className="hidden sm:flex"
+              />
+              
+              <AirPlayButton
+                videoRef={videoRef}
+                onConnect={() => {
+                  castHistory.addDevice({
+                    id: 'airplay-device',
+                    name: 'AirPlay Device',
+                    type: 'airplay',
+                  });
+                }}
+                className="hidden sm:flex"
+              />
+
               {/* Cast Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     className={cn(
-                      "p-2 rounded-full transition-colors",
+                      "p-2 rounded-full transition-colors sm:hidden",
                       (cast.isConnected || isDLNACasting || airPlay.isConnected)
                         ? "text-brand bg-brand/20 hover:bg-brand/30" 
                         : "hover:text-brand hover:bg-muted"
