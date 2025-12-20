@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
+import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { migrateLegacyKeys } from "@/utils/cacheManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -87,6 +88,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <SubscriptionExpiryChecker />
           <BrowserRouter>
             <CapacitorBackHandler />
             <CastProvider>
