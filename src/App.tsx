@@ -1,8 +1,9 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
@@ -41,6 +42,44 @@ if (typeof window !== 'undefined') {
   migrateLegacyKeys();
 }
 
+// Global back button handler for Capacitor native apps
+function CapacitorBackHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
+    const setupBackHandler = async () => {
+      try {
+        const { App } = await import('@capacitor/app');
+        
+        const listener = App.addListener('backButton', ({ canGoBack }) => {
+          if (canGoBack && window.history.length > 1) {
+            window.history.back();
+          } else {
+            // On home page, minimize the app or exit
+            App.minimizeApp?.() || App.exitApp();
+          }
+        });
+
+        cleanup = () => {
+          listener.then(l => l.remove());
+        };
+      } catch (e) {
+        // Capacitor not available (web environment) - no-op
+      }
+    };
+
+    setupBackHandler();
+
+    return () => {
+      cleanup?.();
+    };
+  }, [navigate]);
+
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -49,6 +88,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <CapacitorBackHandler />
             <CastProvider>
               <Routes>
                 <Route path="/" element={<Index />} />
