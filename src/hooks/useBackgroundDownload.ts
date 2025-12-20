@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface BackgroundDownloadState {
@@ -11,6 +11,7 @@ interface BackgroundDownloadState {
   downloadedSize: number;
   totalSize: number;
   startedAt: number;
+  isBackgroundFetch?: boolean;
 }
 
 const BACKGROUND_STATE_KEY = 'hoyeeh-background-downloads';
@@ -18,6 +19,7 @@ const BACKGROUND_STATE_KEY = 'hoyeeh-background-downloads';
 export function useBackgroundDownload() {
   const isBackgroundRef = useRef(false);
   const activeDownloadsRef = useRef<Map<string, BackgroundDownloadState>>(new Map());
+  const [pendingDownloads, setPendingDownloads] = useState<BackgroundDownloadState[]>([]);
 
   // Save state to localStorage for persistence
   const saveBackgroundState = useCallback(() => {
@@ -43,6 +45,18 @@ export function useBackgroundDownload() {
   const registerBackgroundDownload = useCallback((state: BackgroundDownloadState) => {
     activeDownloadsRef.current.set(state.downloadId, state);
     saveBackgroundState();
+    
+    // Try to register with service worker for true background downloads
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'START_BACKGROUND_DOWNLOAD',
+        payload: {
+          downloadId: state.downloadId,
+          title: state.title,
+          url: '', // Will be set when actual download starts
+        }
+      });
+    }
   }, [saveBackgroundState]);
 
   // Update download progress
@@ -68,6 +82,14 @@ export function useBackgroundDownload() {
   const removeBackgroundDownload = useCallback((downloadId: string) => {
     activeDownloadsRef.current.delete(downloadId);
     saveBackgroundState();
+    
+    // Also cancel in service worker
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CANCEL_BACKGROUND_DOWNLOAD',
+        payload: { downloadId }
+      });
+    }
   }, [saveBackgroundState]);
 
   // Get pending background downloads that need to be resumed
@@ -76,10 +98,77 @@ export function useBackgroundDownload() {
       .filter(d => d.status === 'downloading' || d.status === 'paused');
   }, []);
 
+  // Listen for service worker messages
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      const { type, payload } = event.data || {};
+      
+      switch (type) {
+        case 'BACKGROUND_DOWNLOAD_COMPLETE':
+          const completeState = activeDownloadsRef.current.get(payload.downloadId);
+          if (completeState) {
+            activeDownloadsRef.current.set(payload.downloadId, {
+              ...completeState,
+              status: 'completed',
+              progress: 100,
+            });
+            saveBackgroundState();
+            toast.success(`Download complete: ${completeState.title}`);
+          }
+          break;
+          
+        case 'BACKGROUND_DOWNLOAD_FAILED':
+          const failedState = activeDownloadsRef.current.get(payload.downloadId);
+          if (failedState) {
+            activeDownloadsRef.current.set(payload.downloadId, {
+              ...failedState,
+              status: 'failed',
+            });
+            saveBackgroundState();
+            toast.error(`Download failed: ${failedState.title}`);
+          }
+          break;
+          
+        case 'BACKGROUND_DOWNLOAD_FALLBACK':
+          toast.info(payload.message, { duration: 5000 });
+          break;
+          
+        case 'DOWNLOAD_READY_TO_RESUME':
+          const resumeState = activeDownloadsRef.current.get(payload.downloadId);
+          if (resumeState) {
+            toast.info(`Ready to resume: ${resumeState.title}`, {
+              action: {
+                label: 'Resume',
+                onClick: () => {
+                  // Trigger resume
+                  window.dispatchEvent(new CustomEvent('resume-download', { 
+                    detail: { downloadId: payload.downloadId } 
+                  }));
+                }
+              }
+            });
+          }
+          break;
+          
+        case 'RETRY_DOWNLOAD':
+          window.dispatchEvent(new CustomEvent('retry-download', { 
+            detail: { downloadId: payload.downloadId } 
+          }));
+          break;
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
+  }, [saveBackgroundState]);
+
   // Handle visibility change for background/foreground transitions
   useEffect(() => {
     // Load saved state on mount
     activeDownloadsRef.current = loadBackgroundState();
+    setPendingDownloads(getPendingBackgroundDownloads());
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -87,9 +176,21 @@ export function useBackgroundDownload() {
         isBackgroundRef.current = true;
         saveBackgroundState();
         
-        // Try to use Background Fetch API if available
-        if ('serviceWorker' in navigator && 'BackgroundFetchManager' in window) {
-          // Background Fetch is available - service worker will handle it
+        // Register background sync for paused downloads
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          navigator.serviceWorker.ready.then(registration => {
+            const pending = getPendingBackgroundDownloads();
+            pending.forEach(download => {
+              if (download.status === 'paused') {
+                (registration as any).sync?.register(`sync-download-${download.downloadId}`);
+              }
+            });
+          });
+        }
+        
+        // Show notification if downloads are in progress
+        const inProgress = getPendingBackgroundDownloads().filter(d => d.status === 'downloading');
+        if (inProgress.length > 0 && isBackgroundFetchSupported()) {
           console.log('Background Fetch available, downloads will continue');
         }
       } else {
@@ -116,6 +217,8 @@ export function useBackgroundDownload() {
         if (pausedDownloads.length > 0) {
           toast.info(`${pausedDownloads.length} download(s) paused - tap to resume`);
         }
+        
+        setPendingDownloads(getPendingBackgroundDownloads());
       }
     };
 
@@ -129,9 +232,18 @@ export function useBackgroundDownload() {
       if (!document.hidden) return;
       
       // App is in background and came back online
-      const pendingDownloads = getPendingBackgroundDownloads();
-      if (pendingDownloads.length > 0) {
+      const pending = getPendingBackgroundDownloads();
+      if (pending.length > 0) {
         console.log('Back online in background, downloads can resume');
+        
+        // Request background sync
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          navigator.serviceWorker.ready.then(registration => {
+            pending.forEach(download => {
+              (registration as any).sync?.register(`sync-download-${download.downloadId}`);
+            });
+          });
+        }
       }
     };
 
@@ -142,6 +254,14 @@ export function useBackgroundDownload() {
       activeDownloadsRef.current.forEach((download, id) => {
         if (download.status === 'downloading') {
           activeDownloadsRef.current.set(id, { ...download, status: 'paused' });
+          
+          // Notify service worker
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'PAUSE_BACKGROUND_DOWNLOAD',
+              payload: { downloadId: id }
+            });
+          }
         }
       });
       saveBackgroundState();
@@ -165,6 +285,54 @@ export function useBackgroundDownload() {
     return document.hidden || isBackgroundRef.current;
   }, []);
 
+  // Start a true background download using Background Fetch API
+  const startBackgroundFetch = useCallback(async (
+    downloadId: string,
+    url: string,
+    title: string,
+    headers?: Record<string, string>
+  ): Promise<boolean> => {
+    if (!isBackgroundFetchSupported()) {
+      return false;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      if ('backgroundFetch' in registration) {
+        const bgFetch = await (registration as any).backgroundFetch.fetch(
+          downloadId,
+          [new Request(url, { headers })],
+          {
+            title: `Downloading: ${title}`,
+            icons: [{ src: '/pwa-icon-192.png', sizes: '192x192', type: 'image/png' }],
+            downloadTotal: 0,
+          }
+        );
+
+        bgFetch.addEventListener('progress', () => {
+          const progress = bgFetch.downloadTotal > 0 
+            ? Math.round((bgFetch.downloaded / bgFetch.downloadTotal) * 100)
+            : 0;
+          updateBackgroundProgress(downloadId, progress, bgFetch.downloaded);
+        });
+
+        // Mark as background fetch
+        const state = activeDownloadsRef.current.get(downloadId);
+        if (state) {
+          activeDownloadsRef.current.set(downloadId, { ...state, isBackgroundFetch: true });
+          saveBackgroundState();
+        }
+
+        return true;
+      }
+    } catch (error) {
+      console.error('Background Fetch failed:', error);
+    }
+
+    return false;
+  }, [updateBackgroundProgress, saveBackgroundState]);
+
   return {
     registerBackgroundDownload,
     updateBackgroundProgress,
@@ -172,6 +340,8 @@ export function useBackgroundDownload() {
     getPendingBackgroundDownloads,
     isInBackground,
     loadBackgroundState,
+    startBackgroundFetch,
+    pendingDownloads,
   };
 }
 
@@ -184,7 +354,8 @@ export function isBackgroundFetchSupported(): boolean {
 export async function requestBackgroundDownload(
   downloadId: string,
   url: string,
-  title: string
+  title: string,
+  headers?: Record<string, string>
 ): Promise<boolean> {
   if (!isBackgroundFetchSupported()) {
     return false;
@@ -193,21 +364,22 @@ export async function requestBackgroundDownload(
   try {
     const registration = await navigator.serviceWorker.ready;
     
-    // Check if BackgroundFetchManager exists
     if ('backgroundFetch' in registration) {
       const bgFetch = await (registration as any).backgroundFetch.fetch(
         downloadId,
-        [url],
+        [new Request(url, { headers })],
         {
           title: `Downloading: ${title}`,
-          icons: [{ src: '/favicon.png', sizes: '192x192', type: 'image/png' }],
-          downloadTotal: 0, // Unknown size
+          icons: [{ src: '/pwa-icon-192.png', sizes: '192x192', type: 'image/png' }],
+          downloadTotal: 0,
         }
       );
 
       bgFetch.addEventListener('progress', () => {
-        const progress = bgFetch.downloaded / bgFetch.downloadTotal * 100;
-        console.log(`Background download progress: ${progress.toFixed(1)}%`);
+        const progress = bgFetch.downloadTotal > 0 
+          ? Math.round((bgFetch.downloaded / bgFetch.downloadTotal) * 100)
+          : 0;
+        console.log(`Background download progress: ${progress}%`);
       });
 
       return true;
