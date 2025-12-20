@@ -14,8 +14,9 @@ import { TVShowSeasons } from "@/components/TVShowSeasons";
 import { DownloadButton } from "@/components/DownloadButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
 import { Episode } from "@/hooks/useSeasons";
+import { useEpisodeWatchProgress } from "@/hooks/useEpisodeWatchProgress";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter, User } from "lucide-react";
+import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter, User, Loader2 } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
@@ -260,6 +261,11 @@ const ContentDetail = () => {
   const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
   const [showRecap, setShowRecap] = useState(false);
   const [recapEpisode, setRecapEpisode] = useState<Episode | null>(null);
+  const [isLoadingPlay, setIsLoadingPlay] = useState(false);
+
+  // Fetch episode watch progress for resume functionality
+  const episodeIds = useMemo(() => allEpisodes.map(ep => ep.id), [allEpisodes]);
+  const { data: episodeProgress = {} } = useEpisodeWatchProgress(episodeIds);
 
   const content = allContent.find(c => c.id === id);
   const isInList = id ? watchlistIds.includes(id) : false;
@@ -411,25 +417,64 @@ const ContentDetail = () => {
     }
   };
 
-  const handlePlay = () => {
+  const handlePlay = async () => {
     if (content?.isPremium && !profile?.is_subscribed) {
       toast.error("This content requires a premium subscription");
       navigate("/subscription");
       return;
     }
 
-    // For TV series, play the first available episode with a video URL
+    // For TV series, find the best episode to play (last watched or first available)
     if (isTVShow) {
-      if (allEpisodes.length === 0) {
-        toast.error("No episodes available yet");
-        return;
+      setIsLoadingPlay(true);
+      try {
+        if (allEpisodes.length === 0) {
+          toast.error("No episodes available yet");
+          return;
+        }
+
+        // Find the last watched episode with progress, or the first episode with video
+        let episodeToPlay: Episode | undefined;
+        let resumeProgress = 0;
+
+        // Check for episode with existing progress (continue watching)
+        const episodesWithProgress = allEpisodes
+          .filter(ep => ep.video_url && episodeProgress[ep.id])
+          .map(ep => ({
+            episode: ep,
+            progress: episodeProgress[ep.id],
+          }))
+          .sort((a, b) => new Date(b.progress.lastWatched).getTime() - new Date(a.progress.lastWatched).getTime());
+
+        if (episodesWithProgress.length > 0) {
+          const lastWatched = episodesWithProgress[0];
+          // Check if not completed (< 90% watched)
+          const duration = (lastWatched.episode as any).duration || 0;
+          const progressPercent = duration > 0 ? (lastWatched.progress.progress / duration) * 100 : 0;
+          
+          if (progressPercent < 90) {
+            episodeToPlay = lastWatched.episode;
+            resumeProgress = lastWatched.progress.progress;
+          } else {
+            // Find the next unwatched episode
+            const currentIndex = allEpisodes.findIndex(ep => ep.id === lastWatched.episode.id);
+            const nextEpisode = allEpisodes.slice(currentIndex + 1).find(ep => ep.video_url);
+            episodeToPlay = nextEpisode || allEpisodes.find(ep => ep.video_url);
+          }
+        } else {
+          // No progress, start with first available episode
+          episodeToPlay = allEpisodes.find(ep => ep.video_url);
+        }
+
+        if (!episodeToPlay) {
+          toast.error("No playable episodes available");
+          return;
+        }
+
+        handlePlayEpisode(episodeToPlay, resumeProgress);
+      } finally {
+        setIsLoadingPlay(false);
       }
-      const firstWithVideo = allEpisodes.find(ep => ep.video_url);
-      if (!firstWithVideo) {
-        toast.error("No playable episodes available");
-        return;
-      }
-      handlePlayEpisode(firstWithVideo);
       return;
     }
 
@@ -692,9 +737,18 @@ const ContentDetail = () => {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" className="gap-2 bg-brand hover:bg-brand/90" onClick={handlePlay}>
-                <Play className="h-5 w-5 fill-current" />
-                Play
+              <Button 
+                size="lg" 
+                className="gap-2 bg-brand hover:bg-brand/90" 
+                onClick={handlePlay}
+                disabled={isLoadingPlay}
+              >
+                {isLoadingPlay ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Play className="h-5 w-5 fill-current" />
+                )}
+                {isLoadingPlay ? "Loading..." : (isTVShow && Object.keys(episodeProgress).length > 0 ? "Resume" : "Play")}
               </Button>
               <Button
                 size="lg"

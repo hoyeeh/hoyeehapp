@@ -231,7 +231,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
     return selected;
   }, [top10Content, trending, newContent, content]);
 
-  const handlePlay = (item: Content, progress?: number) => {
+  const handlePlay = (item: Content, progress?: number, episodeId?: string) => {
     // Check kids profile restrictions
     if (currentProfile?.is_kids) {
       const rating = (item as any).contentRating;
@@ -245,6 +245,12 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
     if (!canAccessPremium) {
       toast.error("Subscribe to watch this content");
       navigate("/subscription");
+      return;
+    }
+    
+    // For episodes, navigate to content detail with episode autoplay
+    if (episodeId) {
+      navigate(`/content/${item.id}?episode=${episodeId}&autoplay=true`);
       return;
     }
     
@@ -318,7 +324,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
           {/* Continue Watching */}
           <FadeIn delay={50}>
             <MobileContinueWatching
-              onPlay={(c, progress) => handlePlay(c, progress)}
+              onPlay={(c, progress, episodeId) => handlePlay(c, progress, episodeId)}
               onDetails={handleDetails}
             />
           </FadeIn>

@@ -7,7 +7,7 @@ import { useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 
 interface ContinueWatchingRowProps {
-  onPlay: (content: Content, progress: number) => void;
+  onPlay: (content: Content, progress: number, episodeId?: string) => void;
   onDetails: (content: Content) => void;
 }
 
@@ -27,19 +27,39 @@ interface WatchHistoryItem {
     is_premium: boolean;
     duration: number;
     year: number;
-  };
+  } | null;
+  episode?: {
+    id: string;
+    title: string;
+    thumbnail_url: string;
+    episode_number: number;
+    duration: number;
+    video_url: string;
+    season: {
+      season_number: number;
+      content: {
+        id: string;
+        title: string;
+        thumbnail_url: string;
+        content_type: string;
+        is_premium: boolean;
+      };
+    };
+  } | null;
 }
 
 export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowProps) => {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Fetch watch history for both movies and episodes
   const { data: watchHistory = [] } = useQuery({
-    queryKey: ["continue-watching", user?.id],
+    queryKey: ["continue-watching-enhanced", user?.id],
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
+      // First, fetch movie watch history
+      const { data: movieHistory, error: movieError } = await supabase
         .from("watch_history")
         .select(`
           id,
@@ -62,10 +82,95 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
         .eq("user_id", user.id)
         .gt("progress", 0)
         .order("last_watched", { ascending: false })
-        .limit(20);
+        .limit(30);
 
-      if (error) throw error;
-      return (data || []) as WatchHistoryItem[];
+      if (movieError) throw movieError;
+
+      // Filter for movies only and valid content
+      const validMovieHistory = (movieHistory || []).filter((item: any) => {
+        return item.content && item.content.content_type === 'movie';
+      });
+
+      // Now fetch episode watch history
+      const { data: episodeHistory, error: episodeError } = await supabase
+        .from("watch_history")
+        .select("id, content_id, progress, last_watched")
+        .eq("user_id", user.id)
+        .gt("progress", 0)
+        .order("last_watched", { ascending: false })
+        .limit(50);
+
+      if (episodeError) throw episodeError;
+
+      // Get all content_ids that might be episodes
+      const potentialEpisodeIds = (episodeHistory || [])
+        .filter((item: any) => !validMovieHistory.some((m: any) => m.content_id === item.content_id))
+        .map((item: any) => item.content_id);
+
+      // Fetch episode details for these IDs
+      let episodeDetails: any[] = [];
+      if (potentialEpisodeIds.length > 0) {
+        const { data: episodes } = await supabase
+          .from("episodes")
+          .select(`
+            id,
+            title,
+            thumbnail_url,
+            episode_number,
+            duration,
+            video_url,
+            season:season_id (
+              season_number,
+              content:content_id (
+                id,
+                title,
+                thumbnail_url,
+                content_type,
+                is_premium
+              )
+            )
+          `)
+          .in("id", potentialEpisodeIds);
+
+        episodeDetails = episodes || [];
+      }
+
+      // Combine and transform the data
+      const combinedHistory: WatchHistoryItem[] = [];
+
+      // Add movie history
+      validMovieHistory.forEach((item: any) => {
+        combinedHistory.push({
+          id: item.id,
+          content_id: item.content_id,
+          progress: item.progress,
+          last_watched: item.last_watched,
+          content: item.content,
+          episode: null,
+        });
+      });
+
+      // Add episode history
+      episodeHistory?.forEach((item: any) => {
+        const episodeDetail = episodeDetails.find((e: any) => e.id === item.content_id);
+        if (episodeDetail && episodeDetail.season?.content) {
+          combinedHistory.push({
+            id: item.id,
+            content_id: item.content_id,
+            progress: item.progress,
+            last_watched: item.last_watched,
+            content: null,
+            episode: episodeDetail,
+          });
+        }
+      });
+
+      // Sort by last_watched
+      combinedHistory.sort((a, b) => 
+        new Date(b.last_watched).getTime() - new Date(a.last_watched).getTime()
+      );
+
+      return combinedHistory.slice(0, 20);
     },
     enabled: !!user,
   });
@@ -83,30 +188,63 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
   // Filter out completed content (>95% watched) and transform
   const continueWatching = watchHistory
     .filter((item) => {
-      if (!item.content) return false;
-      const progressPercent = item.content.duration > 0 
-        ? (item.progress / item.content.duration) * 100 
-        : 0;
+      const duration = item.content?.duration || item.episode?.duration || 0;
+      if (duration === 0) return false;
+      const progressPercent = (item.progress / duration) * 100;
       return progressPercent < 95 && progressPercent > 1;
     })
-    .map((item) => ({
-      ...item,
-      progressPercent: item.content.duration > 0 
-        ? Math.min(Math.round((item.progress / item.content.duration) * 100), 100)
-        : 0,
-      content: {
-        id: item.content.id,
-        title: item.content.title,
-        description: item.content.description || "",
-        thumbnailUrl: item.content.thumbnail_url || "",
-        videoUrl: item.content.video_url || "",
-        genre: item.content.genre || "",
-        contentType: item.content.content_type as "movie" | "series",
-        isPremium: item.content.is_premium || false,
-        duration: item.content.duration || 0,
-        year: item.content.year,
-      } as Content,
-    }));
+    .map((item) => {
+      const isEpisode = !!item.episode;
+      const duration = item.content?.duration || item.episode?.duration || 0;
+      const thumbnailUrl = item.episode?.thumbnail_url || item.episode?.season?.content?.thumbnail_url || item.content?.thumbnail_url || "";
+      
+      let title = "";
+      let subtitle = "";
+      
+      if (isEpisode && item.episode) {
+        title = item.episode.season.content.title;
+        subtitle = `S${item.episode.season.season_number} E${item.episode.episode_number} - ${item.episode.title}`;
+      } else if (item.content) {
+        title = item.content.title;
+      }
+
+      const transformedContent: Content = isEpisode && item.episode ? {
+        id: item.episode.season.content.id,
+        title: item.episode.season.content.title,
+        description: "",
+        thumbnailUrl: item.episode.season.content.thumbnail_url || "",
+        videoUrl: item.episode.video_url || "",
+        genre: "",
+        contentType: "series",
+        isPremium: item.episode.season.content.is_premium || false,
+        duration: item.episode.duration || 0,
+      } : {
+        id: item.content!.id,
+        title: item.content!.title,
+        description: item.content!.description || "",
+        thumbnailUrl: item.content!.thumbnail_url || "",
+        videoUrl: item.content!.video_url || "",
+        genre: item.content!.genre || "",
+        contentType: item.content!.content_type as "movie" | "series",
+        isPremium: item.content!.is_premium || false,
+        duration: item.content!.duration || 0,
+        year: item.content!.year,
+      };
+
+      return {
+        ...item,
+        isEpisode,
+        title,
+        subtitle,
+        thumbnailUrl,
+        progressPercent: duration > 0 
+          ? Math.min(Math.round((item.progress / duration) * 100), 100)
+          : 0,
+        duration,
+        content: transformedContent,
+        episodeId: item.episode?.id,
+      };
+    });
 
   if (continueWatching.length === 0) return null;
 
@@ -158,8 +296,8 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
                 onClick={() => onDetails(item.content)}
               >
                 <img
-                  src={item.content.thumbnailUrl}
-                  alt={item.content.title}
+                  src={item.thumbnailUrl}
+                  alt={item.title}
                   className="w-full h-full object-cover transition-opacity group-hover:opacity-75"
                   loading="lazy"
                 />
@@ -171,12 +309,19 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
                   </div>
                 )}
 
+                {/* Episode Badge */}
+                {item.isEpisode && (
+                  <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-medium">
+                    {item.subtitle?.split(' - ')[0]}
+                  </div>
+                )}
+
                 {/* Play Button Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onPlay(item.content, item.progress);
+                      onPlay(item.content, item.progress, item.episodeId);
                     }}
                     className="w-14 h-14 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg"
                   >
@@ -195,9 +340,12 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
 
               {/* Title & Progress Info */}
               <div className="mt-2 px-1">
-                <h3 className="font-medium text-sm truncate">{item.content.title}</h3>
+                <h3 className="font-medium text-sm truncate">{item.title}</h3>
+                {item.subtitle && (
+                  <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                )}
                 <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
-                  <span>{formatTimeRemaining(item.progress, item.content.duration)}</span>
+                  <span>{formatTimeRemaining(item.progress, item.duration)}</span>
                   <span>{item.progressPercent}%</span>
                 </div>
               </div>
