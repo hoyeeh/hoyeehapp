@@ -63,29 +63,48 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     }
   };
 
-  const handleResetPin = async (userId: string) => {
+  const sendSecurityNotification = async (email: string, actionType: "pin_reset" | "secret_reset", userName?: string) => {
+    try {
+      await supabase.functions.invoke('send-admin-action-notification', {
+        body: { email, actionType, userName }
+      });
+    } catch (error) {
+      console.error('Failed to send notification email:', error);
+      // Don't block the main action if notification fails
+    }
+  };
+
+  const handleResetPin = async (userId: string, userName?: string) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ 
-          pin_code: null,
-          pin_attempts: 0,
-          pin_locked_until: null
-        })
-        .eq("id", userId);
+      // Use secure RPC function with super_admin requirement, rate limiting, and audit logging
+      const { data, error } = await supabase.rpc('admin_reset_pin', {
+        target_user_id: userId
+      });
 
       if (error) throw error;
-      toast.success("PIN has been reset. User will need to set a new PIN.");
+      
+      const result = data?.[0];
+      if (!result?.success) {
+        toast.error(result?.error_message || "Failed to reset PIN");
+        return;
+      }
+      
+      // Send security notification email to user
+      if (result.user_email) {
+        await sendSecurityNotification(result.user_email, 'pin_reset', userName);
+      }
+      
+      toast.success("PIN has been reset securely. User has been notified.");
       onRefresh();
-    } catch (error) {
-      toast.error("Failed to reset PIN");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to reset PIN");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResetSecret = async (userId: string) => {
+  const handleResetSecret = async (userId: string, userName?: string) => {
     if (newSecretWord.length < 8) {
       toast.error("Secret word must be at least 8 characters");
       return;
@@ -108,7 +127,12 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
         return;
       }
       
-      toast.success("Secret word has been reset securely");
+      // Send security notification email to user
+      if (result.user_email) {
+        await sendSecurityNotification(result.user_email, 'secret_reset', userName);
+      }
+      
+      toast.success("Secret word has been reset securely. User has been notified.");
       setResetSecretDialog(null);
       setNewSecretWord("");
       onRefresh();
@@ -187,19 +211,20 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                   {user.is_subscribed ? "Revoke" : "Grant"} Premium
                 </Button>
 
-                {/* Reset PIN */}
+                {/* Reset PIN - Requires Super Admin */}
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleResetPin(user.id)}
+                  onClick={() => handleResetPin(user.id, user.display_name || undefined)}
                   disabled={isLoading}
                   className="gap-1"
+                  title="Requires Super Admin role"
                 >
                   <Key className="h-3 w-3" />
                   Reset PIN
                 </Button>
 
-                {/* Reset Secret Word */}
+                {/* Reset Secret Word - Requires Super Admin */}
                 <Dialog 
                   open={resetSecretDialog === user.id} 
                   onOpenChange={(open) => {
@@ -216,6 +241,7 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                       onClick={() => setResetSecretDialog(user.id)}
                       disabled={isLoading}
                       className="gap-1"
+                      title="Requires Super Admin role"
                     >
                       <Shield className="h-3 w-3" />
                       Reset Secret
@@ -230,9 +256,9 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                     </DialogHeader>
                     <div className="space-y-4 pt-4">
                       <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md mb-4">
-                        <p className="text-sm text-destructive font-medium">⚠️ Security Warning</p>
+                        <p className="text-sm text-destructive font-medium">⚠️ Super Admin Required</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          This action is logged and rate-limited. The secret word must be at least 8 characters and cannot be a common word.
+                          This action requires Super Admin privileges, is logged and rate-limited. The secret word must be at least 8 characters and cannot be a common word. The user will be notified via email.
                         </p>
                       </div>
                       <Input
@@ -258,7 +284,7 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                         </Button>
                         <Button
                           variant="brand"
-                          onClick={() => handleResetSecret(user.id)}
+                          onClick={() => handleResetSecret(user.id, user.display_name || undefined)}
                           disabled={isLoading || newSecretWord.length < 8}
                         >
                           Reset Secret Word
