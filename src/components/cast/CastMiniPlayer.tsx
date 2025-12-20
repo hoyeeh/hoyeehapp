@@ -145,11 +145,11 @@ export function CastMiniPlayer({
           
           {showVolume && (
             <Slider
-              value={[playbackState.volume * 100]}
+              value={[playbackState.volume]}
               max={100}
               step={1}
               className="w-16"
-              onValueChange={([value]) => onVolumeChange(value / 100)}
+              onValueChange={([value]) => onVolumeChange(value)}
             />
           )}
         </div>
