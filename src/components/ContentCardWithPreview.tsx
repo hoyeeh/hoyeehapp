@@ -64,19 +64,23 @@ export const ContentCardWithPreview = ({
     minimal: "aspect-[3/2]",
   };
 
-  // Backdrop should span roughly 2.5 poster widths and match poster height
+  // Backdrop cards should have the same HEIGHT as poster cards
+  // Poster is 2/3 aspect ratio. To match height, we calculate based on poster width and height.
+  // If poster width is W and aspect is 2/3, height H = W * 1.5
+  // For backdrop with height H and 16/9 aspect, width = H * (16/9) = W * 1.5 * (16/9) = W * 2.67
   const cardWidths = {
     poster: sizeClasses[size],
-    backdrop: size === "sm" ? "w-[20rem] md:w-[26rem]" : size === "md" ? "w-[26rem] md:w-[32rem]" : "w-[32rem] md:w-[40rem]",
+    backdrop: size === "sm" ? "w-[14rem] md:w-[17.5rem]" : size === "md" ? "w-[17.5rem] md:w-[22.75rem]" : "w-[21rem] md:w-[28rem]",
     wide: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
     square: size === "sm" ? "w-32 md:w-40" : size === "md" ? "w-40 md:w-48" : "w-48 md:w-56",
     minimal: size === "sm" ? "w-48 md:w-56" : size === "md" ? "w-56 md:w-64" : "w-64 md:w-80",
   };
 
-  // Use poster aspect ratio height for backdrop cards to match heights
+  // Use fixed height classes to match poster heights exactly
+  // Poster aspect 2/3: for md (w-52 = 208px), height = 312px
   const aspectRatioClasses = {
     poster: aspectRatios[cardStyle],
-    backdrop: "aspect-[2/1]", // Wider but same visual height as poster when displayed side by side
+    backdrop: size === "sm" ? "h-[15rem] md:h-[19.5rem]" : size === "md" ? "h-[19.5rem] md:h-[19.5rem]" : "h-[23.4rem] md:h-[24rem]",
     wide: aspectRatios[cardStyle],
     square: aspectRatios[cardStyle],
     minimal: aspectRatios[cardStyle],
