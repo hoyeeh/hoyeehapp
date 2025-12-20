@@ -34,12 +34,26 @@ import { CastController } from "@/components/CastController";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 
+interface NextEpisodeInfo {
+  id: string;
+  title: string;
+  episodeNumber: number;
+  videoUrl: string;
+  thumbnailUrl?: string;
+}
+
 interface VideoPlayerProps {
   src: string;
   title: string;
   contentId: string;
   initialProgress?: number;
   onBack: () => void;
+  // Skip intro config (in seconds)
+  introStartTime?: number;
+  introEndTime?: number;
+  // Next episode support
+  nextEpisode?: NextEpisodeInfo;
+  onPlayNextEpisode?: (episode: NextEpisodeInfo) => void;
 }
 
 const QUALITY_OPTIONS = [
@@ -57,6 +71,10 @@ export const VideoPlayer = ({
   contentId,
   initialProgress = 0,
   onBack,
+  introStartTime = 0,
+  introEndTime = 90, // Default 90 seconds for intro
+  nextEpisode,
+  onPlayNextEpisode,
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +97,10 @@ export const VideoPlayer = ({
   const [isCasting, setIsCasting] = useState(false);
   const [isDLNACasting, setIsDLNACasting] = useState(false);
   const [mediaError, setMediaError] = useState<{ code: number; message: string } | null>(null);
+  const [showSkipIntro, setShowSkipIntro] = useState(false);
+  const [showNextEpisode, setShowNextEpisode] = useState(false);
+  const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
+  const nextEpisodeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
@@ -146,13 +168,29 @@ export const VideoPlayer = ({
     };
 
     const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
+      const time = video.currentTime;
+      setCurrentTime(time);
+
+      // Show skip intro button during intro segment
+      if (time >= introStartTime && time < introEndTime) {
+        setShowSkipIntro(true);
+      } else {
+        setShowSkipIntro(false);
+      }
+
+      // Show next episode prompt near the end (last 30 seconds)
+      if (nextEpisode && video.duration > 0 && time >= video.duration - 30) {
+        if (!showNextEpisode) {
+          setShowNextEpisode(true);
+          setNextEpisodeCountdown(10);
+        }
+      }
 
       // Save progress every 10 seconds
       const now = Date.now();
       if (now - lastSaveTimeRef.current >= 10000) {
         lastSaveTimeRef.current = now;
-        saveProgressImmediately(video.currentTime, video.duration);
+        saveProgressImmediately(time, video.duration);
       }
     };
 
@@ -200,6 +238,13 @@ export const VideoPlayer = ({
       saveProgressImmediately(video.currentTime, video.duration);
     };
 
+    const handleEnded = () => {
+      // Video ended - trigger next episode if available
+      if (nextEpisode && onPlayNextEpisode) {
+        onPlayNextEpisode(nextEpisode);
+      }
+    };
+
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("waiting", handleWaiting);
@@ -210,6 +255,7 @@ export const VideoPlayer = ({
     video.addEventListener("pause", handlePause);
     video.addEventListener("play", handlePlay);
     video.addEventListener("pause", handlePauseEvent);
+    video.addEventListener("ended", handleEnded);
 
     return () => {
       // Save progress when unmounting
@@ -226,8 +272,9 @@ export const VideoPlayer = ({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("play", handlePlay);
       video.removeEventListener("pause", handlePauseEvent);
+      video.removeEventListener("ended", handleEnded);
     };
-  }, [initialProgress, loadedProgress, saveProgressImmediately]);
+  }, [initialProgress, loadedProgress, saveProgressImmediately, nextEpisode, onPlayNextEpisode, introStartTime, introEndTime, showNextEpisode]);
 
   // Auto-hide controls
   useEffect(() => {
@@ -389,6 +436,55 @@ export const VideoPlayer = ({
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  const handleSkipIntro = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.currentTime = introEndTime;
+      setShowSkipIntro(false);
+    }
+  };
+
+  const handlePlayNext = () => {
+    if (nextEpisode && onPlayNextEpisode) {
+      if (nextEpisodeTimerRef.current) {
+        clearInterval(nextEpisodeTimerRef.current);
+      }
+      setShowNextEpisode(false);
+      onPlayNextEpisode(nextEpisode);
+    }
+  };
+
+  const handleCancelNextEpisode = () => {
+    if (nextEpisodeTimerRef.current) {
+      clearInterval(nextEpisodeTimerRef.current);
+    }
+    setShowNextEpisode(false);
+  };
+
+  // Next episode countdown timer
+  useEffect(() => {
+    if (showNextEpisode && nextEpisode && onPlayNextEpisode) {
+      nextEpisodeTimerRef.current = setInterval(() => {
+        setNextEpisodeCountdown((prev) => {
+          if (prev <= 1) {
+            if (nextEpisodeTimerRef.current) {
+              clearInterval(nextEpisodeTimerRef.current);
+            }
+            onPlayNextEpisode(nextEpisode);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => {
+        if (nextEpisodeTimerRef.current) {
+          clearInterval(nextEpisodeTimerRef.current);
+        }
+      };
+    }
+  }, [showNextEpisode, nextEpisode, onPlayNextEpisode]);
+
   const handleRetry = () => {
     setMediaError(null);
     setIsBuffering(true);
@@ -451,6 +547,55 @@ export const VideoPlayer = ({
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50">
           <Loader2 className="h-16 w-16 animate-spin text-brand" />
+        </div>
+      )}
+
+      {/* Skip Intro Button */}
+      {showSkipIntro && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSkipIntro();
+          }}
+          className="absolute bottom-32 right-4 sm:right-8 z-20 px-6 py-3 bg-white/90 text-background font-semibold rounded-md hover:bg-white transition-colors shadow-lg"
+        >
+          Skip Intro
+        </button>
+      )}
+
+      {/* Next Episode Prompt */}
+      {showNextEpisode && nextEpisode && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-32 right-4 sm:right-8 z-20 bg-card/95 backdrop-blur-sm rounded-lg p-4 shadow-xl border border-border max-w-xs"
+        >
+          <p className="text-xs text-muted-foreground mb-2">Up Next</p>
+          <div className="flex gap-3 items-center mb-3">
+            {nextEpisode.thumbnailUrl && (
+              <img
+                src={nextEpisode.thumbnailUrl}
+                alt={nextEpisode.title}
+                className="w-20 h-12 object-cover rounded"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">E{nextEpisode.episodeNumber}: {nextEpisode.title}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handlePlayNext}
+              className="flex-1 px-4 py-2 bg-brand text-white font-medium rounded hover:bg-brand/90 transition-colors text-sm"
+            >
+              Play Now ({nextEpisodeCountdown}s)
+            </button>
+            <button
+              onClick={handleCancelNextEpisode}
+              className="px-4 py-2 bg-secondary text-foreground font-medium rounded hover:bg-secondary/80 transition-colors text-sm"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
