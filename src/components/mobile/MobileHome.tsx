@@ -329,70 +329,83 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             />
           </FadeIn>
 
-          {/* Dynamic sections from database - same order and titles as desktop */}
-          {homeSections.map((section: any, index: number) => {
-            // Top 10 section
-            if (section.section_type === "top10") {
-              return top10Content.length > 0 ? (
-                <FadeIn key={section.id} delay={100 + index * 50}>
-                  <MobileContentRow
-                    title={section.title}
-                    content={top10Content}
-                    onDetails={handleDetails}
-                    showRank
-                    variant="poster"
-                    isLoading={isLoadingTop10}
-                  />
-                </FadeIn>
-              ) : null;
-            }
+          {/* Dynamic sections from database - filtered by activeFilter */}
+          {activeFilter !== "all" ? (
+            // When filter is active, show filtered content
+            <FadeIn delay={100}>
+              <MobileContentRow
+                title={activeFilter === "series" ? "TV Shows" : "Movies"}
+                content={filteredContent}
+                onDetails={handleDetails}
+                showSeeAll
+              />
+            </FadeIn>
+          ) : (
+            // When "All" is selected, show all sections
+            homeSections.map((section: any, index: number) => {
+              // Top 10 section
+              if (section.section_type === "top10") {
+                return top10Content.length > 0 ? (
+                  <FadeIn key={section.id} delay={100 + index * 50}>
+                    <MobileContentRow
+                      title={section.title}
+                      content={top10Content}
+                      onDetails={handleDetails}
+                      showRank
+                      variant="poster"
+                      isLoading={isLoadingTop10}
+                    />
+                  </FadeIn>
+                ) : null;
+              }
 
-            // My List section
-            if (section.section_type === "my_list") {
-              const myListContent = content.filter((c) => watchlistIds.includes(c.id));
-              return myListContent.length > 0 ? (
+              // My List section
+              if (section.section_type === "my_list") {
+                const myListContent = content.filter((c) => watchlistIds.includes(c.id));
+                return myListContent.length > 0 ? (
+                  <FadeIn key={section.id} delay={100 + index * 50}>
+                    <MobileContentRow
+                      title={section.title}
+                      content={myListContent}
+                      onDetails={handleDetails}
+                      showSeeAll
+                      onSeeAll={() => navigate("/my-list")}
+                    />
+                  </FadeIn>
+                ) : null;
+              }
+
+              // Recently added section
+              if (section.section_type === "recently_added") {
+                return newContent.length > 0 ? (
+                  <FadeIn key={section.id} delay={100 + index * 50}>
+                    <MobileContentRow
+                      title={section.title}
+                      content={newContent.slice(0, section.max_items || 15)}
+                      onDetails={handleDetails}
+                      showSeeAll
+                      isLoading={isLoadingNewReleases}
+                    />
+                  </FadeIn>
+                ) : null;
+              }
+
+              // Genre and other sections
+              const sectionContent = getSectionContent(section);
+              if (sectionContent.length === 0) return null;
+
+              return (
                 <FadeIn key={section.id} delay={100 + index * 50}>
                   <MobileContentRow
                     title={section.title}
-                    content={myListContent}
+                    content={sectionContent}
                     onDetails={handleDetails}
                     showSeeAll
-                    onSeeAll={() => navigate("/my-list")}
                   />
                 </FadeIn>
-              ) : null;
-            }
-
-            // Recently added section
-            if (section.section_type === "recently_added") {
-              return newContent.length > 0 ? (
-                <FadeIn key={section.id} delay={100 + index * 50}>
-                  <MobileContentRow
-                    title={section.title}
-                    content={newContent.slice(0, section.max_items || 15)}
-                    onDetails={handleDetails}
-                    showSeeAll
-                    isLoading={isLoadingNewReleases}
-                  />
-                </FadeIn>
-              ) : null;
-            }
-
-            // Genre and other sections
-            const sectionContent = getSectionContent(section);
-            if (sectionContent.length === 0) return null;
-
-            return (
-              <FadeIn key={section.id} delay={100 + index * 50}>
-                <MobileContentRow
-                  title={section.title}
-                  content={sectionContent}
-                  onDetails={handleDetails}
-                  showSeeAll
-                />
-              </FadeIn>
-            );
-          })}
+              );
+            })
+          )}
 
           {/* Fallback sections if no home_sections configured */}
           {homeSections.length === 0 && (

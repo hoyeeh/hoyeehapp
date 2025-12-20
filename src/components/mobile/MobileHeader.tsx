@@ -49,12 +49,7 @@ export function MobileHeader({
 
   return (
     <>
-      <header className={cn(
-        "fixed top-0 left-0 right-0 z-50 pt-safe transition-all duration-500",
-        transparent 
-          ? "bg-gradient-to-b from-background/80 via-background/40 to-transparent" 
-          : "bg-background/95 backdrop-blur-xl border-b border-border/30"
-      )}>
+      <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-black">
         {/* Main Header Row */}
         <div className="flex items-center justify-between px-4 h-14">
           {/* Profile Avatar & Name */}
