@@ -49,6 +49,7 @@ serve(async (req: Request): Promise<Response> => {
     console.log(`Found ${expiringSubscriptions?.length || 0} expiring subscriptions`);
 
     const emailsSent: string[] = [];
+    const notificationsCreated: string[] = [];
 
     for (const subscription of expiringSubscriptions || []) {
       if (!subscription.expires_at) continue;
@@ -57,21 +58,38 @@ serve(async (req: Request): Promise<Response> => {
       const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
       // Determine which warning to send based on days until expiry
-      let shouldSendEmail = false;
+      let shouldNotify = false;
       let emailType: "expiration_warning" | "renewal_reminder" = "expiration_warning";
 
       if (daysUntilExpiry === 7) {
-        shouldSendEmail = true;
+        shouldNotify = true;
         emailType = "renewal_reminder";
       } else if (daysUntilExpiry === 3) {
-        shouldSendEmail = true;
+        shouldNotify = true;
         emailType = "expiration_warning";
       } else if (daysUntilExpiry === 1) {
-        shouldSendEmail = true;
+        shouldNotify = true;
         emailType = "expiration_warning";
       }
 
-      if (shouldSendEmail && RESEND_API_KEY) {
+      if (shouldNotify) {
+        // Check if we already sent a notification for this expiry period
+        const notificationType = `subscription_expiry_${daysUntilExpiry}d`;
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        
+        const { data: existingNotification } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("user_id", subscription.user_id)
+          .eq("type", notificationType)
+          .gte("created_at", todayStart)
+          .maybeSingle();
+
+        if (existingNotification) {
+          console.log(`Already notified user ${subscription.user_id} for ${daysUntilExpiry}-day expiry today`);
+          continue;
+        }
+
         // Get user email from auth.users
         const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
           subscription.user_id
@@ -92,57 +110,86 @@ serve(async (req: Request): Promise<Response> => {
         const userEmail = userData.user.email;
         const userName = profileData?.display_name || userEmail.split("@")[0];
 
-        // Prepare email content
-        const emailContent = getEmailContent(emailType, {
-          userName,
-          amount: subscription.amount,
-          currency: subscription.currency,
-          planType: subscription.plan_type,
-          expiryDate: expiryDate.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          daysUntilExpiry,
-        });
+        // Create in-app notification
+        const notificationTitle = daysUntilExpiry === 1 
+          ? "⚠️ Subscription expires tomorrow!" 
+          : daysUntilExpiry === 3
+            ? "⚠️ Subscription expires in 3 days"
+            : "📅 Subscription renews in 7 days";
+        
+        const notificationBody = daysUntilExpiry <= 3
+          ? `Your premium access expires on ${expiryDate.toLocaleDateString()}. Renew now to keep watching your favorite content!`
+          : `Your subscription will renew on ${expiryDate.toLocaleDateString()}. Make sure your payment method is up to date.`;
 
-        // Send email via Resend
-        const emailResponse = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "Hoyeeh <onboarding@resend.dev>",
-            to: [userEmail],
-            subject: emailContent.subject,
-            html: emailContent.html,
-          }),
-        });
+        const { error: notifError } = await supabase
+          .from("notifications")
+          .insert({
+            user_id: subscription.user_id,
+            title: notificationTitle,
+            body: notificationBody,
+            type: notificationType,
+            read: false,
+          });
 
-        if (emailResponse.ok) {
-          console.log(`Sent ${emailType} email to ${userEmail} (${daysUntilExpiry} days until expiry)`);
-          emailsSent.push(userEmail);
-
-          // Also send push notification
-          try {
-            await supabase.functions.invoke('send-push-notification', {
-              body: {
-                userId: subscription.user_id,
-                title: daysUntilExpiry === 1 
-                  ? "⚠️ Subscription expires tomorrow!" 
-                  : `Subscription expires in ${daysUntilExpiry} days`,
-                body: `Your premium access expires on ${expiryDate.toLocaleDateString()}. Renew now to keep watching!`,
-                type: "subscription_warning",
-              }
-            });
-          } catch (pushError) {
-            console.error("Failed to send push notification:", pushError);
-          }
+        if (notifError) {
+          console.error(`Failed to create notification for user ${subscription.user_id}:`, notifError);
         } else {
-          const errorText = await emailResponse.text();
-          console.error(`Failed to send email to ${userEmail}:`, errorText);
+          console.log(`Created in-app notification for user ${subscription.user_id} (${daysUntilExpiry} days)`);
+          notificationsCreated.push(subscription.user_id);
+        }
+
+        // Send email if Resend is configured
+        if (RESEND_API_KEY) {
+          // Prepare email content
+          const emailContent = getEmailContent(emailType, {
+            userName,
+            amount: subscription.amount,
+            currency: subscription.currency,
+            planType: subscription.plan_type,
+            expiryDate: expiryDate.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+            daysUntilExpiry,
+          });
+
+          // Send email via Resend
+          const emailResponse = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "Hoyeeh <onboarding@resend.dev>",
+              to: [userEmail],
+              subject: emailContent.subject,
+              html: emailContent.html,
+            }),
+          });
+
+          if (emailResponse.ok) {
+            console.log(`Sent ${emailType} email to ${userEmail} (${daysUntilExpiry} days until expiry)`);
+            emailsSent.push(userEmail);
+          } else {
+            const errorText = await emailResponse.text();
+            console.error(`Failed to send email to ${userEmail}:`, errorText);
+          }
+        }
+
+        // Send push notification
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              userId: subscription.user_id,
+              title: notificationTitle,
+              body: notificationBody,
+              type: "subscription_warning",
+            }
+          });
+        } catch (pushError) {
+          console.error("Failed to send push notification:", pushError);
         }
       }
     }
@@ -176,6 +223,7 @@ serve(async (req: Request): Promise<Response> => {
       JSON.stringify({
         success: true,
         emailsSent: emailsSent.length,
+        notificationsCreated: notificationsCreated.length,
         expiredUpdated: expiredSubs?.length || 0,
       }),
       {
