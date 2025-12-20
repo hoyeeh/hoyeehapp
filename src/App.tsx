@@ -13,7 +13,7 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { EnhancedDownloadQueue } from "@/components/EnhancedDownloadQueue";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { useScheduledDownloadNotifications } from "@/hooks/useScheduledDownloadNotifications";
-import { migrateLegacyKeys } from "@/utils/cacheManager";
+import { migrateLegacyKeys, initializeCacheManagement } from "@/utils/cacheManager";
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import Index from "./pages/Index";
@@ -45,9 +45,11 @@ import Parental from "./pages/Parental";
 
 const queryClient = new QueryClient();
 
-// Run cache migration immediately (safe - no React hooks, pure localStorage operation)
+// Run cache management immediately (safe - no React hooks, pure localStorage operation)
 if (typeof window !== 'undefined') {
   migrateLegacyKeys();
+  // Initialize cache management asynchronously
+  initializeCacheManagement().catch(console.error);
 }
 
 // PWA Update Handler - auto-updates the app when new version is available
