@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Airplay, CheckCircle2, AlertCircle } from "lucide-react";
+import { Airplay, CheckCircle2, AlertCircle, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAirPlay } from "@/hooks/useAirPlay";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Slider } from "@/components/ui/slider";
 
 interface AirPlayButtonProps {
   videoRef?: React.RefObject<HTMLVideoElement>;
@@ -16,6 +17,7 @@ interface AirPlayButtonProps {
   onDisconnect?: () => void;
   className?: string;
   variant?: "icon" | "full";
+  showControls?: boolean;
 }
 
 export function AirPlayButton({
@@ -24,6 +26,7 @@ export function AirPlayButton({
   onDisconnect,
   className,
   variant = "icon",
+  showControls = false,
 }: AirPlayButtonProps) {
   const airplay = useAirPlay({
     onConnect,
@@ -36,14 +39,6 @@ export function AirPlayButton({
       airplay.setupVideo(videoRef.current);
     }
   }, [videoRef?.current, airplay.setupVideo]);
-
-  // Check connection status periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      airplay.checkConnection();
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [airplay.checkConnection]);
 
   if (!airplay.isAvailable) {
     if (variant === "icon") {
@@ -93,6 +88,7 @@ export function AirPlayButton({
               size="icon"
               onClick={() => airplay.showPicker()}
               className={cn(
+                "relative transition-all duration-200",
                 airplay.isConnected && "text-primary bg-primary/10",
                 className
               )}
@@ -101,6 +97,10 @@ export function AirPlayButton({
                 "h-5 w-5",
                 airplay.isConnected && "text-primary"
               )} />
+              {/* Connection indicator */}
+              {airplay.isConnected && (
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 bg-primary rounded-full animate-pulse" />
+              )}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -116,7 +116,7 @@ export function AirPlayButton({
       {/* AirPlay Header */}
       <div className="flex items-center gap-3">
         <div className={cn(
-          "w-12 h-12 rounded-xl flex items-center justify-center",
+          "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
           airplay.isConnected 
             ? "bg-primary/20" 
             : "bg-muted/30"
@@ -129,26 +129,69 @@ export function AirPlayButton({
           )} />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold">AirPlay</h3>
+          <h3 className="font-semibold">AirPlay 2</h3>
           <p className="text-sm text-muted-foreground">
             {airplay.isConnected 
               ? `Connected to ${airplay.deviceName}` 
-              : "Stream to Apple TV or AirPlay speakers"}
+              : "Stream to Apple TV, HomePod & AirPlay speakers"}
           </p>
         </div>
       </div>
 
       {/* Connection Status / Action */}
       {airplay.isConnected ? (
-        <div className="p-4 bg-primary/10 rounded-xl border border-primary/20">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-primary" />
-            <div className="flex-1">
-              <p className="font-medium">Connected to {airplay.deviceName}</p>
-              <p className="text-xs text-muted-foreground">Audio and video streaming active</p>
+        <div className="space-y-3">
+          <div className="p-4 bg-primary/10 rounded-xl border border-primary/20">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-medium">Connected to {airplay.deviceName}</p>
+                <p className="text-xs text-muted-foreground">Audio and video streaming active</p>
+              </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
+
+          {/* Playback Controls (when showControls is true) */}
+          {showControls && (
+            <div className="p-4 bg-muted/10 rounded-xl space-y-3">
+              {/* Play/Pause */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => airplay.isPlaying ? airplay.pause() : airplay.play()}
+                  className="flex-1"
+                >
+                  {airplay.isPlaying ? 'Pause' : 'Play'}
+                </Button>
+              </div>
+
+              {/* Volume Control */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => airplay.setVolume(airplay.volume === 0 ? 1 : 0)}
+                >
+                  {airplay.volume === 0 ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+                <Slider
+                  value={[airplay.volume * 100]}
+                  max={100}
+                  step={1}
+                  onValueChange={([value]) => airplay.setVolume(value / 100)}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
             To disconnect, use Control Center on your device or select a different output.
           </p>
         </div>
@@ -167,8 +210,8 @@ export function AirPlayButton({
       {!airplay.isConnected && (
         <div className="p-3 bg-muted/10 rounded-xl">
           <p className="text-xs text-muted-foreground">
-            <strong>Tip:</strong> Make sure your Apple TV or AirPlay device is on the same WiFi network. 
-            AirPlay works best with Safari browser.
+            <strong>Tip:</strong> AirPlay 2 supports multi-room audio and enhanced video streaming. 
+            Make sure your Apple TV, HomePod, or AirPlay 2 speaker is on the same WiFi network.
           </p>
         </div>
       )}
