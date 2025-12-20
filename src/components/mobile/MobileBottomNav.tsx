@@ -219,12 +219,6 @@ export function MobileBottomNav() {
                   <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
                 )}
               </div>
-              <span className={cn(
-                "text-[10px] font-medium transition-all duration-300",
-                isActive ? "opacity-100" : "opacity-70"
-              )}>
-                {item.label}
-              </span>
             </button>
           );
         })}

@@ -52,12 +52,6 @@ export const KidsMobileBottomNav = () => {
                     />
                   )}
                 </div>
-                <span className={cn(
-                  "text-[10px] font-semibold tracking-wide transition-colors duration-200",
-                  isActive ? "text-violet-400" : "text-white/40"
-                )}>
-                  {label}
-                </span>
               </motion.button>
             );
           })}

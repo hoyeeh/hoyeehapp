@@ -1,10 +1,12 @@
 // Service Worker for Push Notifications and PWA
-
-const CACHE_NAME = "hoyeeh-v1";
+// Version is updated automatically to trigger updates
+const SW_VERSION = Date.now();
+const CACHE_NAME = "hoyeeh-v2";
 const OFFLINE_URL = "/";
 
+// Force immediate activation for updates
 self.addEventListener("install", (event) => {
-  console.log("Service Worker installed");
+  console.log("Service Worker installing, version:", SW_VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll([
@@ -14,23 +16,64 @@ self.addEventListener("install", (event) => {
       ]);
     })
   );
+  // Skip waiting to activate immediately
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  console.log("Service Worker activated");
+  console.log("Service Worker activating, version:", SW_VERSION);
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              console.log("Deleting old cache:", cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      // Take control of all clients immediately
+      clients.claim()
+    ])
   );
-  event.waitUntil(clients.claim());
+});
+
+// Listen for skip waiting message from the app
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    console.log("Received SKIP_WAITING message, activating new SW");
+    self.skipWaiting();
+  }
+  
+  // Handle download progress messages (existing functionality)
+  if (event.data && event.data.type === "DOWNLOAD_PROGRESS") {
+    const { contentId, title, progress, status } = event.data.payload;
+    
+    if (status === "completed" || status === "failed") {
+      const notificationTitle = status === "completed" 
+        ? "Download Complete" 
+        : "Download Failed";
+      const body = status === "completed"
+        ? `${title} is ready to watch offline`
+        : `Failed to download ${title}`;
+      
+      self.registration.showNotification(notificationTitle, {
+        body,
+        icon: "/pwa-icon-192.png",
+        badge: "/pwa-icon-192.png",
+        tag: `download-${contentId}`,
+        renotify: true,
+        requireInteraction: status === "failed",
+        actions: status === "completed" 
+          ? [{ action: "watch", title: "Watch Now" }]
+          : [{ action: "retry", title: "Retry" }],
+        data: { contentId, status },
+      });
+    }
+  }
 });
 
 // Push notification handling
@@ -139,41 +182,8 @@ self.addEventListener("sync", (event) => {
 });
 
 async function syncWatchlist() {
-  // Placeholder for syncing watchlist data
   console.log("Syncing watchlist data...");
 }
-
-// Download progress notification handling
-self.addEventListener("message", (event) => {
-  console.log("SW received message:", event.data);
-  
-  if (event.data && event.data.type === "DOWNLOAD_PROGRESS") {
-    const { contentId, title, progress, status } = event.data.payload;
-    
-    // Only show notifications for significant events
-    if (status === "completed" || status === "failed") {
-      const notificationTitle = status === "completed" 
-        ? "Download Complete" 
-        : "Download Failed";
-      const body = status === "completed"
-        ? `${title} is ready to watch offline`
-        : `Failed to download ${title}`;
-      
-      self.registration.showNotification(notificationTitle, {
-        body,
-        icon: "/pwa-icon-192.png",
-        badge: "/pwa-icon-192.png",
-        tag: `download-${contentId}`,
-        renotify: true,
-        requireInteraction: status === "failed",
-        actions: status === "completed" 
-          ? [{ action: "watch", title: "Watch Now" }]
-          : [{ action: "retry", title: "Retry" }],
-        data: { contentId, status },
-      });
-    }
-  }
-});
 
 // Fetch handler for offline support
 self.addEventListener("fetch", (event) => {
