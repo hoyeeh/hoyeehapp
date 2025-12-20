@@ -3,8 +3,32 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-// VAPID public key - this should match your backend
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+// VAPID public key - fetched from edge function or fallback to env
+let cachedVapidKey: string | null = null;
+
+async function getVapidPublicKey(): Promise<string | null> {
+  if (cachedVapidKey) return cachedVapidKey;
+  
+  // Try environment variable first
+  const envKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  if (envKey) {
+    cachedVapidKey = envKey;
+    return envKey;
+  }
+  
+  // Fetch from edge function
+  try {
+    const { data, error } = await supabase.functions.invoke('get-vapid-key');
+    if (!error && data?.vapidPublicKey) {
+      cachedVapidKey = data.vapidPublicKey;
+      return data.vapidPublicKey;
+    }
+  } catch (e) {
+    console.error('Failed to fetch VAPID key:', e);
+  }
+  
+  return null;
+}
 
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -60,16 +84,17 @@ export function usePushNotifications() {
         return;
       }
 
-      // Subscribe to push
-      if (!VAPID_PUBLIC_KEY) {
-        toast.error("Push notifications not configured");
+      // Subscribe to push - get VAPID key
+      const vapidKey = await getVapidPublicKey();
+      if (!vapidKey) {
+        toast.error("Push notifications not configured. Please contact support.");
         setIsLoading(false);
         return;
       }
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
 
       const subscriptionJson = subscription.toJSON();

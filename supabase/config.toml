@@ -86,3 +86,12 @@ verify_jwt = false
 
 [functions.check-video-url]
 verify_jwt = true
+
+[functions.get-vapid-key]
+verify_jwt = false
+
+[functions.tmdb-coming-soon-search]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = true
