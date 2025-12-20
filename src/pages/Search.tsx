@@ -508,11 +508,6 @@ const Search = () => {
                       alt={item.title}
                       className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
                     />
-                    {item.isPremium && (
-                      <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                        PREMIUM
-                      </div>
-                    )}
                     <div className="absolute bottom-2 right-2 bg-background/80 px-2 py-0.5 rounded text-xs">
                       {item.contentType === "movie" ? "Movie" : "Series"}
                     </div>
