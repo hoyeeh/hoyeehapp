@@ -1,7 +1,8 @@
-import { Download, Check, Trash2, ChevronDown, X, Pause, PlayCircle } from "lucide-react";
+import { Download, Check, Trash2, ChevronDown, X, Pause, PlayCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Content } from "@/types";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
+import { useAutoDownloadQuality } from "@/hooks/useAutoDownloadQuality";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 
@@ -21,6 +23,7 @@ interface DownloadButtonProps {
 }
 
 const QUALITY_OPTIONS = [
+  { value: "360p", label: "360p", size: "~250MB" },
   { value: "480p", label: "480p", size: "~500MB" },
   { value: "720p", label: "720p (HD)", size: "~1GB" },
   { value: "1080p", label: "1080p (Full HD)", size: "~2GB" },
@@ -36,6 +39,7 @@ export const DownloadButton = ({
   className,
 }: DownloadButtonProps) => {
   const { startDownload, pauseDownload, resumeDownload, cancelDownload, deleteDownload, isDownloaded, getProgress } = useDownloadManager();
+  const { autoQuality, isLoading: isLoadingQuality } = useAutoDownloadQuality();
   const [showQualityMenu, setShowQualityMenu] = useState(false);
 
   const downloaded = isDownloaded(content.id, episodeId);
@@ -126,10 +130,27 @@ export const DownloadButton = ({
             )}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Select Quality</div>
+        <DropdownMenuContent align="end" className="w-56 bg-popover border-border">
+          {/* Auto Quality Option */}
+          <DropdownMenuItem 
+            onClick={() => handleQualitySelect(autoQuality.recommendedQuality as QualityOption)} 
+            className="flex flex-col items-start gap-0.5 cursor-pointer bg-primary/5"
+          >
+            <div className="flex items-center gap-2 w-full">
+              <Zap className="w-3.5 h-3.5 text-primary" />
+              <span className="font-medium">Auto ({autoQuality.recommendedQuality})</span>
+              <span className="text-xs text-primary ml-auto">Recommended</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground pl-5">{autoQuality.reason}</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Manual Selection</div>
           {QUALITY_OPTIONS.map((option) => (
-            <DropdownMenuItem key={option.value} onClick={() => handleQualitySelect(option.value)} className="flex justify-between cursor-pointer">
+            <DropdownMenuItem 
+              key={option.value} 
+              onClick={() => handleQualitySelect(option.value)} 
+              className="flex justify-between cursor-pointer"
+            >
               <span>{option.label}</span>
               <span className="text-xs text-muted-foreground">{option.size}</span>
             </DropdownMenuItem>
@@ -174,10 +195,27 @@ export const DownloadButton = ({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52 bg-popover border-border">
-            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Select Video Quality</div>
+          <DropdownMenuContent align="start" className="w-56 bg-popover border-border">
+            {/* Auto Quality Option */}
+            <DropdownMenuItem 
+              onClick={() => handleQualitySelect(autoQuality.recommendedQuality as QualityOption)} 
+              className="flex flex-col items-start gap-0.5 cursor-pointer bg-primary/5"
+            >
+              <div className="flex items-center gap-2 w-full">
+                <Zap className="w-3.5 h-3.5 text-primary" />
+                <span className="font-medium">Auto ({autoQuality.recommendedQuality})</span>
+                <span className="text-xs text-primary ml-auto">Recommended</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground pl-5">{autoQuality.reason}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Manual Selection</div>
             {QUALITY_OPTIONS.map((option) => (
-              <DropdownMenuItem key={option.value} onClick={() => handleQualitySelect(option.value)} className="flex justify-between cursor-pointer">
+              <DropdownMenuItem 
+                key={option.value} 
+                onClick={() => handleQualitySelect(option.value)} 
+                className="flex justify-between cursor-pointer"
+              >
                 <span>{option.label}</span>
                 <span className="text-xs text-muted-foreground">{option.size}</span>
               </DropdownMenuItem>
