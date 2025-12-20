@@ -15,6 +15,7 @@ import { DownloadButton } from "@/components/DownloadButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
 import { Episode } from "@/hooks/useSeasons";
 import { useEpisodeWatchProgress } from "@/hooks/useEpisodeWatchProgress";
+import { useSEO } from "@/hooks/useSEO";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter, User, Loader2 } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -270,6 +271,38 @@ const ContentDetail = () => {
   const content = allContent.find(c => c.id === id);
   const isInList = id ? watchlistIds.includes(id) : false;
   const isTVShow = content?.contentType === 'series';
+
+  // SEO meta tags for content
+  const castNames = useMemo(() => {
+    if (tmdbDetails?.cast) {
+      return tmdbDetails.cast.slice(0, 5).map(c => c.name);
+    }
+    const dbCast = parseDatabaseCast((content as any)?.cast_members);
+    return dbCast.slice(0, 5).map(c => c.name);
+  }, [tmdbDetails, content]);
+
+  useSEO({
+    title: content?.title || tmdbDetails?.title,
+    description: content?.description || tmdbDetails?.description || `Watch ${content?.title || 'this content'} on Hoyeeh - Stream movies and TV shows in HD quality.`,
+    image: content?.thumbnailUrl || tmdbDetails?.backdrop_url || undefined,
+    url: id ? `https://hoyeeh.com/content/${id}` : undefined,
+    type: isTVShow ? 'video.tv_show' : 'video.movie',
+    keywords: [
+      content?.title || '',
+      content?.genre || '',
+      isTVShow ? 'TV series' : 'movie',
+      'streaming',
+      'watch online',
+      'Hoyeeh',
+      ...(tmdbDetails?.genres || []),
+    ].filter(Boolean),
+    releaseDate: content?.year ? `${content.year}-01-01` : undefined,
+    duration: content?.duration || tmdbDetails?.duration,
+    rating: content?.rating || tmdbDetails?.rating,
+    director: (content as any)?.director || tmdbDetails?.director || undefined,
+    actors: castNames,
+    genre: content?.genre || tmdbDetails?.genres?.join(', '),
+  });
 
   useEffect(() => {
     const fetchTMDBDetails = async () => {
