@@ -803,6 +803,10 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
                   video_url: ep.video_url,
                   description: ep.description,
                   thumbnail_url: ep.thumbnail_url,
+                  intro_start_time: ep.intro_start_time,
+                  intro_end_time: ep.intro_end_time,
+                  recap_start_time: ep.recap_start_time,
+                  recap_end_time: ep.recap_end_time,
                 }))}
                 onEdit={startEditEpisode}
                 onDelete={handleDeleteEpisode}

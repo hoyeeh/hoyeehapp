@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Edit2, Trash2, GripVertical } from "lucide-react";
+import { Play, Edit2, Trash2, GripVertical, Clock, SkipForward } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DndContext,
   closestCenter,
@@ -35,6 +36,10 @@ interface Episode {
   video_url: string | null;
   description: string | null;
   thumbnail_url: string | null;
+  intro_start_time?: number | null;
+  intro_end_time?: number | null;
+  recap_start_time?: number | null;
+  recap_end_time?: number | null;
 }
 
 interface SortableEpisodeListProps {
@@ -117,6 +122,34 @@ const SortableEpisode = ({ episode, onEdit, onDelete, onPreview }: SortableEpiso
               <span className="text-green-500">✓ Video</span>
             ) : (
               <span className="text-yellow-500">No Video</span>
+            )}
+            {/* Intro times indicator */}
+            {(episode.intro_end_time && episode.intro_end_time !== 90) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-blue-400 flex items-center gap-0.5 cursor-help">
+                    <SkipForward className="h-3 w-3" />
+                    {episode.intro_start_time || 0}s-{episode.intro_end_time}s
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Custom intro skip: {episode.intro_start_time || 0}s to {episode.intro_end_time}s</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {/* Recap indicator */}
+            {(episode.recap_start_time !== null && episode.recap_start_time !== undefined) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-purple-400 flex items-center gap-0.5 cursor-help">
+                    <Clock className="h-3 w-3" />
+                    Recap
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Previously On recap: {episode.recap_start_time}s to {episode.recap_end_time}s</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>

@@ -19,6 +19,7 @@ interface ContentCardWithPreviewProps {
   isRestricted?: boolean;
   showTop10Badge?: boolean;
   showJustAddedBadge?: boolean;
+  justAddedDays?: number; // Number of days to show "Just Added" badge (default: 2)
 }
 
 export const ContentCardWithPreview = ({
@@ -32,17 +33,18 @@ export const ContentCardWithPreview = ({
   isRestricted = false,
   showTop10Badge = false,
   showJustAddedBadge = false,
+  justAddedDays = 2, // Default 2 days for most sections
 }: ContentCardWithPreviewProps) => {
-  // Check if content was added within the last 2 weeks
+  // Check if content was added within the specified days
   const isJustAdded = useMemo(() => {
     if (!content.createdAt) return false;
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-    return new Date(content.createdAt) > twoWeeksAgo;
-  }, [content.createdAt]);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - justAddedDays);
+    return new Date(content.createdAt) > cutoffDate;
+  }, [content.createdAt, justAddedDays]);
 
-  // Show just added badge either if prop is true or if content is actually new
-  const shouldShowJustAdded = showJustAddedBadge || isJustAdded;
+  // Show just added badge either if prop is true AND content is actually new within specified days
+  const shouldShowJustAdded = showJustAddedBadge && isJustAdded;
   const [isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
