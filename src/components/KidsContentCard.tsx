@@ -1,5 +1,5 @@
 import { Content } from "@/types";
-import { Play } from "lucide-react";
+import { Play, Sparkles } from "lucide-react";
 import { useKidsSounds } from "@/hooks/useKidsSounds";
 
 interface KidsContentCardProps {
@@ -51,14 +51,21 @@ export const KidsContentCard = ({ content, onPlay, onDetails, index }: KidsConte
               }}
               className="bg-white text-black rounded-full p-4 transform scale-0 group-hover:scale-100 transition-transform duration-300 hover:bg-cyan-400 shadow-lg"
             >
-              <Play className="h-8 w-8 fill-current" />
+              <Play className="h-8 w-8 fill-current stroke-[1.5]" />
             </button>
           </div>
 
           {/* Sparkle effect */}
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-2xl animate-pulse">✨</span>
+            <Sparkles className="h-5 w-5 text-yellow-400 animate-pulse stroke-[1.5]" />
           </div>
+
+          {/* Rating badge */}
+          {content.contentRating && (
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm">
+              <span className="text-xs font-medium text-white/90">{content.contentRating}</span>
+            </div>
+          )}
         </div>
       </div>
       
