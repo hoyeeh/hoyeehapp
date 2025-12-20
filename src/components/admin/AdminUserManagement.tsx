@@ -86,25 +86,34 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
   };
 
   const handleResetSecret = async (userId: string) => {
-    if (newSecretWord.length < 4) {
-      toast.error("Secret word must be at least 4 characters");
+    if (newSecretWord.length < 8) {
+      toast.error("Secret word must be at least 8 characters");
       return;
     }
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ secret_word: newSecretWord.toLowerCase() })
-        .eq("id", userId);
+      // Use secure RPC function with validation, rate limiting, and audit logging
+      const { data, error } = await supabase.rpc('admin_reset_secret_word', {
+        target_user_id: userId,
+        new_secret: newSecretWord
+      });
 
       if (error) throw error;
-      toast.success("Secret word has been reset");
+      
+      // Check the result from the RPC function
+      const result = data?.[0];
+      if (!result?.success) {
+        toast.error(result?.error_message || "Failed to reset secret word");
+        return;
+      }
+      
+      toast.success("Secret word has been reset securely");
       setResetSecretDialog(null);
       setNewSecretWord("");
       onRefresh();
-    } catch (error) {
-      toast.error("Failed to reset secret word");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to reset secret word");
     } finally {
       setIsLoading(false);
     }
@@ -220,13 +229,23 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 pt-4">
+                      <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md mb-4">
+                        <p className="text-sm text-destructive font-medium">⚠️ Security Warning</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This action is logged and rate-limited. The secret word must be at least 8 characters and cannot be a common word.
+                        </p>
+                      </div>
                       <Input
                         type="text"
-                        placeholder="Enter new secret word"
+                        placeholder="Enter new secret word (min 8 characters)"
                         value={newSecretWord}
                         onChange={(e) => setNewSecretWord(e.target.value)}
                         className="bg-secondary"
+                        minLength={8}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        {newSecretWord.length}/8 characters minimum
+                      </p>
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
@@ -240,7 +259,7 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                         <Button
                           variant="brand"
                           onClick={() => handleResetSecret(user.id)}
-                          disabled={isLoading || newSecretWord.length < 4}
+                          disabled={isLoading || newSecretWord.length < 8}
                         >
                           Reset Secret Word
                         </Button>
