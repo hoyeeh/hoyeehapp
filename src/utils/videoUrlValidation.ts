@@ -1,6 +1,51 @@
 /**
+ * Approved CDN domains for video URLs - SSRF protection
+ * Only HEAD requests to these domains are allowed
+ */
+const ALLOWED_VIDEO_DOMAINS = [
+  // DigitalOcean Spaces CDN
+  '.cdn.digitaloceanspaces.com',
+  '.digitaloceanspaces.com',
+  // Mux Video CDN
+  'stream.mux.com',
+  'mux.com',
+  // Common video CDNs
+  'cloudflare.com',
+  'cloudfront.net',
+  'akamaized.net',
+  'fastly.net',
+  'bunnycdn.net',
+  'cdn.jsdelivr.net',
+  // Localhost for development
+  'localhost',
+  '127.0.0.1',
+] as const;
+
+/**
+ * Check if a URL's domain is in the allowed list
+ */
+export const isAllowedDomain = (url: string): boolean => {
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.toLowerCase();
+    
+    return ALLOWED_VIDEO_DOMAINS.some(domain => {
+      if (domain.startsWith('.')) {
+        // Wildcard subdomain match
+        return hostname.endsWith(domain) || hostname === domain.slice(1);
+      }
+      // Exact match or subdomain match
+      return hostname === domain || hostname.endsWith('.' + domain);
+    });
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Validates that a video URL is accessible
  * Returns true if the URL returns a successful response
+ * Only makes HEAD requests to approved CDN domains (SSRF protection)
  */
 export const validateVideoUrl = async (url: string): Promise<{ valid: boolean; error?: string }> => {
   if (!url || url.trim() === '') {
@@ -14,7 +59,15 @@ export const validateVideoUrl = async (url: string): Promise<{ valid: boolean; e
     return { valid: false, error: 'Invalid URL format' };
   }
 
-  // Check if URL is accessible using HEAD request
+  // SSRF Protection: Only allow HEAD requests to approved domains
+  if (!isAllowedDomain(url)) {
+    return { 
+      valid: false, 
+      error: 'URL domain not in approved CDN list. Contact admin to add new CDN domains.' 
+    };
+  }
+
+  // Check if URL is accessible using HEAD request (only to allowed domains)
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
