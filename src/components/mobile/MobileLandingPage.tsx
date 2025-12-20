@@ -54,7 +54,7 @@ export const MobileLandingPage = ({ onSignIn, onGetStarted }: MobileLandingPageP
             transition={{ delay: 0.2 }}
           >
             <h1 className="font-display text-4xl font-bold mb-3 leading-tight drop-shadow-2xl">
-              Unlimited African<br />Movies & Shows
+              Watch Unlimited<br />Movies & TV Shows
             </h1>
             <p className="text-lg text-foreground/90 mb-2">
               Watch anywhere. Cancel anytime.

@@ -48,7 +48,7 @@ export const LandingPage = ({ onSignIn, onGetStarted }: LandingPageProps) => {
         {/* Hero Content */}
         <div className="relative z-10 flex-1 flex flex-col items-center md:items-start justify-center text-center md:text-left px-6 md:px-20 animate-fade-in">
           <h1 className="font-display text-5xl md:text-8xl font-bold max-w-4xl mb-4 leading-none drop-shadow-2xl">
-            Unlimited African<br />Movies & TV Shows
+            Watch Unlimited<br />Movies & TV Shows
           </h1>
           <p className="text-xl md:text-3xl font-medium mb-4 text-foreground/90">
             Watch anywhere. Cancel anytime.
