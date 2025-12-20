@@ -1,19 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
 // Helper to send confirmation email
-async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, planType: string, expiryDate: string) {
+async function sendConfirmationEmail(supabaseUrl: string, userEmail: string, userName: string, amount: number, planType: string, expiryDate: string) {
   try {
-    await fetch(`${SUPABASE_URL}/functions/v1/send-subscription-email`, {
+    await fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -40,20 +36,40 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
+      console.error("No authorization header provided");
       throw new Error("Missing authorization header");
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Create client with user's auth context to verify user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     
-    // Verify user
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
+    if (authError) {
+      console.error("Auth error:", authError.message);
       throw new Error("Unauthorized");
     }
+    
+    if (!user) {
+      console.error("No user found in token");
+      throw new Error("Unauthorized");
+    }
+
+    console.log("User verified:", user.id);
+
+    // Create admin client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { action, sessionId, plan_type = "monthly" } = await req.json();
 
@@ -80,7 +96,7 @@ serve(async (req) => {
       const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+          "Authorization": `Bearer ${stripeSecretKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
@@ -132,7 +148,7 @@ serve(async (req) => {
       // Retrieve session from Stripe
       const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
         headers: {
-          "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+          "Authorization": `Bearer ${stripeSecretKey}`,
         },
       });
 
@@ -175,6 +191,7 @@ serve(async (req) => {
         // Send confirmation email
         if (user.email) {
           await sendConfirmationEmail(
+            supabaseUrl,
             user.email,
             profile?.display_name || user.email.split("@")[0],
             verifiedPrice,
