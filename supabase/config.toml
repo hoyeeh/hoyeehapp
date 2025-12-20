@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.og-image]
 verify_jwt = false
+
+[functions.generate-signed-url]
+verify_jwt = true
