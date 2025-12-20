@@ -28,6 +28,7 @@ import {
   Sofa,
   UtensilsCrossed,
   Folder,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -46,6 +47,8 @@ import { useDLNA } from "@/hooks/useDLNA";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useAirPlay } from "@/hooks/useAirPlay";
 import { useCastHistory } from "@/hooks/useCastHistory";
+import { useDRMProtection } from "@/hooks/useDRMProtection";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CastController } from "@/components/CastController";
 import { CastSetupGuide } from "@/components/cast/CastSetupGuide";
 import { DeviceGroupManager } from "@/components/cast/DeviceGroupManager";
@@ -54,6 +57,7 @@ import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
+import { DRM_PROTECTION_STYLES } from "@/utils/drmHelpers";
 
 interface NextEpisodeInfo {
   id: string;
@@ -106,6 +110,7 @@ export const VideoPlayer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const lastSaveTimeRef = useRef<number>(0);
+  const isMobile = useIsMobile();
 
   const [isPlaying, setIsPlaying] = useState(true); // Start as true since video has autoPlay
   const [isMuted, setIsMuted] = useState(false);
@@ -127,6 +132,21 @@ export const VideoPlayer = ({
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
   const nextEpisodeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // DRM Protection hook
+  const drm = useDRMProtection({
+    contentId,
+    onSecurityViolation: (type, details) => {
+      console.warn(`Security violation: ${type}`, details);
+      if (type === 'screen_capture' || type === 'devtools_open') {
+        toast.error('Screen recording or developer tools detected. Video playback may be restricted.');
+      }
+    },
+    onLicenseError: (error) => {
+      console.error('DRM License error:', error);
+      toast.error('Playback license error. Please try again.');
+    },
+  });
 
   // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
@@ -662,20 +682,60 @@ export const VideoPlayer = ({
     );
   }
 
+  // Handle right-click prevention (desktop only)
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (!isMobile) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  }, [isMobile]);
+
+  // Handle drag prevention
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    return false;
+  }, []);
+
+  // Cleanup DRM on unmount
+  useEffect(() => {
+    return () => {
+      drm.revokeLicense();
+    };
+  }, [drm.revokeLicense]);
+
   return (
     <div
-      ref={containerRef}
-      className="relative w-full h-screen bg-background cursor-none"
+      ref={(el) => {
+        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        drm.bindContainerRef(el);
+      }}
+      className={cn(
+        "relative w-full h-screen bg-background cursor-none",
+        !isMobile && DRM_PROTECTION_STYLES.container
+      )}
       onMouseMove={() => setShowControls(true)}
       onClick={togglePlay}
+      onContextMenu={handleContextMenu}
+      onDragStart={handleDragStart}
     >
       {/* Video */}
       <video
-        ref={videoRef}
+        ref={(el) => {
+          (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+          drm.bindVideoRef(el);
+        }}
         src={getVideoSource()}
-        className="w-full h-full object-contain"
+        className={cn(
+          "w-full h-full object-contain",
+          !isMobile && DRM_PROTECTION_STYLES.video
+        )}
         autoPlay
         playsInline
+        onContextMenu={handleContextMenu}
+        onDragStart={handleDragStart}
+        controlsList="nodownload noplaybackrate"
+        disablePictureInPicture={false}
       />
 
       {/* Buffering Indicator */}
