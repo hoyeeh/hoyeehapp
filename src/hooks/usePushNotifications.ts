@@ -72,14 +72,51 @@ export function usePushNotifications() {
 
     setIsLoading(true);
     try {
+      // Check if we're in an iframe (like Lovable preview) where notifications are restricted
+      const isInIframe = window.self !== window.top;
+      
+      // Check current permission status first
+      if ('Notification' in window) {
+        const currentPermission = Notification.permission;
+        
+        if (currentPermission === 'denied') {
+          toast.error("Notifications are blocked. Please enable them in your browser settings.", {
+            duration: 5000,
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Register service worker if not already
       const registration = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
 
       // Request notification permission
-      const permission = await Notification.requestPermission();
+      let permission: NotificationPermission;
+      try {
+        permission = await Notification.requestPermission();
+      } catch (permError) {
+        console.error("Permission request error:", permError);
+        if (isInIframe) {
+          toast.error("Push notifications cannot be enabled in preview mode. Please open the app in a new tab.", {
+            duration: 6000,
+          });
+        } else {
+          toast.error("Could not request notification permission. Please check your browser settings.");
+        }
+        setIsLoading(false);
+        return;
+      }
+      
       if (permission !== "granted") {
-        toast.error("Notification permission denied");
+        if (permission === "denied") {
+          toast.error("Notifications are blocked. Please enable them in your browser settings.", {
+            duration: 5000,
+          });
+        } else {
+          toast.error("Notification permission was not granted.");
+        }
         setIsLoading(false);
         return;
       }
@@ -111,9 +148,18 @@ export function usePushNotifications() {
 
       setIsSubscribed(true);
       toast.success("Push notifications enabled!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error subscribing to push:", error);
-      toast.error("Failed to enable push notifications");
+      
+      // Check for specific error messages
+      const errorMessage = error?.message?.toLowerCase() || '';
+      if (errorMessage.includes('permission') || errorMessage.includes('denied')) {
+        toast.error("Notification permission denied. Please check your browser settings.");
+      } else if (errorMessage.includes('insecure') || errorMessage.includes('secure context')) {
+        toast.error("Push notifications require a secure connection (HTTPS).");
+      } else {
+        toast.error("Failed to enable push notifications. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
