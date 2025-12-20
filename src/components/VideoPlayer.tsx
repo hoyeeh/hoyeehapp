@@ -16,6 +16,8 @@ import {
   ListVideo,
   Tv,
   AlertCircle,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -24,12 +26,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { useWatchProgress } from "@/hooks/useWatchProgress";
 import { useGoogleCast } from "@/hooks/useGoogleCast";
 import { usePictureInPicture } from "@/hooks/usePictureInPicture";
 import { useDLNA } from "@/hooks/useDLNA";
+import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { CastController } from "@/components/CastController";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
@@ -131,6 +135,10 @@ export const VideoPlayer = ({
   // DLNA hook
   const dlna = useDLNA();
 
+  // Network quality for adaptive streaming
+  const networkQuality = useNetworkQuality();
+  const [useAdaptiveQuality, setUseAdaptiveQuality] = useState(true);
+
   // Check if source is HLS and detect available qualities
   useEffect(() => {
     const isHlsStream = src.includes('.m3u8');
@@ -139,8 +147,24 @@ export const VideoPlayer = ({
     if (isHlsStream) {
       // For Mux streams, these qualities are typically available
       setAvailableQualities(['auto', '1080', '720', '480']);
+      
+      // Set initial quality based on network if adaptive is enabled
+      if (useAdaptiveQuality && networkQuality.recommendedQuality !== 'auto') {
+        setSelectedQuality(networkQuality.recommendedQuality);
+      }
     }
   }, [src]);
+
+  // Auto-adjust quality when network changes (if adaptive is enabled)
+  useEffect(() => {
+    if (!useAdaptiveQuality || !isHls) return;
+    
+    if (networkQuality.recommendedQuality !== 'auto' && 
+        networkQuality.recommendedQuality !== selectedQuality) {
+      setSelectedQuality(networkQuality.recommendedQuality);
+      toast.info(`Video quality adjusted to ${networkQuality.recommendedQuality}p based on your connection`);
+    }
+  }, [networkQuality.recommendedQuality, useAdaptiveQuality, isHls]);
 
   // Guard: avoid loading the player with an empty source (would trigger Error code: 4)
   useEffect(() => {
@@ -743,21 +767,64 @@ export const VideoPlayer = ({
               {isHls && availableQualities.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="hidden sm:flex items-center gap-1 hover:text-brand transition-colors text-sm px-2 py-1 rounded bg-background/50">
+                    <button className="hidden sm:flex items-center gap-1.5 hover:text-brand transition-colors text-sm px-2 py-1 rounded bg-background/50">
+                      {networkQuality.isOnline ? (
+                        <Wifi className="h-3.5 w-3.5" />
+                      ) : (
+                        <WifiOff className="h-3.5 w-3.5 text-amber-500" />
+                      )}
                       {selectedQuality === 'auto' ? 'Auto' : `${selectedQuality}p`}
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-card">
+                  <DropdownMenuContent align="end" className="bg-card min-w-[180px]">
+                    {/* Network Status */}
+                    <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-2">
+                      {networkQuality.isOnline ? (
+                        <>
+                          <Wifi className="h-3 w-3" />
+                          {networkQuality.effectiveType.toUpperCase()} • {networkQuality.downlink.toFixed(1)} Mbps
+                        </>
+                      ) : (
+                        <>
+                          <WifiOff className="h-3 w-3 text-amber-500" />
+                          Offline
+                        </>
+                      )}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    
+                    {/* Adaptive Quality Toggle */}
+                    <DropdownMenuItem
+                      onClick={() => setUseAdaptiveQuality(!useAdaptiveQuality)}
+                      className="cursor-pointer"
+                    >
+                      <span className={cn(
+                        "mr-2 w-3 h-3 rounded-full border-2",
+                        useAdaptiveQuality ? "bg-brand border-brand" : "border-muted-foreground"
+                      )} />
+                      Auto-adjust quality
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    
+                    {/* Quality Options */}
                     {QUALITY_OPTIONS.filter(q => availableQualities.includes(q.value)).map((quality) => (
                       <DropdownMenuItem
                         key={quality.value}
-                        onClick={() => setSelectedQuality(quality.value)}
+                        onClick={() => {
+                          setSelectedQuality(quality.value);
+                          if (quality.value !== 'auto') {
+                            setUseAdaptiveQuality(false);
+                          }
+                        }}
                         className={cn(
                           "cursor-pointer",
                           selectedQuality === quality.value && "text-brand font-semibold"
                         )}
                       >
                         {quality.label}
+                        {useAdaptiveQuality && networkQuality.recommendedQuality === quality.value && (
+                          <span className="ml-auto text-xs text-muted-foreground">Recommended</span>
+                        )}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
