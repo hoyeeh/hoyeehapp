@@ -1,11 +1,10 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { KidsMobileHeader } from "./KidsMobileHeader";
 import { KidsMobileBottomNav } from "./KidsMobileBottomNav";
 import { KidsMobileHome } from "./KidsMobileHome";
 import { KidsMobileSearch } from "./KidsMobileSearch";
 import { KidsMobileMyList } from "./KidsMobileMyList";
-import { KidsMobileDownloads } from "./KidsMobileDownloads";
 import { Content } from "@/types";
 import { motion } from "framer-motion";
 
@@ -25,12 +24,21 @@ export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
     navigate(`/content/${content.id}`);
   };
 
+  const getActiveTab = (): "home" | "search" | "favorites" => {
+    if (location.pathname.includes("/search")) return "search";
+    if (location.pathname.includes("/my-list")) return "favorites";
+    return "home";
+  };
+
+  const handleTabChange = (tab: "home" | "search" | "favorites") => {
+    if (tab === "home") navigate("/");
+    else if (tab === "search") navigate("/search");
+    else if (tab === "favorites") navigate("/my-list");
+  };
+
   const renderContent = () => {
     if (location.pathname.includes("/search")) {
       return <KidsMobileSearch onPlay={handlePlay} onDetails={handleDetails} />;
-    }
-    if (location.pathname.includes("/downloads")) {
-      return <KidsMobileDownloads onPlay={handlePlay} />;
     }
     if (location.pathname.includes("/my-list")) {
       return <KidsMobileMyList onPlay={handlePlay} onDetails={handleDetails} />;
@@ -39,15 +47,7 @@ export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      <div className="fixed inset-0 bg-gradient-to-b from-slate-900 via-slate-900 to-purple-950/30 pointer-events-none" />
-      
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/4 -right-32 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -left-32 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-[#0A0A0F]">
       <KidsMobileHeader />
       
       <motion.main 

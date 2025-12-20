@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Baby, Clock, Eye, Calendar, ChevronLeft, 
-  Trash2, Moon, TrendingUp, Film
+  ChevronLeft, Clock, Eye, Calendar, 
+  Trash2, Moon, TrendingUp, Film, User
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
@@ -22,7 +22,6 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
   const queryClient = useQueryClient();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
-  // Fetch kids profiles
   const { data: kidsProfiles = [] } = useQuery({
     queryKey: ["kids-profiles", user?.id],
     queryFn: async () => {
@@ -38,7 +37,6 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
     enabled: !!user?.id,
   });
 
-  // Fetch viewing history for selected profile
   const { data: viewingHistory = [] } = useQuery({
     queryKey: ["kids-viewing-history", selectedProfileId],
     queryFn: async () => {
@@ -59,7 +57,6 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
     enabled: !!selectedProfileId,
   });
 
-  // Mutations
   const updateTimeLimitMutation = useMutation({
     mutationFn: async ({ profileId, timeLimit }: { profileId: string; timeLimit: number | null }) => {
       const { error } = await supabase
@@ -70,7 +67,7 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kids-profiles"] });
-      toast.success("Time limit updated!");
+      toast.success("Time limit updated");
     },
   });
 
@@ -84,7 +81,7 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kids-profiles"] });
-      toast.success("Bedtime updated!");
+      toast.success("Bedtime updated");
     },
   });
 
@@ -98,7 +95,7 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kids-viewing-history"] });
-      toast.success("History cleared!");
+      toast.success("History cleared");
     },
   });
 
@@ -109,161 +106,121 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-purple-950/30">
+    <div className="min-h-screen bg-[#0A0A0F]">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-lg border-b border-white/10 px-4 py-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="text-white">
-            <ChevronLeft className="h-6 w-6" />
+      <div className="sticky top-0 z-50 bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onBack} 
+            className="text-white hover:bg-white/[0.06] -ml-2"
+          >
+            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
           </Button>
           <div>
-            <h1 className="text-xl font-bold text-white">Parental Dashboard</h1>
-            <p className="text-sm text-white/60">Monitor kids activity</p>
+            <h1 className="text-[17px] font-semibold text-white tracking-[-0.02em]">Parental Controls</h1>
+            <p className="text-[13px] text-white/40 font-medium">Monitor activity</p>
           </div>
         </div>
       </div>
 
-      <div className="p-4 pb-24 space-y-6">
+      <div className="p-5 pb-24 space-y-6">
         {/* Profile Selector */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-3"
-        >
-          <div className="flex items-center gap-2 text-white/80">
-            <Baby className="h-5 w-5" />
-            <span className="font-medium">Kids Profiles</span>
+        <section className="space-y-4">
+          <div className="flex items-center gap-2.5 text-white/60">
+            <User className="h-4 w-4" strokeWidth={2} />
+            <span className="text-[13px] font-semibold tracking-wide uppercase">Profiles</span>
           </div>
           
           {kidsProfiles.length === 0 ? (
-            <div className="bg-white/5 rounded-2xl p-6 text-center">
-              <p className="text-white/60">No kids profiles found</p>
+            <div className="bg-white/[0.04] rounded-2xl p-8 text-center border border-white/[0.06]">
+              <p className="text-[15px] text-white/40 font-medium">No kids profiles found</p>
             </div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5 scrollbar-hide">
               {kidsProfiles.map((profile: any) => (
                 <motion.button
                   key={profile.id}
-                  whileTap={{ scale: 0.95 }}
+                  whileTap={{ scale: 0.96 }}
                   onClick={() => setSelectedProfileId(profile.id)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl min-w-[100px] transition-all ${
+                  className={`flex flex-col items-center gap-3 p-4 rounded-2xl min-w-[100px] transition-all ${
                     selectedProfileId === profile.id
-                      ? "bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30"
-                      : "bg-white/5 border border-white/10"
+                      ? "bg-gradient-to-br from-violet-500 to-fuchsia-500"
+                      : "bg-white/[0.04] border border-white/[0.06]"
                   }`}
                 >
                   <img
                     src={profile.avatar_url || "/placeholder.svg"}
                     alt={profile.name}
-                    className="w-14 h-14 rounded-full object-cover ring-2 ring-white/20"
+                    className="w-14 h-14 rounded-2xl object-cover ring-2 ring-white/10"
                   />
-                  <span className="text-sm font-medium text-white truncate max-w-[80px]">
+                  <span className="text-[13px] font-semibold text-white truncate max-w-[80px]">
                     {profile.name}
                   </span>
                 </motion.button>
               ))}
             </div>
           )}
-        </motion.section>
+        </section>
 
         {selectedProfile && (
           <>
-            {/* Stats Grid */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="grid grid-cols-2 gap-3"
-            >
-              <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/10 rounded-2xl p-4 border border-blue-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-5 w-5 text-blue-400" />
-                  <span className="text-xs text-white/60">Today</span>
+            {/* Stats */}
+            <section className="grid grid-cols-2 gap-3">
+              <div className="bg-white/[0.04] rounded-2xl p-4 border border-white/[0.06]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="h-4 w-4 text-blue-400" strokeWidth={2} />
+                  <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wide">Today</span>
                 </div>
                 <p className="text-2xl font-bold text-white">{totalWatchedToday}</p>
-                <p className="text-xs text-white/50">minutes watched</p>
+                <p className="text-[11px] text-white/30 font-medium mt-1">minutes watched</p>
               </div>
 
-              <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/10 rounded-2xl p-4 border border-green-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="h-5 w-5 text-green-400" />
-                  <span className="text-xs text-white/60">This Week</span>
+              <div className="bg-white/[0.04] rounded-2xl p-4 border border-white/[0.06]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="h-4 w-4 text-green-400" strokeWidth={2} />
+                  <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wide">Week</span>
                 </div>
                 <p className="text-2xl font-bold text-white">{totalWatchedThisWeek}</p>
-                <p className="text-xs text-white/50">minutes total</p>
+                <p className="text-[11px] text-white/30 font-medium mt-1">minutes total</p>
               </div>
 
-              <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/10 rounded-2xl p-4 border border-purple-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Eye className="h-5 w-5 text-purple-400" />
-                  <span className="text-xs text-white/60">Videos</span>
+              <div className="bg-white/[0.04] rounded-2xl p-4 border border-white/[0.06]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Eye className="h-4 w-4 text-purple-400" strokeWidth={2} />
+                  <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wide">Videos</span>
                 </div>
                 <p className="text-2xl font-bold text-white">{viewingHistory.length}</p>
-                <p className="text-xs text-white/50">watched this week</p>
+                <p className="text-[11px] text-white/30 font-medium mt-1">this week</p>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-500/20 to-orange-500/10 rounded-2xl p-4 border border-amber-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-5 w-5 text-amber-400" />
-                  <span className="text-xs text-white/60">Avg/Day</span>
+              <div className="bg-white/[0.04] rounded-2xl p-4 border border-white/[0.06]">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="h-4 w-4 text-amber-400" strokeWidth={2} />
+                  <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wide">Daily Avg</span>
                 </div>
                 <p className="text-2xl font-bold text-white">{Math.round(totalWatchedThisWeek / 7)}</p>
-                <p className="text-xs text-white/50">minutes</p>
+                <p className="text-[11px] text-white/30 font-medium mt-1">minutes</p>
               </div>
-            </motion.section>
-
-            {/* Time Limit Progress */}
-            {selectedProfile.daily_time_limit_minutes && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="bg-white/5 rounded-2xl p-4 border border-white/10"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-white">Time Limit Progress</span>
-                  <span className="text-xs text-white/60">
-                    {totalWatchedToday} / {selectedProfile.daily_time_limit_minutes} min
-                  </span>
-                </div>
-                <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ 
-                      width: `${Math.min(100, (totalWatchedToday / selectedProfile.daily_time_limit_minutes) * 100)}%` 
-                    }}
-                    className={`h-full rounded-full ${
-                      totalWatchedToday >= selectedProfile.daily_time_limit_minutes
-                        ? "bg-gradient-to-r from-red-500 to-orange-500"
-                        : "bg-gradient-to-r from-green-500 to-emerald-500"
-                    }`}
-                  />
-                </div>
-                <p className="text-xs text-white/50 mt-2">
-                  {Math.max(0, selectedProfile.daily_time_limit_minutes - totalWatchedToday)} minutes remaining today
-                </p>
-              </motion.section>
-            )}
+            </section>
 
             {/* Controls */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="space-y-3"
-            >
-              <h3 className="text-sm font-medium text-white/80">Controls</h3>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2.5 text-white/60">
+                <span className="text-[13px] font-semibold tracking-wide uppercase">Controls</span>
+              </div>
               
-              {/* Time Limit Toggle */}
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+              {/* Time Limit */}
+              <div className="bg-white/[0.04] rounded-2xl p-4 border border-white/[0.06]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-blue-500/20">
-                      <Clock className="h-5 w-5 text-blue-400" />
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-blue-400" strokeWidth={1.5} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">Daily Limit</p>
-                      <p className="text-xs text-white/50">
+                      <p className="text-[15px] font-semibold text-white">Daily Limit</p>
+                      <p className="text-[12px] text-white/40 font-medium">
                         {selectedProfile.daily_time_limit_minutes 
                           ? `${selectedProfile.daily_time_limit_minutes} min/day`
                           : "Not set"}
@@ -283,7 +240,7 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
                 
                 {selectedProfile.daily_time_limit_minutes && (
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {[30, 60, 90, 120, 180].map((mins) => (
+                    {[30, 60, 90, 120].map((mins) => (
                       <Button
                         key={mins}
                         variant={selectedProfile.daily_time_limit_minutes === mins ? "default" : "outline"}
@@ -292,25 +249,25 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
                           profileId: selectedProfile.id,
                           timeLimit: mins,
                         })}
-                        className="rounded-full"
+                        className="rounded-full h-9 text-[13px] font-semibold"
                       >
-                        {mins} min
+                        {mins}m
                       </Button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Bedtime Toggle */}
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+              {/* Bedtime */}
+              <div className="bg-white/[0.04] rounded-2xl p-4 border border-white/[0.06]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-purple-500/20">
-                      <Moon className="h-5 w-5 text-purple-400" />
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                      <Moon className="h-5 w-5 text-purple-400" strokeWidth={1.5} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">Bedtime Mode</p>
-                      <p className="text-xs text-white/50">
+                      <p className="text-[15px] font-semibold text-white">Bedtime</p>
+                      <p className="text-[12px] text-white/40 font-medium">
                         {(selectedProfile as any).bedtime_time || "Not set"}
                       </p>
                     </div>
@@ -335,52 +292,47 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
                         profileId: selectedProfile.id,
                         bedtime: e.target.value,
                       })}
-                      className="bg-white/5 border-white/10 text-white w-32"
+                      className="bg-white/[0.06] border-white/[0.08] text-white w-32 h-10 rounded-xl"
                     />
                   </div>
                 )}
               </div>
-            </motion.section>
+            </section>
 
-            {/* Viewing History */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="space-y-3"
-            >
+            {/* History */}
+            <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/80">
-                  <Film className="h-5 w-5" />
-                  <span className="font-medium">Recent History</span>
+                <div className="flex items-center gap-2.5 text-white/60">
+                  <Film className="h-4 w-4" strokeWidth={2} />
+                  <span className="text-[13px] font-semibold tracking-wide uppercase">History</span>
                 </div>
                 {viewingHistory.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => clearHistoryMutation.mutate(selectedProfile.id)}
-                    className="text-red-400 hover:text-red-300"
+                    className="text-red-400 hover:text-red-300 h-8 text-[13px] font-semibold"
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
+                    <Trash2 className="h-4 w-4 mr-1.5" strokeWidth={2} />
                     Clear
                   </Button>
                 )}
               </div>
 
               {viewingHistory.length === 0 ? (
-                <div className="bg-white/5 rounded-2xl p-8 text-center border border-white/10">
-                  <Eye className="h-10 w-10 text-white/20 mx-auto mb-2" />
-                  <p className="text-white/50">No viewing history yet</p>
+                <div className="bg-white/[0.04] rounded-2xl p-10 text-center border border-white/[0.06]">
+                  <Eye className="h-10 w-10 text-white/15 mx-auto mb-3" strokeWidth={1.5} />
+                  <p className="text-[15px] text-white/40 font-medium">No viewing history</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {viewingHistory.slice(0, 10).map((item: any, index: number) => (
                     <motion.div
                       key={item.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="flex items-center gap-3 bg-white/5 rounded-xl p-3 border border-white/5"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="flex items-center gap-3 bg-white/[0.04] rounded-xl p-3 border border-white/[0.04]"
                     >
                       <img
                         src={item.content?.thumbnail_url || "/placeholder.svg"}
@@ -388,22 +340,22 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
                         className="w-16 h-10 object-cover rounded-lg"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
+                        <p className="text-[13px] font-semibold text-white truncate">
                           {item.content?.title}
                         </p>
-                        <p className="text-xs text-white/50">
-                          {item.duration_watched_minutes} min
-                          {item.completed && " • Completed"}
+                        <p className="text-[11px] text-white/40 font-medium">
+                          {item.duration_watched_minutes}m
+                          {item.completed && " • Done"}
                         </p>
                       </div>
-                      <span className="text-xs text-white/40">
+                      <span className="text-[11px] text-white/30 font-medium">
                         {format(new Date(item.watched_at), "MMM d")}
                       </span>
                     </motion.div>
                   ))}
                 </div>
               )}
-            </motion.section>
+            </section>
           </>
         )}
       </div>

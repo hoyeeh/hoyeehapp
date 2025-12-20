@@ -5,13 +5,12 @@ import { KidsMobileContentCard } from "./KidsMobileContentCard";
 import { Heart, Film } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { KIDS_RATINGS } from "@/constants/kidsRatings";
 
 interface KidsMobileMyListProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
 }
-
-import { KIDS_RATINGS } from "@/constants/kidsRatings";
 
 export const KidsMobileMyList = ({ onPlay, onDetails }: KidsMobileMyListProps) => {
   const { data: watchlist = [], isLoading } = useQuery({
@@ -56,14 +55,14 @@ export const KidsMobileMyList = ({ onPlay, onDetails }: KidsMobileMyListProps) =
 
   if (isLoading) {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-4">
-        <div className="flex items-center gap-2">
-          <Skeleton className="w-8 h-8 rounded-xl bg-white/5" />
-          <Skeleton className="w-24 h-6 bg-white/5" />
+      <div className="px-5 pt-6 pb-24 space-y-5">
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="w-8 h-8 rounded-xl bg-white/[0.04]" />
+          <Skeleton className="w-24 h-5 bg-white/[0.04]" />
         </div>
         <div className="grid grid-cols-3 gap-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="w-full aspect-[2/3] rounded-2xl bg-white/5" />
+            <Skeleton key={i} className="w-full aspect-[2/3] rounded-2xl bg-white/[0.04]" />
           ))}
         </div>
       </div>
@@ -71,12 +70,12 @@ export const KidsMobileMyList = ({ onPlay, onDetails }: KidsMobileMyListProps) =
   }
 
   return (
-    <div className="px-4 pt-4 pb-24">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center">
-          <Heart className="h-4 w-4 text-white stroke-[2]" />
+    <div className="px-5 pt-6 pb-24">
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+          <Heart className="h-4 w-4 text-white" fill="white" strokeWidth={0} />
         </div>
-        <h2 className="text-base font-semibold text-white">My Favorites</h2>
+        <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">My Favorites</h2>
       </div>
 
       {watchlist.length > 0 ? (
@@ -96,16 +95,16 @@ export const KidsMobileMyList = ({ onPlay, onDetails }: KidsMobileMyListProps) =
           ))}
         </motion.div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex flex-col items-center justify-center py-24 text-center">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-20 h-20 rounded-3xl bg-gradient-to-br from-pink-400/20 to-rose-500/20 flex items-center justify-center mb-4 border border-white/10"
+            className="w-20 h-20 rounded-3xl bg-white/[0.04] flex items-center justify-center mb-6 border border-white/[0.06]"
           >
-            <Heart className="h-10 w-10 text-pink-400 stroke-[1.5]" />
+            <Heart className="h-10 w-10 text-white/20" strokeWidth={1.5} />
           </motion.div>
-          <h3 className="text-lg font-semibold text-white mb-2">No Favorites Yet</h3>
-          <p className="text-sm text-white/50 max-w-[200px]">
+          <h3 className="text-lg font-semibold text-white mb-2 tracking-[-0.02em]">No Favorites Yet</h3>
+          <p className="text-[13px] text-white/40 max-w-[220px] font-medium leading-relaxed">
             Tap the heart on shows you love to add them here
           </p>
         </div>

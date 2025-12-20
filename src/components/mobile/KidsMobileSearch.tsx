@@ -3,16 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsMobileContentCard } from "./KidsMobileContentCard";
-import { Search, X, Film } from "lucide-react";
+import { Search, X, Film, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
+import { KIDS_RATINGS } from "@/constants/kidsRatings";
 
 interface KidsMobileSearchProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
 }
-
-import { KIDS_RATINGS } from "@/constants/kidsRatings";
 
 export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,15 +76,15 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
   return (
     <div className="min-h-screen pb-24">
       {/* Search Header */}
-      <div className="sticky top-[72px] z-40 px-4 py-3 bg-slate-900/95 backdrop-blur-lg border-b border-white/5">
+      <div className="sticky top-[72px] z-40 px-5 py-4 bg-[#0A0A0F]/95 backdrop-blur-2xl">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40 stroke-[1.5]" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/30" strokeWidth={2} />
           <Input
             type="text"
-            placeholder="Search for shows..."
+            placeholder="Search shows and movies..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/40 focus-visible:ring-purple-500/50"
+            className="w-full pl-12 pr-12 py-3.5 h-12 bg-white/[0.06] border-white/[0.06] rounded-2xl text-[15px] text-white placeholder:text-white/30 focus-visible:ring-violet-500/50 font-medium"
           />
           <AnimatePresence>
             {searchQuery && (
@@ -94,27 +93,26 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"
               >
-                <X className="h-4 w-4 text-white/60" />
+                <X className="h-3.5 w-3.5 text-white/60" strokeWidth={2.5} />
               </motion.button>
             )}
           </AnimatePresence>
         </div>
       </div>
 
-      <div className="px-4 pt-4">
-        {/* Search Results */}
+      <div className="px-5 pt-2">
         <AnimatePresence mode="wait">
           {searchQuery.trim() ? (
             <motion.div
               key="results"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-5"
             >
-              <p className="text-sm text-white/50">
+              <p className="text-[13px] text-white/40 font-medium">
                 {isLoading 
                   ? "Searching..." 
                   : `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`}
@@ -133,28 +131,28 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
                   ))}
                 </div>
               ) : !isLoading ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-                    <Search className="h-8 w-8 text-white/30" />
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
+                    <Search className="h-8 w-8 text-white/20" strokeWidth={1.5} />
                   </div>
-                  <p className="text-white/50">No shows found</p>
-                  <p className="text-sm text-white/30 mt-1">Try a different search</p>
+                  <p className="text-[15px] text-white/40 font-medium">No shows found</p>
+                  <p className="text-[13px] text-white/25 mt-1 font-medium">Try a different search</p>
                 </div>
               ) : null}
             </motion.div>
           ) : (
             <motion.div
               key="popular"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-5"
             >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                  <Film className="h-4 w-4 text-white stroke-[2]" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-white" strokeWidth={2} />
                 </div>
-                <h2 className="text-base font-semibold text-white">Popular Shows</h2>
+                <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">Popular</h2>
               </div>
               
               <div className="grid grid-cols-3 gap-3">

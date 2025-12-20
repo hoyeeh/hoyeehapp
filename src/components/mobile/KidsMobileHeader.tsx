@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Baby, Lock, BarChart3 } from "lucide-react";
+import { Settings, ChevronLeft } from "lucide-react";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,6 @@ import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useKidsSounds } from "@/hooks/useKidsSounds";
-import { useHaptics } from "@/hooks/useHaptics";
 import { KidsMobileParentalDashboard } from "./KidsMobileParentalDashboard";
 
 export const KidsMobileHeader = () => {
@@ -25,21 +23,9 @@ export const KidsMobileHeader = () => {
   const [pin, setPin] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [pendingAction, setPendingAction] = useState<"exit" | "dashboard" | null>(null);
-  
-  const { playClickSound, playSuccessSound } = useKidsSounds();
-  const { lightTap, mediumTap, successFeedback, errorFeedback } = useHaptics();
 
-  const handleExitKids = () => {
-    playClickSound();
-    lightTap();
-    setPendingAction("exit");
-    setShowPinDialog(true);
-  };
-
-  const handleOpenDashboard = () => {
-    playClickSound();
-    lightTap();
-    setPendingAction("dashboard");
+  const handleAction = (action: "exit" | "dashboard") => {
+    setPendingAction(action);
     setShowPinDialog(true);
   };
 
@@ -59,8 +45,6 @@ export const KidsMobileHeader = () => {
       if (error) throw error;
 
       if (data) {
-        playSuccessSound();
-        successFeedback();
         setShowPinDialog(false);
         setPin("");
         
@@ -73,26 +57,16 @@ export const KidsMobileHeader = () => {
           setShowDashboard(true);
         }
       } else {
-        errorFeedback();
         toast.error("Incorrect PIN");
         setPin("");
       }
     } catch (error) {
       console.error("PIN verification error:", error);
-      errorFeedback();
       toast.error("Failed to verify PIN");
       setPin("");
     } finally {
       setIsVerifying(false);
       setPendingAction(null);
-    }
-  };
-
-  const handlePinComplete = (value: string) => {
-    setPin(value);
-    if (value.length === 4) {
-      mediumTap();
-      verifyPin();
     }
   };
 
@@ -103,93 +77,84 @@ export const KidsMobileHeader = () => {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 pt-safe">
-        <div className="bg-gradient-to-b from-slate-900/98 via-slate-900/90 to-transparent backdrop-blur-sm px-4 py-3">
+        <div className="bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4">
           <div className="flex items-center justify-between">
             <motion.div 
-              className="flex items-center gap-2"
-              initial={{ opacity: 0, x: -20 }}
+              className="flex items-center gap-3"
+              initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                <Baby className="h-5 w-5 text-white stroke-[2.5]" />
+              <div className="relative">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                  <span className="text-white text-lg font-bold">K</span>
+                </div>
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">
+                <h1 className="text-[17px] font-semibold text-white tracking-[-0.02em]">
                   Kids
                 </h1>
                 {currentProfile?.name && (
-                  <p className="text-xs text-white/60 -mt-0.5">
-                    Hi, {currentProfile.name}
+                  <p className="text-[13px] text-white/50 font-medium">
+                    {currentProfile.name}
                   </p>
                 )}
               </div>
             </motion.div>
 
-            <div className="flex items-center gap-2">
-              <motion.button
-                onClick={handleOpenDashboard}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white/80 transition-colors hover:bg-white/10"
-              >
-                <BarChart3 className="h-5 w-5 stroke-[1.5]" />
-              </motion.button>
-              
-              <motion.button
-                onClick={handleExitKids}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-sm font-medium transition-colors hover:bg-white/10"
-              >
-                <Lock className="h-4 w-4 stroke-[1.5]" />
-                <span>Exit</span>
-              </motion.button>
-            </div>
+            <motion.button
+              onClick={() => handleAction("exit")}
+              whileTap={{ scale: 0.96 }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.08] text-white/90 text-[13px] font-semibold tracking-[-0.01em] transition-all hover:bg-white/[0.12] active:bg-white/[0.06]"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
+              Exit
+            </motion.button>
           </div>
         </div>
       </header>
 
       <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
-        <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 text-white max-w-xs mx-auto rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-center text-xl font-semibold">
-              {pendingAction === "dashboard" ? "Parental Access" : "Enter Parent PIN"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-6 py-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              {pendingAction === "dashboard" ? (
-                <BarChart3 className="h-8 w-8 text-white" />
-              ) : (
-                <Lock className="h-8 w-8 text-white" />
-              )}
+        <DialogContent className="bg-[#1C1C1E] border-white/[0.08] text-white max-w-[320px] mx-auto rounded-3xl p-6">
+          <DialogHeader className="space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+              <Settings className="h-7 w-7 text-white" strokeWidth={1.5} />
             </div>
-            <p className="text-sm text-white/60 text-center">
-              {pendingAction === "dashboard" 
-                ? "Enter your PIN to view activity dashboard"
-                : "Enter your 4-digit parental PIN to exit Kids mode"}
+            <DialogTitle className="text-center text-xl font-semibold tracking-[-0.02em]">
+              Parent PIN
+            </DialogTitle>
+            <p className="text-center text-[15px] text-white/50 font-medium">
+              Enter your 4-digit PIN to continue
             </p>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center gap-6 pt-4">
             <InputOTP
               maxLength={4}
               value={pin}
-              onChange={handlePinComplete}
+              onChange={(value) => {
+                setPin(value);
+                if (value.length === 4) setTimeout(verifyPin, 100);
+              }}
               disabled={isVerifying}
             >
-              <InputOTPGroup className="gap-2">
+              <InputOTPGroup className="gap-3">
                 {[0, 1, 2, 3].map((index) => (
                   <InputOTPSlot
                     key={index}
                     index={index}
-                    className="w-12 h-14 text-xl bg-white/5 border-white/20 text-white rounded-xl"
+                    className="w-14 h-14 text-xl font-semibold bg-white/[0.06] border-white/[0.08] text-white rounded-xl"
                   />
                 ))}
               </InputOTPGroup>
             </InputOTP>
+            
             <Button
               onClick={verifyPin}
               disabled={pin.length !== 4 || isVerifying}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl py-3"
+              className="w-full h-12 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white font-semibold rounded-xl text-[15px]"
             >
-              {isVerifying ? "Verifying..." : "Confirm"}
+              {isVerifying ? "Verifying..." : "Continue"}
             </Button>
           </div>
         </DialogContent>

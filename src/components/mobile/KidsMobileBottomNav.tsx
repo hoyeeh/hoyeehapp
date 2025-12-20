@@ -1,59 +1,7 @@
-import { Home, Search, Download, Heart } from "lucide-react";
+import { Home, Search, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useKidsSounds } from "@/hooks/useKidsSounds";
-import { useHaptics } from "@/hooks/useHaptics";
-
-interface NavItemProps {
-  icon: typeof Home;
-  path: string;
-  isActive: boolean;
-  color: string;
-  onClick: () => void;
-}
-
-const NavItem = ({ icon: Icon, isActive, color, onClick }: NavItemProps) => {
-  const { playClickSound } = useKidsSounds();
-  const { lightTap } = useHaptics();
-
-  const handleClick = () => {
-    playClickSound();
-    lightTap();
-    onClick();
-  };
-
-  return (
-    <motion.button
-      onClick={handleClick}
-      whileTap={{ scale: 0.9 }}
-      className={cn(
-        "relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300",
-        isActive 
-          ? `bg-gradient-to-br ${color} shadow-lg` 
-          : "bg-transparent"
-      )}
-    >
-      <Icon 
-        className={cn(
-          "h-6 w-6 transition-all duration-300",
-          isActive 
-            ? "text-white stroke-[2.5]" 
-            : "text-white/60 stroke-[1.5]"
-        )} 
-      />
-      {isActive && (
-        <motion.div
-          layoutId="activeIndicator"
-          className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-white"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        />
-      )}
-    </motion.button>
-  );
-};
 
 export const KidsMobileBottomNav = () => {
   const navigate = useNavigate();
@@ -61,7 +9,6 @@ export const KidsMobileBottomNav = () => {
 
   const getActiveTab = () => {
     if (location.pathname.includes("/search")) return "search";
-    if (location.pathname.includes("/downloads")) return "downloads";
     if (location.pathname.includes("/my-list")) return "favorites";
     return "home";
   };
@@ -69,26 +16,51 @@ export const KidsMobileBottomNav = () => {
   const activeTab = getActiveTab();
 
   const navItems = [
-    { icon: Home, path: "/", key: "home", color: "from-pink-400 to-rose-500" },
-    { icon: Search, path: "/search", key: "search", color: "from-purple-400 to-violet-500" },
-    { icon: Download, path: "/downloads", key: "downloads", color: "from-cyan-400 to-blue-500" },
-    { icon: Heart, path: "/my-list", key: "favorites", color: "from-amber-400 to-orange-500" },
+    { icon: Home, path: "/", key: "home", label: "Home" },
+    { icon: Search, path: "/search", key: "search", label: "Search" },
+    { icon: Heart, path: "/my-list", key: "favorites", label: "Favorites" },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-safe">
-      <div className="bg-gradient-to-t from-slate-900/98 via-slate-900/95 to-slate-900/90 backdrop-blur-xl border-t border-white/5 rounded-t-3xl">
-        <div className="flex justify-around items-center py-3 max-w-sm mx-auto">
-          {navItems.map((item) => (
-            <NavItem
-              key={item.key}
-              icon={item.icon}
-              path={item.path}
-              isActive={activeTab === item.key}
-              color={item.color}
-              onClick={() => navigate(item.path)}
-            />
-          ))}
+    <nav className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
+      <div className="bg-[#0A0A0F]/95 backdrop-blur-2xl border-t border-white/[0.06]">
+        <div className="flex justify-around items-center px-4 py-2">
+          {navItems.map(({ key, icon: Icon, path, label }) => {
+            const isActive = activeTab === key;
+            
+            return (
+              <motion.button
+                key={key}
+                onClick={() => navigate(path)}
+                whileTap={{ scale: 0.92 }}
+                className="relative flex flex-col items-center gap-1 py-2 px-6 min-w-[72px]"
+              >
+                <div className="relative">
+                  <Icon 
+                    className={cn(
+                      "h-[22px] w-[22px] transition-colors duration-200",
+                      isActive ? "text-violet-400" : "text-white/40"
+                    )} 
+                    strokeWidth={isActive ? 2 : 1.5}
+                    fill={isActive && key === "favorites" ? "currentColor" : "none"}
+                  />
+                  {isActive && (
+                    <motion.div
+                      layoutId="navIndicator"
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-violet-400"
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </div>
+                <span className={cn(
+                  "text-[10px] font-semibold tracking-wide transition-colors duration-200",
+                  isActive ? "text-violet-400" : "text-white/40"
+                )}>
+                  {label}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
       </div>
     </nav>
