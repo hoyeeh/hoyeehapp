@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Cast, Tv, Settings, AlertCircle, RefreshCw, Wifi } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Cast, Tv, Settings, AlertCircle, RefreshCw, Wifi, Airplay } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useGoogleCast } from '@/hooks/useGoogleCast';
 import { useDLNA } from '@/hooks/useDLNA';
+import { useAirPlay } from '@/hooks/useAirPlay';
 import { DLNASetupGuide } from '@/components/DLNASetupGuide';
 import { toast } from 'sonner';
 
@@ -21,6 +22,7 @@ interface CastButtonProps {
   className?: string;
   onCastStart?: () => void;
   onCastEnd?: () => void;
+  videoRef?: React.RefObject<HTMLVideoElement>;
 }
 
 interface SavedDLNADevice {
@@ -38,6 +40,7 @@ export function CastButton({
   className,
   onCastStart,
   onCastEnd,
+  videoRef,
 }: CastButtonProps) {
   const [showDLNASetup, setShowDLNASetup] = useState(false);
   const [savedDLNADevices, setSavedDLNADevices] = useState<SavedDLNADevice[]>([]);
@@ -50,6 +53,18 @@ export function CastButton({
   });
   
   const dlna = useDLNA();
+  
+  const airplay = useAirPlay({
+    onConnect: onCastStart,
+    onDisconnect: onCastEnd,
+  });
+
+  // Setup AirPlay with video ref
+  useEffect(() => {
+    if (videoRef?.current) {
+      airplay.setupVideo(videoRef.current);
+    }
+  }, [videoRef?.current, airplay.setupVideo]);
 
   // Load saved DLNA devices
   useEffect(() => {
@@ -121,8 +136,8 @@ export function CastButton({
     dlna.disconnect();
   };
 
-  const isConnected = cast.isConnected || dlna.connectedDevice;
-  const deviceName = cast.deviceName || dlna.connectedDevice?.name;
+  const isConnected = cast.isConnected || dlna.connectedDevice || airplay.isConnected;
+  const deviceName = cast.deviceName || dlna.connectedDevice?.name || airplay.deviceName;
 
   return (
     <>
@@ -258,6 +273,38 @@ export function CastButton({
                 {savedDLNADevices.length > 0 ? 'Manage Devices...' : 'Add Smart TV...'}
               </DropdownMenuItem>
             </>
+          )}
+
+          <DropdownMenuSeparator />
+
+          {/* AirPlay Section */}
+          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <Airplay className="h-3 w-3" />
+            AirPlay (Apple TV)
+          </div>
+          
+          {airplay.isConnected ? (
+            <>
+              <div className="px-2 py-1.5 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-foreground font-medium">{airplay.deviceName}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Connected via AirPlay</span>
+              </div>
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                Use your device's Control Center to disconnect
+              </div>
+            </>
+          ) : airplay.isAvailable ? (
+            <DropdownMenuItem onClick={() => airplay.showPicker()} className="cursor-pointer">
+              <Airplay className="mr-2 h-4 w-4" />
+              Select AirPlay Device
+            </DropdownMenuItem>
+          ) : (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              AirPlay requires Safari browser on Mac or iOS
+            </div>
           )}
 
           <DropdownMenuSeparator />
