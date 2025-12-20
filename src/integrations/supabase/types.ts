@@ -393,7 +393,11 @@ export type Database = {
           duration: number | null
           episode_number: number
           id: string
+          intro_end_time: number | null
+          intro_start_time: number | null
           is_premium: boolean | null
+          recap_end_time: number | null
+          recap_start_time: number | null
           season_id: string
           thumbnail_url: string | null
           title: string
@@ -406,7 +410,11 @@ export type Database = {
           duration?: number | null
           episode_number: number
           id?: string
+          intro_end_time?: number | null
+          intro_start_time?: number | null
           is_premium?: boolean | null
+          recap_end_time?: number | null
+          recap_start_time?: number | null
           season_id: string
           thumbnail_url?: string | null
           title: string
@@ -419,7 +427,11 @@ export type Database = {
           duration?: number | null
           episode_number?: number
           id?: string
+          intro_end_time?: number | null
+          intro_start_time?: number | null
           is_premium?: boolean | null
+          recap_end_time?: number | null
+          recap_start_time?: number | null
           season_id?: string
           thumbnail_url?: string | null
           title?: string
