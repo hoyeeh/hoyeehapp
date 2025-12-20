@@ -629,11 +629,6 @@ const Index = () => {
                             alt={item.title}
                             className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
                           />
-                          {item.isPremium && (
-                            <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                              PREMIUM
-                            </div>
-                          )}
                         </div>
                         <h3 className="mt-2 font-medium truncate">{item.title}</h3>
                         <p className="text-sm text-muted-foreground">{item.year}</p>
