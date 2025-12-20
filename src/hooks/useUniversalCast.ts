@@ -231,6 +231,9 @@ export function useUniversalCast() {
     }
   }, [removePairedDevice]);
 
+  // Reference to disconnect function for use in polling
+  const disconnectRef = useRef<() => void>(() => {});
+
   // Start polling for session updates
   const startPolling = useCallback((sessionId: string) => {
     if (pollIntervalRef.current) {
@@ -263,7 +266,7 @@ export function useUniversalCast() {
           }));
 
           if (result.session.status === 'disconnected') {
-            disconnect();
+            disconnectRef.current();
           }
         }
       } catch (error) {
@@ -388,6 +391,11 @@ export function useUniversalCast() {
 
     toast.info('Disconnected from TV');
   }, [state.sessionId, callSignaling]);
+
+  // Keep disconnectRef in sync with disconnect function
+  useEffect(() => {
+    disconnectRef.current = disconnect;
+  }, [disconnect]);
 
   // Cleanup on unmount
   useEffect(() => {
