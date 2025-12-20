@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.generate-signed-url]
 verify_jwt = true
+
+[functions.drm-license-server]
+verify_jwt = true
