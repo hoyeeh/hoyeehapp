@@ -18,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter, User } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
+import { toCdnUrl } from "@/utils/cdnUrl";
+import { validateVideoUrl } from "@/utils/videoUrlValidation";
 
 interface CastMember {
   id: number;
@@ -264,6 +266,12 @@ const ContentDetail = () => {
   const isInList = id ? watchlistIds.includes(id) : false;
   const isTVShow = content?.contentType === 'series';
 
+  const validatePlayableVideo = async (rawUrl: string) => {
+    const finalUrl = toCdnUrl(rawUrl);
+    const { valid, error } = await validateVideoUrl(finalUrl);
+    return { valid, finalUrl, error };
+  };
+
   useEffect(() => {
     const fetchTMDBDetails = async () => {
       if (!content) {
@@ -410,12 +418,27 @@ const ContentDetail = () => {
     }
   };
 
-  const handlePlay = () => {
+  const handlePlay = async () => {
     if (content?.isPremium && !profile?.is_subscribed) {
       toast.error("This content requires a premium subscription");
       navigate("/subscription");
       return;
     }
+
+    if (!content?.videoUrl) {
+      toast.error("This video is not yet available");
+      return;
+    }
+
+    const checkingToast = toast.loading("Checking video availability...");
+    const { valid, error: urlError } = await validatePlayableVideo(content.videoUrl);
+    toast.dismiss(checkingToast);
+
+    if (!valid) {
+      toast.error(urlError || "Video is not available right now");
+      return;
+    }
+
     setPlaying(true);
   };
 
@@ -457,7 +480,7 @@ const ContentDetail = () => {
     }
   };
 
-  const handlePlayEpisode = (episode: Episode, resumeAt?: number) => {
+  const handlePlayEpisode = async (episode: Episode, resumeAt?: number) => {
     if (!episode.video_url) {
       toast.error("This episode is not yet available");
       return;
@@ -467,8 +490,20 @@ const ContentDetail = () => {
       navigate("/subscription");
       return;
     }
+
+    const checkingToast = toast.loading("Checking video availability...");
+    const { valid, finalUrl, error: urlError } = await validatePlayableVideo(episode.video_url);
+    toast.dismiss(checkingToast);
+
+    if (!valid) {
+      toast.error(urlError || "Video is not available right now");
+      return;
+    }
+
+    const playableEpisode = { ...(episode as any), video_url: finalUrl } as Episode;
+
     setEpisodeResumeAt(resumeAt || 0);
-    
+
     // Check if this episode has a recap and we're not resuming
     const epData = episode as any;
     if (!resumeAt && epData.recap_start_time !== null && epData.recap_end_time !== null) {
@@ -477,15 +512,18 @@ const ContentDetail = () => {
       if (currentIndex > 0) {
         const prevEpisode = allEpisodes[currentIndex - 1];
         if (prevEpisode.video_url) {
-          setRecapEpisode(prevEpisode);
-          setPlayingEpisode(episode);
-          setShowRecap(true);
-          return;
+          const recapCheck = await validatePlayableVideo(prevEpisode.video_url);
+          if (recapCheck.valid) {
+            setRecapEpisode({ ...(prevEpisode as any), video_url: recapCheck.finalUrl } as Episode);
+            setPlayingEpisode(playableEpisode);
+            setShowRecap(true);
+            return;
+          }
         }
       }
     }
-    
-    setPlayingEpisode(episode);
+
+    setPlayingEpisode(playableEpisode);
   };
 
   // Show recap before episode
