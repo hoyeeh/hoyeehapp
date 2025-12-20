@@ -1585,6 +1585,13 @@ export type Database = {
       }
     }
     Functions: {
+      admin_reset_secret_word: {
+        Args: { new_secret: string; target_user_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
       get_masked_mobile: { Args: { user_uuid: string }; Returns: string }
       get_subscription_summary: {
