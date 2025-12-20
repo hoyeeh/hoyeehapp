@@ -78,9 +78,34 @@ const Subscription = () => {
     const handlePaymentCallback = async () => {
       const success = searchParams.get("success");
       const canceled = searchParams.get("canceled");
+      const sessionId = searchParams.get("session_id");
       const txRef = searchParams.get("tx_ref");
 
-      if (success === "true") {
+      if (success === "true" && sessionId) {
+        setVerifying(true);
+        try {
+          const { data: session } = await supabase.auth.getSession();
+          const response = await supabase.functions.invoke("stripe-payment", {
+            body: { action: "verify-payment", sessionId },
+            headers: {
+              Authorization: `Bearer ${session.session?.access_token}`,
+            },
+          });
+
+          if (response.data?.success) {
+            toast.success("Payment successful! Welcome to Hoyeeh Premium!");
+            refetchProfile();
+          } else {
+            toast.info("Payment is being processed. Please refresh in a moment.");
+          }
+        } catch (error) {
+          console.error("Verification error:", error);
+          toast.error("Failed to verify payment");
+        } finally {
+          setVerifying(false);
+          navigate("/subscription", { replace: true });
+        }
+      } else if (success === "true") {
         toast.success("Payment successful! Welcome to Hoyeeh Premium!");
         refetchProfile();
         navigate("/subscription", { replace: true });
