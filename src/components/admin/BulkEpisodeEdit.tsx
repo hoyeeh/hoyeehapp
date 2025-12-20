@@ -26,6 +26,8 @@ interface BulkEpisodeEditProps {
 interface BulkUpdate {
   duration?: number;
   is_premium?: boolean;
+  intro_start_time?: number;
+  intro_end_time?: number;
 }
 
 export const BulkEpisodeEdit = ({ episodes, onComplete, onClose }: BulkEpisodeEditProps) => {
@@ -35,6 +37,7 @@ export const BulkEpisodeEdit = ({ episodes, onComplete, onClose }: BulkEpisodeEd
   const [bulkUpdate, setBulkUpdate] = useState<BulkUpdate>({});
   const [updateDuration, setUpdateDuration] = useState(false);
   const [updatePremium, setUpdatePremium] = useState(false);
+  const [updateIntroTimes, setUpdateIntroTimes] = useState(false);
 
   const toggleSelect = (id: string) => {
     const newSelected = new Set(selectedIds);
@@ -60,12 +63,20 @@ export const BulkEpisodeEdit = ({ episodes, onComplete, onClose }: BulkEpisodeEd
       return;
     }
 
-    const updates: Partial<Episode> = {};
+    const updates: Record<string, any> = {};
     if (updateDuration && bulkUpdate.duration !== undefined) {
       updates.duration = bulkUpdate.duration;
     }
     if (updatePremium && bulkUpdate.is_premium !== undefined) {
       updates.is_premium = bulkUpdate.is_premium;
+    }
+    if (updateIntroTimes) {
+      if (bulkUpdate.intro_start_time !== undefined) {
+        updates.intro_start_time = bulkUpdate.intro_start_time;
+      }
+      if (bulkUpdate.intro_end_time !== undefined) {
+        updates.intro_end_time = bulkUpdate.intro_end_time;
+      }
     }
 
     if (Object.keys(updates).length === 0) {
@@ -177,6 +188,42 @@ export const BulkEpisodeEdit = ({ episodes, onComplete, onClose }: BulkEpisodeEd
               checked={bulkUpdate.is_premium || false}
               onCheckedChange={(checked) => setBulkUpdate(prev => ({ ...prev, is_premium: checked }))}
             />
+          </div>
+
+          {/* Intro Skip Times */}
+          <div className="space-y-3 pt-2 border-t border-border">
+            <div className="flex items-center gap-4">
+              <Checkbox
+                id="update-intro"
+                checked={updateIntroTimes}
+                onCheckedChange={(checked) => setUpdateIntroTimes(!!checked)}
+              />
+              <Label htmlFor="update-intro" className="flex-1">Set Intro Skip Times (seconds)</Label>
+            </div>
+            {updateIntroTimes && (
+              <div className="grid grid-cols-2 gap-4 pl-8">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Intro Start</Label>
+                  <Input
+                    type="number"
+                    value={bulkUpdate.intro_start_time ?? ''}
+                    onChange={(e) => setBulkUpdate(prev => ({ ...prev, intro_start_time: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Intro End</Label>
+                  <Input
+                    type="number"
+                    value={bulkUpdate.intro_end_time ?? ''}
+                    onChange={(e) => setBulkUpdate(prev => ({ ...prev, intro_end_time: parseInt(e.target.value) || 90 }))}
+                    placeholder="90"
+                    min={0}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
