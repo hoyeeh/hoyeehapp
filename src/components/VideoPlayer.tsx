@@ -137,6 +137,14 @@ export const VideoPlayer = ({
     }
   }, [src]);
 
+  // Guard: avoid loading the player with an empty source (would trigger Error code: 4)
+  useEffect(() => {
+    if (!src || src.trim() === "") {
+      setIsBuffering(false);
+      setMediaError({ code: 4, message: "This video is not available yet." });
+    }
+  }, [src]);
+
   // Get the video source with quality parameter for HLS and CDN conversion
   const getVideoSource = () => {
     // Convert to CDN URL if it's a DigitalOcean Spaces URL
