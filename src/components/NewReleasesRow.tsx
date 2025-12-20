@@ -188,6 +188,7 @@ export const NewReleasesRow = ({
                 isInList={userList.includes(item.id)}
                 cardStyle={index === 0 ? "backdrop" : "poster"}
                 showJustAddedBadge={true}
+                justAddedDays={14}
               />
             </div>
           ))}
