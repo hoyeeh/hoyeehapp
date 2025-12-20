@@ -486,6 +486,40 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
     }
   };
 
+  const handleApplyIntroRecapToSeason = async () => {
+    if (!episodes?.length) return;
+
+    if (!confirm(`Apply these intro/recap times to all episodes in Season ${season.season_number}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("episodes")
+        .update({
+          intro_start_time: episodeForm.intro_start_time,
+          intro_end_time: episodeForm.intro_end_time,
+          recap_start_time: episodeForm.recap_start_time,
+          recap_end_time: episodeForm.recap_end_time,
+        })
+        .eq("season_id", season.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Applied to season",
+        description: "Intro/recap times were copied to all episodes in this season.",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Failed to apply to season",
+        description: String((error as any)?.message ?? error),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteEpisode = async (episodeId: string) => {
     if (!confirm("Delete this episode?")) return;
     try {
@@ -776,6 +810,31 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
                       </div>
                     </div>
                   </div>
+
+                  {/* Apply to Season Button */}
+                  {editingEpisode && (
+                    <div className="rounded-lg border border-border p-3 bg-muted/30">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Copy intro/recap to season</p>
+                          <p className="text-xs text-muted-foreground">
+                            Apply these times to all episodes in Season {season.season_number}.
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleApplyIntroRecapToSeason}
+                          className="gap-2"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Apply
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetEpisodeForm}>Cancel</Button>
                     <Button type="submit" disabled={createEpisode.isPending || updateEpisode.isPending}>

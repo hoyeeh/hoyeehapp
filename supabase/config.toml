@@ -83,3 +83,6 @@ verify_jwt = true
 
 [functions.cleanup-cast-sessions]
 verify_jwt = false
+
+[functions.check-video-url]
+verify_jwt = true

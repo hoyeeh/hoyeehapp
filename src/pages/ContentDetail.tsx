@@ -335,6 +335,13 @@ const ContentDetail = () => {
           return;
         }
 
+        // Validate URL before playing
+        const { valid, error: urlError } = await validatePlayableVideo(episode.video_url);
+        if (!valid) {
+          toast.error(urlError || "Video is not available right now");
+          return;
+        }
+
         setPlayingEpisode(episode as Episode);
       } catch (e) {
         console.error('Failed to fetch episode:', e);
