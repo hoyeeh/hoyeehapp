@@ -23,6 +23,10 @@ export interface Episode {
   video_url: string | null;
   duration: number;
   is_premium: boolean;
+  intro_start_time: number | null;
+  intro_end_time: number | null;
+  recap_start_time: number | null;
+  recap_end_time: number | null;
   created_at: string;
   updated_at: string;
 }

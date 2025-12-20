@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { PreviouslyOnRecap } from "@/components/PreviouslyOnRecap";
 import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { CastQueuePanel } from "@/components/CastQueuePanel";
 import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
@@ -256,6 +257,8 @@ const ContentDetail = () => {
   const [episodeResumeAt, setEpisodeResumeAt] = useState<number>(0);
   const [episodeAutoPlayAttempted, setEpisodeAutoPlayAttempted] = useState(false);
   const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
+  const [showRecap, setShowRecap] = useState(false);
+  const [recapEpisode, setRecapEpisode] = useState<Episode | null>(null);
 
   const content = allContent.find(c => c.id === id);
   const isInList = id ? watchlistIds.includes(id) : false;
@@ -465,8 +468,48 @@ const ContentDetail = () => {
       return;
     }
     setEpisodeResumeAt(resumeAt || 0);
+    
+    // Check if this episode has a recap and we're not resuming
+    const epData = episode as any;
+    if (!resumeAt && epData.recap_start_time !== null && epData.recap_end_time !== null) {
+      // Find the previous episode to get its video URL for recap
+      const currentIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
+      if (currentIndex > 0) {
+        const prevEpisode = allEpisodes[currentIndex - 1];
+        if (prevEpisode.video_url) {
+          setRecapEpisode(prevEpisode);
+          setPlayingEpisode(episode);
+          setShowRecap(true);
+          return;
+        }
+      }
+    }
+    
     setPlayingEpisode(episode);
   };
+
+  // Show recap before episode
+  if (showRecap && recapEpisode && playingEpisode && content) {
+    const epData = playingEpisode as any;
+    return (
+      <PreviouslyOnRecap
+        videoUrl={recapEpisode.video_url || ''}
+        episodeTitle={recapEpisode.title}
+        seasonNumber={(recapEpisode as any).season_number || 1}
+        episodeNumber={playingEpisode.episode_number}
+        recapStartTime={epData.recap_start_time || 0}
+        recapEndTime={epData.recap_end_time || 60}
+        onSkip={() => {
+          setShowRecap(false);
+          setRecapEpisode(null);
+        }}
+        onComplete={() => {
+          setShowRecap(false);
+          setRecapEpisode(null);
+        }}
+      />
+    );
+  }
 
   // Playing episode
   if (playingEpisode && content) {
@@ -478,12 +521,16 @@ const ContentDetail = () => {
       thumbnailUrl: getNextEpisode.thumbnail_url || undefined,
     } : undefined;
 
+    const epData = playingEpisode as any;
+
     return (
       <VideoPlayer
         src={playingEpisode.video_url || ''}
         title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
         contentId={playingEpisode.id}
         initialProgress={episodeResumeAt}
+        introStartTime={epData.intro_start_time ?? 0}
+        introEndTime={epData.intro_end_time ?? 90}
         onBack={() => {
           setPlayingEpisode(null);
           setEpisodeResumeAt(0);

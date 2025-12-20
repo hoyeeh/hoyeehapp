@@ -439,6 +439,10 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
     video_url: "",
     duration: 0,
     is_premium: false,
+    intro_start_time: 0,
+    intro_end_time: 90,
+    recap_start_time: null as number | null,
+    recap_end_time: null as number | null,
   });
 
   const handleReorderEpisodes = async (updates: { id: string; episode_number: number }[]) => {
@@ -503,6 +507,10 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
       video_url: "",
       duration: 0,
       is_premium: false,
+      intro_start_time: 0,
+      intro_end_time: 90,
+      recap_start_time: null,
+      recap_end_time: null,
     });
   };
 
@@ -516,6 +524,10 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
       video_url: episode.video_url || "",
       duration: episode.duration,
       is_premium: episode.is_premium,
+      intro_start_time: (episode as any).intro_start_time ?? 0,
+      intro_end_time: (episode as any).intro_end_time ?? 90,
+      recap_start_time: (episode as any).recap_start_time ?? null,
+      recap_end_time: (episode as any).recap_end_time ?? null,
     });
     setShowEpisodeForm(true);
   };
@@ -702,6 +714,67 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
                       checked={episodeForm.is_premium}
                       onCheckedChange={checked => setEpisodeForm(prev => ({ ...prev, is_premium: checked }))}
                     />
+                  </div>
+
+                  {/* Intro Skip Times */}
+                  <div className="border-t border-border pt-4 mt-4">
+                    <Label className="text-sm font-medium mb-2 block">Skip Intro Settings (seconds)</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Intro Start</Label>
+                        <Input
+                          type="number"
+                          value={episodeForm.intro_start_time}
+                          onChange={e => setEpisodeForm(prev => ({ ...prev, intro_start_time: parseInt(e.target.value) || 0 }))}
+                          min={0}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Intro End</Label>
+                        <Input
+                          type="number"
+                          value={episodeForm.intro_end_time}
+                          onChange={e => setEpisodeForm(prev => ({ ...prev, intro_end_time: parseInt(e.target.value) || 90 }))}
+                          min={0}
+                          placeholder="90"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recap Settings */}
+                  <div className="border-t border-border pt-4">
+                    <Label className="text-sm font-medium mb-2 block">"Previously On" Recap (seconds)</Label>
+                    <p className="text-xs text-muted-foreground mb-2">Set the time range for the recap segment from the previous episode. Leave empty if no recap.</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Recap Start</Label>
+                        <Input
+                          type="number"
+                          value={episodeForm.recap_start_time ?? ""}
+                          onChange={e => setEpisodeForm(prev => ({ 
+                            ...prev, 
+                            recap_start_time: e.target.value ? parseInt(e.target.value) : null 
+                          }))}
+                          min={0}
+                          placeholder="Empty = no recap"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Recap End</Label>
+                        <Input
+                          type="number"
+                          value={episodeForm.recap_end_time ?? ""}
+                          onChange={e => setEpisodeForm(prev => ({ 
+                            ...prev, 
+                            recap_end_time: e.target.value ? parseInt(e.target.value) : null 
+                          }))}
+                          min={0}
+                          placeholder="Empty = no recap"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetEpisodeForm}>Cancel</Button>
