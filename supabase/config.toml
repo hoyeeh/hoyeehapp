@@ -12,11 +12,11 @@ verify_jwt = false
 [functions.tmdb-seasons]
 verify_jwt = false
 
-[functions.tmdb-coming-soon-search]
-verify_jwt = false
-
 [functions.stripe-payment]
 verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
 
 [functions.flutterwave-payment]
 verify_jwt = true

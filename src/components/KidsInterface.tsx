@@ -1,9 +1,11 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { Baby, Home, Search, List, Sparkles } from "lucide-react";
+import { Baby, Home, Search, List, Sparkles, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useKidsSounds } from "@/hooks/useKidsSounds";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { KidsMobileInterface } from "./mobile/KidsMobileInterface";
 
 interface KidsInterfaceProps {
   children: ReactNode;
@@ -14,9 +16,15 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { playClickSound, playPopSound } = useKidsSounds();
+  const isMobile = useIsMobile();
 
   if (!currentProfile?.is_kids) {
     return <>{children}</>;
+  }
+
+  // Use mobile interface on mobile devices
+  if (isMobile) {
+    return <KidsMobileInterface>{children}</KidsMobileInterface>;
   }
 
   const getActiveTab = () => {
@@ -32,7 +40,7 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
     <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-pink-950 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Stars */}
+        {/* Stars - replaced emoji with CSS */}
         {[...Array(20)].map((_, i) => (
           <div
             key={`star-${i}`}
@@ -44,7 +52,7 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
               fontSize: `${10 + Math.random() * 15}px`,
             }}
           >
-            ⭐
+            <Sparkles className="h-3 w-3" />
           </div>
         ))}
         
@@ -91,9 +99,10 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
               setCurrentProfile(null as any);
               navigate("/");
             }}
-            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all hover:scale-105 active:scale-95 border border-white/20"
+            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all hover:scale-105 active:scale-95 border border-white/20 flex items-center gap-2"
           >
-            Exit Kids 👋
+            <Lock className="h-4 w-4" />
+            Exit Kids
           </button>
         </div>
       </header>
