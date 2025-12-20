@@ -10,6 +10,7 @@ import { CastProvider } from "@/contexts/CastContext";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
+import { DownloadManagerPanel } from "@/components/DownloadManagerPanel";
 import { migrateLegacyKeys } from "@/utils/cacheManager";
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -127,6 +128,7 @@ const App = () => (
           <SubscriptionExpiryChecker />
           <OfflineIndicator />
           <PWAInstallBanner />
+          <DownloadManagerPanel />
           <BrowserRouter>
             <PWAUpdateHandler />
             <PWANavigationHandler />
