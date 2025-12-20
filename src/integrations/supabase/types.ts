@@ -1585,11 +1585,20 @@ export type Database = {
       }
     }
     Functions: {
+      admin_reset_pin: {
+        Args: { target_user_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+          user_email: string
+        }[]
+      }
       admin_reset_secret_word: {
         Args: { new_secret: string; target_user_id: string }
         Returns: {
           error_message: string
           success: boolean
+          user_email: string
         }[]
       }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
