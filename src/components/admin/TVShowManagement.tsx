@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2, Upload, Settings2, Eye, Copy } from "lucide-react";
+import { Plus, Trash2, Edit2, ChevronDown, ChevronRight, Film, Play, Download, Loader2, Upload, Settings2, Eye, Copy, LinkIcon, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoUploadField } from "./VideoUploadField";
 import { BatchVideoUpload } from "./BatchVideoUpload";
@@ -431,6 +431,8 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
+  const [verifyingUrls, setVerifyingUrls] = useState(false);
+  const [urlCheckResults, setUrlCheckResults] = useState<Record<string, { valid: boolean; error?: string }>>({});
   const [episodeForm, setEpisodeForm] = useState({
     episode_number: 1,
     title: "",
@@ -517,6 +519,57 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
         description: String((error as any)?.message ?? error),
         variant: "destructive",
       });
+    }
+  };
+
+  const handleVerifyVideoUrls = async () => {
+    if (!episodes?.length) return;
+
+    const urlsToCheck = episodes
+      .filter((ep) => ep.video_url)
+      .map((ep) => ep.video_url as string);
+
+    if (urlsToCheck.length === 0) {
+      toast({ title: "No video URLs to verify" });
+      return;
+    }
+
+    setVerifyingUrls(true);
+    setUrlCheckResults({});
+
+    try {
+      const { data, error } = await supabase.functions.invoke("check-video-url", {
+        body: { urls: urlsToCheck },
+      });
+
+      if (error) throw error;
+
+      const resultsMap: Record<string, { valid: boolean; error?: string }> = {};
+      (data.results || []).forEach((r: { url: string; valid: boolean; error?: string }) => {
+        resultsMap[r.url] = { valid: r.valid, error: r.error };
+      });
+
+      setUrlCheckResults(resultsMap);
+
+      const brokenCount = Object.values(resultsMap).filter((r) => !r.valid).length;
+      if (brokenCount > 0) {
+        toast({
+          title: `${brokenCount} broken URL(s) found`,
+          description: "Check the episode list for details.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "All video URLs are valid!" });
+      }
+    } catch (err) {
+      console.error("URL verification failed:", err);
+      toast({
+        title: "Verification failed",
+        description: String((err as any)?.message ?? err),
+        variant: "destructive",
+      });
+    } finally {
+      setVerifyingUrls(false);
     }
   };
 
@@ -645,6 +698,16 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
                     >
                       <Upload className="h-4 w-4" />
                       Batch Upload
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleVerifyVideoUrls}
+                      disabled={verifyingUrls}
+                      className="gap-2"
+                    >
+                      {verifyingUrls ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
+                      Verify URLs
                     </Button>
                   </>
                 )}
@@ -870,6 +933,7 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
                 onEdit={startEditEpisode}
                 onDelete={handleDeleteEpisode}
                 onReorder={handleReorderEpisodes}
+                urlCheckResults={urlCheckResults}
               />
             )}
               </>

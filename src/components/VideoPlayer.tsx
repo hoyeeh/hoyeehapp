@@ -51,6 +51,9 @@ interface VideoPlayerProps {
   // Skip intro config (in seconds)
   introStartTime?: number;
   introEndTime?: number;
+  // Recap segment (in seconds) - for visual markers only
+  recapStartTime?: number;
+  recapEndTime?: number;
   // Next episode support
   nextEpisode?: NextEpisodeInfo;
   onPlayNextEpisode?: (episode: NextEpisodeInfo) => void;
@@ -73,6 +76,8 @@ export const VideoPlayer = ({
   onBack,
   introStartTime = 0,
   introEndTime = 90, // Default 90 seconds for intro
+  recapStartTime,
+  recapEndTime,
   nextEpisode,
   onPlayNextEpisode,
 }: VideoPlayerProps) => {
@@ -662,14 +667,37 @@ export const VideoPlayer = ({
 
         {/* Bottom Controls */}
         <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
-          {/* Progress Bar */}
+          {/* Progress Bar with Markers */}
           <div
             ref={progressRef}
-            className="h-1.5 bg-muted rounded-full cursor-pointer group"
+            className="h-1.5 bg-muted rounded-full cursor-pointer group relative"
             onClick={handleProgressClick}
           >
+            {/* Intro marker */}
+            {duration > 0 && introEndTime > introStartTime && (
+              <div
+                className="absolute top-0 h-full bg-blue-500/40 rounded-full pointer-events-none"
+                style={{
+                  left: `${(introStartTime / duration) * 100}%`,
+                  width: `${((introEndTime - introStartTime) / duration) * 100}%`,
+                }}
+                title="Intro segment"
+              />
+            )}
+            {/* Recap marker */}
+            {duration > 0 && recapEndTime && recapStartTime !== undefined && recapEndTime > recapStartTime && (
+              <div
+                className="absolute top-0 h-full bg-purple-500/40 rounded-full pointer-events-none"
+                style={{
+                  left: `${(recapStartTime / duration) * 100}%`,
+                  width: `${((recapEndTime - recapStartTime) / duration) * 100}%`,
+                }}
+                title="Recap segment"
+              />
+            )}
+            {/* Played progress */}
             <div
-              className="h-full bg-brand rounded-full relative transition-all group-hover:h-2"
+              className="h-full bg-brand rounded-full relative transition-all group-hover:h-2 z-10"
               style={{ width: `${progress}%` }}
             >
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-brand scale-0 group-hover:scale-100 transition-transform shadow-lg" />

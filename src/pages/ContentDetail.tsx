@@ -19,7 +19,6 @@ import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter,
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
-import { validateVideoUrl } from "@/utils/videoUrlValidation";
 
 interface CastMember {
   id: number;
@@ -266,12 +265,6 @@ const ContentDetail = () => {
   const isInList = id ? watchlistIds.includes(id) : false;
   const isTVShow = content?.contentType === 'series';
 
-  const validatePlayableVideo = async (rawUrl: string) => {
-    const finalUrl = toCdnUrl(rawUrl);
-    const { valid, error } = await validateVideoUrl(finalUrl);
-    return { valid, finalUrl, error };
-  };
-
   useEffect(() => {
     const fetchTMDBDetails = async () => {
       if (!content) {
@@ -332,13 +325,6 @@ const ContentDetail = () => {
         if (episode.is_premium && !profile?.is_subscribed) {
           toast.error("This episode requires a premium subscription");
           navigate("/subscription");
-          return;
-        }
-
-        // Validate URL before playing
-        const { valid, error: urlError } = await validatePlayableVideo(episode.video_url);
-        if (!valid) {
-          toast.error(urlError || "Video is not available right now");
           return;
         }
 
@@ -425,7 +411,7 @@ const ContentDetail = () => {
     }
   };
 
-  const handlePlay = async () => {
+  const handlePlay = () => {
     if (content?.isPremium && !profile?.is_subscribed) {
       toast.error("This content requires a premium subscription");
       navigate("/subscription");
@@ -434,15 +420,6 @@ const ContentDetail = () => {
 
     if (!content?.videoUrl) {
       toast.error("This video is not yet available");
-      return;
-    }
-
-    const checkingToast = toast.loading("Checking video availability...");
-    const { valid, error: urlError } = await validatePlayableVideo(content.videoUrl);
-    toast.dismiss(checkingToast);
-
-    if (!valid) {
-      toast.error(urlError || "Video is not available right now");
       return;
     }
 
@@ -487,7 +464,7 @@ const ContentDetail = () => {
     }
   };
 
-  const handlePlayEpisode = async (episode: Episode, resumeAt?: number) => {
+  const handlePlayEpisode = (episode: Episode, resumeAt?: number) => {
     if (!episode.video_url) {
       toast.error("This episode is not yet available");
       return;
@@ -497,17 +474,6 @@ const ContentDetail = () => {
       navigate("/subscription");
       return;
     }
-
-    const checkingToast = toast.loading("Checking video availability...");
-    const { valid, finalUrl, error: urlError } = await validatePlayableVideo(episode.video_url);
-    toast.dismiss(checkingToast);
-
-    if (!valid) {
-      toast.error(urlError || "Video is not available right now");
-      return;
-    }
-
-    const playableEpisode = { ...(episode as any), video_url: finalUrl } as Episode;
 
     setEpisodeResumeAt(resumeAt || 0);
 
@@ -519,18 +485,15 @@ const ContentDetail = () => {
       if (currentIndex > 0) {
         const prevEpisode = allEpisodes[currentIndex - 1];
         if (prevEpisode.video_url) {
-          const recapCheck = await validatePlayableVideo(prevEpisode.video_url);
-          if (recapCheck.valid) {
-            setRecapEpisode({ ...(prevEpisode as any), video_url: recapCheck.finalUrl } as Episode);
-            setPlayingEpisode(playableEpisode);
-            setShowRecap(true);
-            return;
-          }
+          setRecapEpisode(prevEpisode);
+          setPlayingEpisode(episode);
+          setShowRecap(true);
+          return;
         }
       }
     }
 
-    setPlayingEpisode(playableEpisode);
+    setPlayingEpisode(episode);
   };
 
   // Show recap before episode
@@ -576,6 +539,8 @@ const ContentDetail = () => {
         initialProgress={episodeResumeAt}
         introStartTime={epData.intro_start_time ?? 0}
         introEndTime={epData.intro_end_time ?? 90}
+        recapStartTime={epData.recap_start_time ?? undefined}
+        recapEndTime={epData.recap_end_time ?? undefined}
         onBack={() => {
           setPlayingEpisode(null);
           setEpisodeResumeAt(0);
