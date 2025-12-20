@@ -35,7 +35,6 @@ export const PremiumBadge = ({ size = "md", showText = true, className }: Premiu
       )}
     >
       <Crown className={sizeClasses[size]} />
-      {showText && <span className={textSizes[size]}>Premium</span>}
     </div>
   );
 };
@@ -48,7 +47,7 @@ export const ContentLockOverlay = ({ onSubscribe }: ContentLockOverlayProps) => 
   return (
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-10 rounded-lg">
       <Crown className="h-12 w-12 text-amber-500 mb-3" />
-      <h3 className="text-lg font-semibold text-white mb-1">Premium Content</h3>
+      <h3 className="text-lg font-semibold text-white mb-1">Subscription Required</h3>
       <p className="text-sm text-gray-300 mb-4 max-w-xs">
         Subscribe to unlock this and all premium content
       </p>

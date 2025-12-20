@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsContentCard } from "./KidsContentCard";
-import { Clock, Moon, Film, Tv, TrendingUp, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Moon, Film, Tv, TrendingUp, Play, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -197,6 +197,21 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     },
   });
 
+  // Prioritize animation content
+  const animationContent = kidsContent.filter((c) => 
+    c.genre?.toLowerCase().includes("animation") || 
+    c.genre?.toLowerCase().includes("animated") ||
+    c.genre?.toLowerCase().includes("cartoon")
+  );
+  const nonAnimationContent = kidsContent.filter((c) => 
+    !c.genre?.toLowerCase().includes("animation") && 
+    !c.genre?.toLowerCase().includes("animated") &&
+    !c.genre?.toLowerCase().includes("cartoon")
+  );
+  
+  // Sort content with animation first
+  const sortedContent = [...animationContent, ...nonAnimationContent];
+  
   const movies = kidsContent.filter((c) => c.contentType === "movie");
   const shows = kidsContent.filter((c) => c.contentType === "series");
 
@@ -287,8 +302,8 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
 
   return (
     <div className="max-w-7xl mx-auto px-6 space-y-10 pb-12">
-      {/* Hero Carousel */}
-      <HeroCarousel content={kidsContent} onPlay={onPlay} onDetails={onDetails} />
+      {/* Hero Carousel - prioritize animation */}
+      <HeroCarousel content={sortedContent} onPlay={onPlay} onDetails={onDetails} />
 
       {/* Time Remaining Badge */}
       {timeRemaining !== null && (
@@ -304,12 +319,30 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
         </motion.div>
       )}
 
+      {/* Animation Section - Featured First */}
+      {animationContent.length > 0 && (
+        <section>
+          <SectionHeader icon={Sparkles} title="Animation" color="bg-gradient-to-br from-fuchsia-500 to-purple-600" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {animationContent.slice(0, 12).map((item, index) => (
+              <KidsContentCard
+                key={item.id}
+                content={item}
+                onPlay={onPlay}
+                onDetails={onDetails}
+                index={index}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Trending Now */}
       {kidsContent.length > 0 && (
         <section>
           <SectionHeader icon={TrendingUp} title="Trending Now" color="bg-gradient-to-br from-rose-500 to-pink-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {kidsContent.slice(0, 12).map((item, index) => (
+            {sortedContent.slice(0, 12).map((item, index) => (
               <KidsContentCard
                 key={item.id}
                 content={item}
