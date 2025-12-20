@@ -238,7 +238,7 @@ const RecommendationsSection = ({
 const ContentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const episodeIdFromUrl = searchParams.get('episodeId');
+  const episodeIdFromUrl = searchParams.get('episode') || searchParams.get('episodeId');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: allContent = [] } = useContent();
