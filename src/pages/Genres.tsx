@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
+import { useSEO } from "@/hooks/useSEO";
 import { Content } from "@/types";
 import { ContentCard } from "@/components/ContentCard";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
@@ -44,6 +45,24 @@ const DesktopGenres = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [playingContent, setPlayingContent] = useState<{ content: Content; progress: number } | null>(null);
+
+  // SEO meta tags
+  useSEO({
+    title: selectedGenre ? `${selectedGenre} Movies & TV Shows` : 'Browse by Genre',
+    description: selectedGenre 
+      ? `Discover the best ${selectedGenre} movies and TV shows on Hoyeeh. Stream African entertainment in HD quality.`
+      : 'Browse movies and TV shows by genre on Hoyeeh. Find action, drama, comedy, romance, and more African content.',
+    url: 'https://hoyeeh.com/genres',
+    keywords: [
+      'genres',
+      'movies',
+      'TV shows',
+      'African entertainment',
+      'streaming',
+      selectedGenre || '',
+      'Hoyeeh',
+    ].filter(Boolean),
+  });
 
   // Fetch genres
   const { data: genres = [] } = useQuery({

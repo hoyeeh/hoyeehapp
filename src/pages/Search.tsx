@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useSEO } from "@/hooks/useSEO";
 import { Content } from "@/types";
 import { Sidebar } from "@/components/Sidebar";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
@@ -63,6 +64,22 @@ const Search = () => {
   const [selectedActor, setSelectedActor] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("title");
   const [showFilters, setShowFilters] = useState(true);
+
+  // SEO meta tags
+  useSEO({
+    title: searchQuery ? `Search: ${searchQuery}` : 'Search Movies & TV Shows',
+    description: 'Search and discover African movies, TV shows, and series on Hoyeeh. Use advanced filters to find exactly what you want to watch.',
+    url: 'https://hoyeeh.com/search',
+    keywords: [
+      'search',
+      'find movies',
+      'TV shows',
+      'African content',
+      'streaming',
+      'discover',
+      'Hoyeeh',
+    ],
+  });
 
   // Handle actor query param on mount
   useEffect(() => {
