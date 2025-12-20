@@ -7,7 +7,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, CreditCard, Smartphone, Check, ArrowLeft, Crown, Star, Sparkles } from "lucide-react";
+import { Loader2, CreditCard, Smartphone, Check, ArrowLeft, Crown, Star, Sparkles, Settings } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 // Currency conversion rates (approximate)
@@ -183,6 +183,33 @@ const Subscription = () => {
     }
   };
 
+  const handleManageSubscription = async () => {
+    setLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke("customer-portal", {
+        headers: {
+          Authorization: `Bearer ${session.session?.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to open customer portal");
+      }
+
+      if (response.data?.url) {
+        window.open(response.data.url, "_blank");
+      } else {
+        throw new Error(response.data?.error || "Failed to open customer portal");
+      }
+    } catch (error: any) {
+      console.error("Customer portal error:", error);
+      toast.error(error.message || "Failed to open subscription management");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFlutterwavePayment = async () => {
     setLoading(true);
     try {
@@ -244,7 +271,7 @@ const Subscription = () => {
                 Enjoy unlimited access to all our content
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center space-y-4">
+            <CardContent className="text-center space-y-6">
               <p className="text-muted-foreground">
                 Your subscription is active until{" "}
                 <span className="text-foreground font-medium">
@@ -253,9 +280,29 @@ const Subscription = () => {
                     : "forever"}
                 </span>
               </p>
-              <Button onClick={() => navigate("/")} className="mt-4">
-                Continue Watching
-              </Button>
+              
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={() => navigate("/")} className="gap-2">
+                  Continue Watching
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleManageSubscription}
+                  disabled={loading}
+                  className="gap-2"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Settings className="h-4 w-4" />
+                  )}
+                  Manage Subscription
+                </Button>
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                Change payment method, view invoices, or cancel your subscription
+              </p>
             </CardContent>
           </Card>
         ) : (

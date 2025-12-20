@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useProfileContext, UserProfile } from "@/contexts/ProfileContext";
-import { Baby, ChevronDown, User } from "lucide-react";
+import { useProfile } from "@/hooks/useDatabase";
+import { Baby, ChevronDown, User, Crown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,22 +17,31 @@ interface ProfileSwitcherProps {
 
 export const ProfileSwitcher = ({ onManageProfiles }: ProfileSwitcherProps) => {
   const { profiles, currentProfile, setCurrentProfile } = useProfileContext();
+  const { data: userProfile } = useProfile();
+  const isSubscribed = userProfile?.is_subscribed;
 
   if (!currentProfile) return null;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 p-2 rounded-lg hover:bg-sidebar-accent transition-colors focus:outline-none">
-        <div
-          className={cn(
-            "w-8 h-8 rounded flex items-center justify-center text-white font-bold text-sm",
-            currentProfile.avatar_url || "bg-brand"
-          )}
-        >
-          {currentProfile.is_kids ? (
-            <Baby className="w-4 h-4" />
-          ) : (
-            currentProfile.name.charAt(0).toUpperCase()
+        <div className="relative">
+          <div
+            className={cn(
+              "w-8 h-8 rounded flex items-center justify-center text-white font-bold text-sm",
+              currentProfile.avatar_url || "bg-brand"
+            )}
+          >
+            {currentProfile.is_kids ? (
+              <Baby className="w-4 h-4" />
+            ) : (
+              currentProfile.name.charAt(0).toUpperCase()
+            )}
+          </div>
+          {isSubscribed && (
+            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center">
+              <Crown className="w-2.5 h-2.5 text-white" />
+            </div>
           )}
         </div>
         <span className="hidden md:block text-sm font-medium truncate max-w-24">
