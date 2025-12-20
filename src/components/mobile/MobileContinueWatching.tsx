@@ -193,12 +193,6 @@ export function MobileContinueWatching({ onPlay, onDetails }: MobileContinueWatc
                 loading="lazy"
               />
               
-              {/* Premium Badge */}
-              {item.isPremium && (
-                <div className="absolute top-2 left-2 bg-brand px-1.5 py-0.5 rounded text-[10px] font-semibold text-primary-foreground">
-                  PREMIUM
-                </div>
-              )}
 
               {/* Episode Badge */}
               {item.isEpisode && item.subtitle && (

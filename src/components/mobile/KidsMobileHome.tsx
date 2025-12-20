@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsMobileContentCard } from "./KidsMobileContentCard";
 import { KidsHeroCarousel } from "./KidsHeroCarousel";
-import { Film, Tv, Clock, Moon, TrendingUp } from "lucide-react";
+import { Film, Tv, Clock, Moon, TrendingUp, Sparkles } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -64,6 +64,21 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
     },
   });
 
+  // Prioritize animation content
+  const animationContent = kidsContent.filter((c) => 
+    c.genre?.toLowerCase().includes("animation") || 
+    c.genre?.toLowerCase().includes("animated") ||
+    c.genre?.toLowerCase().includes("cartoon")
+  );
+  const nonAnimationContent = kidsContent.filter((c) => 
+    !c.genre?.toLowerCase().includes("animation") && 
+    !c.genre?.toLowerCase().includes("animated") &&
+    !c.genre?.toLowerCase().includes("cartoon")
+  );
+  
+  // Sort content with animation first
+  const sortedContent = [...animationContent, ...nonAnimationContent];
+  
   const movies = kidsContent.filter((c) => c.contentType === "movie");
   const shows = kidsContent.filter((c) => c.contentType === "series");
 
@@ -152,9 +167,9 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Hero Carousel */}
+      {/* Hero Carousel - prioritize animation */}
       <KidsHeroCarousel 
-        content={kidsContent} 
+        content={sortedContent} 
         onPlay={onPlay} 
         onDetails={onDetails} 
       />
@@ -173,12 +188,31 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
         </motion.div>
       )}
 
+      {/* Animation Section - Featured First */}
+      {animationContent.length > 0 && (
+        <section>
+          <SectionHeader icon={Sparkles} title="Animation" color="bg-gradient-to-br from-fuchsia-500 to-purple-600" />
+          <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
+            {animationContent.slice(0, 8).map((item, index) => (
+              <KidsMobileContentCard
+                key={item.id}
+                content={item}
+                onPlay={onPlay}
+                onDetails={onDetails}
+                index={index}
+                variant="large"
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Trending Now */}
       {kidsContent.length > 0 && (
         <section>
           <SectionHeader icon={TrendingUp} title="Trending Now" color="bg-gradient-to-br from-rose-500 to-pink-600" />
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
-            {kidsContent.slice(0, 8).map((item, index) => (
+            {sortedContent.slice(0, 8).map((item, index) => (
               <KidsMobileContentCard
                 key={item.id}
                 content={item}

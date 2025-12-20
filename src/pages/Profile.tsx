@@ -255,7 +255,6 @@ const Profile = () => {
                 {profile?.is_subscribed && (
                   <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold">
                     <Crown className="h-3 w-3" />
-                    Premium
                   </div>
                 )}
               </div>
@@ -416,7 +415,7 @@ const Profile = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">
-                  {profile?.is_subscribed ? "Premium Member" : "Free Plan"}
+                  {profile?.is_subscribed ? "Subscribed Member" : "Free Plan"}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {profile?.is_subscribed

@@ -52,11 +52,6 @@ export const HeroBanner = ({
 
       {/* Content */}
       <div className="relative z-10 p-8 md:p-16 max-w-2xl animate-slide-up">
-        {content.isPremium && (
-          <span className="inline-block bg-brand px-3 py-1 rounded text-sm font-semibold text-primary-foreground mb-4">
-            PREMIUM
-          </span>
-        )}
         
         <h1 className="font-display text-4xl md:text-6xl mb-4">{content.title}</h1>
         
