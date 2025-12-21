@@ -103,7 +103,13 @@ export function MobileCastSheet({
   // Handle reconnecting to paired device
   const handleReconnect = async (device: HistoryDevice) => {
     try {
-      await cast.reconnectToDevice({ id: device.id, name: device.customName || device.name });
+      // Convert HistoryDevice type to CastDevice type for useUniversalCast
+      const castDeviceType = device.type === 'airplay' ? 'remote' : device.type;
+      await cast.reconnectToDevice({ 
+        id: device.id, 
+        name: device.customName || device.name,
+        type: castDeviceType as 'remote' | 'dlna' | 'chromecast',
+      });
       if (cast.isConnected) {
         onCastStart?.();
         await cast.loadVideo(videoUrl, videoTitle, thumbnail, currentTime, duration);
@@ -386,7 +392,7 @@ export function MobileCastSheet({
                         {recentDevices.map((device: HistoryDevice) => (
                           <button
                             key={device.id}
-                            onClick={() => handleReconnect({ id: device.id, name: device.customName || device.name })}
+                            onClick={() => handleReconnect(device)}
                             className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
                           >
                             <div className="p-3 rounded-full bg-primary/10">
