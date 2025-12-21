@@ -24,6 +24,7 @@ import { MobileContentDetail } from "./MobileContentDetail";
 import { PullToRefresh } from "./PullToRefresh";
 import { FadeIn } from "./PageTransition";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { MobileCastStatusIndicator } from "./MobileCastStatusIndicator";
 
 interface MobileHomeProps {
   onPlay: (content: Content, progress?: number) => void;
@@ -444,6 +445,9 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
           )}
         </main>
       </PullToRefresh>
+
+      {/* Cast Status Indicator - shows when actively casting */}
+      <MobileCastStatusIndicator />
 
       {/* Bottom Navigation - Fixed at bottom */}
       <div className="fixed bottom-0 left-0 right-0 z-50">
