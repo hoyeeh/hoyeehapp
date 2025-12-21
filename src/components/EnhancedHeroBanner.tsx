@@ -13,6 +13,10 @@ const DESKTOP_BANNER_KEY = "hoyeeh-desktop-banner";
 const BANNER_EXPIRY = 6 * 60 * 60 * 1000; // 6 hours
 const HOVER_DELAY_MS = 1500; // Time before video preview starts
 
+// Preview configuration - start at 20 minutes, play 20 seconds on loop
+const PREVIEW_START_TIME = 20 * 60; // 20 minutes in seconds (1200s)
+const PREVIEW_DURATION = 20; // 20 seconds
+
 interface EnhancedHeroBannerProps {
   fallbackContent?: Content;
   onPlay: (content: Content) => void;
@@ -42,6 +46,7 @@ export const EnhancedHeroBanner = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [showVideoPreview, setShowVideoPreview] = useState(false);
+  const [previewStartedForBanner, setPreviewStartedForBanner] = useState<number | null>(null);
   const hasInitialized = useRef(false);
   
   const { data: watchlistIds = [] } = useWatchlist();
@@ -147,34 +152,68 @@ export const EnhancedHeroBanner = ({
   const previewVideoUrl = displayVideo || content?.videoUrl;
   const ctaText = activeBanner?.cta_text || "Play";
 
-  // Handle hover video preview
+  // Handle hover video preview - persistent once started
   const handleMouseEnter = useCallback(() => {
     setIsHovering(true);
-    // Start timer for video preview
-    if (previewVideoUrl) {
+    
+    // If preview was already started for this banner, just resume
+    if (previewStartedForBanner === currentIndex && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+      return;
+    }
+    
+    // Start timer for new video preview
+    if (previewVideoUrl && !displayVideo) {
       hoverTimerRef.current = setTimeout(() => {
         setShowVideoPreview(true);
+        setPreviewStartedForBanner(currentIndex);
         if (videoRef.current) {
+          videoRef.current.currentTime = PREVIEW_START_TIME;
           videoRef.current.play().catch(() => {});
         }
       }, HOVER_DELAY_MS);
     }
-  }, [previewVideoUrl]);
+  }, [previewVideoUrl, displayVideo, previewStartedForBanner, currentIndex]);
 
   const handleMouseLeave = useCallback(() => {
     setIsHovering(false);
-    setShowVideoPreview(false);
-    // Clear hover timer
+    // Clear hover timer if preview hasn't started yet
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
     }
-    // Pause video preview if it was playing
-    if (videoRef.current && !displayVideo) {
+    // Only pause video (don't reset) - preview stays persistent
+    if (videoRef.current && !displayVideo && showVideoPreview) {
       videoRef.current.pause();
-      videoRef.current.currentTime = 0;
     }
-  }, [displayVideo]);
+  }, [displayVideo, showVideoPreview]);
+
+  // Custom loop: replay 20-second segment starting at 20 minutes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !showVideoPreview || displayVideo) return;
+    
+    const handleTimeUpdate = () => {
+      if (video.currentTime >= PREVIEW_START_TIME + PREVIEW_DURATION) {
+        video.currentTime = PREVIEW_START_TIME;
+      }
+    };
+    
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    return () => video.removeEventListener('timeupdate', handleTimeUpdate);
+  }, [showVideoPreview, displayVideo]);
+
+  // Reset preview state when banner changes
+  useEffect(() => {
+    if (previewStartedForBanner !== null && previewStartedForBanner !== currentIndex) {
+      setShowVideoPreview(false);
+      setPreviewStartedForBanner(null);
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
+    }
+  }, [currentIndex, previewStartedForBanner]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -291,7 +330,7 @@ export const EnhancedHeroBanner = ({
                   (isVideoPlaying || showVideoPreview) ? "opacity-100" : "opacity-0"
                 )}
                 autoPlay={!!displayVideo}
-                loop
+                loop={!!displayVideo}
                 muted={isMuted}
                 playsInline
                 onPlay={() => setIsVideoPlaying(true)}
