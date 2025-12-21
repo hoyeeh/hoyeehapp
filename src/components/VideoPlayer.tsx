@@ -130,6 +130,7 @@ export const VideoPlayer = ({
   const [isDLNACasting, setIsDLNACasting] = useState(false);
   const [mediaError, setMediaError] = useState<{ code: number; message: string } | null>(null);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
+  const [showSkipRecap, setShowSkipRecap] = useState(false);
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
   const nextEpisodeTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -341,6 +342,13 @@ export const VideoPlayer = ({
         setShowSkipIntro(true);
       } else {
         setShowSkipIntro(false);
+      }
+
+      // Show skip recap button during recap segment
+      if (recapStartTime && recapEndTime && time >= recapStartTime && time < recapEndTime) {
+        setShowSkipRecap(true);
+      } else {
+        setShowSkipRecap(false);
       }
 
       // Show next episode prompt near the end (last 30 seconds)
@@ -616,6 +624,14 @@ export const VideoPlayer = ({
     if (video) {
       video.currentTime = introEndTime;
       setShowSkipIntro(false);
+    }
+  };
+
+  const handleSkipRecap = () => {
+    const video = videoRef.current;
+    if (video && recapEndTime) {
+      video.currentTime = recapEndTime;
+      setShowSkipRecap(false);
     }
   };
 
@@ -921,6 +937,19 @@ export const VideoPlayer = ({
           className="absolute bottom-32 right-4 sm:right-8 z-20 px-6 py-3 bg-white/90 text-background font-semibold rounded-md hover:bg-white transition-colors shadow-lg"
         >
           Skip Intro
+        </button>
+      )}
+
+      {/* Skip Recap Button */}
+      {showSkipRecap && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSkipRecap();
+          }}
+          className="absolute bottom-32 left-4 sm:left-8 z-20 px-6 py-3 bg-purple-500/90 text-white font-semibold rounded-md hover:bg-purple-500 transition-colors shadow-lg"
+        >
+          Skip Recap
         </button>
       )}
 
