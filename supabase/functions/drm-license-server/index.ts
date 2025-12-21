@@ -14,6 +14,15 @@ const activeSessions = new Map<string, {
   createdAt: number;
   lastHeartbeat: number;
   deviceFingerprint?: string;
+  keyId?: string;
+  contentKey?: string;
+}>();
+
+// Content key cache (in production, use secure key management)
+const contentKeyCache = new Map<string, {
+  keyId: string;
+  contentKey: string;
+  createdAt: number;
 }>();
 
 // Rate limiting
@@ -36,6 +45,84 @@ const isRateLimited = (userId: string): boolean => {
   
   userLimit.count++;
   return false;
+};
+
+// Convert Uint8Array to base64url
+const bytesToBase64url = (bytes: Uint8Array): string => {
+  const binary = String.fromCharCode(...bytes);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+// Convert base64url to Uint8Array
+const base64urlToBytes = (base64url: string): Uint8Array => {
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
+// Generate a secure random key (16 bytes for AES-128)
+const generateSecureKey = (): Uint8Array => {
+  const key = new Uint8Array(16);
+  crypto.getRandomValues(key);
+  return key;
+};
+
+// Generate a key ID (16 bytes)
+const generateKeyId = (): Uint8Array => {
+  const keyId = new Uint8Array(16);
+  crypto.getRandomValues(keyId);
+  return keyId;
+};
+
+// Derive a deterministic content key from user, content, and secret
+const deriveContentKey = async (userId: string, contentId: string): Promise<{ keyId: string; contentKey: string }> => {
+  const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'default-secret';
+  
+  // Check cache first
+  const cacheKey = `${userId}:${contentId}`;
+  const cached = contentKeyCache.get(cacheKey);
+  if (cached && (Date.now() - cached.createdAt) < 3600000) { // 1 hour cache
+    return { keyId: cached.keyId, contentKey: cached.contentKey };
+  }
+  
+  // Generate deterministic key using HMAC
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(`${userId}:${contentId}:${secret}`);
+  
+  // Use crypto.subtle to derive the key
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', keyMaterial, keyData);
+  const derivedBytes = new Uint8Array(signature.slice(0, 16));
+  
+  // Generate key ID from content ID
+  const keyIdData = encoder.encode(`keyid:${contentId}:${secret}`);
+  const keyIdSignature = await crypto.subtle.sign('HMAC', keyMaterial, keyIdData);
+  const keyIdBytes = new Uint8Array(keyIdSignature.slice(0, 16));
+  
+  const result = {
+    keyId: bytesToBase64url(keyIdBytes),
+    contentKey: bytesToBase64url(derivedBytes),
+  };
+  
+  // Cache the result
+  contentKeyCache.set(cacheKey, {
+    ...result,
+    createdAt: Date.now(),
+  });
+  
+  return result;
 };
 
 // Generate license key
@@ -270,6 +357,56 @@ serve(async (req) => {
           JSON.stringify({
             valid: !!session && session.userId === user.id,
             hasSubscription: hasValidSubscription,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-content-key': {
+        // Generate content decryption key for Clear Key CDM
+        if (!sessionToken) {
+          return new Response(
+            JSON.stringify({ error: 'Session token required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const session = activeSessions.get(sessionToken);
+        if (!session || session.userId !== user.id) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid session' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Derive content key for this user and content
+        const { keyId: derivedKeyId, contentKey } = await deriveContentKey(user.id, contentId);
+
+        // Log key request
+        console.log(`Content key requested: user=${user.id}, content=${contentId}, keyId=${derivedKeyId}`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            keyId: derivedKeyId,
+            contentKey: contentKey,
+            algorithm: 'aes-128-cbc',
+            expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-key-info': {
+        // Get key information without the actual key (for EME setup)
+        const { keyId: derivedKeyId } = await deriveContentKey(user.id, contentId);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            keyId: derivedKeyId,
+            algorithm: 'aes-128-cbc',
+            keySystem: 'org.w3.clearkey',
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

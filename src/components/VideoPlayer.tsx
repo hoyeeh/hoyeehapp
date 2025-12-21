@@ -48,6 +48,7 @@ import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useAirPlay } from "@/hooks/useAirPlay";
 import { useCastHistory } from "@/hooks/useCastHistory";
 import { useDRMProtection } from "@/hooks/useDRMProtection";
+import { useWidevineEME } from "@/hooks/useWidevineEME";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CastController } from "@/components/CastController";
 import { CastSetupGuide } from "@/components/cast/CastSetupGuide";
@@ -147,6 +148,40 @@ export const VideoPlayer = ({
       toast.error('Playback license error. Please try again.');
     },
   });
+
+  // Widevine/Clear Key EME hook for software DRM (L3)
+  const eme = useWidevineEME({
+    contentId,
+    onError: (error) => {
+      console.error('EME error:', error);
+      // Don't show error to user - fallback to unprotected playback
+    },
+    onLicenseAcquired: () => {
+      console.log('DRM license acquired successfully');
+    },
+    onKeyStatusChange: (status) => {
+      console.log('Key status:', status);
+      if (status === 'expired') {
+        toast.warning('Content license expired. Please refresh the page.');
+      }
+    },
+  });
+
+  // Initialize EME when video element is ready
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && !eme.emeState.isInitialized) {
+      // Initialize EME for encrypted content support
+      eme.initializeEME(video).then((success) => {
+        if (success) {
+          console.log('EME initialized successfully');
+        } else {
+          // Fallback: acquire manual license for our custom DRM
+          eme.acquireManualLicense();
+        }
+      });
+    }
+  }, [videoRef.current, eme.emeState.isInitialized]);
 
   // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
