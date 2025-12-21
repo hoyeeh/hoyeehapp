@@ -18,7 +18,7 @@ import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeroCard, MobileHeroSkeleton } from "./MobileHeroCard";
 import { MobileContentRow } from "./MobileContentRow";
-import { MobileContinueWatching } from "./MobileContinueWatching";
+import { MobileOfflineContinueWatching } from "./MobileOfflineContinueWatching";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MobileContentDetail } from "./MobileContentDetail";
 import { PullToRefresh } from "./PullToRefresh";
@@ -321,9 +321,9 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
             ) : null}
           </FadeIn>
 
-          {/* Continue Watching */}
+          {/* Continue Watching - Offline-first */}
           <FadeIn delay={50}>
-            <MobileContinueWatching
+            <MobileOfflineContinueWatching
               onPlay={(c, progress, episodeId) => handlePlay(c, progress, episodeId)}
               onDetails={handleDetails}
             />
