@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw } from "lucide-react";
+import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw, Cast } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from "
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { useProfileContext } from "@/contexts/ProfileContext";
+import { MobileCastSheet } from "./MobileCastSheet";
 
 interface MobileContentDetailProps {
   content: Content;
@@ -40,6 +41,9 @@ export function MobileContentDetail({
   const queryClient = useQueryClient();
   const { canAccessPremium } = useSubscriptionAccess();
   const { currentProfile } = useProfileContext();
+  
+  // Cast sheet state
+  const [showCastSheet, setShowCastSheet] = useState(false);
   
   // Preview video state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -515,6 +519,17 @@ export function MobileContentDetail({
             </button>
             
             <button 
+              onClick={() => {
+                lightTap();
+                setShowCastSheet(true);
+              }}
+              className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+            >
+              <Cast className="h-6 w-6" />
+              <span className="text-xs text-muted-foreground">Cast</span>
+            </button>
+            
+            <button 
               onClick={handleShare}
               className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
             >
@@ -727,6 +742,17 @@ export function MobileContentDetail({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Cast Sheet */}
+      <MobileCastSheet
+        open={showCastSheet}
+        onClose={() => setShowCastSheet(false)}
+        videoUrl={content.videoUrl || ""}
+        videoTitle={content.title}
+        thumbnail={content.thumbnailUrl}
+        currentTime={0}
+        duration={content.duration || 0}
+      />
     </motion.div>
   );
 }
