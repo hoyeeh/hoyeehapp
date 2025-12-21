@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import DOMPurify from "dompurify";
 import { SubtitleCue } from "@/hooks/useSubtitles";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +8,23 @@ interface SubtitleDisplayProps {
   className?: string;
   bottomOffset?: number;
 }
+
+// Sanitize subtitle text to prevent XSS attacks
+const sanitizeSubtitleText = (text: string): string => {
+  // First apply standard subtitle formatting replacements
+  const formattedText = text
+    .replace(/\n/g, '<br />')
+    .replace(/<i>/g, '<em>')
+    .replace(/<\/i>/g, '</em>')
+    .replace(/<b>/g, '<strong>')
+    .replace(/<\/b>/g, '</strong>');
+  
+  // Then sanitize with DOMPurify, only allowing safe subtitle tags
+  return DOMPurify.sanitize(formattedText, {
+    ALLOWED_TAGS: ['br', 'em', 'strong', 'i', 'b'],
+    ALLOWED_ATTR: [],
+  });
+};
 
 export function SubtitleDisplay({ 
   cue, 
@@ -29,12 +47,7 @@ export function SubtitleDisplay({
       <span
         className="inline-block bg-black/75 text-white px-3 py-1.5 rounded text-base sm:text-lg leading-relaxed"
         dangerouslySetInnerHTML={{ 
-          __html: cue.text
-            .replace(/\n/g, '<br />')
-            .replace(/<i>/g, '<em>')
-            .replace(/<\/i>/g, '</em>')
-            .replace(/<b>/g, '<strong>')
-            .replace(/<\/b>/g, '</strong>')
+          __html: sanitizeSubtitleText(cue.text)
         }}
       />
     </motion.div>
