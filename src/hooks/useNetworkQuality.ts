@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface NetworkQuality {
   effectiveType: '4g' | '3g' | '2g' | 'slow-2g' | 'unknown';
@@ -50,31 +50,39 @@ function getRecommendedQuality(downlink: number, effectiveType: string): Network
 }
 
 export function useNetworkQuality(): NetworkQuality {
+  // Use ref to track previous state and prevent infinite loops
+  const prevStateRef = useRef<NetworkQuality | null>(null);
+  const listenerAddedRef = useRef(false);
+  
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>(() => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     
     if (connection) {
       const recommended = getRecommendedQuality(connection.downlink || 10, connection.effectiveType || '4g');
-      return {
-        effectiveType: connection.effectiveType || 'unknown',
+      const initialState = {
+        effectiveType: (connection.effectiveType || 'unknown') as NetworkQuality['effectiveType'],
         downlink: connection.downlink || 10,
         rtt: connection.rtt || 50,
         saveData: connection.saveData || false,
-        recommendedQuality: connection.saveData ? '480' : recommended,
+        recommendedQuality: connection.saveData ? '480' as const : recommended,
         connectionType: connection.type || 'unknown',
         isOnline: navigator.onLine,
       };
+      prevStateRef.current = initialState;
+      return initialState;
     }
 
-    return {
-      effectiveType: 'unknown',
+    const defaultState = {
+      effectiveType: 'unknown' as const,
       downlink: 10,
       rtt: 50,
       saveData: false,
-      recommendedQuality: 'auto',
+      recommendedQuality: 'auto' as const,
       connectionType: 'unknown',
       isOnline: navigator.onLine,
     };
+    prevStateRef.current = defaultState;
+    return defaultState;
   });
 
   const updateNetworkQuality = useCallback(() => {
@@ -82,37 +90,42 @@ export function useNetworkQuality(): NetworkQuality {
     
     if (connection) {
       const recommended = getRecommendedQuality(connection.downlink || 10, connection.effectiveType || '4g');
-      setNetworkQuality(prev => {
-        const newState = {
-          effectiveType: connection.effectiveType || 'unknown' as const,
-          downlink: connection.downlink || 10,
-          rtt: connection.rtt || 50,
-          saveData: connection.saveData || false,
-          recommendedQuality: connection.saveData ? '480' as const : recommended,
-          connectionType: connection.type || 'unknown',
-          isOnline: navigator.onLine,
-        };
-        // Only update if values actually changed to prevent infinite loops
-        if (
-          prev.effectiveType === newState.effectiveType &&
-          prev.downlink === newState.downlink &&
-          prev.rtt === newState.rtt &&
-          prev.saveData === newState.saveData &&
-          prev.isOnline === newState.isOnline
-        ) {
-          return prev;
-        }
-        return newState;
-      });
+      const newState: NetworkQuality = {
+        effectiveType: (connection.effectiveType || 'unknown') as NetworkQuality['effectiveType'],
+        downlink: connection.downlink || 10,
+        rtt: connection.rtt || 50,
+        saveData: connection.saveData || false,
+        recommendedQuality: connection.saveData ? '480' : recommended,
+        connectionType: connection.type || 'unknown',
+        isOnline: navigator.onLine,
+      };
+      
+      // Only update if values actually changed using ref comparison
+      const prev = prevStateRef.current;
+      if (!prev || 
+          prev.effectiveType !== newState.effectiveType ||
+          prev.downlink !== newState.downlink ||
+          prev.rtt !== newState.rtt ||
+          prev.saveData !== newState.saveData ||
+          prev.isOnline !== newState.isOnline) {
+        prevStateRef.current = newState;
+        setNetworkQuality(newState);
+      }
     } else {
-      setNetworkQuality(prev => {
-        if (prev.isOnline === navigator.onLine) return prev;
-        return { ...prev, isOnline: navigator.onLine };
-      });
+      const prev = prevStateRef.current;
+      if (prev && prev.isOnline !== navigator.onLine) {
+        const newState = { ...prev, isOnline: navigator.onLine };
+        prevStateRef.current = newState;
+        setNetworkQuality(newState);
+      }
     }
   }, []);
 
   useEffect(() => {
+    // Prevent adding listeners multiple times
+    if (listenerAddedRef.current) return;
+    listenerAddedRef.current = true;
+    
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     
     if (connection) {
@@ -123,6 +136,7 @@ export function useNetworkQuality(): NetworkQuality {
     window.addEventListener('offline', updateNetworkQuality);
     
     return () => {
+      listenerAddedRef.current = false;
       if (connection) {
         connection.removeEventListener('change', updateNetworkQuality);
       }
