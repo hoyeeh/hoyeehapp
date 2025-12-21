@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // Storage key for persistent random banner index
 const DESKTOP_BANNER_KEY = "hoyeeh-desktop-banner";
 const BANNER_EXPIRY = 6 * 60 * 60 * 1000; // 6 hours
-const HOVER_DELAY_MS = 1500; // Time before video preview starts
+
 
 interface EnhancedHeroBannerProps {
   fallbackContent?: Content;
@@ -25,7 +25,6 @@ export const EnhancedHeroBanner = ({
   onDetails,
 }: EnhancedHeroBannerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [currentIndex, setCurrentIndex] = useState(() => {
     try {
       const stored = localStorage.getItem(DESKTOP_BANNER_KEY);
@@ -41,7 +40,6 @@ export const EnhancedHeroBanner = ({
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
-  const [showVideoPreview, setShowVideoPreview] = useState(false);
   const hasInitialized = useRef(false);
   
   const { data: watchlistIds = [] } = useWatchlist();
@@ -144,45 +142,15 @@ export const EnhancedHeroBanner = ({
   const displayDescription = activeBanner?.description || content?.description;
   const displayImage = activeBanner?.image_url || content?.thumbnailUrl;
   const displayVideo = activeBanner?.video_url;
-  const previewVideoUrl = displayVideo || content?.videoUrl;
   const ctaText = activeBanner?.cta_text || "Play";
 
-  // Handle hover video preview
+  // Handle hover for navigation arrows only
   const handleMouseEnter = useCallback(() => {
     setIsHovering(true);
-    // Start timer for video preview
-    if (previewVideoUrl) {
-      hoverTimerRef.current = setTimeout(() => {
-        setShowVideoPreview(true);
-        if (videoRef.current) {
-          videoRef.current.play().catch(() => {});
-        }
-      }, HOVER_DELAY_MS);
-    }
-  }, [previewVideoUrl]);
+  }, []);
 
   const handleMouseLeave = useCallback(() => {
     setIsHovering(false);
-    setShowVideoPreview(false);
-    // Clear hover timer
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    // Pause video preview if it was playing
-    if (videoRef.current && !displayVideo) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-  }, [displayVideo]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current);
-      }
-    };
   }, []);
 
   const toggleMute = () => {
@@ -271,8 +239,8 @@ export const EnhancedHeroBanner = ({
           transition={{ duration: 1, ease: "easeOut" }}
           className="absolute inset-0"
         >
-          {/* Show video if banner has video OR if hover preview is active */}
-          {(displayVideo || (showVideoPreview && previewVideoUrl)) ? (
+          {/* Show video only if banner has a dedicated video */}
+          {displayVideo ? (
             <>
               {/* Show image underneath while video loads */}
               <img
@@ -280,22 +248,21 @@ export const EnhancedHeroBanner = ({
                 alt={displayTitle}
                 className={cn(
                   "w-full h-full object-cover absolute inset-0 transition-opacity duration-500",
-                  (isVideoPlaying || showVideoPreview) ? "opacity-0" : "opacity-100"
+                  isVideoPlaying ? "opacity-0" : "opacity-100"
                 )}
               />
               <video
                 ref={videoRef}
-                src={displayVideo || previewVideoUrl}
+                src={displayVideo}
                 className={cn(
                   "w-full h-full object-cover transition-opacity duration-500",
-                  (isVideoPlaying || showVideoPreview) ? "opacity-100" : "opacity-0"
+                  isVideoPlaying ? "opacity-100" : "opacity-0"
                 )}
-                autoPlay={!!displayVideo}
+                autoPlay
                 loop
                 muted={isMuted}
                 playsInline
                 onPlay={() => setIsVideoPlaying(true)}
-                onPause={() => !displayVideo && setIsVideoPlaying(false)}
               />
             </>
           ) : (
@@ -307,19 +274,6 @@ export const EnhancedHeroBanner = ({
           )}
         </motion.div>
       </AnimatePresence>
-
-      {/* Video preview loading indicator */}
-      {isHovering && !showVideoPreview && previewVideoUrl && !displayVideo && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute top-6 right-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10"
-        >
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs font-medium text-foreground/80">Preview loading...</span>
-        </motion.div>
-      )}
 
       {/* Apple-style gradient overlays - subtle and refined */}
       <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
