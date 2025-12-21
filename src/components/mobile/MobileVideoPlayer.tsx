@@ -5,7 +5,8 @@ import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, 
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
   RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
-  PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown
+  PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown,
+  Clock, Save
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ import { useCastHistory } from "@/hooks/useCastHistory";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface MobileVideoPlayerProps {
   content: Content;
@@ -103,7 +105,12 @@ export function MobileVideoPlayer({
   const [selectedQuality, setSelectedQuality] = useState("auto");
   const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
   const [volumeLevel, setVolumeLevel] = useState(100);
-  const [settingsTab, setSettingsTab] = useState<"speed" | "quality">("speed");
+  const [settingsTab, setSettingsTab] = useState<"speed" | "quality" | "intro">("speed");
+  
+  // Intro skip setter states (for admins)
+  const [localIntroStart, setLocalIntroStart] = useState<number>(introStartTime ?? 0);
+  const [localIntroEnd, setLocalIntroEnd] = useState<number>(introEndTime ?? 90);
+  const [isSavingIntro, setIsSavingIntro] = useState(false);
   
   // Lock controls state
   const [isLocked, setIsLocked] = useState(false);
@@ -177,6 +184,34 @@ export function MobileVideoPlayer({
   const networkQuality = useNetworkQuality();
   const pip = usePictureInPicture(videoRef);
   const castHistory = useCastHistory();
+  const { data: isAdmin } = useIsAdmin();
+
+  // Save intro times to database (for admins)
+  const handleSaveIntroTimes = useCallback(async () => {
+    if (!episodeId || !isAdmin) {
+      toast.error("Cannot save intro times");
+      return;
+    }
+    
+    setIsSavingIntro(true);
+    try {
+      const { error } = await supabase
+        .from("episodes")
+        .update({
+          intro_start_time: localIntroStart,
+          intro_end_time: localIntroEnd,
+        })
+        .eq("id", episodeId);
+      
+      if (error) throw error;
+      toast.success("Intro times saved successfully");
+    } catch (error) {
+      console.error("[MobileVideoPlayer] Failed to save intro times:", error);
+      toast.error("Failed to save intro times");
+    } finally {
+      setIsSavingIntro(false);
+    }
+  }, [episodeId, isAdmin, localIntroStart, localIntroEnd]);
 
   // Check if video is HLS
   const isHls = videoUrl?.includes('.m3u8');
@@ -1593,6 +1628,19 @@ export function MobileVideoPlayer({
                 >
                   Quality
                 </button>
+                {isAdmin && episodeId && (
+                  <button
+                    onClick={() => setSettingsTab("intro")}
+                    className={cn(
+                      "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                      settingsTab === "intro"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground"
+                    )}
+                  >
+                    Intro
+                  </button>
+                )}
               </div>
 
               {/* Speed Tab */}
@@ -1659,6 +1707,113 @@ export function MobileVideoPlayer({
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Intro Tab (Admin only) */}
+              {settingsTab === "intro" && isAdmin && episodeId && (
+                <div>
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Set Intro Skip
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Set the intro start and end times for this episode. The skip button will appear during this segment.
+                  </p>
+                  
+                  {/* Current Time Reference */}
+                  <div className="bg-secondary/50 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-muted-foreground mb-1">Current Position</p>
+                    <p className="text-xl font-mono font-bold text-primary">{formatTime(currentTime)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">({Math.floor(currentTime)} seconds)</p>
+                  </div>
+                  
+                  {/* Intro Start */}
+                  <div className="mb-4">
+                    <label className="text-sm font-medium mb-2 block">Intro Start (seconds)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={localIntroStart}
+                        onChange={(e) => setLocalIntroStart(parseInt(e.target.value) || 0)}
+                        min={0}
+                        className="flex-1 bg-secondary rounded-lg px-4 py-3 text-foreground font-mono"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocalIntroStart(Math.floor(currentTime));
+                          toast.info(`Intro start set to ${formatTime(currentTime)}`);
+                        }}
+                        className="px-4 py-3 bg-blue-500 text-white rounded-lg font-medium whitespace-nowrap"
+                      >
+                        Use Current
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Intro End */}
+                  <div className="mb-6">
+                    <label className="text-sm font-medium mb-2 block">Intro End (seconds)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={localIntroEnd}
+                        onChange={(e) => setLocalIntroEnd(parseInt(e.target.value) || 0)}
+                        min={0}
+                        className="flex-1 bg-secondary rounded-lg px-4 py-3 text-foreground font-mono"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocalIntroEnd(Math.floor(currentTime));
+                          toast.info(`Intro end set to ${formatTime(currentTime)}`);
+                        }}
+                        className="px-4 py-3 bg-blue-500 text-white rounded-lg font-medium whitespace-nowrap"
+                      >
+                        Use Current
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Duration Preview */}
+                  {localIntroEnd > localIntroStart && (
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-blue-400">
+                        Intro duration: {formatTime(localIntroEnd - localIntroStart)} ({localIntroEnd - localIntroStart} seconds)
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Save Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveIntroTimes();
+                    }}
+                    disabled={isSavingIntro || localIntroEnd <= localIntroStart}
+                    className={cn(
+                      "w-full flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-colors",
+                      isSavingIntro || localIntroEnd <= localIntroStart
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-primary text-white"
+                    )}
+                  >
+                    {isSavingIntro ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Save className="h-5 w-5" />
+                    )}
+                    {isSavingIntro ? "Saving..." : "Save Intro Times"}
+                  </button>
+                  
+                  {localIntroEnd <= localIntroStart && (
+                    <p className="text-destructive text-sm mt-2 text-center">
+                      Intro end must be greater than intro start
+                    </p>
+                  )}
                 </div>
               )}
             </motion.div>
