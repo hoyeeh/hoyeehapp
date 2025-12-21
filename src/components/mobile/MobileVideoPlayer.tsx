@@ -1341,11 +1341,15 @@ export function MobileVideoPlayer({
             className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Bar */}
+            {/* Top Bar - Only back button and title */}
             <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 safe-area-inset-top">
               <button
-                onClick={handleBack}
-                className="p-2 rounded-full bg-black/30 backdrop-blur-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBack();
+                }}
+                className="p-3 rounded-full bg-black/30 backdrop-blur-sm active:bg-black/50 touch-manipulation"
+                style={{ minWidth: 44, minHeight: 44 }}
               >
                 <ChevronLeft className="h-6 w-6 text-white" />
               </button>
@@ -1357,52 +1361,8 @@ export function MobileVideoPlayer({
                 )}
               </div>
               
-              <div className="flex items-center gap-2">
-                {pip.isSupported && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTogglePiP();
-                    }}
-                    className={cn(
-                      "p-2 rounded-full backdrop-blur-sm",
-                      pip.isActive ? "bg-primary" : "bg-black/30"
-                    )}
-                  >
-                    <PictureInPicture2 className="h-5 w-5 text-white" />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCastVideo();
-                  }}
-                  className={cn(
-                    "p-2 rounded-full backdrop-blur-sm",
-                    cast.isConnected ? "bg-primary" : "bg-black/30"
-                  )}
-                >
-                  <Cast className="h-5 w-5 text-white" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowSettings(true);
-                  }}
-                  className="p-2 rounded-full bg-black/30 backdrop-blur-sm"
-                >
-                  <Settings className="h-5 w-5 text-white" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleLock();
-                  }}
-                  className="p-2 rounded-full bg-black/30 backdrop-blur-sm"
-                >
-                  <Lock className="h-5 w-5 text-white" />
-                </button>
-              </div>
+              {/* Spacer for balance */}
+              <div style={{ width: 44 }} />
             </div>
 
             {/* Center Controls */}
@@ -1494,13 +1454,15 @@ export function MobileVideoPlayer({
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  {/* Volume */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleMute();
                     }}
-                    className="p-2"
+                    className="p-3 rounded-full active:bg-white/20 touch-manipulation"
+                    style={{ minWidth: 44, minHeight: 44 }}
                   >
                     {isMuted ? (
                       <VolumeX className="h-5 w-5 text-white" />
@@ -1509,12 +1471,70 @@ export function MobileVideoPlayer({
                     )}
                   </button>
                   
+                  {/* PiP - moved from top right */}
+                  {pip.isSupported && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePiP();
+                      }}
+                      className={cn(
+                        "p-3 rounded-full active:bg-white/20 touch-manipulation",
+                        pip.isActive ? "bg-primary" : ""
+                      )}
+                      style={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <PictureInPicture2 className="h-5 w-5 text-white" />
+                    </button>
+                  )}
+                  
+                  {/* Cast - moved from top right */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCastVideo();
+                    }}
+                    className={cn(
+                      "p-3 rounded-full active:bg-white/20 touch-manipulation",
+                      cast.isConnected ? "bg-primary" : ""
+                    )}
+                    style={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <Cast className="h-5 w-5 text-white" />
+                  </button>
+                  
+                  {/* Settings - moved from top right */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSettings(true);
+                    }}
+                    className="p-3 rounded-full active:bg-white/20 touch-manipulation"
+                    style={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <Settings className="h-5 w-5 text-white" />
+                  </button>
+                  
+                  {/* Lock - moved from top right */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLock();
+                    }}
+                    className="p-3 rounded-full active:bg-white/20 touch-manipulation"
+                    style={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <Lock className="h-5 w-5 text-white" />
+                  </button>
+                  
+                  {/* Fullscreen */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFullscreen();
                     }}
-                    className="p-2"
+                    className="p-3 rounded-full active:bg-white/20 touch-manipulation"
+                    style={{ minWidth: 44, minHeight: 44 }}
                   >
                     {isFullscreen ? (
                       <Minimize className="h-5 w-5 text-white" />
