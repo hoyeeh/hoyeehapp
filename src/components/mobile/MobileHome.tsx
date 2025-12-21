@@ -9,6 +9,7 @@ import { Content } from "@/types";
 import { subDays } from "date-fns";
 import { toast } from "sonner";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
+import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
 
 // Storage key for persistent random banner
 const HERO_BANNER_KEY = "hoyeeh-featured-banner";
@@ -26,11 +27,7 @@ import { FadeIn } from "./PageTransition";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MobileCastStatusIndicator } from "./MobileCastStatusIndicator";
 
-interface MobileHomeProps {
-  onPlay: (content: Content, progress?: number) => void;
-}
-
-export function MobileHome({ onPlay }: MobileHomeProps) {
+export function MobileHome() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -41,6 +38,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
   const { canAccessPremium, isLoading: subscriptionLoading } = useSubscriptionAccess();
+  const mobilePlayer = useMobileVideoPlayer();
 
   const [showSearch, setShowSearch] = useState(false);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
@@ -255,7 +253,26 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
       return;
     }
     
-    onPlay(item, progress);
+    // For movies, use mobile player directly
+    if (item.contentType === "movie" && item.videoUrl) {
+      mobilePlayer.openPlayer({
+        content: item,
+        videoUrl: item.videoUrl,
+        title: item.title,
+        thumbnail: item.thumbnailUrl,
+        resumeAt: progress,
+      });
+      return;
+    }
+    
+    // For series without episodeId, navigate to content detail
+    if (item.contentType === "series") {
+      navigate(`/content/${item.id}`);
+      return;
+    }
+    
+    // Fallback - navigate to content detail
+    navigate(`/content/${item.id}`);
   };
 
   const handleDetails = (item: Content) => {
@@ -466,7 +483,7 @@ export function MobileHome({ onPlay }: MobileHomeProps) {
         <MobileContentDetail
           content={selectedContent}
           onClose={() => setSelectedContent(null)}
-          onPlay={(c) => handlePlay(c)}
+          onPlay={() => {}}
           onToggleList={handleToggleList}
           isInList={watchlistIds.includes(selectedContent.id)}
         />

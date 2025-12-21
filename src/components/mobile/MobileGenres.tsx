@@ -10,7 +10,6 @@ import { MobileContentDetail } from "./MobileContentDetail";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeader } from "./MobileHeader";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
-import { VideoPlayer } from "@/components/VideoPlayer";
 import { PullToRefresh } from "./PullToRefresh";
 import { Loader2, Flame, Film, Tv } from "lucide-react";
 import { toast } from "sonner";
@@ -30,7 +29,6 @@ export function MobileGenres() {
   const [contentType, setContentType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
-  const [playingContent, setPlayingContent] = useState<{ content: Content; progress: number } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
 
   // Fetch genres
@@ -100,11 +98,6 @@ export function MobileGenres() {
     }
   };
 
-  const handlePlay = (item: Content) => {
-    setSelectedContent(null);
-    setPlayingContent({ content: item, progress: 0 });
-  };
-
   const handleDetails = (item: Content) => {
     setSelectedContent(item);
   };
@@ -117,18 +110,6 @@ export function MobileGenres() {
     setShowSearch(false);
     setSelectedContent(item);
   };
-
-  if (playingContent) {
-    return (
-      <VideoPlayer
-        src={playingContent.content.videoUrl}
-        title={playingContent.content.title}
-        contentId={playingContent.content.id}
-        initialProgress={playingContent.progress}
-        onBack={() => setPlayingContent(null)}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -237,7 +218,7 @@ export function MobileGenres() {
         <MobileContentDetail
           content={selectedContent}
           onClose={() => setSelectedContent(null)}
-          onPlay={() => handlePlay(selectedContent)}
+          onPlay={() => {}}
           onToggleList={() => handleToggleList(selectedContent)}
           isInList={watchlistIds.includes(selectedContent.id)}
         />

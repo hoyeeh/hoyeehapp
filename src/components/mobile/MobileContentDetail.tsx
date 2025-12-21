@@ -14,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { MobileCastSheet } from "./MobileCastSheet";
+import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
+import { Episode } from "@/hooks/useSeasons";
 
 interface MobileContentDetailProps {
   content: Content;
@@ -41,6 +43,7 @@ export function MobileContentDetail({
   const queryClient = useQueryClient();
   const { canAccessPremium } = useSubscriptionAccess();
   const { currentProfile } = useProfileContext();
+  const mobilePlayer = useMobileVideoPlayer();
   
   // Cast sheet state
   const [showCastSheet, setShowCastSheet] = useState(false);
@@ -196,9 +199,9 @@ export function MobileContentDetail({
     },
   });
 
-  // Fetch episodes if TV series
-  const { data: episodes = [] } = useQuery({
-    queryKey: ["content-episodes", content.id],
+  // Fetch ALL episodes if TV series (for next episode functionality)
+  const { data: allEpisodes = [] } = useQuery({
+    queryKey: ["content-all-episodes", content.id],
     queryFn: async () => {
       if (content.contentType !== "series") return [];
       
@@ -206,23 +209,27 @@ export function MobileContentDetail({
         .from("seasons")
         .select("id, season_number")
         .eq("content_id", content.id)
-        .order("season_number")
-        .limit(1);
+        .order("season_number");
       
       if (seasonsError || !seasons?.length) return [];
 
-      const { data: eps, error: epsError } = await supabase
-        .from("episodes")
-        .select("*")
-        .eq("season_id", seasons[0].id)
-        .order("episode_number")
-        .limit(10);
-      
-      if (epsError) throw epsError;
-      return eps || [];
+      const episodesPromises = seasons.map(async (season) => {
+        const { data: eps } = await supabase
+          .from("episodes")
+          .select("*")
+          .eq("season_id", season.id)
+          .order("episode_number");
+        return (eps || []).map(ep => ({ ...ep, season_number: season.season_number }));
+      });
+
+      const allEps = (await Promise.all(episodesPromises)).flat();
+      return allEps;
     },
     enabled: content.contentType === "series",
   });
+
+  // Get first season episodes for display
+  const episodes = allEpisodes.filter((ep: any) => ep.season_number === 1);
 
   const handleClose = () => {
     lightTap();
@@ -248,32 +255,63 @@ export function MobileContentDetail({
       return;
     }
     
-    // For series, play first available episode
+    // For series, play first available episode using mobile player
     if (content.contentType === "series") {
-      if (episodes.length === 0) {
+      if (allEpisodes.length === 0) {
         toast.error("No episodes available yet");
         return;
       }
-      const firstWithVideo = episodes.find((ep: any) => ep.video_url);
+      const firstWithVideo = allEpisodes.find((ep: any) => ep.video_url);
       if (!firstWithVideo) {
         toast.error("No playable episodes available");
-        navigate(`/content/${content.id}`);
-        onClose();
         return;
       }
-      // Navigate to content detail with episode autoplay
-      navigate(`/content/${content.id}?episodeId=${firstWithVideo.id}&autoplay=true`);
+      
+      // Find next episode
+      const currentIndex = allEpisodes.findIndex((ep: any) => ep.id === firstWithVideo.id);
+      let nextEp: Episode | null = null;
+      for (let i = currentIndex + 1; i < allEpisodes.length; i++) {
+        if ((allEpisodes[i] as any).video_url) {
+          nextEp = allEpisodes[i] as Episode;
+          break;
+        }
+      }
+
+      const epData = firstWithVideo as any;
+      
+      mobilePlayer.openPlayer({
+        content,
+        videoUrl: firstWithVideo.video_url,
+        title: content.title,
+        episodeTitle: `E${firstWithVideo.episode_number} - ${firstWithVideo.title}`,
+        episodeId: firstWithVideo.id,
+        resumeAt: 0,
+        introStartTime: epData.intro_start_time ?? undefined,
+        introEndTime: epData.intro_end_time ?? undefined,
+        recapStartTime: epData.recap_start_time ?? undefined,
+        recapEndTime: epData.recap_end_time ?? undefined,
+        thumbnail: firstWithVideo.thumbnail_url || content.thumbnailUrl,
+        hasNextEpisode: !!nextEp,
+        nextEpisode: nextEp,
+        allEpisodes: allEpisodes as Episode[],
+      });
       onClose();
       return;
     }
     
-    // For movies, check if video URL exists
+    // For movies, check if video URL exists and use mobile player
     if (!content.videoUrl) {
       toast.error("Video not available yet");
       return;
     }
     
-    onPlay(content);
+    mobilePlayer.openPlayer({
+      content,
+      videoUrl: content.videoUrl,
+      title: content.title,
+      thumbnail: content.thumbnailUrl,
+    });
+    onClose();
   };
 
   const handleDownload = () => {
@@ -593,8 +631,37 @@ export function MobileContentDetail({
                           navigate("/subscription");
                           return;
                         }
-                        // Navigate to content detail with episode to play
-                        navigate(`/content/${content.id}?episodeId=${ep.id}`);
+                        
+                        // Find next episode
+                        const currentIndex = allEpisodes.findIndex((e: any) => e.id === ep.id);
+                        let nextEp: Episode | null = null;
+                        for (let i = currentIndex + 1; i < allEpisodes.length; i++) {
+                          if ((allEpisodes[i] as any).video_url) {
+                            nextEp = allEpisodes[i] as Episode;
+                            break;
+                          }
+                        }
+
+                        const epData = ep as any;
+                        
+                        // Use mobile player directly
+                        mobilePlayer.openPlayer({
+                          content,
+                          videoUrl: ep.video_url,
+                          title: content.title,
+                          episodeTitle: `E${ep.episode_number} - ${ep.title}`,
+                          episodeId: ep.id,
+                          resumeAt: 0,
+                          introStartTime: epData.intro_start_time ?? undefined,
+                          introEndTime: epData.intro_end_time ?? undefined,
+                          recapStartTime: epData.recap_start_time ?? undefined,
+                          recapEndTime: epData.recap_end_time ?? undefined,
+                          thumbnail: ep.thumbnail_url || content.thumbnailUrl,
+                          hasNextEpisode: !!nextEp,
+                          nextEpisode: nextEp,
+                          allEpisodes: allEpisodes as Episode[],
+                        });
+                        onClose();
                       }}
                     >
                       <div className="relative w-32 aspect-video rounded-md overflow-hidden bg-secondary flex-shrink-0">
