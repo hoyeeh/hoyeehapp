@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
-import { Play, Info, Plus, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Info, Plus, Check, Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // Storage key for persistent random banner index
 const DESKTOP_BANNER_KEY = "hoyeeh-desktop-banner";
 const BANNER_EXPIRY = 6 * 60 * 60 * 1000; // 6 hours
+const HOVER_DELAY_MS = 1500; // Time before video preview starts
 
 interface EnhancedHeroBannerProps {
   fallbackContent?: Content;
@@ -23,6 +24,8 @@ export const EnhancedHeroBanner = ({
   onPlay,
   onDetails,
 }: EnhancedHeroBannerProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [currentIndex, setCurrentIndex] = useState(() => {
     try {
       const stored = localStorage.getItem(DESKTOP_BANNER_KEY);
@@ -35,7 +38,10 @@ export const EnhancedHeroBanner = ({
     } catch {}
     return 0;
   });
+  const [isMuted, setIsMuted] = useState(true);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
   const hasInitialized = useRef(false);
   
   const { data: watchlistIds = [] } = useWatchlist();
@@ -120,11 +126,71 @@ export const EnhancedHeroBanner = ({
     return () => clearInterval(interval);
   }, [banners.length]);
 
+  // Handle video playback
+  useEffect(() => {
+    if (activeBanner?.video_url && videoRef.current) {
+      videoRef.current.play().then(() => {
+        setIsVideoPlaying(true);
+      }).catch(() => {
+        setIsVideoPlaying(false);
+      });
+    } else {
+      setIsVideoPlaying(false);
+    }
+  }, [activeBanner?.video_url, currentIndex]);
+
   const displayTitle = activeBanner?.title || content?.title;
   const displaySubtitle = activeBanner?.subtitle;
   const displayDescription = activeBanner?.description || content?.description;
   const displayImage = activeBanner?.image_url || content?.thumbnailUrl;
+  const displayVideo = activeBanner?.video_url;
+  const previewVideoUrl = displayVideo || content?.videoUrl;
   const ctaText = activeBanner?.cta_text || "Play";
+
+  // Handle hover video preview
+  const handleMouseEnter = useCallback(() => {
+    setIsHovering(true);
+    // Start timer for video preview
+    if (previewVideoUrl) {
+      hoverTimerRef.current = setTimeout(() => {
+        setShowVideoPreview(true);
+        if (videoRef.current) {
+          videoRef.current.play().catch(() => {});
+        }
+      }, HOVER_DELAY_MS);
+    }
+  }, [previewVideoUrl]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovering(false);
+    setShowVideoPreview(false);
+    // Clear hover timer
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    // Pause video preview if it was playing
+    if (videoRef.current && !displayVideo) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, [displayVideo]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+      }
+    };
+  }, []);
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
@@ -192,10 +258,10 @@ export const EnhancedHeroBanner = ({
   return (
     <div 
       className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Background with smooth transition - Image Only */}
+      {/* Background with smooth transition */}
       <AnimatePresence mode="wait">
         <motion.div 
           key={currentIndex}
@@ -205,13 +271,55 @@ export const EnhancedHeroBanner = ({
           transition={{ duration: 1, ease: "easeOut" }}
           className="absolute inset-0"
         >
-          <img
-            src={displayImage}
-            alt={displayTitle}
-            className="w-full h-full object-cover"
-          />
+          {/* Show video if banner has video OR if hover preview is active */}
+          {(displayVideo || (showVideoPreview && previewVideoUrl)) ? (
+            <>
+              {/* Show image underneath while video loads */}
+              <img
+                src={displayImage}
+                alt={displayTitle}
+                className={cn(
+                  "w-full h-full object-cover absolute inset-0 transition-opacity duration-500",
+                  (isVideoPlaying || showVideoPreview) ? "opacity-0" : "opacity-100"
+                )}
+              />
+              <video
+                ref={videoRef}
+                src={displayVideo || previewVideoUrl}
+                className={cn(
+                  "w-full h-full object-cover transition-opacity duration-500",
+                  (isVideoPlaying || showVideoPreview) ? "opacity-100" : "opacity-0"
+                )}
+                autoPlay={!!displayVideo}
+                loop
+                muted={isMuted}
+                playsInline
+                onPlay={() => setIsVideoPlaying(true)}
+                onPause={() => !displayVideo && setIsVideoPlaying(false)}
+              />
+            </>
+          ) : (
+            <img
+              src={displayImage}
+              alt={displayTitle}
+              className="w-full h-full object-cover"
+            />
+          )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Video preview loading indicator */}
+      {isHovering && !showVideoPreview && previewVideoUrl && !displayVideo && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute top-6 right-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10"
+        >
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <span className="text-xs font-medium text-foreground/80">Preview loading...</span>
+        </motion.div>
+      )}
 
       {/* Apple-style gradient overlays - subtle and refined */}
       <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
@@ -326,15 +434,14 @@ export const EnhancedHeroBanner = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleToggleList}
-                    className={cn(
-                      "flex items-center gap-2 px-5 py-3 rounded-xl border backdrop-blur-md transition-colors",
-                      isInList 
-                        ? "bg-primary/20 border-primary/30 text-primary" 
-                        : "bg-white/10 border-white/20 text-foreground hover:bg-white/20"
-                    )}
+                    className="flex items-center gap-2 px-5 py-3 bg-white/5 backdrop-blur-md text-foreground font-medium rounded-xl border border-white/10 hover:bg-white/15 transition-colors"
                   >
-                    {isInList ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-                    <span className="hidden md:inline">{isInList ? "In My List" : "My List"}</span>
+                    {isInList ? (
+                      <Check className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Plus className="h-5 w-5" />
+                    )}
+                    <span>My List</span>
                   </motion.button>
                 </>
               )}
@@ -343,50 +450,66 @@ export const EnhancedHeroBanner = ({
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation Controls - Visible on Hover */}
+      {/* Video Mute Control - Glass morphism */}
+      {displayVideo && isVideoPlaying && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={toggleMute}
+          className="absolute bottom-8 right-8 w-11 h-11 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+        >
+          {isMuted ? (
+            <VolumeX className="h-5 w-5 text-foreground" />
+          ) : (
+            <Volume2 className="h-5 w-5 text-foreground" />
+          )}
+        </motion.button>
+      )}
+
+      {/* Banner Navigation */}
       {banners.length > 1 && (
         <>
-          {/* Navigation Arrows */}
+          {/* Navigation Arrows - Glass morphism, appear on hover */}
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovering ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 backdrop-blur-md border border-white/10 hover:bg-black/50 transition-colors"
+            className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
-            <ChevronLeft className="h-6 w-6 text-white" />
+            <ChevronLeft className="h-6 w-6 text-foreground" />
           </motion.button>
-
+          
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: isHovering ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 backdrop-blur-md border border-white/10 hover:bg-black/50 transition-colors"
+            className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
-            <ChevronRight className="h-6 w-6 text-white" />
+            <ChevronRight className="h-6 w-6 text-foreground" />
           </motion.button>
 
-          {/* Dot Indicators */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isHovering ? 1 : 0.5 }}
-            transition={{ duration: 0.3 }}
-            className="absolute bottom-8 right-8 flex items-center gap-2"
-          >
+          {/* Dots Indicator - Apple-style with animated width */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md">
             {banners.map((_, index) => (
-              <button
+              <motion.button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all duration-300",
-                  index === currentIndex 
-                    ? "bg-white w-6" 
-                    : "bg-white/40 hover:bg-white/60"
-                )}
+                className="relative h-1.5 rounded-full bg-white/30 overflow-hidden"
+                animate={{
+                  width: index === currentIndex ? 24 : 8,
+                  backgroundColor: index === currentIndex ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)"
+                }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                whileHover={{ backgroundColor: "rgba(255,255,255,0.5)" }}
               />
             ))}
-          </motion.div>
+          </div>
         </>
       )}
     </div>

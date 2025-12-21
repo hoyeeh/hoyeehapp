@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { useVideoPlayback } from "@/contexts/VideoPlaybackContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +50,6 @@ const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const { isMobileDevice, isTablet } = useMobileDevice();
   const isMobileOrTablet = isMobileDevice || isTablet;
-  const { startVideoPlayback, stopVideoPlayback } = useVideoPlayback();
   
   const { profiles, currentProfile, setCurrentProfile, loading: profilesLoading } = useProfileContext();
   
@@ -246,18 +244,12 @@ const Index = () => {
     
     setSelectedContent(null);
     setPlayingContent({ content: item, progress: 0 });
-    startVideoPlayback(item.id, item.title);
   };
-
-  const handleVideoBack = useCallback(() => {
-    console.log('[Index] Video back pressed, stopping playback');
-    stopVideoPlayback();
-    setPlayingContent(null);
-  }, [stopVideoPlayback]);
 
   const handleDetails = (item: Content) => {
     setSelectedContent(item);
   };
+
   const handleLogout = async () => {
     await signOut();
     toast.info("You have been signed out");
@@ -358,7 +350,7 @@ const Index = () => {
         title={playingContent.content.title}
         contentId={playingContent.content.id}
         initialProgress={playingContent.progress}
-        onBack={handleVideoBack}
+        onBack={() => setPlayingContent(null)}
       />
     );
   }

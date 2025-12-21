@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star } from "lucide-react";
+import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +41,14 @@ export function MobileContentDetail({
   const { canAccessPremium } = useSubscriptionAccess();
   const { currentProfile } = useProfileContext();
   
+  // Preview video state
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(true);
+  const [showReplay, setShowReplay] = useState(false);
+  const [previewTimer, setPreviewTimer] = useState(20);
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Swipe to dismiss
   const y = useMotionValue(0);
   const opacity = useTransform(y, [0, 300], [1, 0]);
@@ -52,6 +60,51 @@ export function MobileContentDetail({
       lightTap();
       onClose();
     }
+  };
+  
+  // Preview video timer logic
+  useEffect(() => {
+    if (!content.videoUrl || !isPreviewPlaying) return;
+    
+    // Reset timer state
+    setPreviewTimer(20);
+    setShowReplay(false);
+    
+    // Start countdown
+    countdownIntervalRef.current = setInterval(() => {
+      setPreviewTimer(prev => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Stop after 20 seconds
+    previewTimeoutRef.current = setTimeout(() => {
+      setIsPreviewPlaying(false);
+      setShowReplay(true);
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+      lightTap();
+    }, 20000);
+    
+    return () => {
+      if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [isPreviewPlaying, content.videoUrl, lightTap]);
+  
+  const handleReplayPreview = () => {
+    mediumTap();
+    if (videoRef.current) {
+      videoRef.current.currentTime = 1200; // Start at 20 minutes
+      videoRef.current.play();
+    }
+    setIsPreviewPlaying(true);
+    setShowReplay(false);
+    setPreviewTimer(20);
   };
 
   // Fetch similar content
@@ -292,16 +345,63 @@ export function MobileContentDetail({
       {/* Swipe indicator */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-muted-foreground/30 rounded-full z-10" />
       
-      {/* Thumbnail Image Area */}
+      {/* Video Preview Area */}
       <div className="relative aspect-video bg-secondary">
-        <img
-          src={content.thumbnailUrl}
-          alt={content.title}
-          className="w-full h-full object-cover"
-        />
+        {content.videoUrl ? (
+          <video
+            ref={videoRef}
+            src={`${content.videoUrl}#t=1200`}
+            className="w-full h-full object-cover"
+            autoPlay
+            playsInline
+            loop={false}
+            poster={content.thumbnailUrl}
+            onLoadedMetadata={(e) => {
+              const video = e.currentTarget;
+              video.currentTime = 1200; // Start at 20 minutes
+            }}
+          />
+        ) : (
+          <img
+            src={content.thumbnailUrl}
+            alt={content.title}
+            className="w-full h-full object-cover"
+          />
+        )}
         
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+        
+        {/* Countdown Timer */}
+        {content.videoUrl && isPreviewPlaying && previewTimer > 0 && (
+          <div className="absolute top-4 left-4 bg-background/70 backdrop-blur-sm px-2 py-1 rounded-full">
+            <span className="text-xs font-medium">{previewTimer}s</span>
+          </div>
+        )}
+        
+        {/* Replay Button Overlay */}
+        <AnimatePresence>
+          {showReplay && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <button
+                onClick={handleReplayPreview}
+                className={cn(
+                  "flex flex-col items-center gap-2 p-4 rounded-full",
+                  "bg-primary/90 text-white",
+                  "active:scale-95 transition-transform"
+                )}
+              >
+                <RotateCcw className="h-8 w-8" />
+                <span className="text-xs font-medium">Replay Preview</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* Close button */}
         <button
@@ -310,6 +410,11 @@ export function MobileContentDetail({
         >
           <X className="h-5 w-5" />
         </button>
+
+        {/* Progress bar placeholder */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
+          <div className="h-full bg-primary w-0" />
+        </div>
       </div>
 
       {/* Scrollable Content */}

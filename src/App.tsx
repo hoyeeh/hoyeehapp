@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
-import { VideoPlaybackProvider, useVideoPlaybackSafe } from "@/contexts/VideoPlaybackContext";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
@@ -69,7 +68,6 @@ function PWANavigationHandler() {
 function CapacitorBackHandler() {
   const navigate = useNavigate();
   const location = useLocation();
-  const videoPlayback = useVideoPlaybackSafe();
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -84,14 +82,6 @@ function CapacitorBackHandler() {
         const { App } = await import('@capacitor/app');
         
         const listener = App.addListener('backButton', ({ canGoBack }) => {
-          console.log('[BackHandler] Back button pressed, video active:', videoPlayback?.isVideoActive?.());
-          
-          // If video is currently playing, don't navigate - let the video player handle it
-          if (videoPlayback?.isVideoActive?.()) {
-            console.log('[BackHandler] Video is active, ignoring back button');
-            return;
-          }
-          
           // If on home page, minimize app
           if (location.pathname === '/') {
             App.minimizeApp?.() || App.exitApp();
@@ -109,16 +99,7 @@ function CapacitorBackHandler() {
       } catch (e) {
         // Capacitor not available - handle PWA back navigation
         if (isStandalonePWA) {
-          const handlePopState = (event: PopStateEvent) => {
-            console.log('[BackHandler] Popstate event, video active:', videoPlayback?.isVideoActive?.());
-            
-            // If video is currently playing, prevent navigation
-            if (videoPlayback?.isVideoActive?.()) {
-              console.log('[BackHandler] Video is active, preventing navigation');
-              window.history.pushState(null, '', window.location.href);
-              return;
-            }
-            
+          const handlePopState = () => {
             // If trying to exit the app (no more history), go to home
             if (window.history.length <= 1 && location.pathname !== '/') {
               navigate('/', { replace: true });
@@ -136,7 +117,7 @@ function CapacitorBackHandler() {
     return () => {
       cleanup?.();
     };
-  }, [navigate, location.pathname, videoPlayback]);
+  }, [navigate, location.pathname]);
 
   return null;
 }
@@ -177,20 +158,19 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <ProfileProvider>
-        <VideoPlaybackProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <SubscriptionExpiryChecker />
-            <OfflineIndicator />
-            <PWAInstallBanner />
-            <DownloadQueueWrapper />
-            <BrowserRouter>
-              <PWAUpdateHandler />
-              <PWANavigationHandler />
-              <CapacitorBackHandler />
-              <CastProvider>
-                <Routes>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <SubscriptionExpiryChecker />
+          <OfflineIndicator />
+          <PWAInstallBanner />
+          <DownloadQueueWrapper />
+          <BrowserRouter>
+            <PWAUpdateHandler />
+            <PWANavigationHandler />
+            <CapacitorBackHandler />
+            <CastProvider>
+              <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/pin-auth" element={<PinAuth />} />
@@ -218,11 +198,10 @@ const App = () => (
                 <Route path="/notification-preferences" element={<NotificationPreferences />} />
                 <Route path="/parental" element={<Parental />} />
                 <Route path="*" element={<NotFound />} />
-                </Routes>
-              </CastProvider>
-            </BrowserRouter>
-          </TooltipProvider>
-        </VideoPlaybackProvider>
+              </Routes>
+            </CastProvider>
+          </BrowserRouter>
+        </TooltipProvider>
       </ProfileProvider>
     </AuthProvider>
   </QueryClientProvider>

@@ -28,7 +28,6 @@ import {
   Sofa,
   UtensilsCrossed,
   Folder,
-  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -47,19 +46,14 @@ import { useDLNA } from "@/hooks/useDLNA";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useAirPlay } from "@/hooks/useAirPlay";
 import { useCastHistory } from "@/hooks/useCastHistory";
-import { useDRMProtection } from "@/hooks/useDRMProtection";
-import { useWidevineEME } from "@/hooks/useWidevineEME";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { CastController } from "@/components/CastController";
 import { CastSetupGuide } from "@/components/cast/CastSetupGuide";
 import { DeviceGroupManager } from "@/components/cast/DeviceGroupManager";
 import { NativeCastButton } from "@/components/cast/NativeCastButton";
 import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
-import { NetworkQualityIndicator } from "@/components/NetworkQualityIndicator";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
-import { DRM_PROTECTION_STYLES } from "@/utils/drmHelpers";
 
 interface NextEpisodeInfo {
   id: string;
@@ -112,9 +106,6 @@ export const VideoPlayer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const lastSaveTimeRef = useRef<number>(0);
-  const retryCountRef = useRef<number>(0);
-  const maxRetries = 3;
-  const isMobile = useIsMobile();
 
   const [isPlaying, setIsPlaying] = useState(true); // Start as true since video has autoPlay
   const [isMuted, setIsMuted] = useState(false);
@@ -136,55 +127,6 @@ export const VideoPlayer = ({
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
   const nextEpisodeTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // DRM Protection hook
-  const drm = useDRMProtection({
-    contentId,
-    onSecurityViolation: (type, details) => {
-      console.warn(`Security violation: ${type}`, details);
-      if (type === 'screen_capture' || type === 'devtools_open') {
-        toast.error('Screen recording or developer tools detected. Video playback may be restricted.');
-      }
-    },
-    onLicenseError: (error) => {
-      console.error('DRM License error:', error);
-      toast.error('Playback license error. Please try again.');
-    },
-  });
-
-  // Widevine/Clear Key EME hook for software DRM (L3)
-  const eme = useWidevineEME({
-    contentId,
-    onError: (error) => {
-      console.error('EME error:', error);
-      // Don't show error to user - fallback to unprotected playback
-    },
-    onLicenseAcquired: () => {
-      console.log('DRM license acquired successfully');
-    },
-    onKeyStatusChange: (status) => {
-      console.log('Key status:', status);
-      if (status === 'expired') {
-        toast.warning('Content license expired. Please refresh the page.');
-      }
-    },
-  });
-
-  // Initialize EME when video element is ready
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video && !eme.emeState.isInitialized) {
-      // Initialize EME for encrypted content support
-      eme.initializeEME(video).then((success) => {
-        if (success) {
-          console.log('EME initialized successfully');
-        } else {
-          // Fallback: acquire manual license for our custom DRM
-          eme.acquireManualLicense();
-        }
-      });
-    }
-  }, [videoRef.current, eme.emeState.isInitialized]);
 
   // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
@@ -405,24 +347,6 @@ export const VideoPlayer = ({
       
       if (videoError) {
         errorCode = videoError.code;
-        
-        // For network errors on mobile, auto-retry up to maxRetries times
-        if (videoError.code === MediaError.MEDIA_ERR_NETWORK && retryCountRef.current < maxRetries) {
-          retryCountRef.current++;
-          console.log(`[VideoPlayer] Network error, auto-retrying (${retryCountRef.current}/${maxRetries})...`);
-          toast.info(`Connection interrupted, retrying... (${retryCountRef.current}/${maxRetries})`);
-          
-          setTimeout(() => {
-            if (videoRef.current) {
-              const currentPos = videoRef.current.currentTime;
-              videoRef.current.load();
-              videoRef.current.currentTime = currentPos;
-              videoRef.current.play().catch(() => {});
-            }
-          }, 1000 * retryCountRef.current); // Exponential backoff
-          return;
-        }
-        
         switch (videoError.code) {
           case MediaError.MEDIA_ERR_ABORTED:
             errorMessage = "Video playback was aborted";
@@ -441,7 +365,6 @@ export const VideoPlayer = ({
         }
       }
       
-      console.log('[VideoPlayer] Media error:', { code: errorCode, message: errorMessage });
       setMediaError({ code: errorCode, message: errorMessage });
     };
 
@@ -487,32 +410,6 @@ export const VideoPlayer = ({
       video.removeEventListener("ended", handleEnded);
     };
   }, [initialProgress, loadedProgress, saveProgressImmediately, nextEpisode, onPlayNextEpisode, introStartTime, introEndTime, showNextEpisode]);
-
-  // Mobile visibility change - pause on background, resume on foreground
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const video = videoRef.current;
-      if (!video) return;
-      
-      if (document.hidden) {
-        console.log('[VideoPlayer] App went to background, pausing');
-        video.pause();
-      } else {
-        console.log('[VideoPlayer] App returned to foreground');
-        // Reset retry count when returning to app
-        retryCountRef.current = 0;
-        // Try to resume playback
-        if (isPlaying) {
-          video.play().catch((err) => {
-            console.log('[VideoPlayer] Failed to resume playback:', err);
-          });
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isPlaying]);
 
   // Auto-hide controls
   useEffect(() => {
@@ -765,60 +662,20 @@ export const VideoPlayer = ({
     );
   }
 
-  // Handle right-click prevention (desktop only)
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    if (!isMobile) {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    }
-  }, [isMobile]);
-
-  // Handle drag prevention
-  const handleDragStart = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    return false;
-  }, []);
-
-  // Cleanup DRM on unmount
-  useEffect(() => {
-    return () => {
-      drm.revokeLicense();
-    };
-  }, [drm.revokeLicense]);
-
   return (
     <div
-      ref={(el) => {
-        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-        drm.bindContainerRef(el);
-      }}
-      className={cn(
-        "relative w-full h-screen bg-background cursor-none",
-        !isMobile && DRM_PROTECTION_STYLES.container
-      )}
+      ref={containerRef}
+      className="relative w-full h-screen bg-background cursor-none"
       onMouseMove={() => setShowControls(true)}
       onClick={togglePlay}
-      onContextMenu={handleContextMenu}
-      onDragStart={handleDragStart}
     >
       {/* Video */}
       <video
-        ref={(el) => {
-          (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
-          drm.bindVideoRef(el);
-        }}
+        ref={videoRef}
         src={getVideoSource()}
-        className={cn(
-          "w-full h-full object-contain",
-          !isMobile && DRM_PROTECTION_STYLES.video
-        )}
+        className="w-full h-full object-contain"
         autoPlay
         playsInline
-        onContextMenu={handleContextMenu}
-        onDragStart={handleDragStart}
-        controlsList="nodownload noplaybackrate"
-        disablePictureInPicture={false}
       />
 
       {/* Buffering Indicator */}
@@ -877,46 +734,22 @@ export const VideoPlayer = ({
         </div>
       )}
 
-      {/* Network Quality Indicator */}
-      <NetworkQualityIndicator
-        network={networkQuality}
-        currentQuality={selectedQuality}
-        isVisible={showControls}
-      />
-
       {/* Controls Overlay */}
       <div
         className={cn(
-          "absolute inset-0 transition-all duration-300 ease-out",
-          showControls 
-            ? "opacity-100 cursor-auto pointer-events-auto" 
-            : "opacity-0 pointer-events-none"
+          "absolute inset-0 transition-opacity duration-300",
+          showControls ? "opacity-100 cursor-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Gradient */}
-        <div 
-          className={cn(
-            "absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-background/80 to-transparent transition-opacity duration-300",
-            showControls ? "opacity-100" : "opacity-0"
-          )} 
-        />
+        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-background/80 to-transparent" />
         
         {/* Bottom Gradient */}
-        <div 
-          className={cn(
-            "absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/90 to-transparent transition-opacity duration-300",
-            showControls ? "opacity-100" : "opacity-0"
-          )}
-        />
+        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/90 to-transparent" />
 
         {/* Top Bar */}
-        <div 
-          className={cn(
-            "absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4 transition-all duration-300 ease-out",
-            showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
-          )}
-        >
+        <div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4">
           <button
             onClick={onBack}
             className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand/80 flex items-center justify-center hover:bg-brand transition-colors"
@@ -927,22 +760,17 @@ export const VideoPlayer = ({
         </div>
 
         {/* Center Controls */}
-        <div 
-          className={cn(
-            "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 sm:gap-8 transition-all duration-300 ease-out",
-            showControls ? "opacity-100 scale-100" : "opacity-0 scale-90"
-          )}
-        >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 sm:gap-8">
           <button
             onClick={() => skip(-10)}
-            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-all duration-200 hover:scale-110"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
           >
             <SkipBack className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
           
           <button
             onClick={togglePlay}
-            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-all duration-200 shadow-lg shadow-brand/30 hover:scale-105"
+            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30"
           >
             {isPlaying ? (
               <Pause className="h-7 w-7 sm:h-10 sm:w-10 text-primary-foreground" fill="currentColor" />
@@ -953,19 +781,14 @@ export const VideoPlayer = ({
           
           <button
             onClick={() => skip(10)}
-            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-all duration-200 hover:scale-110"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
           >
             <SkipForward className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
 
         {/* Bottom Controls */}
-        <div 
-          className={cn(
-            "absolute bottom-0 left-0 right-0 p-4 space-y-2 transition-all duration-300 ease-out",
-            showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          )}
-        >
+        <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
           {/* Progress Bar with Markers */}
           <div
             ref={progressRef}
