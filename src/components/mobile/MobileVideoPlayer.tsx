@@ -5,7 +5,7 @@ import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, 
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
   RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
-  PictureInPicture2, Wifi, Signal, Check
+  PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -100,6 +100,17 @@ export function MobileVideoPlayer({
   const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
   const [volumeLevel, setVolumeLevel] = useState(100);
   const [settingsTab, setSettingsTab] = useState<"speed" | "quality">("speed");
+  
+  // Lock controls state
+  const [isLocked, setIsLocked] = useState(false);
+  const [showUnlockHint, setShowUnlockHint] = useState(false);
+  
+  // Gesture states
+  const [brightness, setBrightness] = useState(100);
+  const [showBrightnessIndicator, setShowBrightnessIndicator] = useState(false);
+  const [showGestureVolumeIndicator, setShowGestureVolumeIndicator] = useState(false);
+  const gestureStartRef = useRef<{ x: number; y: number; side: 'left' | 'right' | null; startValue: number } | null>(null);
+  const isGesturingRef = useRef(false);
 
   // Store loaded progress for later use when duration is available
   const loadedProgressRef = useRef<number | null>(null);
@@ -473,6 +484,16 @@ export function MobileVideoPlayer({
 
   // Double tap to skip
   const handleTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // If locked, show unlock hint instead
+    if (isLocked) {
+      setShowUnlockHint(true);
+      setTimeout(() => setShowUnlockHint(false), 2000);
+      return;
+    }
+    
+    // Ignore if gesturing
+    if (isGesturingRef.current) return;
+    
     const container = containerRef.current;
     if (!container) return;
 
@@ -503,7 +524,108 @@ export function MobileVideoPlayer({
 
     lastTapTimeRef.current = now;
     lastTapSideRef.current = tapSide;
-  }, [skip, resetControlsTimeout]);
+  }, [skip, resetControlsTimeout, isLocked]);
+
+  // Gesture handlers for brightness/volume
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (isLocked) return;
+    
+    const touch = e.touches[0];
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const relativeX = x / rect.width;
+    
+    // Only start gesture if touch is on the sides (left 30% or right 30%)
+    if (relativeX < 0.3) {
+      gestureStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        side: 'left',
+        startValue: brightness
+      };
+    } else if (relativeX > 0.7) {
+      gestureStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        side: 'right',
+        startValue: volumeLevel
+      };
+    } else {
+      gestureStartRef.current = null;
+    }
+  }, [isLocked, brightness, volumeLevel]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!gestureStartRef.current || isLocked) return;
+    
+    const touch = e.touches[0];
+    const deltaY = gestureStartRef.current.y - touch.clientY;
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const sensitivity = 200; // pixels for full range
+    const deltaPercent = (deltaY / sensitivity) * 100;
+    
+    // Only mark as gesturing if moved more than 10px
+    if (Math.abs(deltaY) > 10) {
+      isGesturingRef.current = true;
+    }
+    
+    if (gestureStartRef.current.side === 'left') {
+      // Brightness control (left side)
+      const newBrightness = Math.max(10, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
+      setBrightness(Math.round(newBrightness));
+      setShowBrightnessIndicator(true);
+    } else if (gestureStartRef.current.side === 'right') {
+      // Volume control (right side)
+      const newVolume = Math.max(0, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
+      setVolumeLevel(Math.round(newVolume));
+      
+      const video = videoRef.current;
+      if (video) {
+        video.volume = newVolume / 100;
+        video.muted = newVolume === 0;
+        setIsMuted(newVolume === 0);
+      }
+      setShowGestureVolumeIndicator(true);
+    }
+  }, [isLocked]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (gestureStartRef.current) {
+      // Hide indicators after a delay
+      setTimeout(() => {
+        setShowBrightnessIndicator(false);
+        setShowGestureVolumeIndicator(false);
+      }, 500);
+    }
+    
+    gestureStartRef.current = null;
+    
+    // Reset gesturing flag after a small delay to not interfere with tap
+    setTimeout(() => {
+      isGesturingRef.current = false;
+    }, 100);
+  }, []);
+
+  // Toggle lock
+  const toggleLock = useCallback(() => {
+    setIsLocked(prev => {
+      if (!prev) {
+        toast.info("Controls locked");
+        setShowControls(false);
+      } else {
+        toast.info("Controls unlocked");
+        setShowControls(true);
+        resetControlsTimeout();
+      }
+      return !prev;
+    });
+  }, [resetControlsTimeout]);
 
   const changePlaybackSpeed = useCallback((speed: number) => {
     const video = videoRef.current;
@@ -597,11 +719,14 @@ export function MobileVideoPlayer({
     <motion.div
       ref={containerRef}
       className="fixed inset-0 z-[200] bg-black"
+      style={{ filter: `brightness(${brightness}%)` }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={handleTap}
-      onTouchEnd={handleTap}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Video Element */}
       <video
@@ -709,9 +834,106 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
+      {/* Brightness Gesture Indicator (left side) */}
+      <AnimatePresence>
+        {showBrightnessIndicator && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 pointer-events-none z-40"
+          >
+            <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-4 py-6 flex flex-col items-center gap-3">
+              <Sun className="h-8 w-8 text-yellow-400" />
+              <div className="w-2 h-32 bg-white/30 rounded-full overflow-hidden rotate-180">
+                <motion.div
+                  className="w-full bg-yellow-400 rounded-full"
+                  style={{ height: `${brightness}%` }}
+                />
+              </div>
+              <span className="text-white text-sm font-medium">{brightness}%</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Volume Gesture Indicator (right side) */}
+      <AnimatePresence>
+        {showGestureVolumeIndicator && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 pointer-events-none z-40"
+          >
+            <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-4 py-6 flex flex-col items-center gap-3">
+              {volumeLevel === 0 ? (
+                <VolumeX className="h-8 w-8 text-white" />
+              ) : (
+                <Volume2 className="h-8 w-8 text-white" />
+              )}
+              <div className="w-2 h-32 bg-white/30 rounded-full overflow-hidden rotate-180">
+                <motion.div
+                  className="w-full bg-white rounded-full"
+                  style={{ height: `${volumeLevel}%` }}
+                />
+              </div>
+              <span className="text-white text-sm font-medium">{volumeLevel}%</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Locked Screen Overlay */}
+      <AnimatePresence>
+        {isLocked && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowUnlockHint(true);
+              setTimeout(() => setShowUnlockHint(false), 2000);
+            }}
+          >
+            {/* Unlock button (always visible when locked) */}
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: showUnlockHint ? 1 : 0.5 }}
+              className="absolute top-4 right-4 p-3 rounded-full bg-black/50 backdrop-blur-sm safe-area-inset-top"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLock();
+              }}
+            >
+              <Unlock className="h-6 w-6 text-white" />
+            </motion.button>
+
+            {/* Unlock hint */}
+            <AnimatePresence>
+              {showUnlockHint && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4 flex items-center gap-3">
+                    <Lock className="h-6 w-6 text-white" />
+                    <span className="text-white font-medium">Tap unlock button to unlock</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Tap to Play Overlay */}
       <AnimatePresence>
-        {showTapToPlay && (
+        {showTapToPlay && !isLocked && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -937,6 +1159,15 @@ export function MobileVideoPlayer({
                   className="p-2 rounded-full bg-black/30 backdrop-blur-sm"
                 >
                   <Settings className="h-5 w-5 text-white" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLock();
+                  }}
+                  className="p-2 rounded-full bg-black/30 backdrop-blur-sm"
+                >
+                  <Lock className="h-5 w-5 text-white" />
                 </button>
               </div>
             </div>
