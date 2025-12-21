@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Cast, Wifi, Smartphone, Tv, ChevronRight, 
-  Loader2, Check, Scan, Link2, Settings, X
+  Loader2, Check, Scan, Link2, Settings, X, QrCode
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import { useCastHistory, CastDevice as HistoryDevice } from "@/hooks/useCastHist
 // Components
 import { CastPairingDialog } from "@/components/cast/CastPairingDialog";
 import { DLNASetupGuide } from "@/components/DLNASetupGuide";
+import { MobileQRScanner } from "./MobileQRScanner";
 
 interface MobileCastSheetProps {
   open: boolean;
@@ -42,6 +43,7 @@ export function MobileCastSheet({
   const [activeTab, setActiveTab] = useState<"quick" | "dlna" | "history">("quick");
   const [showPairingDialog, setShowPairingDialog] = useState(false);
   const [showDLNASetup, setShowDLNASetup] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Hooks
   const cast = useCast();
@@ -278,7 +280,7 @@ export function MobileCastSheet({
                     {/* Link with TV Code */}
                     <button
                       onClick={() => setShowPairingDialog(true)}
-                      className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
+                      className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors touch-manipulation"
                     >
                       <div className="p-3 rounded-full bg-green-500/10">
                         <Link2 className="h-6 w-6 text-green-500" />
@@ -287,6 +289,23 @@ export function MobileCastSheet({
                         <p className="font-medium">Link with TV Code</p>
                         <p className="text-sm text-muted-foreground">
                           Enter the code shown on your TV
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </button>
+
+                    {/* Scan QR Code */}
+                    <button
+                      onClick={() => setShowQRScanner(true)}
+                      className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors touch-manipulation"
+                    >
+                      <div className="p-3 rounded-full bg-purple-500/10">
+                        <QrCode className="h-6 w-6 text-purple-500" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="font-medium">Scan QR Code</p>
+                        <p className="text-sm text-muted-foreground">
+                          Scan the QR code on your TV screen
                         </p>
                       </div>
                       <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -458,6 +477,16 @@ export function MobileCastSheet({
       <DLNASetupGuide
         open={showDLNASetup}
         onOpenChange={setShowDLNASetup}
+      />
+
+      {/* QR Code Scanner */}
+      <MobileQRScanner
+        open={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onCodeScanned={async (code) => {
+          setShowQRScanner(false);
+          await handlePairWithCode(code);
+        }}
       />
     </>
   );
