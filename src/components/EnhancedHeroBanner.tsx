@@ -46,6 +46,7 @@ export const EnhancedHeroBanner = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [showVideoPreview, setShowVideoPreview] = useState(false);
+  const [previewCompleted, setPreviewCompleted] = useState(false);
   const [previewStartedForBanner, setPreviewStartedForBanner] = useState<number | null>(null);
   const hasInitialized = useRef(false);
   
@@ -152,9 +153,14 @@ export const EnhancedHeroBanner = ({
   const previewVideoUrl = displayVideo || content?.videoUrl;
   const ctaText = activeBanner?.cta_text || "Play";
 
-  // Handle hover video preview - persistent once started
+  // Handle hover video preview - plays once then stops permanently
   const handleMouseEnter = useCallback(() => {
     setIsHovering(true);
+    
+    // If preview has completed for this banner, don't restart
+    if (previewCompleted) {
+      return;
+    }
     
     // If preview was already started for this banner, just resume
     if (previewStartedForBanner === currentIndex && videoRef.current) {
@@ -173,7 +179,7 @@ export const EnhancedHeroBanner = ({
         }
       }, HOVER_DELAY_MS);
     }
-  }, [previewVideoUrl, displayVideo, previewStartedForBanner, currentIndex]);
+  }, [previewVideoUrl, displayVideo, previewStartedForBanner, currentIndex, previewCompleted]);
 
   const handleMouseLeave = useCallback(() => {
     setIsHovering(false);
@@ -188,26 +194,30 @@ export const EnhancedHeroBanner = ({
     }
   }, [displayVideo, showVideoPreview]);
 
-  // Custom loop: replay 20-second segment starting at 20 minutes
+  // Play 20-second preview segment, then stop permanently and show background image
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !showVideoPreview || displayVideo) return;
+    if (!video || !showVideoPreview || displayVideo || previewCompleted) return;
     
     const handleTimeUpdate = () => {
       if (video.currentTime >= PREVIEW_START_TIME + PREVIEW_DURATION) {
-        video.currentTime = PREVIEW_START_TIME;
+        video.pause();
+        setPreviewCompleted(true);
+        setShowVideoPreview(false);
+        setIsVideoPlaying(false);
       }
     };
     
     video.addEventListener('timeupdate', handleTimeUpdate);
     return () => video.removeEventListener('timeupdate', handleTimeUpdate);
-  }, [showVideoPreview, displayVideo]);
+  }, [showVideoPreview, displayVideo, previewCompleted]);
 
   // Reset preview state when banner changes
   useEffect(() => {
     if (previewStartedForBanner !== null && previewStartedForBanner !== currentIndex) {
       setShowVideoPreview(false);
       setPreviewStartedForBanner(null);
+      setPreviewCompleted(false);
       if (videoRef.current) {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
@@ -310,8 +320,8 @@ export const EnhancedHeroBanner = ({
           transition={{ duration: 1, ease: "easeOut" }}
           className="absolute inset-0"
         >
-          {/* Show video if banner has video OR if hover preview is active */}
-          {(displayVideo || (showVideoPreview && previewVideoUrl)) ? (
+          {/* Show video if banner has video OR if hover preview is active (and not completed) */}
+          {(displayVideo || (showVideoPreview && previewVideoUrl && !previewCompleted)) ? (
             <>
               {/* Show image underneath while video loads */}
               <img
@@ -319,7 +329,7 @@ export const EnhancedHeroBanner = ({
                 alt={displayTitle}
                 className={cn(
                   "w-full h-full object-cover absolute inset-0 transition-opacity duration-500",
-                  (isVideoPlaying || showVideoPreview) ? "opacity-0" : "opacity-100"
+                  (isVideoPlaying || showVideoPreview) && !previewCompleted ? "opacity-0" : "opacity-100"
                 )}
               />
               <video
@@ -327,7 +337,7 @@ export const EnhancedHeroBanner = ({
                 src={displayVideo || previewVideoUrl}
                 className={cn(
                   "w-full h-full object-cover transition-opacity duration-500",
-                  (isVideoPlaying || showVideoPreview) ? "opacity-100" : "opacity-0"
+                  (isVideoPlaying || showVideoPreview) && !previewCompleted ? "opacity-100" : "opacity-0"
                 )}
                 autoPlay={!!displayVideo}
                 loop={!!displayVideo}
