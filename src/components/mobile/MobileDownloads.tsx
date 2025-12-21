@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { SwipeNavigation } from "./SwipeNavigation";
+import { MobileVideoPlayer } from "./MobileVideoPlayer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +14,8 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { useSmartDownload } from "@/hooks/useSmartDownload";
+import { useOfflineDownloads } from "@/hooks/useOfflineDownloads";
+import { Content } from "@/types";
 
 interface DownloadItem {
   id: string;
@@ -24,6 +27,9 @@ interface DownloadItem {
   expiresAt?: string;
   contentType: "movie" | "series";
   episodeInfo?: string;
+  contentId: string;
+  episodeId?: string;
+  videoUrl?: string;
 }
 
 export function MobileDownloads() {
@@ -36,6 +42,15 @@ export function MobileDownloads() {
   const [wifiOnly, setWifiOnly] = useState(() => localStorage.getItem("wifi-only-download") === "true");
   const { lightTap, selectionTap, warningFeedback, successFeedback } = useHaptics();
   const { smartDownloadEnabled, toggleSmartDownload } = useSmartDownload();
+  const { getOfflineVideoUrl } = useOfflineDownloads();
+  
+  // Video player state
+  const [playingContent, setPlayingContent] = useState<{
+    content: Content;
+    offlineUrl: string;
+    episodeId?: string;
+    startTime?: number;
+  } | null>(null);
 
   // Fetch download licenses
   const { data: downloads = [], isLoading, refetch } = useQuery({
@@ -76,10 +91,60 @@ export function MobileDownloads() {
         episodeInfo: item.episode 
           ? `S${item.episode.season?.season_number || 1}:E${item.episode.episode_number}` 
           : undefined,
+        contentId: item.content_id,
+        episodeId: item.episode?.id,
+        videoUrl: item.content?.video_url,
       })) as DownloadItem[];
     },
     enabled: !!user,
   });
+
+  // Handle playing an offline download
+  const handlePlayItem = async (item: DownloadItem) => {
+    if (item.status === "expired") {
+      warningFeedback();
+      toast.error("This download has expired. Please re-download.");
+      return;
+    }
+
+    lightTap();
+    
+    // Try to get offline URL from IndexedDB
+    const downloadId = item.episodeId || item.contentId;
+    const offlineUrl = await getOfflineVideoUrl(downloadId);
+    
+    if (offlineUrl) {
+      // Create content object for the player
+      const content: Content = {
+        id: item.contentId,
+        title: item.title,
+        description: "",
+        thumbnailUrl: item.thumbnailUrl,
+        videoUrl: offlineUrl, // Use offline blob URL
+        genre: "",
+        contentType: item.contentType as "movie" | "series",
+        isPremium: false,
+        duration: 0,
+      };
+      
+      setPlayingContent({
+        content,
+        offlineUrl,
+        episodeId: item.episodeId,
+      });
+    } else {
+      // Fallback: content not in IndexedDB, might be in different storage
+      toast.error("Unable to play offline content. It may need to be re-downloaded.");
+    }
+  };
+
+  const handleClosePlayer = () => {
+    // Revoke the blob URL to free memory
+    if (playingContent?.offlineUrl) {
+      URL.revokeObjectURL(playingContent.offlineUrl);
+    }
+    setPlayingContent(null);
+  };
 
   // Calculate storage usage
   const { data: storageInfo } = useQuery({
@@ -137,6 +202,20 @@ export function MobileDownloads() {
     localStorage.setItem("wifi-only-download", checked.toString());
     toast.success(checked ? "Downloads will only use Wi-Fi" : "Downloads can use mobile data");
   };
+
+  // Show video player when playing content
+  if (playingContent) {
+    return (
+      <MobileVideoPlayer
+        content={playingContent.content}
+        videoUrl={playingContent.offlineUrl}
+        title={playingContent.content.title}
+        episodeId={playingContent.episodeId}
+        onClose={handleClosePlayer}
+        thumbnail={playingContent.content.thumbnailUrl}
+      />
+    );
+  }
 
   return (
     <SwipeNavigation enableBackGesture>
@@ -274,11 +353,17 @@ export function MobileDownloads() {
               <div 
                 key={item.id}
                 className={cn(
-                  "flex gap-3 p-2 rounded-xl transition-all",
+                  "flex gap-3 p-2 rounded-xl transition-all cursor-pointer active:scale-[0.98]",
                   isEditMode && "bg-secondary/30",
                   selectedItems.includes(item.id) && "bg-primary/10 ring-1 ring-primary/30"
                 )}
-                onClick={() => isEditMode && toggleSelect(item.id)}
+                onClick={() => {
+                  if (isEditMode) {
+                    toggleSelect(item.id);
+                  } else {
+                    handlePlayItem(item);
+                  }
+                }}
               >
                 {/* Thumbnail */}
                 <div className="relative w-28 aspect-video rounded-lg overflow-hidden bg-secondary flex-shrink-0">
@@ -294,7 +379,7 @@ export function MobileDownloads() {
                       <AlertCircle className="h-6 w-6 text-yellow-500" />
                     </div>
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/30 opacity-0 hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/30">
                       <div className="w-10 h-10 rounded-full bg-foreground/90 flex items-center justify-center">
                         <Play className="h-4 w-4 text-background ml-0.5" fill="currentColor" />
                       </div>
@@ -335,13 +420,11 @@ export function MobileDownloads() {
                   )}
                 </div>
 
-                {/* Actions */}
-                {!isEditMode && (
-                  <button className="p-2 self-center text-muted-foreground hover:text-foreground">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
+                {/* Play indicator */}
+                {!isEditMode && item.status !== "expired" && (
+                  <div className="p-2 self-center text-primary">
+                    <Play className="h-5 w-5" fill="currentColor" />
+                  </div>
                 )}
               </div>
             ))
