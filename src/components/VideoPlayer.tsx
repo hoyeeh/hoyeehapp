@@ -696,6 +696,7 @@ export const VideoPlayer = ({
         autoPlay
         muted={isMuted}
         playsInline
+        onContextMenu={(e) => e.preventDefault()}
         onLoadedData={() => {
           // Attempt to play with proper error handling for mobile
           const video = videoRef.current;
