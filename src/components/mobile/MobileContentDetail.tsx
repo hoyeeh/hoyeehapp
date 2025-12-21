@@ -353,12 +353,17 @@ export function MobileContentDetail({
             src={`${content.videoUrl}#t=1200`}
             className="w-full h-full object-cover"
             autoPlay
+            muted
             playsInline
             loop={false}
             poster={content.thumbnailUrl}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
               video.currentTime = 1200; // Start at 20 minutes
+              // Attempt play with error handling
+              video.play().catch(() => {
+                // Autoplay blocked, user will need to interact
+              });
             }}
           />
         ) : (
