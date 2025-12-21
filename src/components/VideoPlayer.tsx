@@ -56,6 +56,7 @@ import { DeviceGroupManager } from "@/components/cast/DeviceGroupManager";
 import { NativeCastButton } from "@/components/cast/NativeCastButton";
 import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
+import { NetworkQualityIndicator } from "@/components/NetworkQualityIndicator";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { DRM_PROTECTION_STYLES } from "@/utils/drmHelpers";
@@ -829,22 +830,46 @@ export const VideoPlayer = ({
         </div>
       )}
 
+      {/* Network Quality Indicator */}
+      <NetworkQualityIndicator
+        network={networkQuality}
+        currentQuality={selectedQuality}
+        isVisible={showControls}
+      />
+
       {/* Controls Overlay */}
       <div
         className={cn(
-          "absolute inset-0 transition-opacity duration-300",
-          showControls ? "opacity-100 cursor-auto" : "opacity-0 pointer-events-none"
+          "absolute inset-0 transition-all duration-300 ease-out",
+          showControls 
+            ? "opacity-100 cursor-auto pointer-events-auto" 
+            : "opacity-0 pointer-events-none"
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Gradient */}
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-background/80 to-transparent" />
+        <div 
+          className={cn(
+            "absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-background/80 to-transparent transition-opacity duration-300",
+            showControls ? "opacity-100" : "opacity-0"
+          )} 
+        />
         
         {/* Bottom Gradient */}
-        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/90 to-transparent" />
+        <div 
+          className={cn(
+            "absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/90 to-transparent transition-opacity duration-300",
+            showControls ? "opacity-100" : "opacity-0"
+          )}
+        />
 
         {/* Top Bar */}
-        <div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4">
+        <div 
+          className={cn(
+            "absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4 transition-all duration-300 ease-out",
+            showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+          )}
+        >
           <button
             onClick={onBack}
             className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand/80 flex items-center justify-center hover:bg-brand transition-colors"
@@ -855,17 +880,22 @@ export const VideoPlayer = ({
         </div>
 
         {/* Center Controls */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 sm:gap-8">
+        <div 
+          className={cn(
+            "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 sm:gap-8 transition-all duration-300 ease-out",
+            showControls ? "opacity-100 scale-100" : "opacity-0 scale-90"
+          )}
+        >
           <button
             onClick={() => skip(-10)}
-            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-all duration-200 hover:scale-110"
           >
             <SkipBack className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
           
           <button
             onClick={togglePlay}
-            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30"
+            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-all duration-200 shadow-lg shadow-brand/30 hover:scale-105"
           >
             {isPlaying ? (
               <Pause className="h-7 w-7 sm:h-10 sm:w-10 text-primary-foreground" fill="currentColor" />
@@ -876,14 +906,19 @@ export const VideoPlayer = ({
           
           <button
             onClick={() => skip(10)}
-            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-all duration-200 hover:scale-110"
           >
             <SkipForward className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
 
         {/* Bottom Controls */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
+        <div 
+          className={cn(
+            "absolute bottom-0 left-0 right-0 p-4 space-y-2 transition-all duration-300 ease-out",
+            showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          )}
+        >
           {/* Progress Bar with Markers */}
           <div
             ref={progressRef}
