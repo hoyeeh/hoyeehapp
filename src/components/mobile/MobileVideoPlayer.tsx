@@ -19,6 +19,7 @@ import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { usePictureInPicture } from "@/hooks/usePictureInPicture";
 import { useCastHistory } from "@/hooks/useCastHistory";
 import { toCdnUrl } from "@/utils/cdnUrl";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 
 interface MobileVideoPlayerProps {
   content: Content;
@@ -71,7 +72,9 @@ export function MobileVideoPlayer({
   const lastTapTimeRef = useRef<number>(0);
   const lastTapSideRef = useRef<"left" | "right" | null>(null);
   const { user } = useAuth();
-
+  
+  // Use back navigation hook for proper history handling
+  const { goBack } = useBackNavigation({ fallbackPath: '/' });
   // State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -646,8 +649,53 @@ export function MobileVideoPlayer({
     if (video && duration > 0) {
       saveProgressImmediately(video.currentTime, duration);
     }
+    
+    // Call onClose to update parent state
     onClose();
   }, [duration, saveProgressImmediately, onClose]);
+
+  // Handle Capacitor/browser back button for proper navigation
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
+    const setupBackHandler = async () => {
+      try {
+        // Try to use Capacitor App plugin for native back button
+        const { App } = await import('@capacitor/app');
+        
+        const listener = App.addListener('backButton', () => {
+          handleBack();
+        });
+
+        cleanup = () => {
+          listener.then(l => l.remove());
+        };
+      } catch (e) {
+        // Capacitor not available - handle browser back with popstate
+        const handlePopstate = (event: PopStateEvent) => {
+          // Prevent default navigation and close the player instead
+          event.preventDefault();
+          handleBack();
+          // Push state back to prevent actual navigation
+          window.history.pushState(null, '', window.location.href);
+        };
+        
+        // Push a state so we can intercept back button
+        window.history.pushState(null, '', window.location.href);
+        window.addEventListener('popstate', handlePopstate);
+        
+        cleanup = () => {
+          window.removeEventListener('popstate', handlePopstate);
+        };
+      }
+    };
+
+    setupBackHandler();
+
+    return () => {
+      cleanup?.();
+    };
+  }, [handleBack]);
 
   // Handle casting
   const handleCastVideo = useCallback(async () => {
