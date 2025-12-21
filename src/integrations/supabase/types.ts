@@ -846,6 +846,7 @@ export type Database = {
           id: string
           is_subscribed: boolean | null
           last_login_at: string | null
+          lockout_count: number | null
           mobile_number: string | null
           parental_controls_enabled: boolean | null
           parental_pin: string | null
@@ -866,6 +867,7 @@ export type Database = {
           id: string
           is_subscribed?: boolean | null
           last_login_at?: string | null
+          lockout_count?: number | null
           mobile_number?: string | null
           parental_controls_enabled?: boolean | null
           parental_pin?: string | null
@@ -886,6 +888,7 @@ export type Database = {
           id?: string
           is_subscribed?: boolean | null
           last_login_at?: string | null
+          lockout_count?: number | null
           mobile_number?: string | null
           parental_controls_enabled?: boolean | null
           parental_pin?: string | null
