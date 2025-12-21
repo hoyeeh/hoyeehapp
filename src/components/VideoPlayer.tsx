@@ -54,6 +54,8 @@ import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
+import { supabase } from "@/integrations/supabase/client";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface NextEpisodeInfo {
   id: string;
@@ -67,6 +69,7 @@ interface VideoPlayerProps {
   src: string;
   title: string;
   contentId: string;
+  episodeId?: string;
   initialProgress?: number;
   onBack: () => void;
   // Skip intro config (in seconds)
@@ -93,6 +96,7 @@ export const VideoPlayer = ({
   src,
   title,
   contentId,
+  episodeId,
   initialProgress = 0,
   onBack,
   introStartTime = 0,
@@ -134,8 +138,17 @@ export const VideoPlayer = ({
   const volumeIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeFromTime, setResumeFromTime] = useState(0);
+  
+  // Admin settings for intro/recap setter
+  const { data: isAdmin } = useIsAdmin();
+  const [showAdminSettings, setShowAdminSettings] = useState(false);
+  const [localIntroStart, setLocalIntroStart] = useState<number>(introStartTime);
+  const [localIntroEnd, setLocalIntroEnd] = useState<number>(introEndTime);
+  const [localRecapStart, setLocalRecapStart] = useState<number>(recapStartTime ?? 0);
+  const [localRecapEnd, setLocalRecapEnd] = useState<number>(recapEndTime ?? 0);
+  const [isSavingIntro, setIsSavingIntro] = useState(false);
+  const [isSavingRecap, setIsSavingRecap] = useState(false);
 
-  // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
     contentId,
     onProgressLoaded: useCallback((progress: number) => {
@@ -621,6 +634,60 @@ export const VideoPlayer = ({
       clearInterval(nextEpisodeTimerRef.current);
     }
     setShowNextEpisode(false);
+  };
+
+  // Save intro times to database (for admins)
+  const handleSaveIntroTimes = async () => {
+    if (!episodeId || !isAdmin) {
+      toast.error("Cannot save intro times");
+      return;
+    }
+    
+    setIsSavingIntro(true);
+    try {
+      const { error } = await supabase
+        .from("episodes")
+        .update({
+          intro_start_time: localIntroStart,
+          intro_end_time: localIntroEnd,
+        })
+        .eq("id", episodeId);
+      
+      if (error) throw error;
+      toast.success("Intro times saved successfully");
+    } catch (error) {
+      console.error("[VideoPlayer] Failed to save intro times:", error);
+      toast.error("Failed to save intro times");
+    } finally {
+      setIsSavingIntro(false);
+    }
+  };
+
+  // Save recap times to database (for admins)
+  const handleSaveRecapTimes = async () => {
+    if (!episodeId || !isAdmin) {
+      toast.error("Cannot save recap times");
+      return;
+    }
+    
+    setIsSavingRecap(true);
+    try {
+      const { error } = await supabase
+        .from("episodes")
+        .update({
+          recap_start_time: localRecapStart,
+          recap_end_time: localRecapEnd,
+        })
+        .eq("id", episodeId);
+      
+      if (error) throw error;
+      toast.success("Recap times saved successfully");
+    } catch (error) {
+      console.error("[VideoPlayer] Failed to save recap times:", error);
+      toast.error("Failed to save recap times");
+    } finally {
+      setIsSavingRecap(false);
+    }
   };
 
   // Next episode countdown timer
@@ -1110,7 +1177,22 @@ export const VideoPlayer = ({
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
-              </DropdownMenu>
+                </DropdownMenu>
+
+              {/* Admin Settings Button - only show for admins when episode is selected */}
+              {isAdmin && episodeId && (
+                <button
+                  onClick={() => setShowAdminSettings(!showAdminSettings)}
+                  className={cn(
+                    "hidden sm:flex items-center gap-1 hover:text-brand transition-colors text-sm px-2 py-1 rounded",
+                    showAdminSettings && "bg-brand/20 text-brand"
+                  )}
+                  title="Admin: Set intro/recap times"
+                >
+                  <Settings className="h-5 w-5" />
+                  Admin
+                </button>
+              )}
 
               {/* Native Cast Buttons */}
               <NativeCastButton
@@ -1425,6 +1507,174 @@ export const VideoPlayer = ({
           Space/K: Play | M: Mute | F: Fullscreen | P: PiP | ←→: Seek | ↑↓: Volume
         </div>
       </div>
+
+      {/* Admin Settings Panel - Intro/Recap Setter */}
+      {showAdminSettings && isAdmin && episodeId && (
+        <div className="absolute top-16 right-4 w-80 bg-card/95 backdrop-blur-md rounded-lg shadow-xl border border-border p-4 z-50 max-h-[70vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-lg">Admin Settings</h3>
+            <button
+              onClick={() => setShowAdminSettings(false)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              ×
+            </button>
+          </div>
+          
+          {/* Current Time Reference */}
+          <div className="bg-secondary/50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-muted-foreground mb-1">Current Position</p>
+            <p className="text-xl font-mono font-bold text-primary">{formatTime(currentTime)}</p>
+            <p className="text-xs text-muted-foreground">({Math.floor(currentTime)} seconds)</p>
+          </div>
+          
+          {/* Intro Settings */}
+          <div className="mb-6">
+            <h4 className="font-medium mb-3 flex items-center gap-2 text-blue-400">
+              <SkipForward className="h-4 w-4" />
+              Intro Skip
+            </h4>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Start (seconds)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={localIntroStart}
+                    onChange={(e) => setLocalIntroStart(parseInt(e.target.value) || 0)}
+                    min={0}
+                    className="flex-1 bg-secondary rounded px-3 py-2 text-sm font-mono"
+                  />
+                  <button
+                    onClick={() => {
+                      setLocalIntroStart(Math.floor(currentTime));
+                      toast.info(`Intro start: ${formatTime(currentTime)}`);
+                    }}
+                    className="px-3 py-2 bg-blue-500 text-white rounded text-xs font-medium"
+                  >
+                    Use
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">End (seconds)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={localIntroEnd}
+                    onChange={(e) => setLocalIntroEnd(parseInt(e.target.value) || 0)}
+                    min={0}
+                    className="flex-1 bg-secondary rounded px-3 py-2 text-sm font-mono"
+                  />
+                  <button
+                    onClick={() => {
+                      setLocalIntroEnd(Math.floor(currentTime));
+                      toast.info(`Intro end: ${formatTime(currentTime)}`);
+                    }}
+                    className="px-3 py-2 bg-blue-500 text-white rounded text-xs font-medium"
+                  >
+                    Use
+                  </button>
+                </div>
+              </div>
+              
+              {localIntroEnd > localIntroStart && (
+                <p className="text-xs text-blue-400">
+                  Duration: {formatTime(localIntroEnd - localIntroStart)}
+                </p>
+              )}
+              
+              <button
+                onClick={handleSaveIntroTimes}
+                disabled={isSavingIntro || localIntroEnd <= localIntroStart}
+                className={cn(
+                  "w-full py-2 rounded text-sm font-medium transition-colors",
+                  isSavingIntro || localIntroEnd <= localIntroStart
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                )}
+              >
+                {isSavingIntro ? "Saving..." : "Save Intro"}
+              </button>
+            </div>
+          </div>
+          
+          {/* Recap Settings */}
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2 text-purple-400">
+              <SkipBack className="h-4 w-4" />
+              Recap Skip
+            </h4>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Start (seconds)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={localRecapStart}
+                    onChange={(e) => setLocalRecapStart(parseInt(e.target.value) || 0)}
+                    min={0}
+                    className="flex-1 bg-secondary rounded px-3 py-2 text-sm font-mono"
+                  />
+                  <button
+                    onClick={() => {
+                      setLocalRecapStart(Math.floor(currentTime));
+                      toast.info(`Recap start: ${formatTime(currentTime)}`);
+                    }}
+                    className="px-3 py-2 bg-purple-500 text-white rounded text-xs font-medium"
+                  >
+                    Use
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">End (seconds)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={localRecapEnd}
+                    onChange={(e) => setLocalRecapEnd(parseInt(e.target.value) || 0)}
+                    min={0}
+                    className="flex-1 bg-secondary rounded px-3 py-2 text-sm font-mono"
+                  />
+                  <button
+                    onClick={() => {
+                      setLocalRecapEnd(Math.floor(currentTime));
+                      toast.info(`Recap end: ${formatTime(currentTime)}`);
+                    }}
+                    className="px-3 py-2 bg-purple-500 text-white rounded text-xs font-medium"
+                  >
+                    Use
+                  </button>
+                </div>
+              </div>
+              
+              {localRecapEnd > localRecapStart && (
+                <p className="text-xs text-purple-400">
+                  Duration: {formatTime(localRecapEnd - localRecapStart)}
+                </p>
+              )}
+              
+              <button
+                onClick={handleSaveRecapTimes}
+                disabled={isSavingRecap || (localRecapEnd <= localRecapStart && localRecapEnd !== 0)}
+                className={cn(
+                  "w-full py-2 rounded text-sm font-medium transition-colors",
+                  isSavingRecap || (localRecapEnd <= localRecapStart && localRecapEnd !== 0)
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-purple-500 text-white hover:bg-purple-600"
+                )}
+              >
+                {isSavingRecap ? "Saving..." : "Save Recap"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cast Controller - shown when casting via Chromecast */}
       {isCasting && cast.isConnected && (
