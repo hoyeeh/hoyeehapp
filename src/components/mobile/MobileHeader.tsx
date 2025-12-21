@@ -5,7 +5,7 @@ import { useProfileContext } from "@/contexts/ProfileContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { useCast } from "@/contexts/CastContext";
 import { cn } from "@/lib/utils";
-import { CastPairingDialog } from "@/components/cast/CastPairingDialog";
+import { MobileCastSheet } from "./MobileCastSheet";
 
 interface MobileHeaderProps {
   onSearchClick?: () => void;
@@ -32,20 +32,11 @@ export function MobileHeader({
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
   const cast = useCast();
-  const [showCastDialog, setShowCastDialog] = useState(false);
+  const [showCastSheet, setShowCastSheet] = useState(false);
 
   // Use profile avatar from profiles table, fallback to currentProfile
   const avatarUrl = profile?.avatar_url || currentProfile?.avatar_url;
   const displayName = currentProfile?.name || profile?.display_name || "You";
-
-  const handlePair = async (code: string): Promise<boolean> => {
-    try {
-      const success = await cast.pairWithCode(code);
-      return success;
-    } catch {
-      return false;
-    }
-  };
 
   return (
     <>
@@ -78,17 +69,22 @@ export function MobileHeader({
           {/* Action Buttons */}
           <div className="flex items-center gap-1">
             <button 
-              onClick={() => setShowCastDialog(true)}
+              onClick={() => setShowCastSheet(true)}
               className={cn(
-                "p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all",
+                "p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation",
                 cast.isConnected && "text-primary"
               )}
-              aria-label="Cast"
+              style={{ minWidth: 44, minHeight: 44 }}
+              aria-label="Cast to device"
             >
               <Cast className="h-5 w-5" />
+              {cast.isConnected && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-primary rounded-full" />
+              )}
             </button>
             <button 
-              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all"
+              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation"
+              style={{ minWidth: 44, minHeight: 44 }}
               aria-label="Notifications"
               onClick={() => navigate("/notification-preferences")}
             >
@@ -96,7 +92,8 @@ export function MobileHeader({
             </button>
             <button 
               onClick={onSearchClick}
-              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all"
+              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation"
+              style={{ minWidth: 44, minHeight: 44 }}
               aria-label="Search"
             >
               <Search className="h-5 w-5" />
@@ -113,7 +110,7 @@ export function MobileHeader({
                 onClick={() => onFilterChange?.(filter.id)}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300",
-                  "border active:scale-95",
+                  "border active:scale-95 touch-manipulation",
                   activeFilter === filter.id
                     ? "bg-foreground text-background border-foreground"
                     : "bg-transparent text-foreground border-border/60 hover:border-foreground/50"
@@ -126,12 +123,12 @@ export function MobileHeader({
         )}
       </header>
 
-      {/* Cast Pairing Dialog */}
-      <CastPairingDialog 
-        open={showCastDialog} 
-        onOpenChange={setShowCastDialog}
-        onPair={handlePair}
-        isConnecting={cast.isConnecting}
+      {/* Full Cast Sheet with all casting options */}
+      <MobileCastSheet 
+        open={showCastSheet} 
+        onClose={() => setShowCastSheet(false)}
+        videoUrl=""
+        videoTitle=""
       />
     </>
   );
