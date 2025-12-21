@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
+import { MobileVideoPlayerProvider } from "@/contexts/MobileVideoPlayerContext";
+import { PersistentMobileVideoPlayer } from "@/components/mobile/PersistentMobileVideoPlayer";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
@@ -158,50 +160,53 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <ProfileProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <SubscriptionExpiryChecker />
-          <OfflineIndicator />
-          <PWAInstallBanner />
-          <DownloadQueueWrapper />
-          <BrowserRouter>
-            <PWAUpdateHandler />
-            <PWANavigationHandler />
-            <CapacitorBackHandler />
-            <CastProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/pin-auth" element={<PinAuth />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/subscription" element={<Subscription />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/content/:id" element={<ContentDetail />} />
-                <Route path="/my-list" element={<MyList />} />
-                <Route path="/downloads" element={<Downloads />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/genres" element={<Genres />} />
-                <Route path="/terms" element={<TermsOfUse />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/help" element={<HelpCenter />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/support" element={<Support />} />
-                <Route path="/copyright" element={<Copyright />} />
-                <Route path="/install" element={<Install />} />
-                <Route path="/notifications" element={<NotificationPreferences />} />
-                <Route path="/notification-preferences" element={<NotificationPreferences />} />
-                <Route path="/parental" element={<Parental />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </CastProvider>
-          </BrowserRouter>
-        </TooltipProvider>
+        <MobileVideoPlayerProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <SubscriptionExpiryChecker />
+            <OfflineIndicator />
+            <PWAInstallBanner />
+            <DownloadQueueWrapper />
+            <BrowserRouter>
+              <PWAUpdateHandler />
+              <PWANavigationHandler />
+              <CapacitorBackHandler />
+              <CastProvider>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/pin-auth" element={<PinAuth />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/subscription" element={<Subscription />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/content/:id" element={<ContentDetail />} />
+                  <Route path="/my-list" element={<MyList />} />
+                  <Route path="/downloads" element={<Downloads />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/search" element={<Search />} />
+                  <Route path="/genres" element={<Genres />} />
+                  <Route path="/terms" element={<TermsOfUse />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/help" element={<HelpCenter />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/support" element={<Support />} />
+                  <Route path="/copyright" element={<Copyright />} />
+                  <Route path="/install" element={<Install />} />
+                  <Route path="/notifications" element={<NotificationPreferences />} />
+                  <Route path="/notification-preferences" element={<NotificationPreferences />} />
+                  <Route path="/parental" element={<Parental />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <PersistentMobileVideoPlayer />
+              </CastProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </MobileVideoPlayerProvider>
       </ProfileProvider>
     </AuthProvider>
   </QueryClientProvider>
