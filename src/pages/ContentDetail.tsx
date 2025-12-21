@@ -21,6 +21,8 @@ import { ArrowLeft, Play, Plus, Check, Star, Clock, Calendar, ListVideo, Filter,
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
+import { useMobileDevice } from "@/hooks/useMobileDevice";
+import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
 
 interface CastMember {
   id: number;
@@ -248,6 +250,11 @@ const ContentDetail = () => {
   const { data: profile } = useProfile();
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
+  
+  // Mobile device detection and video player
+  const { isMobileDevice, isTablet } = useMobileDevice();
+  const mobilePlayer = useMobileVideoPlayer();
+  const isMobile = isMobileDevice || isTablet;
   
   // Cast Queue
   const castQueue = useCastQueue();
@@ -517,6 +524,17 @@ const ContentDetail = () => {
       return;
     }
 
+    // Use mobile player on mobile devices for movies
+    if (isMobile && content) {
+      mobilePlayer.openPlayer({
+        content,
+        videoUrl: content.videoUrl,
+        title: content.title,
+        thumbnail: content.thumbnailUrl,
+      });
+      return;
+    }
+
     setPlaying(true);
   };
 
@@ -569,13 +587,44 @@ const ContentDetail = () => {
       return;
     }
 
+    // Find next episode for player
+    const currentIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
+    let nextEp: Episode | null = null;
+    for (let i = currentIndex + 1; i < allEpisodes.length; i++) {
+      if (allEpisodes[i].video_url) {
+        nextEp = allEpisodes[i];
+        break;
+      }
+    }
+
+    const epData = episode as any;
+
+    // Use mobile player on mobile devices
+    if (isMobile && content) {
+      mobilePlayer.openPlayer({
+        content,
+        videoUrl: episode.video_url,
+        title: content.title,
+        episodeTitle: `E${episode.episode_number} - ${episode.title}`,
+        episodeId: episode.id,
+        resumeAt: resumeAt || 0,
+        introStartTime: epData.intro_start_time ?? undefined,
+        introEndTime: epData.intro_end_time ?? undefined,
+        recapStartTime: epData.recap_start_time ?? undefined,
+        recapEndTime: epData.recap_end_time ?? undefined,
+        thumbnail: episode.thumbnail_url || content.thumbnailUrl,
+        hasNextEpisode: !!nextEp,
+        nextEpisode: nextEp,
+        allEpisodes,
+      });
+      return;
+    }
+
     setEpisodeResumeAt(resumeAt || 0);
 
     // Check if this episode has a recap and we're not resuming
-    const epData = episode as any;
     if (!resumeAt && epData.recap_start_time !== null && epData.recap_end_time !== null) {
       // Find the previous episode to get its video URL for recap
-      const currentIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
       if (currentIndex > 0) {
         const prevEpisode = allEpisodes[currentIndex - 1];
         if (prevEpisode.video_url) {
