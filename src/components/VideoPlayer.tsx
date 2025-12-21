@@ -112,6 +112,8 @@ export const VideoPlayer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const lastSaveTimeRef = useRef<number>(0);
+  const retryCountRef = useRef<number>(0);
+  const maxRetries = 3;
   const isMobile = useIsMobile();
 
   const [isPlaying, setIsPlaying] = useState(true); // Start as true since video has autoPlay
@@ -403,6 +405,24 @@ export const VideoPlayer = ({
       
       if (videoError) {
         errorCode = videoError.code;
+        
+        // For network errors on mobile, auto-retry up to maxRetries times
+        if (videoError.code === MediaError.MEDIA_ERR_NETWORK && retryCountRef.current < maxRetries) {
+          retryCountRef.current++;
+          console.log(`[VideoPlayer] Network error, auto-retrying (${retryCountRef.current}/${maxRetries})...`);
+          toast.info(`Connection interrupted, retrying... (${retryCountRef.current}/${maxRetries})`);
+          
+          setTimeout(() => {
+            if (videoRef.current) {
+              const currentPos = videoRef.current.currentTime;
+              videoRef.current.load();
+              videoRef.current.currentTime = currentPos;
+              videoRef.current.play().catch(() => {});
+            }
+          }, 1000 * retryCountRef.current); // Exponential backoff
+          return;
+        }
+        
         switch (videoError.code) {
           case MediaError.MEDIA_ERR_ABORTED:
             errorMessage = "Video playback was aborted";
@@ -421,6 +441,7 @@ export const VideoPlayer = ({
         }
       }
       
+      console.log('[VideoPlayer] Media error:', { code: errorCode, message: errorMessage });
       setMediaError({ code: errorCode, message: errorMessage });
     };
 
@@ -466,6 +487,32 @@ export const VideoPlayer = ({
       video.removeEventListener("ended", handleEnded);
     };
   }, [initialProgress, loadedProgress, saveProgressImmediately, nextEpisode, onPlayNextEpisode, introStartTime, introEndTime, showNextEpisode]);
+
+  // Mobile visibility change - pause on background, resume on foreground
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const video = videoRef.current;
+      if (!video) return;
+      
+      if (document.hidden) {
+        console.log('[VideoPlayer] App went to background, pausing');
+        video.pause();
+      } else {
+        console.log('[VideoPlayer] App returned to foreground');
+        // Reset retry count when returning to app
+        retryCountRef.current = 0;
+        // Try to resume playback
+        if (isPlaying) {
+          video.play().catch((err) => {
+            console.log('[VideoPlayer] Failed to resume playback:', err);
+          });
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isPlaying]);
 
   // Auto-hide controls
   useEffect(() => {

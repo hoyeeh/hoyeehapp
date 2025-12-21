@@ -102,24 +102,27 @@ export function useNetworkQuality(): NetworkQuality {
       
       // Only update if values actually changed using ref comparison
       const prev = prevStateRef.current;
-      if (!prev || 
+      const hasChanged = !prev || 
           prev.effectiveType !== newState.effectiveType ||
           prev.downlink !== newState.downlink ||
           prev.rtt !== newState.rtt ||
           prev.saveData !== newState.saveData ||
-          prev.isOnline !== newState.isOnline) {
+          prev.isOnline !== newState.isOnline;
+          
+      if (hasChanged) {
         prevStateRef.current = newState;
-        setNetworkQuality(newState);
+        // Use functional update to avoid dependency issues
+        setNetworkQuality(() => newState);
       }
     } else {
       const prev = prevStateRef.current;
       if (prev && prev.isOnline !== navigator.onLine) {
         const newState = { ...prev, isOnline: navigator.onLine };
         prevStateRef.current = newState;
-        setNetworkQuality(newState);
+        setNetworkQuality(() => newState);
       }
     }
-  }, []);
+  }, []); // Empty dependency array - use refs for comparison
 
   useEffect(() => {
     // Prevent adding listeners multiple times
