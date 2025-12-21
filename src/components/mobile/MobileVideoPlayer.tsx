@@ -105,12 +105,17 @@ export function MobileVideoPlayer({
   const [selectedQuality, setSelectedQuality] = useState("auto");
   const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
   const [volumeLevel, setVolumeLevel] = useState(100);
-  const [settingsTab, setSettingsTab] = useState<"speed" | "quality" | "intro">("speed");
+  const [settingsTab, setSettingsTab] = useState<"speed" | "quality" | "intro" | "recap">("speed");
   
   // Intro skip setter states (for admins)
   const [localIntroStart, setLocalIntroStart] = useState<number>(introStartTime ?? 0);
   const [localIntroEnd, setLocalIntroEnd] = useState<number>(introEndTime ?? 90);
   const [isSavingIntro, setIsSavingIntro] = useState(false);
+  
+  // Recap skip setter states (for admins)
+  const [localRecapStart, setLocalRecapStart] = useState<number>(recapStartTime ?? 0);
+  const [localRecapEnd, setLocalRecapEnd] = useState<number>(recapEndTime ?? 0);
+  const [isSavingRecap, setIsSavingRecap] = useState(false);
   
   // Lock controls state
   const [isLocked, setIsLocked] = useState(false);
@@ -212,6 +217,33 @@ export function MobileVideoPlayer({
       setIsSavingIntro(false);
     }
   }, [episodeId, isAdmin, localIntroStart, localIntroEnd]);
+
+  // Save recap times to database (for admins)
+  const handleSaveRecapTimes = useCallback(async () => {
+    if (!episodeId || !isAdmin) {
+      toast.error("Cannot save recap times");
+      return;
+    }
+    
+    setIsSavingRecap(true);
+    try {
+      const { error } = await supabase
+        .from("episodes")
+        .update({
+          recap_start_time: localRecapStart,
+          recap_end_time: localRecapEnd,
+        })
+        .eq("id", episodeId);
+      
+      if (error) throw error;
+      toast.success("Recap times saved successfully");
+    } catch (error) {
+      console.error("[MobileVideoPlayer] Failed to save recap times:", error);
+      toast.error("Failed to save recap times");
+    } finally {
+      setIsSavingRecap(false);
+    }
+  }, [episodeId, isAdmin, localRecapStart, localRecapEnd]);
 
   // Check if video is HLS
   const isHls = videoUrl?.includes('.m3u8');
@@ -1629,17 +1661,30 @@ export function MobileVideoPlayer({
                   Quality
                 </button>
                 {isAdmin && episodeId && (
-                  <button
-                    onClick={() => setSettingsTab("intro")}
-                    className={cn(
-                      "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
-                      settingsTab === "intro"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground"
-                    )}
-                  >
-                    Intro
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setSettingsTab("intro")}
+                      className={cn(
+                        "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                        settingsTab === "intro"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-foreground"
+                      )}
+                    >
+                      Intro
+                    </button>
+                    <button
+                      onClick={() => setSettingsTab("recap")}
+                      className={cn(
+                        "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                        settingsTab === "recap"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-foreground"
+                      )}
+                    >
+                      Recap
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -1812,6 +1857,113 @@ export function MobileVideoPlayer({
                   {localIntroEnd <= localIntroStart && (
                     <p className="text-destructive text-sm mt-2 text-center">
                       Intro end must be greater than intro start
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Recap Tab (Admin only) */}
+              {settingsTab === "recap" && isAdmin && episodeId && (
+                <div>
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <RotateCcw className="h-5 w-5" />
+                    Set Recap Skip
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Set the recap start and end times for this episode. The skip button will appear during this segment.
+                  </p>
+                  
+                  {/* Current Time Reference */}
+                  <div className="bg-secondary/50 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-muted-foreground mb-1">Current Position</p>
+                    <p className="text-xl font-mono font-bold text-primary">{formatTime(currentTime)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">({Math.floor(currentTime)} seconds)</p>
+                  </div>
+                  
+                  {/* Recap Start */}
+                  <div className="mb-4">
+                    <label className="text-sm font-medium mb-2 block">Recap Start (seconds)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={localRecapStart}
+                        onChange={(e) => setLocalRecapStart(parseInt(e.target.value) || 0)}
+                        min={0}
+                        className="flex-1 bg-secondary rounded-lg px-4 py-3 text-foreground font-mono"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocalRecapStart(Math.floor(currentTime));
+                          toast.info(`Recap start set to ${formatTime(currentTime)}`);
+                        }}
+                        className="px-4 py-3 bg-purple-500 text-white rounded-lg font-medium whitespace-nowrap"
+                      >
+                        Use Current
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Recap End */}
+                  <div className="mb-6">
+                    <label className="text-sm font-medium mb-2 block">Recap End (seconds)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={localRecapEnd}
+                        onChange={(e) => setLocalRecapEnd(parseInt(e.target.value) || 0)}
+                        min={0}
+                        className="flex-1 bg-secondary rounded-lg px-4 py-3 text-foreground font-mono"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocalRecapEnd(Math.floor(currentTime));
+                          toast.info(`Recap end set to ${formatTime(currentTime)}`);
+                        }}
+                        className="px-4 py-3 bg-purple-500 text-white rounded-lg font-medium whitespace-nowrap"
+                      >
+                        Use Current
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Duration Preview */}
+                  {localRecapEnd > localRecapStart && (
+                    <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-purple-400">
+                        Recap duration: {formatTime(localRecapEnd - localRecapStart)} ({localRecapEnd - localRecapStart} seconds)
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Save Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveRecapTimes();
+                    }}
+                    disabled={isSavingRecap || localRecapEnd <= localRecapStart}
+                    className={cn(
+                      "w-full flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-colors",
+                      isSavingRecap || localRecapEnd <= localRecapStart
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-primary text-white"
+                    )}
+                  >
+                    {isSavingRecap ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Save className="h-5 w-5" />
+                    )}
+                    {isSavingRecap ? "Saving..." : "Save Recap Times"}
+                  </button>
+                  
+                  {localRecapEnd <= localRecapStart && localRecapEnd !== 0 && (
+                    <p className="text-destructive text-sm mt-2 text-center">
+                      Recap end must be greater than recap start
                     </p>
                   )}
                 </div>
