@@ -120,6 +120,10 @@ export function MobileVideoPlayer({
   const [swipeY, setSwipeY] = useState(0);
   const [isSwipingDown, setIsSwipingDown] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
+  
+  // Swipe right to go back state
+  const [swipeX, setSwipeX] = useState(0);
+  const [isSwipingRight, setIsSwipingRight] = useState(false);
 
   // Store loaded progress for later use when duration is available
   const loadedProgressRef = useRef<number | null>(null);
@@ -694,14 +698,26 @@ export function MobileVideoPlayer({
     onClose();
   }, [duration, saveProgressImmediately, onClose, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl]);
 
-  // Swipe down gesture handler
+  // Swipe gesture handlers (down to minimize, right to go back)
   const handleSwipePan = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (isLocked) return;
     
-    // Only respond to downward swipes
-    if (info.offset.y > 0) {
+    const absX = Math.abs(info.offset.x);
+    const absY = Math.abs(info.offset.y);
+    
+    // Respond to downward swipes
+    if (info.offset.y > 0 && absY > absX) {
       setSwipeY(info.offset.y);
       setIsSwipingDown(true);
+      setSwipeX(0);
+      setIsSwipingRight(false);
+    }
+    // Respond to rightward swipes (left-to-right)
+    else if (info.offset.x > 0 && absX > absY) {
+      setSwipeX(info.offset.x);
+      setIsSwipingRight(true);
+      setSwipeY(0);
+      setIsSwipingDown(false);
     }
   }, [isLocked]);
 
@@ -709,18 +725,28 @@ export function MobileVideoPlayer({
     if (isLocked) {
       setSwipeY(0);
       setIsSwipingDown(false);
+      setSwipeX(0);
+      setIsSwipingRight(false);
       return;
     }
     
     // Close if swiped down more than 150px with enough velocity
     if (info.offset.y > 150 || (info.offset.y > 80 && info.velocity.y > 500)) {
       handleBack();
-    } else {
-      // Reset position
-      setSwipeY(0);
     }
+    
+    // Navigate to homepage if swiped right more than 150px with enough velocity
+    if (info.offset.x > 150 || (info.offset.x > 80 && info.velocity.x > 500)) {
+      handleBack();
+      navigate('/');
+    }
+    
+    // Reset positions
+    setSwipeY(0);
     setIsSwipingDown(false);
-  }, [isLocked, handleBack]);
+    setSwipeX(0);
+    setIsSwipingRight(false);
+  }, [isLocked, handleBack, navigate]);
 
   // Show swipe hint on first open
   useEffect(() => {
@@ -857,13 +883,17 @@ export function MobileVideoPlayer({
         y: swipeY,
         opacity: swipeOpacity,
       }}
-      initial={{ opacity: 0, y: 0 }}
-      animate={{ opacity: swipeOpacity, y: isSwipingDown ? swipeY : 0 }}
+      initial={{ opacity: 0, x: 0, y: 0 }}
+      animate={{ 
+        opacity: swipeOpacity, 
+        y: isSwipingDown ? swipeY : 0,
+        x: isSwipingRight ? swipeX * 0.3 : 0 
+      }}
       exit={{ opacity: 0, y: 100 }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-      drag="y"
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0, bottom: 0.5 }}
+      drag
+      dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
+      dragElastic={{ top: 0, bottom: 0.5, left: 0, right: 0.5 }}
       onDrag={handleSwipePan}
       onDragEnd={handleSwipePanEnd}
       onClick={handleTap}
@@ -910,6 +940,28 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
+      {/* Swipe Right indicator while swiping */}
+      <AnimatePresence>
+        {isSwipingRight && swipeX > 50 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-50 pointer-events-none"
+          >
+            <div className={cn(
+              "rounded-full p-3 transition-colors",
+              swipeX > 150 ? "bg-primary" : "bg-white/20 backdrop-blur-sm"
+            )}>
+              <ChevronLeft className={cn(
+                "h-6 w-6 transition-colors",
+                swipeX > 150 ? "text-white" : "text-white/70"
+              )} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Video Element */}
       <video
         ref={videoRef}
@@ -923,7 +975,6 @@ export function MobileVideoPlayer({
         onCanPlay={handleCanPlay}
         onEnded={handleEnded}
         onError={handleError}
-        onContextMenu={(e) => e.preventDefault()}
         poster={thumbnail || content.thumbnailUrl}
       />
 
