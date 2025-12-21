@@ -129,6 +129,11 @@ export const VideoPlayer = ({
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
   const nextEpisodeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
+  const [volumeIndicatorLevel, setVolumeIndicatorLevel] = useState(0);
+  const volumeIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [resumeFromTime, setResumeFromTime] = useState(0);
 
   // Watch progress hook
   const { saveProgressImmediately } = useWatchProgress({
@@ -303,7 +308,13 @@ export const VideoPlayer = ({
       setDuration(video.duration);
       // Use loaded progress from DB if available, otherwise use initialProgress
       const startTime = loadedProgress !== null ? loadedProgress : initialProgress;
-      if (startTime > 0) {
+      // Show resume prompt if there's significant progress (more than 30 seconds and less than 95% watched)
+      if (startTime > 30 && video.duration > 0 && startTime < video.duration * 0.95) {
+        setResumeFromTime(startTime);
+        setShowResumePrompt(true);
+        video.pause();
+        setIsPlaying(false);
+      } else if (startTime > 0) {
         video.currentTime = startTime;
       }
     };
@@ -720,21 +731,101 @@ export const VideoPlayer = ({
         </div>
       )}
       
-      {/* Muted Indicator */}
-      {isMuted && isPlaying && !showTapToPlay && (
+      {/* Muted Indicator with Animation */}
+      {isMuted && isPlaying && !showTapToPlay && !showResumePrompt && (
         <button
-          className="absolute top-4 right-4 z-20 px-4 py-2 bg-background/80 backdrop-blur-sm rounded-full flex items-center gap-2 text-sm font-medium hover:bg-background transition-colors"
+          className="absolute top-4 right-4 z-20 px-4 py-2 bg-background/80 backdrop-blur-sm rounded-full flex items-center gap-2 text-sm font-medium hover:bg-background transition-all duration-300 animate-fade-in"
           onClick={(e) => {
             e.stopPropagation();
             setIsMuted(false);
             if (videoRef.current) {
               videoRef.current.muted = false;
+              // Show volume indicator animation
+              setVolumeIndicatorLevel(Math.round(volume * 100));
+              setShowVolumeIndicator(true);
+              if (volumeIndicatorTimeoutRef.current) {
+                clearTimeout(volumeIndicatorTimeoutRef.current);
+              }
+              volumeIndicatorTimeoutRef.current = setTimeout(() => {
+                setShowVolumeIndicator(false);
+              }, 1500);
             }
           }}
         >
           <VolumeX className="h-4 w-4" />
           <span>Tap to unmute</span>
         </button>
+      )}
+      
+      {/* Volume Indicator Animation */}
+      {showVolumeIndicator && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none animate-scale-in">
+          <div className="bg-background/90 backdrop-blur-md rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-3">
+            <div className="relative">
+              <Volume2 className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${volumeIndicatorLevel}%` }}
+              />
+            </div>
+            <span className="text-sm font-medium text-foreground">{volumeIndicatorLevel}%</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Resume Playback Prompt */}
+      {showResumePrompt && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-30 animate-fade-in">
+          <div 
+            className="bg-card/95 backdrop-blur-md rounded-xl p-6 shadow-2xl border border-border max-w-sm mx-4 animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <Play className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Continue Watching?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Resume from {formatTime(resumeFromTime)} or start from the beginning
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    const video = videoRef.current;
+                    if (video) {
+                      video.currentTime = resumeFromTime;
+                      video.play();
+                      setShowResumePrompt(false);
+                      setIsPlaying(true);
+                    }
+                  }}
+                  className="flex-1 px-4 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Play className="h-4 w-4" fill="currentColor" />
+                  Resume
+                </button>
+                <button
+                  onClick={() => {
+                    const video = videoRef.current;
+                    if (video) {
+                      video.currentTime = 0;
+                      video.play();
+                      setShowResumePrompt(false);
+                      setIsPlaying(true);
+                    }
+                  }}
+                  className="flex-1 px-4 py-3 bg-secondary text-secondary-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors"
+                >
+                  Start Over
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Buffering Indicator */}
