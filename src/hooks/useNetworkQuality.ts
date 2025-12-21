@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export interface NetworkQuality {
   effectiveType: '4g' | '3g' | '2g' | 'slow-2g' | 'unknown';
@@ -29,13 +29,11 @@ declare global {
 }
 
 function getRecommendedQuality(downlink: number, effectiveType: string): NetworkQuality['recommendedQuality'] {
-  // Downlink is in Mbps
-  if (downlink >= 10) return '1080'; // 10+ Mbps: Full HD
-  if (downlink >= 5) return '720';   // 5-10 Mbps: HD
-  if (downlink >= 2) return '480';   // 2-5 Mbps: SD
-  if (downlink >= 0.5) return '360'; // 0.5-2 Mbps: Low
+  if (downlink >= 10) return '1080';
+  if (downlink >= 5) return '720';
+  if (downlink >= 2) return '480';
+  if (downlink >= 0.5) return '360';
 
-  // Fallback to effective type if downlink is not available or very low
   switch (effectiveType) {
     case '4g':
       return '720';
@@ -49,87 +47,79 @@ function getRecommendedQuality(downlink: number, effectiveType: string): Network
   }
 }
 
-export function useNetworkQuality(): NetworkQuality {
-  const [networkQuality, setNetworkQuality] = useState<NetworkQuality>(() => {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    
-    if (connection) {
-      const recommended = getRecommendedQuality(connection.downlink || 10, connection.effectiveType || '4g');
-      return {
-        effectiveType: connection.effectiveType || 'unknown',
-        downlink: connection.downlink || 10,
-        rtt: connection.rtt || 50,
-        saveData: connection.saveData || false,
-        recommendedQuality: connection.saveData ? '480' : recommended,
-        connectionType: connection.type || 'unknown',
-        isOnline: navigator.onLine,
-      };
-    }
-
+function getNetworkState(): NetworkQuality {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  
+  if (connection) {
+    const recommended = getRecommendedQuality(connection.downlink || 10, connection.effectiveType || '4g');
     return {
-      effectiveType: 'unknown',
-      downlink: 10,
-      rtt: 50,
-      saveData: false,
-      recommendedQuality: 'auto',
-      connectionType: 'unknown',
+      effectiveType: connection.effectiveType || 'unknown',
+      downlink: connection.downlink || 10,
+      rtt: connection.rtt || 50,
+      saveData: connection.saveData || false,
+      recommendedQuality: connection.saveData ? '480' : recommended,
+      connectionType: connection.type || 'unknown',
       isOnline: navigator.onLine,
     };
-  });
+  }
 
-  const updateNetworkQuality = useCallback(() => {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    
-    if (connection) {
-      const recommended = getRecommendedQuality(connection.downlink || 10, connection.effectiveType || '4g');
-      setNetworkQuality(prev => {
-        const newState = {
-          effectiveType: connection.effectiveType || 'unknown' as const,
-          downlink: connection.downlink || 10,
-          rtt: connection.rtt || 50,
-          saveData: connection.saveData || false,
-          recommendedQuality: connection.saveData ? '480' as const : recommended,
-          connectionType: connection.type || 'unknown',
-          isOnline: navigator.onLine,
-        };
-        // Only update if values actually changed to prevent infinite loops
-        if (
-          prev.effectiveType === newState.effectiveType &&
-          prev.downlink === newState.downlink &&
-          prev.rtt === newState.rtt &&
-          prev.saveData === newState.saveData &&
-          prev.isOnline === newState.isOnline
-        ) {
-          return prev;
-        }
-        return newState;
-      });
-    } else {
-      setNetworkQuality(prev => {
-        if (prev.isOnline === navigator.onLine) return prev;
-        return { ...prev, isOnline: navigator.onLine };
-      });
-    }
-  }, []);
+  return {
+    effectiveType: 'unknown',
+    downlink: 10,
+    rtt: 50,
+    saveData: false,
+    recommendedQuality: 'auto',
+    connectionType: 'unknown',
+    isOnline: navigator.onLine,
+  };
+}
+
+export function useNetworkQuality(): NetworkQuality {
+  const [networkQuality, setNetworkQuality] = useState<NetworkQuality>(getNetworkState);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     
+    const handleChange = () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        const newState = getNetworkState();
+        setNetworkQuality(prev => {
+          if (
+            prev.effectiveType === newState.effectiveType &&
+            prev.downlink === newState.downlink &&
+            prev.rtt === newState.rtt &&
+            prev.saveData === newState.saveData &&
+            prev.isOnline === newState.isOnline
+          ) {
+            return prev;
+          }
+          return newState;
+        });
+      }, 100);
+    };
+    
     if (connection) {
-      connection.addEventListener('change', updateNetworkQuality);
+      connection.addEventListener('change', handleChange);
     }
     
-    window.addEventListener('online', updateNetworkQuality);
-    window.addEventListener('offline', updateNetworkQuality);
+    window.addEventListener('online', handleChange);
+    window.addEventListener('offline', handleChange);
     
     return () => {
-      if (connection) {
-        connection.removeEventListener('change', updateNetworkQuality);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
       }
-      window.removeEventListener('online', updateNetworkQuality);
-      window.removeEventListener('offline', updateNetworkQuality);
+      if (connection) {
+        connection.removeEventListener('change', handleChange);
+      }
+      window.removeEventListener('online', handleChange);
+      window.removeEventListener('offline', handleChange);
     };
-  }, [updateNetworkQuality]);
+  }, []);
 
   return networkQuality;
 }
@@ -149,7 +139,7 @@ export function useAdaptiveQuality(isHls: boolean) {
     }
   }, [network.recommendedQuality, isAdaptive, isHls]);
 
-  const getQualityLabel = useCallback(() => {
+  const getQualityLabel = () => {
     if (!isAdaptive) return 'Manual';
     
     switch (network.effectiveType) {
@@ -163,7 +153,7 @@ export function useAdaptiveQuality(isHls: boolean) {
       default:
         return 'Auto';
     }
-  }, [isAdaptive, network.effectiveType]);
+  };
 
   return {
     network,
