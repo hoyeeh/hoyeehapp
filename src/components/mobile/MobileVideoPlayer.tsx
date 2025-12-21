@@ -101,19 +101,35 @@ export function MobileVideoPlayer({
   const [volumeLevel, setVolumeLevel] = useState(100);
   const [settingsTab, setSettingsTab] = useState<"speed" | "quality">("speed");
 
+  // Store loaded progress for later use when duration is available
+  const loadedProgressRef = useRef<number | null>(null);
+  const resumePromptShownRef = useRef(false);
+  
   // Hooks
   const { saveProgressImmediately } = useWatchProgress({
     contentId: content.id,
     onProgressLoaded: (progress) => {
-      if (progress > 0 && duration > 0) {
-        const progressRatio = progress / duration;
-        if (progressRatio < 0.95) {
-          setSavedProgress(progress);
-          setShowResumePrompt(true);
-        }
-      }
+      // Store the progress for when duration becomes available
+      loadedProgressRef.current = progress;
     },
   });
+  
+  // Show resume prompt only once when both progress and duration are available
+  useEffect(() => {
+    if (
+      loadedProgressRef.current && 
+      loadedProgressRef.current > 0 && 
+      duration > 0 && 
+      !resumePromptShownRef.current
+    ) {
+      const progressRatio = loadedProgressRef.current / duration;
+      if (progressRatio > 0.01 && progressRatio < 0.95) {
+        setSavedProgress(loadedProgressRef.current);
+        setShowResumePrompt(true);
+        resumePromptShownRef.current = true;
+      }
+    }
+  }, [duration]);
   const cast = useCast();
   const networkQuality = useNetworkQuality();
   const pip = usePictureInPicture(videoRef);

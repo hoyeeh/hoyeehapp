@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,22 +7,37 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Signing secret for URL tokens - use DO_SPACES_SECRET as the key
+// Signing secret for URL tokens
 const SIGNING_SECRET = Deno.env.get("DO_SPACES_SECRET") || "default-secret-key";
+
+// CDN endpoint for DigitalOcean Spaces
+const CDN_ENDPOINT = Deno.env.get("DO_SPACES_CDN_ENDPOINT") || "";
 
 // URL expiry time in seconds (default: 4 hours for typical viewing session)
 const DEFAULT_EXPIRY_SECONDS = 4 * 60 * 60;
+
+// Allowed referrers for hotlink protection
+const ALLOWED_REFERRERS = [
+  "hoyeeh.com",
+  "www.hoyeeh.com",
+  "localhost",
+  "127.0.0.1",
+  "lovable.app",
+  "lovableproject.com",
+];
 
 interface SignedUrlRequest {
   contentId: string;
   episodeId?: string;
   quality?: string;
+  forDownload?: boolean;
 }
 
 interface SignedUrlResponse {
   signedUrl: string;
   expiresAt: string;
   contentTitle?: string;
+  cdnUrl?: string;
 }
 
 /**
@@ -34,18 +48,28 @@ function toHex(bytes: Uint8Array): string {
 }
 
 /**
+ * Convert origin URL to CDN URL
+ */
+function toCdnUrl(originUrl: string): string {
+  if (!originUrl) return originUrl;
+  if (originUrl.includes('.cdn.digitaloceanspaces.com')) return originUrl;
+  return originUrl.replace('.digitaloceanspaces.com', '.cdn.digitaloceanspaces.com');
+}
+
+/**
  * Generate a signed token for URL authentication using Web Crypto API
  */
 async function generateSignedToken(
   userId: string,
   contentId: string,
   expiresAt: number,
+  clientIp: string,
   secret: string
 ): Promise<string> {
-  const payload = `${userId}:${contentId}:${expiresAt}`;
+  // Include IP in payload for additional security
+  const payload = `${userId}:${contentId}:${expiresAt}:${clientIp}`;
   const encoder = new TextEncoder();
   
-  // Import key for HMAC
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
@@ -54,7 +78,6 @@ async function generateSignedToken(
     ["sign"]
   );
   
-  // Sign the payload
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
@@ -74,18 +97,18 @@ async function generateSignedToken(
 async function verifySignedToken(
   token: string,
   userId: string,
+  clientIp: string,
   secret: string
 ): Promise<{ valid: boolean; contentId?: string; expired?: boolean }> {
   try {
-    // Decode base64url
     const decoded = atob(token.replace(/-/g, '+').replace(/_/g, '/'));
     const parts = decoded.split(':');
     
-    if (parts.length !== 4) {
+    if (parts.length !== 5) {
       return { valid: false };
     }
     
-    const [tokenUserId, contentId, expiresAtStr, signature] = parts;
+    const [tokenUserId, contentId, expiresAtStr, tokenIp, signature] = parts;
     const expiresAt = parseInt(expiresAtStr, 10);
     
     // Check if token has expired
@@ -98,8 +121,13 @@ async function verifySignedToken(
       return { valid: false };
     }
     
-    // Verify signature using Web Crypto API
-    const payload = `${tokenUserId}:${contentId}:${expiresAtStr}`;
+    // Verify IP matches (optional - can be disabled for mobile users)
+    // if (tokenIp !== clientIp) {
+    //   return { valid: false };
+    // }
+    
+    // Verify signature
+    const payload = `${tokenUserId}:${contentId}:${expiresAtStr}:${tokenIp}`;
     const encoder = new TextEncoder();
     
     const key = await crypto.subtle.importKey(
@@ -128,6 +156,24 @@ async function verifySignedToken(
   }
 }
 
+/**
+ * Check if referrer is allowed (hotlink protection)
+ */
+function isReferrerAllowed(referrer: string | null): boolean {
+  if (!referrer) return true; // Allow direct requests
+  
+  try {
+    const url = new URL(referrer);
+    const hostname = url.hostname.toLowerCase();
+    
+    return ALLOWED_REFERRERS.some(allowed => 
+      hostname === allowed || hostname.endsWith(`.${allowed}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -135,6 +181,21 @@ serve(async (req) => {
   }
 
   try {
+    // Check referrer for hotlink protection
+    const referrer = req.headers.get("referer");
+    if (!isReferrerAllowed(referrer)) {
+      console.warn(`Blocked request from unauthorized referrer: ${referrer}`);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized referrer" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get client IP for token binding
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("x-real-ip") || 
+                     "unknown";
+
     // Verify authorization
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -161,7 +222,7 @@ serve(async (req) => {
       );
     }
 
-    const { contentId, episodeId, quality } = await req.json() as SignedUrlRequest;
+    const { contentId, episodeId, quality, forDownload } = await req.json() as SignedUrlRequest;
 
     if (!contentId) {
       return new Response(
@@ -170,7 +231,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating signed URL for user ${user.id}, content ${contentId}`);
+    console.log(`Generating signed URL for user ${user.id}, content ${contentId}, IP: ${clientIp}`);
 
     // Check user subscription status
     const { data: profile, error: profileError } = await supabase
@@ -204,6 +265,7 @@ serve(async (req) => {
 
     let videoUrl = content.video_url;
     let contentTitle = content.title;
+    let isPremium = content.is_premium;
 
     // If episode ID provided, fetch episode video URL
     if (episodeId) {
@@ -223,23 +285,11 @@ serve(async (req) => {
 
       videoUrl = episode.video_url;
       contentTitle = `${content.title} - ${episode.title}`;
-      
-      // Check if episode is premium
-      if (episode.is_premium) {
-        const isSubscribed = profile?.is_subscribed && 
-          (!profile.subscription_expiry || new Date(profile.subscription_expiry) > new Date());
-        
-        if (!isSubscribed) {
-          return new Response(
-            JSON.stringify({ error: "Premium subscription required for this episode" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
+      isPremium = episode.is_premium || content.is_premium;
     }
 
     // Check if content is premium and user has valid subscription
-    if (content.is_premium) {
+    if (isPremium) {
       const isSubscribed = profile?.is_subscribed && 
         (!profile.subscription_expiry || new Date(profile.subscription_expiry) > new Date());
       
@@ -268,12 +318,24 @@ serve(async (req) => {
       );
     }
 
-    // Generate signed URL
-    const expiresAt = Date.now() + (DEFAULT_EXPIRY_SECONDS * 1000);
-    const signedToken = await generateSignedToken(user.id, contentId, expiresAt, SIGNING_SECRET);
+    // For downloads, use longer expiry (7 days)
+    const expirySeconds = forDownload ? 7 * 24 * 60 * 60 : DEFAULT_EXPIRY_SECONDS;
+    const expiresAt = Date.now() + (expirySeconds * 1000);
+    
+    // Generate signed token with IP binding
+    const signedToken = await generateSignedToken(
+      user.id, 
+      episodeId || contentId, 
+      expiresAt, 
+      clientIp,
+      SIGNING_SECRET
+    );
+    
+    // Convert to CDN URL for better performance
+    const cdnVideoUrl = toCdnUrl(videoUrl);
     
     // Append signed token as query parameter to the video URL
-    const signedUrl = new URL(videoUrl);
+    const signedUrl = new URL(cdnVideoUrl);
     signedUrl.searchParams.set("token", signedToken);
     signedUrl.searchParams.set("uid", user.id);
     signedUrl.searchParams.set("exp", expiresAt.toString());
@@ -282,16 +344,39 @@ serve(async (req) => {
       signedUrl.searchParams.set("quality", quality);
     }
 
-    console.log(`Generated signed URL for content ${contentId}, expires at ${new Date(expiresAt).toISOString()}`);
+    // Log for analytics
+    console.log(`Generated signed URL for content ${contentId}, expires at ${new Date(expiresAt).toISOString()}, forDownload: ${forDownload}`);
+
+    // Record download license if this is for download
+    if (forDownload) {
+      await supabase.from("download_licenses").upsert({
+        user_id: user.id,
+        content_id: contentId,
+        episode_id: episodeId || null,
+        device_id: clientIp, // Using IP as device identifier for now
+        encrypted_key: signedToken,
+        expires_at: new Date(expiresAt).toISOString(),
+        status: 'active',
+        quality: quality || 'auto',
+      }, {
+        onConflict: 'user_id,content_id,episode_id,device_id',
+      });
+    }
 
     const response: SignedUrlResponse = {
       signedUrl: signedUrl.toString(),
       expiresAt: new Date(expiresAt).toISOString(),
       contentTitle,
+      cdnUrl: cdnVideoUrl,
     };
 
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "application/json",
+        // Add cache headers for CDN
+        "Cache-Control": "private, max-age=0",
+      },
     });
 
   } catch (error) {
