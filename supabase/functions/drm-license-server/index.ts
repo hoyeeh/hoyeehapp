@@ -160,24 +160,40 @@ const validateSessionToken = (token: string): { valid: boolean; userId?: string;
   }
 };
 
-// Check for concurrent streams
-const checkConcurrentStreams = (userId: string, contentId: string, sessionToken: string): boolean => {
+// Check for concurrent streams - allow same content to reuse session
+const checkConcurrentStreams = (userId: string, contentId: string, sessionToken: string): { allowed: boolean; existingSession?: string } => {
   let concurrentCount = 0;
   const maxConcurrent = 2; // Allow 2 concurrent streams
+  let existingSessionForContent: string | undefined;
+  
+  // Clean up stale sessions first
+  const now = Date.now();
+  for (const [token, session] of activeSessions.entries()) {
+    if (now - session.lastHeartbeat > 120000) {
+      activeSessions.delete(token);
+    }
+  }
   
   for (const [token, session] of activeSessions.entries()) {
-    if (session.userId === userId && token !== sessionToken) {
-      // Check if session is still active (heartbeat within last 2 minutes)
-      if (Date.now() - session.lastHeartbeat < 120000) {
+    if (session.userId === userId) {
+      // Check if there's an existing session for the same content
+      if (session.contentId === contentId) {
+        existingSessionForContent = token;
+        // Update heartbeat on existing session
+        session.lastHeartbeat = now;
+      } else if (token !== sessionToken) {
+        // Only count different content as concurrent
         concurrentCount++;
-      } else {
-        // Clean up stale session
-        activeSessions.delete(token);
       }
     }
   }
   
-  return concurrentCount < maxConcurrent;
+  // If there's an existing session for same content, allow it
+  if (existingSessionForContent) {
+    return { allowed: true, existingSession: existingSessionForContent };
+  }
+  
+  return { allowed: concurrentCount < maxConcurrent };
 };
 
 serve(async (req) => {
@@ -257,19 +273,10 @@ serve(async (req) => {
 
     switch (action) {
       case 'acquire': {
-        // Validate session token if provided
-        if (sessionToken) {
-          const tokenValidation = validateSessionToken(sessionToken);
-          if (!tokenValidation.valid) {
-            return new Response(
-              JSON.stringify({ error: 'Invalid session token' }),
-              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-
-        // Check concurrent streams
-        if (sessionToken && !checkConcurrentStreams(user.id, contentId, sessionToken)) {
+        // Check concurrent streams (handles session reuse automatically)
+        const streamCheck = checkConcurrentStreams(user.id, contentId, sessionToken || '');
+        
+        if (!streamCheck.allowed) {
           return new Response(
             JSON.stringify({ 
               error: 'Too many concurrent streams',
@@ -279,29 +286,46 @@ serve(async (req) => {
           );
         }
 
-        // Generate license
-        const licenseKey = generateLicenseKey(user.id, contentId);
-        
-        // Store session
-        if (sessionToken) {
-          activeSessions.set(sessionToken, {
-            userId: user.id,
-            contentId,
-            episodeId,
-            createdAt: Date.now(),
-            lastHeartbeat: Date.now(),
-            deviceFingerprint,
-          });
+        // If there's an existing session for this content, return it
+        if (streamCheck.existingSession) {
+          const existingSession = activeSessions.get(streamCheck.existingSession);
+          console.log(`Reusing existing session for: user=${user.id}, content=${contentId}`);
+          
+          return new Response(
+            JSON.stringify({
+              success: true,
+              licenseKey: generateLicenseKey(user.id, contentId),
+              sessionToken: streamCheck.existingSession,
+              expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+              securityLevel: 'high',
+              contentTitle: content?.title,
+              reused: true,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
-        // Log license acquisition
-        console.log(`License acquired: user=${user.id}, content=${contentId}, episode=${episodeId || 'N/A'}`);
+        // Generate new license and session
+        const licenseKey = generateLicenseKey(user.id, contentId);
+        const newSessionToken = sessionToken || `session-${user.id}-${contentId}-${Date.now()}`;
+        
+        activeSessions.set(newSessionToken, {
+          userId: user.id,
+          contentId,
+          episodeId,
+          createdAt: Date.now(),
+          lastHeartbeat: Date.now(),
+          deviceFingerprint,
+        });
+
+        console.log(`New license acquired: user=${user.id}, content=${contentId}`);
 
         return new Response(
           JSON.stringify({
             success: true,
             licenseKey,
-            expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // 4 hours
+            sessionToken: newSessionToken,
+            expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
             securityLevel: 'high',
             contentTitle: content?.title,
           }),
