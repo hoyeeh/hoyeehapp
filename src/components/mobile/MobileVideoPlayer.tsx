@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { 
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, 
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
   RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
-  PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun
+  PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { usePictureInPicture } from "@/hooks/usePictureInPicture";
 import { useCastHistory } from "@/hooks/useCastHistory";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
+import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
 
 interface MobileVideoPlayerProps {
   content: Content;
@@ -114,6 +115,11 @@ export function MobileVideoPlayer({
   const [showGestureVolumeIndicator, setShowGestureVolumeIndicator] = useState(false);
   const gestureStartRef = useRef<{ x: number; y: number; side: 'left' | 'right' | null; startValue: number } | null>(null);
   const isGesturingRef = useRef(false);
+  
+  // Swipe down to close state
+  const [swipeY, setSwipeY] = useState(0);
+  const [isSwipingDown, setIsSwipingDown] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
 
   // Store loaded progress for later use when duration is available
   const loadedProgressRef = useRef<number | null>(null);
@@ -127,6 +133,25 @@ export function MobileVideoPlayer({
       loadedProgressRef.current = progress;
     },
   });
+  
+  // Load progress from IndexedDB on mount (for offline continuity)
+  useEffect(() => {
+    const loadOfflineProgress = async () => {
+      try {
+        const position = await getPlaybackPosition(content.id, episodeId);
+        if (position && position.position > 0) {
+          // Only use IndexedDB position if we don't have a server position
+          if (!loadedProgressRef.current) {
+            loadedProgressRef.current = position.position;
+          }
+        }
+      } catch (error) {
+        console.error('[MobileVideoPlayer] Failed to load offline progress:', error);
+      }
+    };
+    
+    loadOfflineProgress();
+  }, [content.id, episodeId]);
   
   // Show resume prompt only once when both progress and duration are available
   useEffect(() => {
@@ -267,19 +292,27 @@ export function MobileVideoPlayer({
     return () => clearInterval(timer);
   }, [showNextEpisode, onNextEpisode]);
 
-  // Save progress periodically
+  // Save progress periodically (both to server and IndexedDB)
   useEffect(() => {
     if (!isPlaying || !duration) return;
 
     const interval = setInterval(() => {
       const video = videoRef.current;
       if (video && duration > 0) {
+        // Save to server
         saveProgressImmediately(video.currentTime, duration);
+        
+        // Also save to IndexedDB for offline continuity
+        savePlaybackPosition(content.id, video.currentTime, duration, {
+          episodeId,
+          title: episodeTitle || title,
+          thumbnail: thumbnail || content.thumbnailUrl,
+        }).catch(console.error);
       }
     }, 10000); // Save every 10 seconds
 
     return () => clearInterval(interval);
-  }, [isPlaying, duration, saveProgressImmediately]);
+  }, [isPlaying, duration, saveProgressImmediately, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl]);
 
   // Video event handlers
   const handleLoadedMetadata = () => {
@@ -644,15 +677,64 @@ export function MobileVideoPlayer({
   }, []);
 
   const handleBack = useCallback(() => {
-    // Save progress before closing
+    // Save progress before closing (both to server and IndexedDB for offline)
     const video = videoRef.current;
     if (video && duration > 0) {
       saveProgressImmediately(video.currentTime, duration);
+      
+      // Also save to IndexedDB for offline continuity
+      savePlaybackPosition(content.id, video.currentTime, duration, {
+        episodeId,
+        title: episodeTitle || title,
+        thumbnail: thumbnail || content.thumbnailUrl,
+      }).catch(console.error);
     }
     
     // Call onClose to update parent state
     onClose();
-  }, [duration, saveProgressImmediately, onClose]);
+  }, [duration, saveProgressImmediately, onClose, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl]);
+
+  // Swipe down gesture handler
+  const handleSwipePan = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (isLocked) return;
+    
+    // Only respond to downward swipes
+    if (info.offset.y > 0) {
+      setSwipeY(info.offset.y);
+      setIsSwipingDown(true);
+    }
+  }, [isLocked]);
+
+  const handleSwipePanEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (isLocked) {
+      setSwipeY(0);
+      setIsSwipingDown(false);
+      return;
+    }
+    
+    // Close if swiped down more than 150px with enough velocity
+    if (info.offset.y > 150 || (info.offset.y > 80 && info.velocity.y > 500)) {
+      handleBack();
+    } else {
+      // Reset position
+      setSwipeY(0);
+    }
+    setIsSwipingDown(false);
+  }, [isLocked, handleBack]);
+
+  // Show swipe hint on first open
+  useEffect(() => {
+    const hasSeenHint = localStorage.getItem('mobile_player_swipe_hint');
+    if (!hasSeenHint) {
+      setTimeout(() => {
+        setShowSwipeHint(true);
+        setTimeout(() => {
+          setShowSwipeHint(false);
+          localStorage.setItem('mobile_player_swipe_hint', 'true');
+        }, 3000);
+      }, 2000);
+    }
+  }, []);
 
   // Handle Capacitor/browser back button for proper navigation
   useEffect(() => {
@@ -763,19 +845,71 @@ export function MobileVideoPlayer({
   const recapMarkerStart = getMarkerPosition(recapStartTime || -1);
   const recapMarkerEnd = getMarkerPosition(recapEndTime || -1);
 
+  // Calculate swipe opacity for fade effect
+  const swipeOpacity = isSwipingDown ? Math.max(0.3, 1 - swipeY / 300) : 1;
+
   return (
     <motion.div
       ref={containerRef}
       className="fixed inset-0 z-[200] bg-black"
-      style={{ filter: `brightness(${brightness}%)` }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      style={{ 
+        filter: `brightness(${brightness}%)`,
+        y: swipeY,
+        opacity: swipeOpacity,
+      }}
+      initial={{ opacity: 0, y: 0 }}
+      animate={{ opacity: swipeOpacity, y: isSwipingDown ? swipeY : 0 }}
+      exit={{ opacity: 0, y: 100 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0, bottom: 0.5 }}
+      onDrag={handleSwipePan}
+      onDragEnd={handleSwipePanEnd}
       onClick={handleTap}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Swipe Down Hint */}
+      <AnimatePresence>
+        {showSwipeHint && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none"
+          >
+            <div className="bg-black/70 backdrop-blur-sm rounded-full px-4 py-2 flex items-center gap-2">
+              <ChevronDown className="h-5 w-5 text-white animate-bounce" />
+              <span className="text-white text-sm font-medium">Swipe down to close</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Swipe indicator while swiping */}
+      <AnimatePresence>
+        {isSwipingDown && swipeY > 50 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+          >
+            <div className={cn(
+              "rounded-full p-3 transition-colors",
+              swipeY > 150 ? "bg-primary" : "bg-white/20 backdrop-blur-sm"
+            )}>
+              <ChevronDown className={cn(
+                "h-6 w-6 transition-colors",
+                swipeY > 150 ? "text-white" : "text-white/70"
+              )} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Video Element */}
       <video
         ref={videoRef}
