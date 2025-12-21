@@ -108,7 +108,9 @@ export const VideoPlayer = ({
   const lastSaveTimeRef = useRef<number>(0);
 
   const [isPlaying, setIsPlaying] = useState(true); // Start as true since video has autoPlay
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Start muted for mobile autoplay support
+  const [showTapToPlay, setShowTapToPlay] = useState(false); // Fallback for blocked autoplay
+  const [isActivelyPlaying, setIsActivelyPlaying] = useState(false); // Track if user is actively watching
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [showControls, setShowControls] = useState(true);
@@ -254,15 +256,19 @@ export const VideoPlayer = ({
   }, [src]);
 
   // Auto-adjust quality when network changes (if adaptive is enabled)
+  // Only adjust when NOT actively playing to prevent interruptions on mobile
   useEffect(() => {
     if (!useAdaptiveQuality || !isHls) return;
+    
+    // Don't interrupt active playback with quality changes
+    if (isActivelyPlaying && isPlaying) return;
     
     if (networkQuality.recommendedQuality !== 'auto' && 
         networkQuality.recommendedQuality !== selectedQuality) {
       setSelectedQuality(networkQuality.recommendedQuality);
       toast.info(`Video quality adjusted to ${networkQuality.recommendedQuality}p based on your connection`);
     }
-  }, [networkQuality.recommendedQuality, useAdaptiveQuality, isHls]);
+  }, [networkQuality.recommendedQuality, useAdaptiveQuality, isHls, isActivelyPlaying, isPlaying]);
 
   // Guard: avoid loading the player with an empty source (would trigger Error code: 4)
   useEffect(() => {
@@ -332,7 +338,9 @@ export const VideoPlayer = ({
     const handleWaiting = () => setIsBuffering(true);
     const handlePlaying = () => {
       setIsBuffering(false);
-      setIsPlaying(true); // Sync isPlaying state when video actually starts playing
+      setIsPlaying(true);
+      setIsActivelyPlaying(true); // Mark as actively playing
+      setShowTapToPlay(false); // Hide tap to play overlay
     };
     const handleCanPlay = () => setIsBuffering(false);
     const handleLoadedData = () => setIsBuffering(false);
@@ -675,8 +683,59 @@ export const VideoPlayer = ({
         src={getVideoSource()}
         className="w-full h-full object-contain"
         autoPlay
+        muted={isMuted}
         playsInline
+        onLoadedData={() => {
+          // Attempt to play with proper error handling for mobile
+          const video = videoRef.current;
+          if (video) {
+            video.play().catch(() => {
+              // Autoplay blocked - show tap to play overlay
+              setShowTapToPlay(true);
+              setIsPlaying(false);
+            });
+          }
+        }}
       />
+      
+      {/* Tap to Play Overlay (when autoplay blocked) */}
+      {showTapToPlay && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center bg-background/70 z-20"
+          onClick={(e) => {
+            e.stopPropagation();
+            const video = videoRef.current;
+            if (video) {
+              video.play();
+              setShowTapToPlay(false);
+            }
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center">
+              <Play className="h-10 w-10 text-white" fill="white" />
+            </div>
+            <span className="text-lg font-medium">Tap to Play</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Muted Indicator */}
+      {isMuted && isPlaying && !showTapToPlay && (
+        <button
+          className="absolute top-4 right-4 z-20 px-4 py-2 bg-background/80 backdrop-blur-sm rounded-full flex items-center gap-2 text-sm font-medium hover:bg-background transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsMuted(false);
+            if (videoRef.current) {
+              videoRef.current.muted = false;
+            }
+          }}
+        >
+          <VolumeX className="h-4 w-4" />
+          <span>Tap to unmute</span>
+        </button>
+      )}
 
       {/* Buffering Indicator */}
       {isBuffering && (
