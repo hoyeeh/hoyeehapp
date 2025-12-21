@@ -512,8 +512,16 @@ export const VideoPlayer = ({
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      video.play();
-      setIsPlaying(true);
+      video.play()
+        .then(() => {
+          setIsPlaying(true);
+          setShowTapToPlay(false);
+        })
+        .catch((error) => {
+          console.error('[VideoPlayer] Play failed:', error);
+          setShowTapToPlay(true);
+          setIsPlaying(false);
+        });
     } else {
       video.pause();
       setIsPlaying(false);

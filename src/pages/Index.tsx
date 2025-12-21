@@ -18,6 +18,7 @@ import { NewReleasesRow } from "@/components/NewReleasesRow";
 import { AIRecommendationsRow } from "@/components/AIRecommendationsRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { MobileVideoPlayer } from "@/components/mobile/MobileVideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
 import { ContentFilter, FilterState } from "@/components/ContentFilter";
 import { ProfilePicker } from "@/components/ProfilePicker";
@@ -342,8 +343,20 @@ const Index = () => {
     );
   }
 
-  // Video Player View
+  // Video Player View - Use MobileVideoPlayer for mobile devices
   if (playingContent) {
+    if (isMobileOrTablet) {
+      return (
+        <MobileVideoPlayer
+          content={playingContent.content}
+          videoUrl={playingContent.content.videoUrl}
+          title={playingContent.content.title}
+          thumbnail={playingContent.content.thumbnailUrl}
+          onClose={() => setPlayingContent(null)}
+        />
+      );
+    }
+    
     return (
       <VideoPlayer
         src={playingContent.content.videoUrl}

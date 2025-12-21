@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, 
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
-  RotateCcw, FastForward
+  RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -71,6 +71,8 @@ export function MobileVideoPlayer({
   const [skipAmount, setSkipAmount] = useState<{ side: "left" | "right"; amount: number } | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [savedProgress, setSavedProgress] = useState<number | null>(null);
+  const [mediaError, setMediaError] = useState<{ code: number; message: string } | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Hooks - use watch progress with callback
   const { saveProgressImmediately } = useWatchProgress({
@@ -207,13 +209,72 @@ export function MobileVideoPlayer({
   };
 
   const handleWaiting = () => setIsBuffering(true);
-  const handleCanPlay = () => setIsBuffering(false);
+  const handleCanPlay = () => {
+    setIsBuffering(false);
+    setMediaError(null); // Clear any previous error on successful playback
+  };
   const handleEnded = () => {
     setIsPlaying(false);
     if (hasNextEpisode && onNextEpisode) {
       onNextEpisode();
     }
   };
+
+  // Error handler with retry logic
+  const handleError = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    setIsBuffering(false);
+    const videoError = video.error;
+    let errorMessage = "Video failed to load";
+    let errorCode = 0;
+    
+    if (videoError) {
+      errorCode = videoError.code;
+      switch (videoError.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage = "Video playback was interrupted";
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage = "Network error - check your connection";
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage = "Video format not supported";
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = "Video not available - please try again later";
+          break;
+        default:
+          errorMessage = videoError.message || "Unknown error occurred";
+      }
+    }
+    
+    console.error("[MobileVideoPlayer] Video error:", errorCode, errorMessage);
+    setMediaError({ code: errorCode, message: errorMessage });
+  }, []);
+
+  // Retry function
+  const handleRetry = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    setMediaError(null);
+    setIsBuffering(true);
+    setRetryCount((prev) => prev + 1);
+    
+    // Reload the video
+    video.load();
+    video.play()
+      .then(() => {
+        setIsPlaying(true);
+        setShowTapToPlay(false);
+      })
+      .catch((error) => {
+        console.log("[MobileVideoPlayer] Retry play failed:", error);
+        setShowTapToPlay(true);
+      });
+  }, []);
 
   // Control handlers
   const togglePlay = useCallback(() => {
@@ -425,9 +486,60 @@ export function MobileVideoPlayer({
         onWaiting={handleWaiting}
         onCanPlay={handleCanPlay}
         onEnded={handleEnded}
+        onError={handleError}
         onContextMenu={(e) => e.preventDefault()}
         poster={thumbnail || content.thumbnailUrl}
       />
+
+      {/* Error Overlay */}
+      <AnimatePresence>
+        {mediaError && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 flex items-center justify-center bg-black/90 z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center gap-4 text-center px-8">
+              {mediaError.code === 2 ? (
+                <WifiOff className="h-16 w-16 text-destructive" />
+              ) : (
+                <AlertCircle className="h-16 w-16 text-destructive" />
+              )}
+              <h3 className="text-white text-xl font-semibold">Playback Error</h3>
+              <p className="text-muted-foreground">{mediaError.message}</p>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRetry();
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                  Try Again
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBack();
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-secondary text-secondary-foreground rounded-full font-medium"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                  Go Back
+                </button>
+              </div>
+              {retryCount > 0 && (
+                <p className="text-muted-foreground text-sm mt-2">
+                  Retry attempt: {retryCount}
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Buffering Indicator */}
       <AnimatePresence>
