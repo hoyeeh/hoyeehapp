@@ -1,15 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-// Signing secret for URL tokens - use DO_SPACES_SECRET as the key
-const SIGNING_SECRET = Deno.env.get("DO_SPACES_SECRET") || "default-secret-key";
 
 // URL expiry time in seconds (default: 4 hours for typical viewing session)
 const DEFAULT_EXPIRY_SECONDS = 4 * 60 * 60;
@@ -27,104 +23,29 @@ interface SignedUrlResponse {
 }
 
 /**
- * Convert Uint8Array to hex string
+ * Extract storage path from full URL or storage path
+ * Handles both Supabase storage URLs and external CDN URLs
  */
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Generate a signed token for URL authentication using Web Crypto API
- */
-async function generateSignedToken(
-  userId: string,
-  contentId: string,
-  expiresAt: number,
-  secret: string
-): Promise<string> {
-  const payload = `${userId}:${contentId}:${expiresAt}`;
-  const encoder = new TextEncoder();
-  
-  // Import key for HMAC
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  
-  // Sign the payload
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(payload)
-  );
-  
-  const signatureHex = toHex(new Uint8Array(signature));
-  
-  // Return base64url encoded token
-  const token = btoa(`${payload}:${signatureHex}`).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return token;
-}
-
-/**
- * Verify a signed token using Web Crypto API
- */
-async function verifySignedToken(
-  token: string,
-  userId: string,
-  secret: string
-): Promise<{ valid: boolean; contentId?: string; expired?: boolean }> {
+function extractStoragePath(videoUrl: string): { isSupabaseStorage: boolean; path?: string; originalUrl?: string } {
   try {
-    // Decode base64url
-    const decoded = atob(token.replace(/-/g, '+').replace(/_/g, '/'));
-    const parts = decoded.split(':');
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     
-    if (parts.length !== 4) {
-      return { valid: false };
+    // Check if it's a Supabase storage URL
+    if (videoUrl.includes(supabaseUrl) && videoUrl.includes("/storage/v1/object/public/videos/")) {
+      const path = videoUrl.split("/storage/v1/object/public/videos/")[1];
+      return { isSupabaseStorage: true, path };
     }
     
-    const [tokenUserId, contentId, expiresAtStr, signature] = parts;
-    const expiresAt = parseInt(expiresAtStr, 10);
-    
-    // Check if token has expired
-    if (Date.now() > expiresAt) {
-      return { valid: false, contentId, expired: true };
+    // Check for authenticated storage URL format
+    if (videoUrl.includes(supabaseUrl) && videoUrl.includes("/storage/v1/object/videos/")) {
+      const path = videoUrl.split("/storage/v1/object/videos/")[1];
+      return { isSupabaseStorage: true, path };
     }
     
-    // Verify user matches
-    if (tokenUserId !== userId) {
-      return { valid: false };
-    }
-    
-    // Verify signature using Web Crypto API
-    const payload = `${tokenUserId}:${contentId}:${expiresAtStr}`;
-    const encoder = new TextEncoder();
-    
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    
-    const expectedSignature = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      encoder.encode(payload)
-    );
-    
-    const expectedSignatureHex = toHex(new Uint8Array(expectedSignature));
-    
-    if (signature !== expectedSignatureHex) {
-      return { valid: false };
-    }
-    
-    return { valid: true, contentId };
+    // It's an external URL (DigitalOcean Spaces, CDN, etc.)
+    return { isSupabaseStorage: false, originalUrl: videoUrl };
   } catch {
-    return { valid: false };
+    return { isSupabaseStorage: false, originalUrl: videoUrl };
   }
 }
 
@@ -144,12 +65,12 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role for storage operations
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user
+    // Verify user with their token
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
@@ -268,24 +189,50 @@ serve(async (req) => {
       );
     }
 
-    // Generate signed URL
     const expiresAt = Date.now() + (DEFAULT_EXPIRY_SECONDS * 1000);
-    const signedToken = await generateSignedToken(user.id, contentId, expiresAt, SIGNING_SECRET);
-    
-    // Append signed token as query parameter to the video URL
-    const signedUrl = new URL(videoUrl);
-    signedUrl.searchParams.set("token", signedToken);
-    signedUrl.searchParams.set("uid", user.id);
-    signedUrl.searchParams.set("exp", expiresAt.toString());
-    
-    if (quality) {
-      signedUrl.searchParams.set("quality", quality);
+    let signedUrl: string;
+
+    // Check if video is in Supabase storage or external
+    const storageInfo = extractStoragePath(videoUrl);
+
+    if (storageInfo.isSupabaseStorage && storageInfo.path) {
+      // Generate Supabase Storage signed URL (cryptographically secure)
+      console.log(`Generating Supabase signed URL for path: ${storageInfo.path}`);
+      
+      const { data: signedUrlData, error: signedUrlError } = await supabase
+        .storage
+        .from("videos")
+        .createSignedUrl(storageInfo.path, DEFAULT_EXPIRY_SECONDS);
+
+      if (signedUrlError || !signedUrlData) {
+        console.error("Signed URL generation error:", signedUrlError);
+        return new Response(
+          JSON.stringify({ error: "Failed to generate signed URL" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      signedUrl = signedUrlData.signedUrl;
+      console.log(`Generated Supabase signed URL for content ${contentId}, expires in ${DEFAULT_EXPIRY_SECONDS}s`);
+    } else {
+      // External URL (DigitalOcean Spaces, CDN, etc.)
+      // Add tracking parameters but URL itself is not cryptographically protected
+      console.log(`Using external URL with tracking parameters for content ${contentId}`);
+      
+      const url = new URL(storageInfo.originalUrl!);
+      url.searchParams.set("uid", user.id);
+      url.searchParams.set("exp", expiresAt.toString());
+      url.searchParams.set("cid", contentId);
+      
+      if (quality) {
+        url.searchParams.set("quality", quality);
+      }
+      
+      signedUrl = url.toString();
     }
 
-    console.log(`Generated signed URL for content ${contentId}, expires at ${new Date(expiresAt).toISOString()}`);
-
     const response: SignedUrlResponse = {
-      signedUrl: signedUrl.toString(),
+      signedUrl,
       expiresAt: new Date(expiresAt).toISOString(),
       contentTitle,
     };
