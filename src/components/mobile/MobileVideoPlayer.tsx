@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, 
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
-  RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff
+  RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
+  PictureInPicture2, Wifi, Signal, Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,6 +15,10 @@ import { MobileCastSheet } from "./MobileCastSheet";
 import { useCast } from "@/contexts/CastContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNetworkQuality } from "@/hooks/useNetworkQuality";
+import { usePictureInPicture } from "@/hooks/usePictureInPicture";
+import { useCastHistory } from "@/hooks/useCastHistory";
+import { toCdnUrl } from "@/utils/cdnUrl";
 
 interface MobileVideoPlayerProps {
   content: Content;
@@ -26,8 +31,22 @@ interface MobileVideoPlayerProps {
   hasNextEpisode?: boolean;
   introStartTime?: number;
   introEndTime?: number;
+  recapStartTime?: number;
+  recapEndTime?: number;
   thumbnail?: string;
 }
+
+// Available quality options
+const QUALITY_OPTIONS = [
+  { label: "Auto", value: "auto" },
+  { label: "1080p", value: "1080" },
+  { label: "720p", value: "720" },
+  { label: "480p", value: "480" },
+  { label: "360p", value: "360" },
+];
+
+// Playback speed options (added 0.5x)
+const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 export function MobileVideoPlayer({
   content,
@@ -40,6 +59,8 @@ export function MobileVideoPlayer({
   hasNextEpisode,
   introStartTime,
   introEndTime,
+  recapStartTime,
+  recapEndTime,
   thumbnail,
 }: MobileVideoPlayerProps) {
   const navigate = useNavigate();
@@ -73,8 +94,14 @@ export function MobileVideoPlayer({
   const [savedProgress, setSavedProgress] = useState<number | null>(null);
   const [mediaError, setMediaError] = useState<{ code: number; message: string } | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  
+  // New states for desktop feature parity
+  const [selectedQuality, setSelectedQuality] = useState("auto");
+  const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
+  const [volumeLevel, setVolumeLevel] = useState(100);
+  const [settingsTab, setSettingsTab] = useState<"speed" | "quality">("speed");
 
-  // Hooks - use watch progress with callback
+  // Hooks
   const { saveProgressImmediately } = useWatchProgress({
     contentId: content.id,
     onProgressLoaded: (progress) => {
@@ -88,6 +115,44 @@ export function MobileVideoPlayer({
     },
   });
   const cast = useCast();
+  const networkQuality = useNetworkQuality();
+  const pip = usePictureInPicture(videoRef);
+  const castHistory = useCastHistory();
+
+  // Check if video is HLS
+  const isHls = videoUrl?.includes('.m3u8');
+
+  // Get video source with CDN and quality
+  const getVideoSource = useCallback(() => {
+    if (!videoUrl) return '';
+    
+    let url = toCdnUrl(videoUrl);
+    
+    // For HLS, append quality parameter if not auto
+    if (isHls && selectedQuality !== 'auto') {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}quality=${selectedQuality}`;
+    }
+    
+    return url;
+  }, [videoUrl, isHls, selectedQuality]);
+
+  // Auto-reconnect to last cast device
+  useEffect(() => {
+    if (castHistory.lastUsedDevice && !cast.isConnected && !cast.isConnecting) {
+      const timeSinceLastUse = Date.now() - castHistory.lastUsedDevice.lastUsed;
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      
+      if (timeSinceLastUse < twentyFourHours && castHistory.lastUsedDevice.type !== 'airplay') {
+        // Attempt to reconnect to last device (exclude airplay as it uses different type)
+        const device = {
+          ...castHistory.lastUsedDevice,
+          type: castHistory.lastUsedDevice.type as 'chromecast' | 'dlna' | 'remote',
+        };
+        cast.reconnectToDevice?.(device);
+      }
+    }
+  }, [castHistory.lastUsedDevice, cast.isConnected, cast.isConnecting]);
 
   // Auto-play with muted audio
   useEffect(() => {
@@ -110,7 +175,7 @@ export function MobileVideoPlayer({
     };
 
     attemptPlay();
-  }, [videoUrl]);
+  }, [videoUrl, selectedQuality]);
 
   // Hide controls after inactivity
   const resetControlsTimeout = useCallback(() => {
@@ -211,7 +276,7 @@ export function MobileVideoPlayer({
   const handleWaiting = () => setIsBuffering(true);
   const handleCanPlay = () => {
     setIsBuffering(false);
-    setMediaError(null); // Clear any previous error on successful playback
+    setMediaError(null);
   };
   const handleEnded = () => {
     setIsPlaying(false);
@@ -302,6 +367,14 @@ export function MobileVideoPlayer({
     video.muted = !video.muted;
     setIsMuted(video.muted);
     setShowUnmutePrompt(false);
+    
+    // Show volume indicator animation
+    if (!video.muted) {
+      setVolumeLevel(Math.round(video.volume * 100));
+      setShowVolumeIndicator(true);
+      setTimeout(() => setShowVolumeIndicator(false), 1500);
+    }
+    
     resetControlsTimeout();
   }, [resetControlsTimeout]);
 
@@ -334,6 +407,14 @@ export function MobileVideoPlayer({
     }
   }, [introEndTime]);
 
+  const skipRecap = useCallback(() => {
+    const video = videoRef.current;
+    if (video && recapEndTime) {
+      video.currentTime = recapEndTime;
+      setCurrentTime(recapEndTime);
+    }
+  }, [recapEndTime]);
+
   const toggleFullscreen = useCallback(async () => {
     const container = containerRef.current;
     if (!container) return;
@@ -361,7 +442,7 @@ export function MobileVideoPlayer({
   const handleResume = useCallback(() => {
     const video = videoRef.current;
     if (video && savedProgress) {
-      video.currentTime = savedProgress; // savedProgress is already in seconds
+      video.currentTime = savedProgress;
     }
     setShowResumePrompt(false);
   }, [savedProgress]);
@@ -414,7 +495,11 @@ export function MobileVideoPlayer({
       video.playbackRate = speed;
       setPlaybackSpeed(speed);
     }
-    setShowSettings(false);
+  }, []);
+
+  const changeQuality = useCallback((quality: string) => {
+    setSelectedQuality(quality);
+    toast.success(`Quality set to ${quality === 'auto' ? 'Auto' : quality + 'p'}`);
   }, []);
 
   const handleBack = useCallback(() => {
@@ -438,7 +523,7 @@ export function MobileVideoPlayer({
       
       // Load on cast device
       await cast.loadVideo(
-        videoUrl,
+        getVideoSource(),
         episodeTitle || title,
         thumbnail || content.thumbnailUrl,
         currentVideoTime,
@@ -449,7 +534,13 @@ export function MobileVideoPlayer({
     } else {
       setShowCastSheet(true);
     }
-  }, [cast, videoUrl, title, episodeTitle, thumbnail, content.thumbnailUrl, duration]);
+  }, [cast, getVideoSource, title, episodeTitle, thumbnail, content.thumbnailUrl, duration]);
+
+  // Toggle PiP
+  const handleTogglePiP = useCallback(async () => {
+    await pip.togglePiP();
+    resetControlsTimeout();
+  }, [pip, resetControlsTimeout]);
 
   // Format time
   const formatTime = (seconds: number) => {
@@ -462,7 +553,29 @@ export function MobileVideoPlayer({
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  // Calculate progress bar marker positions
+  const getMarkerPosition = (time: number) => {
+    if (!duration || time < 0) return -1;
+    return (time / duration) * 100;
+  };
+
+  // Get network status text
+  const getNetworkStatusText = () => {
+    if (!networkQuality.isOnline) return "Offline";
+    if (networkQuality.effectiveType === 'slow-2g' || networkQuality.effectiveType === '2g') {
+      return "Slow connection";
+    }
+    if (networkQuality.downlink) {
+      return `${networkQuality.effectiveType?.toUpperCase()} • ${networkQuality.downlink} Mbps`;
+    }
+    return networkQuality.effectiveType?.toUpperCase() || "Connected";
+  };
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const introMarkerStart = getMarkerPosition(introStartTime || -1);
+  const introMarkerEnd = getMarkerPosition(introEndTime || -1);
+  const recapMarkerStart = getMarkerPosition(recapStartTime || -1);
+  const recapMarkerEnd = getMarkerPosition(recapEndTime || -1);
 
   return (
     <motion.div
@@ -477,7 +590,7 @@ export function MobileVideoPlayer({
       {/* Video Element */}
       <video
         ref={videoRef}
-        src={videoUrl}
+        src={getVideoSource()}
         className="w-full h-full object-contain"
         playsInline
         muted={isMuted}
@@ -543,7 +656,7 @@ export function MobileVideoPlayer({
 
       {/* Buffering Indicator */}
       <AnimatePresence>
-        {isBuffering && (
+        {isBuffering && !mediaError && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -551,6 +664,31 @@ export function MobileVideoPlayer({
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
           >
             <Loader2 className="h-12 w-12 text-white animate-spin" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Volume Indicator Animation */}
+      <AnimatePresence>
+        {showVolumeIndicator && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-40"
+          >
+            <div className="flex flex-col items-center gap-3 bg-black/70 backdrop-blur-sm rounded-2xl px-8 py-6">
+              <Volume2 className="h-12 w-12 text-white" />
+              <div className="w-32 h-2 bg-white/30 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-white rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${volumeLevel}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <span className="text-white text-sm font-medium">{volumeLevel}%</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -636,7 +774,7 @@ export function MobileVideoPlayer({
           >
             <p className="text-foreground font-medium mb-3">Continue watching?</p>
             <p className="text-muted-foreground text-sm mb-4">
-              Resume from {formatTime(savedProgress * duration)}
+              Resume from {formatTime(savedProgress)}
             </p>
             <div className="flex gap-3">
               <button
@@ -670,6 +808,24 @@ export function MobileVideoPlayer({
             }}
           >
             Skip Intro
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Skip Recap Button */}
+      <AnimatePresence>
+        {recapStartTime && recapEndTime && currentTime >= recapStartTime && currentTime < recapEndTime && (
+          <motion.button
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            className="absolute bottom-32 left-4 px-6 py-3 bg-purple-500/90 text-white rounded-md font-semibold shadow-lg"
+            onClick={(e) => {
+              e.stopPropagation();
+              skipRecap();
+            }}
+          >
+            Skip Recap
           </motion.button>
         )}
       </AnimatePresence>
@@ -731,6 +887,20 @@ export function MobileVideoPlayer({
               </div>
               
               <div className="flex items-center gap-2">
+                {pip.isSupported && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTogglePiP();
+                    }}
+                    className={cn(
+                      "p-2 rounded-full backdrop-blur-sm",
+                      pip.isActive ? "bg-primary" : "bg-black/30"
+                    )}
+                  >
+                    <PictureInPicture2 className="h-5 w-5 text-white" />
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -794,8 +964,28 @@ export function MobileVideoPlayer({
 
             {/* Bottom Bar */}
             <div className="absolute bottom-0 left-0 right-0 p-4 safe-area-inset-bottom">
-              {/* Progress Bar */}
+              {/* Progress Bar with Markers */}
               <div className="relative w-full h-1 bg-white/30 rounded-full mb-4">
+                {/* Intro Marker (blue) */}
+                {introMarkerStart >= 0 && introMarkerEnd >= 0 && (
+                  <div
+                    className="absolute h-full bg-blue-500/60 rounded-full"
+                    style={{
+                      left: `${introMarkerStart}%`,
+                      width: `${introMarkerEnd - introMarkerStart}%`,
+                    }}
+                  />
+                )}
+                {/* Recap Marker (purple) */}
+                {recapMarkerStart >= 0 && recapMarkerEnd >= 0 && (
+                  <div
+                    className="absolute h-full bg-purple-500/60 rounded-full"
+                    style={{
+                      left: `${recapMarkerStart}%`,
+                      width: `${recapMarkerEnd - recapMarkerStart}%`,
+                    }}
+                  />
+                )}
                 {/* Buffered */}
                 <div
                   className="absolute h-full bg-white/50 rounded-full"
@@ -859,14 +1049,14 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
-      {/* Settings Sheet */}
+      {/* Settings Sheet - Enhanced with tabs */}
       <AnimatePresence>
         {showSettings && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 flex items-end"
+            className="absolute inset-0 bg-black/60 flex items-end z-50"
             onClick={() => setShowSettings(false)}
           >
             <motion.div
@@ -874,27 +1064,103 @@ export function MobileVideoPlayer({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full bg-card rounded-t-3xl p-6 pb-safe"
+              className="w-full bg-card rounded-t-3xl p-6 pb-safe max-h-[70vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-6" />
-              <h3 className="text-lg font-bold mb-4">Playback Speed</h3>
-              <div className="grid grid-cols-4 gap-2">
-                {[0.75, 1, 1.25, 1.5, 1.75, 2].map((speed) => (
-                  <button
-                    key={speed}
-                    onClick={() => changePlaybackSpeed(speed)}
-                    className={cn(
-                      "py-3 rounded-lg font-medium transition-colors",
-                      playbackSpeed === speed
-                        ? "bg-primary text-white"
-                        : "bg-secondary text-foreground"
-                    )}
-                  >
-                    {speed}x
-                  </button>
-                ))}
+              
+              {/* Tabs */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => setSettingsTab("speed")}
+                  className={cn(
+                    "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                    settingsTab === "speed"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  )}
+                >
+                  Speed
+                </button>
+                <button
+                  onClick={() => setSettingsTab("quality")}
+                  className={cn(
+                    "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                    settingsTab === "quality"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  )}
+                >
+                  Quality
+                </button>
               </div>
+
+              {/* Speed Tab */}
+              {settingsTab === "speed" && (
+                <div>
+                  <h3 className="text-lg font-bold mb-4">Playback Speed</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    {SPEED_OPTIONS.map((speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => changePlaybackSpeed(speed)}
+                        className={cn(
+                          "py-3 rounded-lg font-medium transition-colors",
+                          playbackSpeed === speed
+                            ? "bg-primary text-white"
+                            : "bg-secondary text-foreground"
+                        )}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quality Tab */}
+              {settingsTab === "quality" && (
+                <div>
+                  <h3 className="text-lg font-bold mb-4">Video Quality</h3>
+                  
+                  {/* Network Status */}
+                  <div className="flex items-center gap-2 mb-4 p-3 bg-secondary/50 rounded-lg">
+                    {networkQuality.isOnline ? (
+                      <Signal className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <WifiOff className="h-5 w-5 text-destructive" />
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {getNetworkStatusText()}
+                    </span>
+                    {selectedQuality === 'auto' && networkQuality.recommendedQuality && (
+                      <span className="ml-auto text-xs text-primary">
+                        Recommended: {networkQuality.recommendedQuality}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {QUALITY_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => changeQuality(option.value)}
+                        className={cn(
+                          "w-full flex items-center justify-between py-3 px-4 rounded-lg font-medium transition-colors",
+                          selectedQuality === option.value
+                            ? "bg-primary text-white"
+                            : "bg-secondary text-foreground"
+                        )}
+                      >
+                        <span>{option.label}</span>
+                        {selectedQuality === option.value && (
+                          <Check className="h-5 w-5" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -904,7 +1170,7 @@ export function MobileVideoPlayer({
       <MobileCastSheet
         open={showCastSheet}
         onClose={() => setShowCastSheet(false)}
-        videoUrl={videoUrl}
+        videoUrl={getVideoSource()}
         videoTitle={episodeTitle || title}
         thumbnail={thumbnail || content.thumbnailUrl}
         currentTime={currentTime}
