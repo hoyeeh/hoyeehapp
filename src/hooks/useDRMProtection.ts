@@ -32,6 +32,8 @@ export const useDRMProtection = (config: DRMConfig) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
   const sessionToken = useRef<string | null>(null);
+  const licenseAcquiring = useRef<boolean>(false);
+  const licenseAcquired = useRef<boolean>(false);
   
   const [drmState, setDrmState] = useState<DRMState>({
     isProtected: false,
@@ -88,12 +90,19 @@ export const useDRMProtection = (config: DRMConfig) => {
     return null;
   }, []);
 
-  // Acquire DRM license from server
+  // Acquire DRM license from server (with deduplication)
   const acquireLicense = useCallback(async () => {
+    // Prevent duplicate license requests
+    if (licenseAcquiring.current || licenseAcquired.current) {
+      return licenseAcquired.current;
+    }
+
     if (!user) {
       config.onLicenseError?.('User not authenticated');
       return false;
     }
+
+    licenseAcquiring.current = true;
 
     try {
       const { data, error } = await supabase.functions.invoke('drm-license-server', {
@@ -108,6 +117,12 @@ export const useDRMProtection = (config: DRMConfig) => {
       if (error) throw error;
 
       if (data?.success) {
+        // Store the session token from server for reuse
+        if (data.sessionToken) {
+          sessionToken.current = data.sessionToken;
+        }
+        
+        licenseAcquired.current = true;
         setDrmState(prev => ({
           ...prev,
           licenseAcquired: true,
@@ -121,6 +136,8 @@ export const useDRMProtection = (config: DRMConfig) => {
       console.error('License acquisition failed:', err);
       config.onLicenseError?.('Failed to acquire playback license');
       return false;
+    } finally {
+      licenseAcquiring.current = false;
     }
   }, [user, config]);
 
