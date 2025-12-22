@@ -899,7 +899,7 @@ function VideoPlayerPage({ videoId, title, onClose, onPlayVideo, playlists, chan
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-4 md:p-8">
+      <div className="max-w-6xl mx-auto p-4 md:p-8">
         <Button
           variant="ghost"
           onClick={onClose}
@@ -909,82 +909,80 @@ function VideoPlayerPage({ videoId, title, onClose, onPlayVideo, playlists, chan
           Back to Channels
         </Button>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Video Section */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="aspect-video max-h-[70vh] w-full">
-              <YouTubeVideoPlayer
-                videoId={videoId}
-                title={title}
-                onClose={onClose}
-                autoplay
+        {/* Main Video Section - Full Width */}
+        <div className="space-y-6">
+          <div className="aspect-video max-h-[70vh] w-full">
+            <YouTubeVideoPlayer
+              videoId={videoId}
+              title={title}
+              onClose={onClose}
+              autoplay
+            />
+          </div>
+          
+          {/* Video Info */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground flex-1">{title}</h1>
+              <WatchLaterButton 
+                videoId={videoId} 
+                videoTitle={title}
+                thumbnailUrl={currentVideo?.thumbnail_url}
+                duration={currentVideo?.duration}
+                channelName={currentChannel?.name}
               />
             </div>
             
-            {/* Video Info */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-foreground flex-1">{title}</h1>
-                <WatchLaterButton 
-                  videoId={videoId} 
-                  videoTitle={title}
-                  thumbnailUrl={currentVideo?.thumbnail_url}
-                  duration={currentVideo?.duration}
-                  channelName={currentChannel?.name}
-                />
-              </div>
-              
-              {/* Channel Info */}
-              {currentChannel && (
-                <div className="flex items-center gap-4 py-4 border-b border-border">
-                  {currentChannel.thumbnail_url && (
-                    <img 
-                      src={currentChannel.thumbnail_url} 
-                      alt={currentChannel.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
+            {/* Channel Info */}
+            {currentChannel && (
+              <div className="flex items-center gap-4 py-4 border-b border-border">
+                {currentChannel.thumbnail_url && (
+                  <img 
+                    src={currentChannel.thumbnail_url} 
+                    alt={currentChannel.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                )}
+                <div>
+                  <h3 className="font-semibold text-foreground">{currentChannel.name}</h3>
+                  {currentChannel.subscriber_count && (
+                    <p className="text-sm text-muted-foreground">
+                      {currentChannel.subscriber_count} subscribers
+                    </p>
                   )}
-                  <div>
-                    <h3 className="font-semibold text-foreground">{currentChannel.name}</h3>
-                    {currentChannel.subscriber_count && (
-                      <p className="text-sm text-muted-foreground">
-                        {currentChannel.subscriber_count} subscribers
-                      </p>
-                    )}
-                  </div>
                 </div>
-              )}
-              
-              {/* Video Description */}
-              {currentVideo?.description && (
-                <div className="bg-secondary/50 rounded-xl p-4">
-                  <div className="flex items-center gap-4 mb-2 text-sm text-muted-foreground">
-                    {currentVideo.view_count && currentVideo.view_count > 0 && (
-                      <span>{formatViewCount(currentVideo.view_count)} views</span>
-                    )}
-                    {currentVideo.published_at && (
-                      <span>{new Date(currentVideo.published_at).toLocaleDateString()}</span>
-                    )}
-                  </div>
-                  <p className="text-foreground whitespace-pre-wrap line-clamp-4 text-sm">
-                    {currentVideo.description}
-                  </p>
+              </div>
+            )}
+            
+            {/* Video Description */}
+            {currentVideo?.description && (
+              <div className="bg-secondary/50 rounded-xl p-4">
+                <div className="flex items-center gap-4 mb-2 text-sm text-muted-foreground">
+                  {currentVideo.view_count && currentVideo.view_count > 0 && (
+                    <span>{formatViewCount(currentVideo.view_count)} views</span>
+                  )}
+                  {currentVideo.published_at && (
+                    <span>{new Date(currentVideo.published_at).toLocaleDateString()}</span>
+                  )}
                 </div>
-              )}
-            </div>
+                <p className="text-foreground whitespace-pre-wrap line-clamp-4 text-sm">
+                  {currentVideo.description}
+                </p>
+              </div>
+            )}
           </div>
           
-          {/* Related Videos Sidebar */}
-          <div className="lg:col-span-1 space-y-4">
-            <h3 className="font-bold text-lg text-foreground">Related Videos</h3>
-            <div className="space-y-3">
+          {/* Related Videos - Below Player */}
+          <div className="pt-6 border-t border-border">
+            <h3 className="font-bold text-lg text-foreground mb-4">Related Videos</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {relatedVideos.map(video => (
                 <div 
                   key={video.id}
                   onClick={() => onPlayVideo(video.video_id, video.title)}
-                  className="flex gap-3 cursor-pointer group"
+                  className="cursor-pointer group"
                 >
-                  <div className="w-40 aspect-video rounded-lg overflow-hidden bg-secondary flex-shrink-0 relative">
+                  <div className="aspect-video rounded-lg overflow-hidden bg-secondary relative mb-2">
                     {video.thumbnail_url ? (
                       <img 
                         src={video.thumbnail_url} 
@@ -1001,26 +999,28 @@ function VideoPlayerPage({ videoId, title, onClose, onPlayVideo, playlists, chan
                         {formatDuration(video.duration)}
                       </span>
                     )}
+                    {/* Play overlay on hover */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Play className="h-8 w-8 text-white fill-white" />
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm line-clamp-2 text-foreground group-hover:text-primary transition-colors">
-                      {video.title}
-                    </h4>
-                    {video.view_count && video.view_count > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatViewCount(video.view_count)} views
-                      </p>
-                    )}
-                  </div>
+                  <h4 className="font-medium text-sm line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+                    {video.title}
+                  </h4>
+                  {video.view_count && video.view_count > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatViewCount(video.view_count)} views
+                    </p>
+                  )}
                 </div>
               ))}
-              
-              {relatedVideos.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-8">
-                  No related videos found
-                </p>
-              )}
             </div>
+            
+            {relatedVideos.length === 0 && (
+              <p className="text-muted-foreground text-sm text-center py-8">
+                No related videos found
+              </p>
+            )}
           </div>
         </div>
       </div>
