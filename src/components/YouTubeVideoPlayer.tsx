@@ -272,10 +272,19 @@ export const YouTubeVideoPlayer = ({
 
   // Re-initialize when videoId changes
   useEffect(() => {
-    if (playerRef.current?.loadVideoById && isReady) {
-      setIsLoading(true);
-      hasResumed.current = false;
-      playerRef.current.loadVideoById(videoId);
+    // Check if player exists, is ready, and has a valid iframe before loading
+    if (playerRef.current && isReady) {
+      try {
+        // Verify the player's iframe is still in the DOM
+        const iframe = playerRef.current.getIframe?.();
+        if (iframe && iframe.src && playerRef.current.loadVideoById) {
+          setIsLoading(true);
+          hasResumed.current = false;
+          playerRef.current.loadVideoById(videoId);
+        }
+      } catch (error) {
+        console.warn('YouTube player not ready for video change:', error);
+      }
     }
   }, [videoId, isReady]);
 
