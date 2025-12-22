@@ -325,6 +325,27 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log("Email sent successfully:", emailResponse);
 
+    // Log email to database for tracking
+    try {
+      // Find user by email for linking
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const targetUser = authUsers?.users.find(u => u.email === to);
+
+      await supabase.from("email_logs").insert({
+        message_id: emailResponse.data?.id || null,
+        recipient_email: to,
+        template_type: type,
+        subject: subject,
+        status: "sent",
+        user_id: targetUser?.id || null,
+        metadata: { data },
+      });
+      console.log("Email logged to database");
+    } catch (logError) {
+      console.error("Failed to log email:", logError);
+      // Don't fail the request if logging fails
+    }
+
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },

@@ -3,6 +3,9 @@ project_id = "astugmzoxhxcyipxsojl"
 [functions.send-test-email]
 verify_jwt = true
 
+[functions.resend-webhook]
+verify_jwt = false
+
 [functions.cast-signaling]
 verify_jwt = false
 
