@@ -41,6 +41,7 @@ import { AdminTicketAssignments } from "@/components/admin/AdminTicketAssignment
 import { WalkthroughManagement } from "@/components/admin/WalkthroughManagement";
 import { VideoUrlMigrationTool } from "@/components/admin/VideoUrlMigrationTool";
 import { BulkVideoUrlManager } from "@/components/admin/BulkVideoUrlManager";
+import { EmailPreviewTool } from "@/components/admin/EmailPreviewTool";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -544,6 +545,13 @@ const Admin = () => {
       
       case "kids":
         return <KidsZoneManagement />;
+      
+      case "email-templates":
+        return (
+          <div className="space-y-6">
+            <EmailPreviewTool />
+          </div>
+        );
       
       case "analytics":
         navigate("/analytics");
