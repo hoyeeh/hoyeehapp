@@ -343,11 +343,17 @@ export const VideoPlayer = ({
       const time = video.currentTime;
       setCurrentTime(time);
 
+      // Determine effective intro times (use default if no specific times and default is set)
+      const effectiveIntroStart = introStartTime;
+      const effectiveIntroEnd = (introEndTime > 0) ? introEndTime : (skipPrefs.defaultIntroDuration > 0 ? skipPrefs.defaultIntroDuration : 0);
+      const hasIntroSegment = effectiveIntroEnd > effectiveIntroStart;
+
       // Auto-skip intro if preference is enabled
-      if (skipPrefs.autoSkipIntro && time >= introStartTime && time < introEndTime && !autoSkippedIntroRef.current) {
+      if (skipPrefs.autoSkipIntro && hasIntroSegment && time >= effectiveIntroStart && time < effectiveIntroEnd && !autoSkippedIntroRef.current) {
         autoSkippedIntroRef.current = true;
-        video.currentTime = introEndTime;
+        video.currentTime = effectiveIntroEnd;
         setShowSkipIntro(false);
+        toast.info('Intro skipped automatically', { duration: 2000 });
         return;
       }
       
@@ -356,11 +362,12 @@ export const VideoPlayer = ({
         autoSkippedRecapRef.current = true;
         video.currentTime = recapEndTime;
         setShowSkipRecap(false);
+        toast.info('Recap skipped automatically', { duration: 2000 });
         return;
       }
 
       // Show skip intro button during intro segment (only if not auto-skipping)
-      if (!skipPrefs.autoSkipIntro && time >= introStartTime && time < introEndTime) {
+      if (!skipPrefs.autoSkipIntro && hasIntroSegment && time >= effectiveIntroStart && time < effectiveIntroEnd) {
         setShowSkipIntro(true);
       } else {
         setShowSkipIntro(false);
@@ -374,7 +381,7 @@ export const VideoPlayer = ({
       }
       
       // Reset auto-skip flags when outside segments
-      if (time < introStartTime || time >= introEndTime) {
+      if (!hasIntroSegment || time < effectiveIntroStart || time >= effectiveIntroEnd) {
         autoSkippedIntroRef.current = false;
       }
       if (!recapStartTime || !recapEndTime || time < recapStartTime || time >= recapEndTime) {
@@ -1268,6 +1275,27 @@ export const VideoPlayer = ({
                       {skipPrefs.autoSkipRecap && <Check className="h-3 w-3 text-white" />}
                     </div>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Default Intro Duration</DropdownMenuLabel>
+                  <div className="px-2 py-1">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={skipPrefs.defaultIntroDuration}
+                        onChange={(e) => skipPrefs.setDefaultIntroDuration(Number(e.target.value))}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-secondary text-foreground rounded px-2 py-1 text-sm"
+                      >
+                        <option value={0}>Disabled</option>
+                        <option value={30}>30 seconds</option>
+                        <option value={60}>60 seconds</option>
+                        <option value={90}>90 seconds</option>
+                        <option value={120}>2 minutes</option>
+                      </select>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Used when no specific intro time is set
+                    </p>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
