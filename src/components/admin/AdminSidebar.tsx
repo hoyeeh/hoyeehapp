@@ -36,6 +36,7 @@ const menuItems = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "push", label: "Push Notifications", icon: Send },
   { id: "email-templates", label: "Email Templates", icon: Mail },
+  { id: "email-analytics", label: "Email Analytics", icon: BarChart3 },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 

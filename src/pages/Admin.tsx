@@ -43,6 +43,7 @@ import { VideoUrlMigrationTool } from "@/components/admin/VideoUrlMigrationTool"
 import { BulkVideoUrlManager } from "@/components/admin/BulkVideoUrlManager";
 import { EmailPreviewTool } from "@/components/admin/EmailPreviewTool";
 import { EmailCampaigns } from "@/components/admin/EmailCampaigns";
+import { EmailDeliveryStats } from "@/components/admin/EmailDeliveryStats";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -555,6 +556,9 @@ const Admin = () => {
             <EmailPreviewTool />
           </div>
         );
+      
+      case "email-analytics":
+        return <EmailDeliveryStats />;
       
       case "analytics":
         navigate("/analytics");
