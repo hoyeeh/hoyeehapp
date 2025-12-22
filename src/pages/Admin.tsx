@@ -1,14 +1,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsAdmin, useAllUsers, useAllSubscriptions, useAdminContent, useDeleteContent } from "@/hooks/useAdmin";
+import { useIsAdmin, useAllUsers, useAllSubscriptions, useAdminContent, useDeleteContent, useUpdateContent } from "@/hooks/useAdmin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit2, Tv, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Tv, Search, ChevronLeft, ChevronRight, ArrowUpDown, Crown, ToggleLeft } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminOverview } from "@/components/admin/AdminOverview";
@@ -53,6 +53,7 @@ const Admin = () => {
   const { data: subscriptions = [] } = useAllSubscriptions();
   const { data: content = [] } = useAdminContent();
   const deleteContent = useDeleteContent();
+  const updateContent = useUpdateContent();
   
   const [activeTab, setActiveTab] = useState("overview");
   const [showUploadForm, setShowUploadForm] = useState(false);
@@ -160,6 +161,31 @@ const Admin = () => {
       setSelectedItems(new Set());
     } catch (error) {
       toast.error("Failed to delete some items");
+    }
+  };
+
+  // Bulk toggle premium status
+  const handleBulkTogglePremium = async (makePremium: boolean) => {
+    if (selectedItems.size === 0) return;
+    
+    // Check if any selected items are series (can't make series free)
+    const selectedContent = content.filter(c => selectedItems.has(c.id));
+    const seriesItems = selectedContent.filter(c => c.content_type === "series");
+    
+    if (!makePremium && seriesItems.length > 0) {
+      toast.error(`Cannot set ${seriesItems.length} TV series as free. TV Shows are always premium.`);
+      return;
+    }
+    
+    try {
+      const promises = Array.from(selectedItems).map(id => 
+        updateContent.mutateAsync({ id, is_premium: makePremium })
+      );
+      await Promise.all(promises);
+      toast.success(`${selectedItems.size} items updated to ${makePremium ? 'premium' : 'free'}`);
+      setSelectedItems(new Set());
+    } catch (error) {
+      toast.error("Failed to update some items");
     }
   };
 
@@ -286,15 +312,35 @@ const Admin = () => {
                   </span>
                 </div>
                 {selectedItems.size > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleBulkDelete}
-                    className="gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete Selected ({selectedItems.size})
-                  </Button>
+                  <>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                      className="gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete ({selectedItems.size})
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkTogglePremium(true)}
+                      className="gap-2"
+                    >
+                      <Crown className="h-4 w-4" />
+                      Set Premium
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkTogglePremium(false)}
+                      className="gap-2"
+                    >
+                      <ToggleLeft className="h-4 w-4" />
+                      Set Free
+                    </Button>
+                  </>
                 )}
               </div>
               <div className="flex items-center gap-4">
@@ -352,10 +398,19 @@ const Admin = () => {
                       className="w-full h-full object-cover"
                     />
                     {item.content_type === "series" && (
-                      <span className="absolute top-2 left-2 text-xs bg-primary/90 text-primary-foreground px-2 py-0.5 rounded">
+                      <span className="absolute top-8 left-2 text-xs bg-primary/90 text-primary-foreground px-2 py-0.5 rounded">
                         TV Series
                       </span>
                     )}
+                    {/* Premium Badge */}
+                    <span className={`absolute top-2 left-2 text-xs px-2 py-0.5 rounded flex items-center gap-1 ${
+                      item.is_premium 
+                        ? 'bg-amber-500/90 text-white' 
+                        : 'bg-muted/90 text-muted-foreground'
+                    }`}>
+                      {item.is_premium ? <Crown className="h-3 w-3" /> : null}
+                      {item.is_premium ? 'Premium' : 'Free'}
+                    </span>
                     {/* Hover Actions */}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       {item.content_type === "series" && (
