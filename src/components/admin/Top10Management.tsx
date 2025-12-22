@@ -117,6 +117,7 @@ export const Top10Management = () => {
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
   const [hoveredContent, setHoveredContent] = useState<string | null>(null);
   const [itemToRemove, setItemToRemove] = useState<{ id: string; title: string } | null>(null);
+  const [lastRemovedItem, setLastRemovedItem] = useState<{ contentId: string; rank: number; title: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -200,17 +201,45 @@ export const Top10Management = () => {
   });
 
   const removeFromTop10 = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, contentId, rank, title }: { id: string; contentId: string; rank: number; title: string }) => {
       const { error } = await supabase.from("top_10").delete().eq("id", id);
+      if (error) throw error;
+      return { contentId, rank, title };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["top-10"] });
+      setItemToRemove(null);
+      setLastRemovedItem(data);
+      
+      toast.success(`Removed "${data.title}" from Top 10`, {
+        action: {
+          label: "Undo",
+          onClick: () => handleUndo(data.contentId, data.rank),
+        },
+        duration: 8000,
+      });
+    },
+    onError: () => toast.error("Failed to remove from Top 10"),
+  });
+
+  const undoRemove = useMutation({
+    mutationFn: async ({ contentId, rank }: { contentId: string; rank: number }) => {
+      const { error } = await supabase
+        .from("top_10")
+        .insert({ content_id: contentId, rank });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["top-10"] });
-      setItemToRemove(null);
-      toast.success("Removed from Top 10");
+      setLastRemovedItem(null);
+      toast.success("Item restored to Top 10");
     },
-    onError: () => toast.error("Failed to remove from Top 10"),
+    onError: () => toast.error("Failed to restore item"),
   });
+
+  const handleUndo = (contentId: string, rank: number) => {
+    undoRemove.mutate({ contentId, rank });
+  };
 
   const reorderTop10 = useMutation({
     mutationFn: async (updates: { id: string; rank: number }[]) => {
@@ -258,7 +287,15 @@ export const Top10Management = () => {
 
   const confirmRemove = () => {
     if (itemToRemove) {
-      removeFromTop10.mutate(itemToRemove.id);
+      const item = top10.find(t => t.id === itemToRemove.id);
+      if (item) {
+        removeFromTop10.mutate({
+          id: itemToRemove.id,
+          contentId: item.content_id,
+          rank: item.rank,
+          title: itemToRemove.title,
+        });
+      }
     }
   };
 
