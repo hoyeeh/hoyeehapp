@@ -1833,9 +1833,46 @@ export type Database = {
           },
         ]
       }
+      youtube_banners: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          image_url: string
+          is_active: boolean | null
+          link_url: string | null
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_url: string
+          is_active?: boolean | null
+          link_url?: string | null
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_url?: string
+          is_active?: boolean | null
+          link_url?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       youtube_channels: {
         Row: {
           channel_id: string
+          cover_url: string | null
           created_at: string | null
           description: string | null
           display_order: number | null
@@ -1849,6 +1886,7 @@ export type Database = {
         }
         Insert: {
           channel_id: string
+          cover_url?: string | null
           created_at?: string | null
           description?: string | null
           display_order?: number | null
@@ -1862,6 +1900,7 @@ export type Database = {
         }
         Update: {
           channel_id?: string
+          cover_url?: string | null
           created_at?: string | null
           description?: string | null
           display_order?: number | null

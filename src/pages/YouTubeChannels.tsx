@@ -1,5 +1,7 @@
 import { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useYouTubeChannels, useYouTubePlaylists, useYouTubeVideos } from "@/hooks/useYouTubeChannels";
 import { YouTubeVideoPlayer } from "@/components/YouTubeVideoPlayer";
 import { Sidebar } from "@/components/Sidebar";
@@ -12,6 +14,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Hook to fetch admin fallback banners
+function useYouTubeBanners() {
+  return useQuery({
+    queryKey: ['youtube-banners'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('youtube_banners')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+}
 export default function YouTubeChannels() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -160,7 +178,7 @@ export default function YouTubeChannels() {
   );
 }
 
-// Hero Carousel Component
+// Hero Carousel Component - Uses channel covers with admin banner fallback
 interface HeroCarouselProps {
   playlists: Array<{ id: string; title: string; channel_id: string | null }>;
   onPlayVideo: (videoId: string, title: string) => void;
@@ -168,13 +186,70 @@ interface HeroCarouselProps {
 
 function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(1);
+  const { data: channels } = useYouTubeChannels();
+  const { data: banners } = useYouTubeBanners();
   const { data: videos } = useYouTubeVideos(playlists[0]?.id);
   
-  const featuredVideos = useMemo(() => {
-    return videos?.slice(0, 5) || [];
-  }, [videos]);
+  // Build hero items: prioritize channel covers, then admin banners, then videos
+  const heroItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      type: 'channel' | 'banner' | 'video';
+      title: string;
+      subtitle?: string;
+      image_url: string;
+      video_id?: string;
+      channel_name?: string;
+      channel_thumbnail?: string;
+    }> = [];
 
-  if (!featuredVideos.length) {
+    // Add channels with cover images (randomized)
+    const channelsWithCovers = channels?.filter(c => c.cover_url) || [];
+    const shuffledChannels = [...channelsWithCovers].sort(() => Math.random() - 0.5).slice(0, 3);
+    
+    shuffledChannels.forEach(channel => {
+      items.push({
+        id: `channel-${channel.id}`,
+        type: 'channel',
+        title: channel.name,
+        subtitle: channel.description?.substring(0, 100) || `${channel.subscriber_count} subscribers`,
+        image_url: channel.cover_url!,
+        channel_name: channel.name,
+        channel_thumbnail: channel.thumbnail_url || undefined
+      });
+    });
+
+    // Add admin fallback banners
+    banners?.slice(0, 3).forEach(banner => {
+      items.push({
+        id: `banner-${banner.id}`,
+        type: 'banner',
+        title: banner.title,
+        subtitle: banner.subtitle || undefined,
+        image_url: banner.image_url
+      });
+    });
+
+    // If we don't have enough items, add featured videos
+    if (items.length < 5 && videos?.length) {
+      const remainingSlots = 5 - items.length;
+      videos.slice(0, remainingSlots).forEach(video => {
+        if (video.thumbnail_url) {
+          items.push({
+            id: `video-${video.id}`,
+            type: 'video',
+            title: video.title,
+            image_url: video.thumbnail_url,
+            video_id: video.video_id
+          });
+        }
+      });
+    }
+
+    return items.slice(0, 5);
+  }, [channels, banners, videos]);
+
+  if (!heroItems.length) {
     return (
       <div className="relative h-[400px] md:h-[500px] bg-gradient-to-b from-secondary/50 to-background flex items-center justify-center">
         <div className="text-center">
@@ -203,22 +278,31 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
     return `translateX(${baseTranslate}px)`;
   };
 
+  const handleItemClick = (item: typeof heroItems[0], isActive: boolean) => {
+    if (!isActive) return;
+    
+    if (item.type === 'video' && item.video_id) {
+      onPlayVideo(item.video_id, item.title);
+    }
+    // For channel and banner types, could navigate to channel page in the future
+  };
+
   return (
     <div className="relative h-[400px] md:h-[500px] bg-gradient-to-b from-secondary/30 to-background overflow-hidden">
       {/* Background Blur */}
-      {featuredVideos[activeIndex]?.thumbnail_url && (
+      {heroItems[activeIndex]?.image_url && (
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-20 blur-3xl scale-110"
-          style={{ backgroundImage: `url(${featuredVideos[activeIndex].thumbnail_url})` }}
+          style={{ backgroundImage: `url(${heroItems[activeIndex].image_url})` }}
         />
       )}
 
       {/* Carousel Container */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative w-full max-w-6xl flex items-center justify-center">
-          {featuredVideos.map((video, index) => (
+          {heroItems.map((item, index) => (
             <div
-              key={video.id}
+              key={item.id}
               className={cn(
                 "absolute transition-all duration-500 ease-out cursor-pointer",
                 getCardStyle(index)
@@ -226,30 +310,24 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
               style={{ transform: getCardTransform(index) }}
               onClick={() => {
                 if (index === activeIndex) {
-                  onPlayVideo(video.video_id, video.title);
+                  handleItemClick(item, true);
                 } else {
                   setActiveIndex(index);
                 }
               }}
             >
               <div className="w-[320px] md:w-[480px] aspect-video rounded-2xl overflow-hidden shadow-2xl relative group">
-                {video.thumbnail_url ? (
-                  <img
-                    src={video.thumbnail_url}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-secondary flex items-center justify-center">
-                    <Youtube className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
+                <img
+                  src={item.image_url}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
                 
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                 
-                {/* Play Button (center card only) */}
-                {index === activeIndex && (
+                {/* Play Button (video type, center card only) */}
+                {index === activeIndex && item.type === 'video' && (
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg">
                       <Play className="h-7 w-7 text-primary-foreground fill-current ml-1" />
@@ -257,22 +335,35 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
                   </div>
                 )}
                 
-                {/* Video Info */}
+                {/* Item Info */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-                  <h3 className="text-white font-bold text-lg md:text-xl line-clamp-2 mb-2">
-                    {video.title}
+                  {/* Channel Avatar for channel type */}
+                  {item.type === 'channel' && item.channel_thumbnail && (
+                    <div className="flex items-center gap-3 mb-2">
+                      <img 
+                        src={item.channel_thumbnail} 
+                        alt={item.channel_name} 
+                        className="w-10 h-10 rounded-full border-2 border-white/20"
+                      />
+                      <span className="text-white/80 text-sm font-medium">Channel</span>
+                    </div>
+                  )}
+                  
+                  {/* Type Badge for banners */}
+                  {item.type === 'banner' && (
+                    <span className="inline-block px-2 py-1 bg-primary/80 text-primary-foreground text-xs rounded-full mb-2">
+                      Featured
+                    </span>
+                  )}
+                  
+                  <h3 className="text-white font-bold text-lg md:text-xl line-clamp-2 mb-1">
+                    {item.title}
                   </h3>
-                  <div className="flex items-center gap-3 text-white/70 text-sm">
-                    {video.duration && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {formatDuration(video.duration)}
-                      </span>
-                    )}
-                    {video.view_count > 0 && (
-                      <span>{formatViewCount(video.view_count)} views</span>
-                    )}
-                  </div>
+                  {item.subtitle && (
+                    <p className="text-white/70 text-sm line-clamp-1">
+                      {item.subtitle}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -294,13 +385,13 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
         <ChevronLeft className="h-6 w-6" />
       </button>
       <button
-        onClick={() => setActiveIndex(Math.min(featuredVideos.length - 1, activeIndex + 1))}
-        disabled={activeIndex === featuredVideos.length - 1}
+        onClick={() => setActiveIndex(Math.min(heroItems.length - 1, activeIndex + 1))}
+        disabled={activeIndex === heroItems.length - 1}
         className={cn(
           "absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30",
           "w-12 h-12 rounded-full bg-background/80 backdrop-blur flex items-center justify-center",
           "hover:bg-background transition-all shadow-lg",
-          activeIndex === featuredVideos.length - 1 && "opacity-50 cursor-not-allowed"
+          activeIndex === heroItems.length - 1 && "opacity-50 cursor-not-allowed"
         )}
       >
         <ChevronRight className="h-6 w-6" />
@@ -308,7 +399,7 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
 
       {/* Dots Indicator */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-        {featuredVideos.map((_, index) => (
+        {heroItems.map((_, index) => (
           <button
             key={index}
             onClick={() => setActiveIndex(index)}
