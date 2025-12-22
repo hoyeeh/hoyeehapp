@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Crown, Trash2, Loader2, Trophy } from "lucide-react";
+import { Crown, Trash2, Loader2, Trophy, Search, X } from "lucide-react";
 
 interface Top10Item {
   id: string;
@@ -30,6 +31,8 @@ export const Top10Management = () => {
   const queryClient = useQueryClient();
   const [selectedRank, setSelectedRank] = useState<number>(1);
   const [selectedContent, setSelectedContent] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
 
   const { data: top10 = [], isLoading } = useQuery({
     queryKey: ["top-10"],
@@ -69,6 +72,17 @@ export const Top10Management = () => {
   const availableContent = allContent.filter(
     (c) => !top10.some((t) => t.content_id === c.id)
   );
+
+  // Apply search and content type filters
+  const filteredContent = useMemo(() => {
+    return availableContent.filter((c) => {
+      const matchesSearch = searchQuery === "" || 
+        c.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = contentTypeFilter === "all" || 
+        c.content_type === contentTypeFilter;
+      return matchesSearch && matchesType;
+    });
+  }, [availableContent, searchQuery, contentTypeFilter]);
 
   // Get available ranks (1-10 not yet used)
   const usedRanks = top10.map((t) => t.rank);
@@ -134,35 +148,87 @@ export const Top10Management = () => {
       <CardContent className="space-y-6">
         {/* Add to Top 10 */}
         {availableRanks.length > 0 && availableContent.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-2 p-4 bg-secondary/30 rounded-lg">
-            <Select value={selectedRank.toString()} onValueChange={(v) => setSelectedRank(Number(v))}>
-              <SelectTrigger className="w-24">
-                <SelectValue placeholder="Rank" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableRanks.map((rank) => (
-                  <SelectItem key={rank} value={rank.toString()}>
-                    #{rank}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedContent} onValueChange={setSelectedContent}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select content..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableContent.map((content) => (
-                  <SelectItem key={content.id} value={content.id}>
-                    {content.title} ({content.content_type})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleAdd} disabled={addToTop10.isPending}>
-              {addToTop10.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Add to Top 10
-            </Button>
+          <div className="space-y-3 p-4 bg-secondary/30 rounded-lg">
+            {/* Search and Filter Row */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search movies & TV shows..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Select value={contentTypeFilter} onValueChange={setContentTypeFilter}>
+                <SelectTrigger className="w-full sm:w-32">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="movie">Movies</SelectItem>
+                  <SelectItem value="series">TV Shows</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Rank and Content Selection Row */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Select value={selectedRank.toString()} onValueChange={(v) => setSelectedRank(Number(v))}>
+                <SelectTrigger className="w-full sm:w-24">
+                  <SelectValue placeholder="Rank" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableRanks.map((rank) => (
+                    <SelectItem key={rank} value={rank.toString()}>
+                      #{rank}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedContent} onValueChange={setSelectedContent}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder={filteredContent.length === 0 ? "No results found" : "Select content..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredContent.length === 0 ? (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                      No content matches your search
+                    </div>
+                  ) : (
+                    filteredContent.map((content) => (
+                      <SelectItem key={content.id} value={content.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="capitalize text-xs px-1.5 py-0.5 rounded bg-muted">
+                            {content.content_type}
+                          </span>
+                          {content.title}
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleAdd} disabled={addToTop10.isPending || !selectedContent}>
+                {addToTop10.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Add
+              </Button>
+            </div>
+
+            {/* Results count */}
+            {searchQuery && (
+              <p className="text-xs text-muted-foreground">
+                Found {filteredContent.length} result{filteredContent.length !== 1 ? "s" : ""}
+              </p>
+            )}
           </div>
         )}
 
