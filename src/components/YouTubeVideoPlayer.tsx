@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -29,11 +29,14 @@ export const YouTubeVideoPlayer = ({
   onEnded,
   autoplay = true,
 }: YouTubeVideoPlayerProps) => {
+  const uniqueId = useId().replace(/:/g, '-');
+  const playerId = `youtube-player-${uniqueId}`;
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
-  const saveProgressInterval = useRef<NodeJS.Timeout | null>(null);
   const hasResumed = useRef(false);
+  const isInitializing = useRef(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -46,15 +49,29 @@ export const YouTubeVideoPlayer = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [savedProgress, setSavedProgress] = useState(0);
+  const [apiReady, setApiReady] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { saveProgress, getProgress } = useYouTubeVideoProgress();
 
-  // Load YouTube IFrame API
+  // Check if YouTube API is loaded
   useEffect(() => {
     if (window.YT && window.YT.Player) {
-      initializePlayer();
+      setApiReady(true);
       return;
+    }
+
+    // Check if script is already being loaded
+    const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+    if (existingScript) {
+      // Wait for it to load
+      const checkApi = setInterval(() => {
+        if (window.YT && window.YT.Player) {
+          setApiReady(true);
+          clearInterval(checkApi);
+        }
+      }, 100);
+      return () => clearInterval(checkApi);
     }
 
     const tag = document.createElement('script');
@@ -62,77 +79,95 @@ export const YouTubeVideoPlayer = ({
     const firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
-    window.onYouTubeIframeAPIReady = initializePlayer;
-
-    return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-      }
+    const originalCallback = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      originalCallback?.();
+      setApiReady(true);
     };
   }, []);
 
-  const initializePlayer = useCallback(() => {
-    if (!containerRef.current || playerRef.current) return;
+  // Initialize player when API is ready
+  useEffect(() => {
+    if (!apiReady || !containerRef.current || playerRef.current || isInitializing.current) return;
+    
+    const playerElement = document.getElementById(playerId);
+    if (!playerElement) return;
 
-    playerRef.current = new window.YT.Player('youtube-player', {
-      videoId,
-      playerVars: {
-        autoplay: autoplay ? 1 : 0,
-        controls: 0,
-        disablekb: 1,
-        fs: 0,
-        iv_load_policy: 3,
-        modestbranding: 1,
-        rel: 0,
-        showinfo: 0,
-        playsinline: 1,
-      },
-      events: {
-        onReady: (event: any) => {
-          setIsReady(true);
-          setIsLoading(false);
-          const videoDuration = event.target.getDuration();
-          setDuration(videoDuration);
-          setVolume(event.target.getVolume());
-          
-          // Check for saved progress
-          const saved = getProgress(videoId);
-          if (saved > 10 && saved < videoDuration - 30) {
-            setSavedProgress(saved);
-            setShowResumePrompt(true);
-            event.target.pauseVideo();
-          } else if (autoplay) {
-            event.target.playVideo();
-          }
-        },
-        onStateChange: (event: any) => {
-          switch (event.data) {
-            case window.YT.PlayerState.PLAYING:
-              setIsPlaying(true);
-              setIsLoading(false);
-              startProgressTracking();
-              break;
-            case window.YT.PlayerState.PAUSED:
-              setIsPlaying(false);
-              // Save progress on pause
-              if (playerRef.current?.getCurrentTime && duration > 0) {
-                saveProgress(videoId, playerRef.current.getCurrentTime(), duration);
-              }
-              break;
-            case window.YT.PlayerState.ENDED:
-              setIsPlaying(false);
-              onEnded?.();
-              break;
-            case window.YT.PlayerState.BUFFERING:
-              setIsLoading(true);
-              break;
-          }
-        },
-      },
-    });
-  }, [videoId, autoplay, onEnded, getProgress, saveProgress]);
+    isInitializing.current = true;
 
-  const startProgressTracking = () => {
+    try {
+      playerRef.current = new window.YT.Player(playerId, {
+        videoId,
+        playerVars: {
+          autoplay: autoplay ? 1 : 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          playsinline: 1,
+        },
+        events: {
+          onReady: (event: any) => {
+            console.log('YouTube player ready');
+            setIsReady(true);
+            setIsLoading(false);
+            isInitializing.current = false;
+            
+            const videoDuration = event.target.getDuration();
+            setDuration(videoDuration);
+            setVolume(event.target.getVolume());
+            
+            // Check for saved progress
+            const saved = getProgress(videoId);
+            if (saved > 10 && saved < videoDuration - 30) {
+              setSavedProgress(saved);
+              setShowResumePrompt(true);
+              event.target.pauseVideo();
+            } else if (autoplay) {
+              event.target.playVideo();
+            }
+          },
+          onStateChange: (event: any) => {
+            if (!window.YT?.PlayerState) return;
+            
+            switch (event.data) {
+              case window.YT.PlayerState.PLAYING:
+                setIsPlaying(true);
+                setIsLoading(false);
+                startProgressTracking();
+                break;
+              case window.YT.PlayerState.PAUSED:
+                setIsPlaying(false);
+                if (playerRef.current?.getCurrentTime && duration > 0) {
+                  saveProgress(videoId, playerRef.current.getCurrentTime(), duration);
+                }
+                break;
+              case window.YT.PlayerState.ENDED:
+                setIsPlaying(false);
+                onEnded?.();
+                break;
+              case window.YT.PlayerState.BUFFERING:
+                setIsLoading(true);
+                break;
+            }
+          },
+          onError: (event: any) => {
+            console.error('YouTube player error:', event.data);
+            setIsLoading(false);
+            isInitializing.current = false;
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Failed to initialize YouTube player:', error);
+      isInitializing.current = false;
+    }
+  }, [apiReady, playerId, videoId, autoplay, getProgress]);
+
+  const startProgressTracking = useCallback(() => {
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
     }
@@ -140,13 +175,12 @@ export const YouTubeVideoPlayer = ({
       if (playerRef.current?.getCurrentTime) {
         const time = playerRef.current.getCurrentTime();
         setCurrentTime(time);
-        // Save progress every 10 seconds
         if (duration > 0 && Math.floor(time) % 10 === 0) {
           saveProgress(videoId, time, duration);
         }
       }
     }, 500);
-  };
+  }, [duration, saveProgress, videoId]);
 
   const handleResume = () => {
     setShowResumePrompt(false);
@@ -165,7 +199,7 @@ export const YouTubeVideoPlayer = ({
   };
 
   const togglePlay = () => {
-    if (!playerRef.current) return;
+    if (!playerRef.current || !isReady) return;
     if (isPlaying) {
       playerRef.current.pauseVideo();
     } else {
@@ -251,7 +285,7 @@ export const YouTubeVideoPlayer = ({
     };
   }, []);
 
-  // Cleanup and save progress on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (progressInterval.current) {
@@ -260,33 +294,35 @@ export const YouTubeVideoPlayer = ({
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
       }
-      // Save progress on close
-      if (playerRef.current?.getCurrentTime && duration > 0) {
-        saveProgress(videoId, playerRef.current.getCurrentTime(), duration);
-      }
-      if (playerRef.current?.destroy) {
-        playerRef.current.destroy();
+      if (playerRef.current) {
+        try {
+          if (playerRef.current.getCurrentTime && duration > 0) {
+            saveProgress(videoId, playerRef.current.getCurrentTime(), duration);
+          }
+          playerRef.current.destroy();
+        } catch (e) {
+          // Player may already be destroyed
+        }
+        playerRef.current = null;
       }
     };
   }, [videoId, duration, saveProgress]);
 
-  // Re-initialize when videoId changes
+  // Handle video ID changes for existing player
   useEffect(() => {
-    // Check if player exists, is ready, and has a valid iframe before loading
-    if (playerRef.current && isReady) {
-      try {
-        // Verify the player's iframe is still in the DOM
-        const iframe = playerRef.current.getIframe?.();
-        if (iframe && iframe.src && playerRef.current.loadVideoById) {
-          setIsLoading(true);
-          hasResumed.current = false;
-          playerRef.current.loadVideoById(videoId);
-        }
-      } catch (error) {
-        console.warn('YouTube player not ready for video change:', error);
+    if (!isReady || !playerRef.current) return;
+    
+    try {
+      const iframe = playerRef.current.getIframe?.();
+      if (iframe && playerRef.current.loadVideoById) {
+        setIsLoading(true);
+        hasResumed.current = false;
+        playerRef.current.loadVideoById(videoId);
       }
+    } catch (error) {
+      console.warn('Could not change video:', error);
     }
-  }, [videoId, isReady]);
+  }, [videoId]); // Only react to videoId changes, not isReady
 
   return (
     <div
@@ -297,7 +333,7 @@ export const YouTubeVideoPlayer = ({
     >
       {/* YouTube Player Container */}
       <div className="absolute inset-0">
-        <div id="youtube-player" className="w-full h-full" />
+        <div id={playerId} className="w-full h-full" />
       </div>
 
       {/* Loading Spinner */}
