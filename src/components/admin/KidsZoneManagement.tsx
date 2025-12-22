@@ -9,8 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, Trash2, Edit2, Save, X, Baby, Tag, Clock, Moon, 
-  Users, BarChart3, Eye, Calendar, Star, Shield, Mail, Send, Loader2
+  Users, BarChart3, Eye, Calendar, Star, Shield, Mail, Send, Loader2,
+  RotateCcw, TrendingUp
 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -179,6 +181,44 @@ export const KidsZoneManagement = () => {
     },
   });
 
+  // Fetch viewing trends for the chart (last 30 days)
+  const { data: viewingTrends = [] } = useQuery({
+    queryKey: ["admin-kids-viewing-trends"],
+    queryFn: async () => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data, error } = await supabase
+        .from("kids_viewing_history")
+        .select("duration_watched_minutes, watched_at")
+        .gte("watched_at", thirtyDaysAgo.toISOString())
+        .order("watched_at", { ascending: true });
+      
+      if (error) throw error;
+      
+      // Group by date
+      const grouped: Record<string, number> = {};
+      data?.forEach((item) => {
+        const date = new Date(item.watched_at).toISOString().split('T')[0];
+        grouped[date] = (grouped[date] || 0) + (item.duration_watched_minutes || 0);
+      });
+      
+      // Fill in missing dates with 0
+      const result = [];
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        result.push({
+          date: format(date, "MMM d"),
+          minutes: grouped[dateStr] || 0,
+        });
+      }
+      
+      return result;
+    },
+  });
+
   // Fetch all kids content
   const { data: kidsContent = [] } = useQuery({
     queryKey: ["admin-kids-content"],
@@ -275,6 +315,27 @@ export const KidsZoneManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-kids-profiles"] });
       toast.success("Profile updated!");
+    },
+  });
+
+  // Reset watch time mutation
+  const resetWatchTimeMutation = useMutation({
+    mutationFn: async (profileId: string) => {
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ 
+          time_watched_today_minutes: 0,
+          last_time_reset: new Date().toISOString().split('T')[0]
+        })
+        .eq("id", profileId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-kids-profiles"] });
+      toast.success("Watch time reset!");
+    },
+    onError: () => {
+      toast.error("Failed to reset watch time");
     },
   });
 
@@ -623,6 +684,16 @@ export const KidsZoneManagement = () => {
                       <div className="text-sm text-muted-foreground">
                         {profile.time_watched_today_minutes || 0}m today
                       </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => resetWatchTimeMutation.mutate(profile.id)}
+                        disabled={resetWatchTimeMutation.isPending}
+                        className="text-orange-500 hover:text-orange-600 hover:bg-orange-500/10"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -667,7 +738,72 @@ export const KidsZoneManagement = () => {
         </TabsContent>
 
         {/* Activity Tab */}
-        <TabsContent value="activity" className="space-y-4">
+        <TabsContent value="activity" className="space-y-6">
+          {/* Viewing Trends Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Viewing Trends (Last 30 Days)
+              </CardTitle>
+              <CardDescription>
+                Total minutes watched by all kids profiles over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {viewingTrends.length > 0 ? (
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={viewingTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorMinutes" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        className="text-muted-foreground"
+                        tickFormatter={(value) => `${value}m`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        formatter={(value: number) => [`${value} minutes`, 'Watch Time']}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="minutes" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorMinutes)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  No viewing data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
           <h3 className="text-lg font-semibold">Recent Viewing Activity</h3>
           <div className="space-y-2">
             {viewingStats.slice(0, 20).map((stat: any, index: number) => (
