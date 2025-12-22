@@ -44,6 +44,7 @@ interface MobileVideoPlayerProps {
   onTimeUpdate?: (watchedMinutes: number) => void;
   kidsTimeRemaining?: number | null;
   kidsTimeLimitReached?: boolean;
+  kidsBedtimeReached?: boolean;
 }
 
 // Available quality options
@@ -77,6 +78,7 @@ export function MobileVideoPlayer({
   onTimeUpdate,
   kidsTimeRemaining,
   kidsTimeLimitReached = false,
+  kidsBedtimeReached = false,
 }: MobileVideoPlayerProps) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -401,16 +403,16 @@ export function MobileVideoPlayer({
     }
   }, [currentTime, recapStartTime, recapEndTime, skipPrefs.autoSkipRecap]);
 
-  // Auto-pause when kids time limit is reached
+  // Auto-pause when kids time limit or bedtime is reached
   useEffect(() => {
-    if (isKidsMode && kidsTimeLimitReached && isPlaying) {
+    if (isKidsMode && (kidsTimeLimitReached || kidsBedtimeReached) && isPlaying) {
       const video = videoRef.current;
       if (video) {
         video.pause();
         setIsPlaying(false);
       }
     }
-  }, [isKidsMode, kidsTimeLimitReached, isPlaying]);
+  }, [isKidsMode, kidsTimeLimitReached, kidsBedtimeReached, isPlaying]);
 
   // Next episode prompt
   useEffect(() => {
@@ -1518,7 +1520,7 @@ export function MobileVideoPlayer({
 
       {/* Kids Time's Up Screen - Full screen overlay when limit reached */}
       <AnimatePresence>
-        {isKidsMode && kidsTimeLimitReached && (
+        {isKidsMode && kidsTimeLimitReached && !kidsBedtimeReached && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1555,6 +1557,75 @@ export function MobileVideoPlayer({
                 className="px-8 py-4 bg-white text-purple-600 rounded-2xl font-bold text-lg shadow-xl"
               >
                 See You Tomorrow!
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Kids Bedtime Screen - Full screen overlay when bedtime reached */}
+      <AnimatePresence>
+        {isKidsMode && kidsBedtimeReached && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-gradient-to-br from-slate-800 via-indigo-900 to-purple-900 flex flex-col items-center justify-center z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="text-center px-8"
+            >
+              {/* Stars animation */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {[...Array(20)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0.3 }}
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ 
+                      duration: 2 + Math.random() * 2, 
+                      repeat: Infinity, 
+                      delay: Math.random() * 2 
+                    }}
+                    className="absolute text-yellow-200"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                      fontSize: `${8 + Math.random() * 16}px`,
+                    }}
+                  >
+                    ✦
+                  </motion.div>
+                ))}
+              </div>
+              
+              <motion.div
+                animate={{ 
+                  y: [0, -10, 0],
+                  rotate: [-5, 5, -5]
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="text-8xl mb-6"
+              >
+                😴
+              </motion.div>
+              <h1 className="text-4xl font-bold text-white mb-4">Bedtime!</h1>
+              <p className="text-white/90 text-lg mb-2">
+                It's time to rest now 💤
+              </p>
+              <p className="text-white/70 text-base mb-8">
+                Sweet dreams! See you tomorrow for more adventures! ⭐
+              </p>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                className="px-8 py-4 bg-white text-indigo-600 rounded-2xl font-bold text-lg shadow-xl"
+              >
+                Goodnight!
               </motion.button>
             </motion.div>
           </motion.div>
