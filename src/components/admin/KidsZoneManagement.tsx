@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, Trash2, Edit2, Save, X, Baby, Tag, Clock, Moon, 
-  Users, BarChart3, Eye, Calendar, Star, Shield
+  Users, BarChart3, Eye, Calendar, Star, Shield, Mail, Send, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -56,11 +56,30 @@ export const KidsZoneManagement = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isSendingReport, setIsSendingReport] = useState(false);
   const [newCategory, setNewCategory] = useState({
     name: "",
     emoji: "📚",
     color: "from-pink-500 to-rose-500",
   });
+
+  // Send weekly viewing report
+  const handleSendWeeklyReport = async () => {
+    setIsSendingReport(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('weekly-viewing-report', {
+        body: { manual: true }
+      });
+      
+      if (error) throw error;
+      toast.success(`Weekly report sent to ${data?.emailsSent || 0} parents!`);
+    } catch (error: any) {
+      console.error('Error sending weekly report:', error);
+      toast.error('Failed to send weekly report');
+    } finally {
+      setIsSendingReport(false);
+    }
+  };
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -249,6 +268,34 @@ export const KidsZoneManagement = () => {
           <p className="text-muted-foreground">Manage kids profiles, content, and parental controls</p>
         </div>
       </div>
+
+      {/* Admin Actions */}
+      <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Mail className="h-5 w-5 text-purple-500" />
+              <div>
+                <p className="font-medium">Weekly Viewing Report</p>
+                <p className="text-sm text-muted-foreground">Send a summary of kids' viewing activity to all parents</p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleSendWeeklyReport} 
+              disabled={isSendingReport}
+              variant="outline"
+              className="gap-2"
+            >
+              {isSendingReport ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {isSendingReport ? 'Sending...' : 'Send Now'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

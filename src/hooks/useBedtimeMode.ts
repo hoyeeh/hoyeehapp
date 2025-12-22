@@ -38,6 +38,17 @@ export const useBedtimeMode = () => {
           description: "Time to stop watching and get some rest.",
           duration: 10000,
         });
+        
+        // Notify parent via push notification
+        if (currentProfile?.id) {
+          supabase.functions.invoke('notify-kids-limit', {
+            body: {
+              profileId: currentProfile.id,
+              type: 'bedtime',
+              profileName: currentProfile.name,
+            }
+          }).catch(err => console.error('Failed to notify parent about bedtime:', err));
+        }
       }
     };
 
