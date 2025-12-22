@@ -1881,6 +1881,8 @@ export type Database = {
           is_kids_friendly: boolean | null
           kids_category_id: string | null
           name: string
+          show_on_desktop: boolean | null
+          show_on_mobile: boolean | null
           subscriber_count: string | null
           thumbnail_url: string | null
           updated_at: string | null
@@ -1897,6 +1899,8 @@ export type Database = {
           is_kids_friendly?: boolean | null
           kids_category_id?: string | null
           name: string
+          show_on_desktop?: boolean | null
+          show_on_mobile?: boolean | null
           subscriber_count?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null
@@ -1913,6 +1917,8 @@ export type Database = {
           is_kids_friendly?: boolean | null
           kids_category_id?: string | null
           name?: string
+          show_on_desktop?: boolean | null
+          show_on_mobile?: boolean | null
           subscriber_count?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null

@@ -30,16 +30,17 @@ export const KidsYouTubeRow = ({ onPlayVideo }: KidsYouTubeRowProps) => {
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
 
-  // Fetch kids-friendly YouTube channels and their videos
+  // Fetch kids-friendly YouTube channels and their videos (desktop only)
   const { data: videos = [], isLoading } = useQuery({
-    queryKey: ["kids-youtube-videos"],
+    queryKey: ["kids-youtube-videos-desktop"],
     queryFn: async () => {
-      // Get kids-friendly channels
+      // Get kids-friendly channels that should show on desktop
       const { data: channels, error: channelsError } = await supabase
         .from("youtube_channels")
         .select("id")
         .eq("is_active", true)
-        .eq("is_kids_friendly", true);
+        .eq("is_kids_friendly", true)
+        .eq("show_on_desktop", true);
 
       if (channelsError) throw channelsError;
       if (!channels?.length) return [];

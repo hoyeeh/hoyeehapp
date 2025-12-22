@@ -25,16 +25,17 @@ const formatDuration = (seconds: number | null): string => {
 };
 
 export const KidsMobileYouTubeRow = ({ onPlayVideo }: KidsMobileYouTubeRowProps) => {
-  // Fetch kids-friendly YouTube channels and their videos
+  // Fetch kids-friendly YouTube channels and their videos (mobile only)
   const { data: videos = [], isLoading } = useQuery({
     queryKey: ["kids-youtube-videos-mobile"],
     queryFn: async () => {
-      // Get kids-friendly channels
+      // Get kids-friendly channels that should show on mobile
       const { data: channels, error: channelsError } = await supabase
         .from("youtube_channels")
         .select("id")
         .eq("is_active", true)
-        .eq("is_kids_friendly", true);
+        .eq("is_kids_friendly", true)
+        .eq("show_on_mobile", true);
 
       if (channelsError) throw channelsError;
       if (!channels?.length) return [];
