@@ -8,6 +8,7 @@ import { KidsMobileMyList } from "./KidsMobileMyList";
 import { Content } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { toast } from "sonner";
 
 interface KidsMobileInterfaceProps {
@@ -43,15 +44,18 @@ export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const mobilePlayer = useMobileVideoPlayer();
+  const { currentProfile } = useProfileContext();
 
   const handlePlay = (content: Content) => {
-    // For movies with video URL, use mobile player directly
+    // For movies with video URL, use mobile player directly with kids mode
     if (content.contentType === "movie" && content.videoUrl) {
       mobilePlayer.openPlayer({
         content,
         videoUrl: content.videoUrl,
         title: content.title,
         thumbnail: content.thumbnailUrl,
+        isKidsMode: true,
+        kidsProfileId: currentProfile?.id,
       });
     } else if (content.contentType === "series") {
       // For series, navigate to details to select episode

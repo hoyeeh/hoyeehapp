@@ -39,6 +39,9 @@ interface MobileVideoPlayerProps {
   recapStartTime?: number;
   recapEndTime?: number;
   thumbnail?: string;
+  isKidsMode?: boolean;
+  kidsProfileId?: string;
+  onTimeUpdate?: (watchedMinutes: number) => void;
 }
 
 // Available quality options
@@ -67,6 +70,9 @@ export function MobileVideoPlayer({
   recapStartTime,
   recapEndTime,
   thumbnail,
+  isKidsMode = false,
+  kidsProfileId,
+  onTimeUpdate,
 }: MobileVideoPlayerProps) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -422,8 +428,11 @@ export function MobileVideoPlayer({
   }, [showNextEpisode, onNextEpisode]);
 
   // Save progress periodically (both to server and IndexedDB)
+  // Also track kids viewing time if in kids mode
   useEffect(() => {
     if (!isPlaying || !duration) return;
+
+    let lastReportedMinute = Math.floor(currentTime / 60);
 
     const interval = setInterval(() => {
       const video = videoRef.current;
@@ -437,11 +446,21 @@ export function MobileVideoPlayer({
           title: episodeTitle || title,
           thumbnail: thumbnail || content.thumbnailUrl,
         }).catch(console.error);
+
+        // Track kids viewing time - report every minute watched
+        if (isKidsMode && onTimeUpdate) {
+          const currentMinute = Math.floor(video.currentTime / 60);
+          if (currentMinute > lastReportedMinute) {
+            const minutesWatched = currentMinute - lastReportedMinute;
+            onTimeUpdate(minutesWatched);
+            lastReportedMinute = currentMinute;
+          }
+        }
       }
     }, 10000); // Save every 10 seconds
 
     return () => clearInterval(interval);
-  }, [isPlaying, duration, saveProgressImmediately, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl]);
+  }, [isPlaying, duration, saveProgressImmediately, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl, isKidsMode, onTimeUpdate, currentTime]);
 
   // Video event handlers
   const handleLoadedMetadata = () => {
@@ -1596,8 +1615,8 @@ export function MobileVideoPlayer({
                     )}
                   </button>
                   
-                  {/* PiP - moved from top right */}
-                  {pip.isSupported && (
+                  {/* PiP - hidden in kids mode */}
+                  {!isKidsMode && pip.isSupported && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1613,22 +1632,24 @@ export function MobileVideoPlayer({
                     </button>
                   )}
                   
-                  {/* Cast - moved from top right */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCastVideo();
-                    }}
-                    className={cn(
-                      "p-3 rounded-full active:bg-white/20 touch-manipulation",
-                      cast.isConnected ? "bg-primary" : ""
-                    )}
-                    style={{ minWidth: 44, minHeight: 44 }}
-                  >
-                    <Cast className="h-5 w-5 text-white" />
-                  </button>
+                  {/* Cast - hidden in kids mode */}
+                  {!isKidsMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCastVideo();
+                      }}
+                      className={cn(
+                        "p-3 rounded-full active:bg-white/20 touch-manipulation",
+                        cast.isConnected ? "bg-primary" : ""
+                      )}
+                      style={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <Cast className="h-5 w-5 text-white" />
+                    </button>
+                  )}
                   
-                  {/* Settings - moved from top right */}
+                  {/* Settings - simplified in kids mode but still available for skip settings */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1640,17 +1661,19 @@ export function MobileVideoPlayer({
                     <Settings className="h-5 w-5 text-white" />
                   </button>
                   
-                  {/* Lock - moved from top right */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLock();
-                    }}
-                    className="p-3 rounded-full active:bg-white/20 touch-manipulation"
-                    style={{ minWidth: 44, minHeight: 44 }}
-                  >
-                    <Lock className="h-5 w-5 text-white" />
-                  </button>
+                  {/* Lock - hidden in kids mode */}
+                  {!isKidsMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLock();
+                      }}
+                      className="p-3 rounded-full active:bg-white/20 touch-manipulation"
+                      style={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <Lock className="h-5 w-5 text-white" />
+                    </button>
+                  )}
                   
                   {/* Fullscreen */}
                   <button
@@ -1694,30 +1717,34 @@ export function MobileVideoPlayer({
             >
               <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-6" />
               
-              {/* Tabs */}
-              <div className="flex gap-2 mb-6">
-                <button
-                  onClick={() => setSettingsTab("speed")}
-                  className={cn(
-                    "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
-                    settingsTab === "speed"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground"
-                  )}
-                >
-                  Speed
-                </button>
-                <button
-                  onClick={() => setSettingsTab("quality")}
-                  className={cn(
-                    "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
-                    settingsTab === "quality"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground"
-                  )}
-                >
-                  Quality
-                </button>
+              {/* Tabs - Simplified for kids mode */}
+              <div className="flex gap-2 mb-6 flex-wrap">
+                {!isKidsMode && (
+                  <>
+                    <button
+                      onClick={() => setSettingsTab("speed")}
+                      className={cn(
+                        "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                        settingsTab === "speed"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-foreground"
+                      )}
+                    >
+                      Speed
+                    </button>
+                    <button
+                      onClick={() => setSettingsTab("quality")}
+                      className={cn(
+                        "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                        settingsTab === "quality"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-foreground"
+                      )}
+                    >
+                      Quality
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setSettingsTab("skip")}
                   className={cn(
@@ -1729,7 +1756,7 @@ export function MobileVideoPlayer({
                 >
                   Skip
                 </button>
-                {isAdmin && episodeId && (
+                {!isKidsMode && isAdmin && episodeId && (
                   <>
                     <button
                       onClick={() => setSettingsTab("intro")}
@@ -1757,8 +1784,8 @@ export function MobileVideoPlayer({
                 )}
               </div>
 
-              {/* Speed Tab */}
-              {settingsTab === "speed" && (
+              {/* Speed Tab - Hidden in kids mode */}
+              {settingsTab === "speed" && !isKidsMode && (
                 <div>
                   <h3 className="text-lg font-bold mb-4">Playback Speed</h3>
                   <div className="grid grid-cols-4 gap-2">
@@ -1780,8 +1807,8 @@ export function MobileVideoPlayer({
                 </div>
               )}
 
-              {/* Quality Tab */}
-              {settingsTab === "quality" && (
+              {/* Quality Tab - Hidden in kids mode */}
+              {settingsTab === "quality" && !isKidsMode && (
                 <div>
                   <h3 className="text-lg font-bold mb-4">Video Quality</h3>
                   
