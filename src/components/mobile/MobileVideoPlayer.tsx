@@ -332,18 +332,24 @@ export function MobileVideoPlayer({
   // Skip intro visibility
   // Handle intro skip (auto or manual)
   useEffect(() => {
-    if (introStartTime && introEndTime) {
-      const isInIntro = currentTime >= introStartTime && currentTime < introEndTime;
+    // Determine effective intro times (use default if no specific times and default is set)
+    const effectiveIntroStart = introStartTime ?? 0;
+    const effectiveIntroEnd = (introEndTime && introEndTime > 0) ? introEndTime : (skipPrefs.defaultIntroDuration > 0 ? skipPrefs.defaultIntroDuration : 0);
+    const hasIntroSegment = effectiveIntroEnd > effectiveIntroStart;
+    
+    if (hasIntroSegment) {
+      const isInIntro = currentTime >= effectiveIntroStart && currentTime < effectiveIntroEnd;
       
       // Auto-skip if preference is enabled
       if (skipPrefs.autoSkipIntro && isInIntro && !autoSkippedIntroRef.current) {
         autoSkippedIntroRef.current = true;
         const video = videoRef.current;
         if (video) {
-          video.currentTime = introEndTime;
-          setCurrentTime(introEndTime);
+          video.currentTime = effectiveIntroEnd;
+          setCurrentTime(effectiveIntroEnd);
         }
         setShowSkipIntro(false);
+        toast.info('Intro skipped automatically', { duration: 2000 });
         return;
       }
       
@@ -359,7 +365,7 @@ export function MobileVideoPlayer({
         autoSkippedIntroRef.current = false;
       }
     }
-  }, [currentTime, introStartTime, introEndTime, skipPrefs.autoSkipIntro]);
+  }, [currentTime, introStartTime, introEndTime, skipPrefs.autoSkipIntro, skipPrefs.defaultIntroDuration]);
   
   // Handle recap skip (auto or manual)
   useEffect(() => {
@@ -374,6 +380,7 @@ export function MobileVideoPlayer({
           video.currentTime = recapEndTime;
           setCurrentTime(recapEndTime);
         }
+        toast.info('Recap skipped automatically', { duration: 2000 });
         return;
       }
       
@@ -1861,6 +1868,30 @@ export function MobileVideoPlayer({
                         {skipPrefs.autoSkipRecap && <Check className="h-4 w-4 text-primary" />}
                       </div>
                     </button>
+                    
+                    {/* Default Intro Duration */}
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <label className="text-sm font-medium mb-2 block">Default Intro Duration</label>
+                      <p className="text-muted-foreground text-xs mb-3">
+                        Used for shows without specific intro times configured.
+                      </p>
+                      <div className="grid grid-cols-5 gap-2">
+                        {[0, 30, 60, 90, 120].map((duration) => (
+                          <button
+                            key={duration}
+                            onClick={() => skipPrefs.setDefaultIntroDuration(duration)}
+                            className={cn(
+                              "py-2 px-1 rounded-lg text-sm font-medium transition-colors",
+                              skipPrefs.defaultIntroDuration === duration
+                                ? "bg-primary text-white"
+                                : "bg-secondary text-foreground"
+                            )}
+                          >
+                            {duration === 0 ? 'Off' : `${duration}s`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   
                   <p className="text-muted-foreground text-xs mt-4">

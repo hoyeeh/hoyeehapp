@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 interface SkipPreferences {
   autoSkipIntro: boolean;
   autoSkipRecap: boolean;
+  defaultIntroDuration: number; // Duration in seconds for shows without specific intro times
 }
 
 const STORAGE_KEY = 'video_skip_preferences';
@@ -10,6 +11,7 @@ const STORAGE_KEY = 'video_skip_preferences';
 const defaultPreferences: SkipPreferences = {
   autoSkipIntro: false,
   autoSkipRecap: false,
+  defaultIntroDuration: 0, // 0 means disabled
 };
 
 export function useSkipPreferences() {
@@ -42,6 +44,10 @@ export function useSkipPreferences() {
     setPreferences(prev => ({ ...prev, autoSkipRecap: enabled }));
   }, []);
 
+  const setDefaultIntroDuration = useCallback((duration: number) => {
+    setPreferences(prev => ({ ...prev, defaultIntroDuration: Math.max(0, Math.min(300, duration)) }));
+  }, []);
+
   const toggleAutoSkipIntro = useCallback(() => {
     setPreferences(prev => ({ ...prev, autoSkipIntro: !prev.autoSkipIntro }));
   }, []);
@@ -53,8 +59,10 @@ export function useSkipPreferences() {
   return {
     autoSkipIntro: preferences.autoSkipIntro,
     autoSkipRecap: preferences.autoSkipRecap,
+    defaultIntroDuration: preferences.defaultIntroDuration,
     setAutoSkipIntro,
     setAutoSkipRecap,
+    setDefaultIntroDuration,
     toggleAutoSkipIntro,
     toggleAutoSkipRecap,
   };
