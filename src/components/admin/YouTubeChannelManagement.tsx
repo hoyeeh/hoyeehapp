@@ -12,8 +12,9 @@ import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { 
   Youtube, Plus, Trash2, RefreshCw, ExternalLink, 
-  Play, List, Eye, Clock, ChevronRight, Search
+  Play, List, Eye, Clock, ChevronRight, Search, Image as ImageIcon
 } from "lucide-react";
+import { YouTubeBannerManagement } from "./YouTubeBannerManagement";
 
 interface YouTubeChannel {
   id: string;
@@ -21,6 +22,7 @@ interface YouTubeChannel {
   channel_id: string;
   description: string | null;
   thumbnail_url: string | null;
+  cover_url: string | null;
   subscriber_count: string | null;
   video_count: number;
   is_active: boolean;
@@ -603,6 +605,9 @@ export const YouTubeChannelManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Banner Management Section */}
+      <YouTubeBannerManagement />
     </div>
   );
 };

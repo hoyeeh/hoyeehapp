@@ -7,6 +7,7 @@ interface YouTubeChannel {
   channel_id: string;
   description: string | null;
   thumbnail_url: string | null;
+  cover_url: string | null;
   subscriber_count: string | null;
   video_count: number;
   is_active: boolean;
