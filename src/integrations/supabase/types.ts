@@ -1878,6 +1878,8 @@ export type Database = {
           display_order: number | null
           id: string
           is_active: boolean | null
+          is_kids_friendly: boolean | null
+          kids_category_id: string | null
           name: string
           subscriber_count: string | null
           thumbnail_url: string | null
@@ -1892,6 +1894,8 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_kids_friendly?: boolean | null
+          kids_category_id?: string | null
           name: string
           subscriber_count?: string | null
           thumbnail_url?: string | null
@@ -1906,13 +1910,23 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_kids_friendly?: boolean | null
+          kids_category_id?: string | null
           name?: string
           subscriber_count?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null
           video_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "youtube_channels_kids_category_id_fkey"
+            columns: ["kids_category_id"]
+            isOneToOne: false
+            referencedRelation: "kids_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       youtube_playlists: {
         Row: {

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, Trash2, Edit2, Save, X, Baby, Tag, Clock, Moon, 
   Users, BarChart3, Eye, Calendar, Star, Shield, Mail, Send, Loader2,
-  RotateCcw, TrendingUp, Download, FileText, Sparkles
+  RotateCcw, TrendingUp, Download, FileText, Sparkles, Youtube
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { exportToCSV, exportToPDF } from "@/utils/exportReport";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { KIDS_RATINGS } from "@/constants/kidsRatings";
+import { KidsYouTubeTab } from "./KidsYouTubeTab";
 
 const GRADIENT_OPTIONS = [
   { value: "from-pink-500 to-rose-500", label: "Pink" },
@@ -475,7 +476,7 @@ export const KidsZoneManagement = () => {
       </div>
 
       <Tabs defaultValue="categories" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
             Categories
@@ -487,6 +488,10 @@ export const KidsZoneManagement = () => {
           <TabsTrigger value="content" className="flex items-center gap-2">
             <Star className="h-4 w-4" />
             Content
+          </TabsTrigger>
+          <TabsTrigger value="youtube" className="flex items-center gap-2">
+            <Youtube className="h-4 w-4" />
+            YouTube
           </TabsTrigger>
           <TabsTrigger value="activity" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -736,6 +741,11 @@ export const KidsZoneManagement = () => {
               Showing 24 of {kidsContent.length} items
             </p>
           )}
+        </TabsContent>
+
+        {/* YouTube Tab */}
+        <TabsContent value="youtube" className="space-y-4">
+          <KidsYouTubeTab categories={categories} />
         </TabsContent>
 
         {/* Activity Tab */}

@@ -10,6 +10,8 @@ import { KIDS_RATINGS } from "@/constants/kidsRatings";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { KidsYouTubeRow } from "./kids/KidsYouTubeRow";
+import { KidsYouTubePlayer } from "./kids/KidsYouTubePlayer";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
@@ -170,6 +172,11 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   const { currentProfile } = useProfileContext();
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
+  const [youtubePlayer, setYoutubePlayer] = useState<{ videoId: string; title: string } | null>(null);
+
+  const handlePlayYouTubeVideo = (videoId: string, title: string) => {
+    setYoutubePlayer({ videoId, title });
+  };
 
   const { data: kidsContent = [], isLoading } = useQuery({
     queryKey: ["kids-content-desktop"],
@@ -300,6 +307,17 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     );
   }
 
+  // YouTube player modal
+  if (youtubePlayer) {
+    return (
+      <KidsYouTubePlayer
+        videoId={youtubePlayer.videoId}
+        title={youtubePlayer.title}
+        onClose={() => setYoutubePlayer(null)}
+      />
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 space-y-10 pb-12">
       {/* Hero Carousel - prioritize animation */}
@@ -354,6 +372,9 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
           </div>
         </section>
       )}
+
+      {/* YouTube Videos */}
+      <KidsYouTubeRow onPlayVideo={handlePlayYouTubeVideo} />
 
       {/* Movies */}
       {movies.length > 0 && (
