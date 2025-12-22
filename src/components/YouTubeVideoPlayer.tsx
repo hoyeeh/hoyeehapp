@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
-  SkipBack, SkipForward, X, Settings
+  SkipBack, SkipForward, X, Loader2
 } from "lucide-react";
 
 interface YouTubeVideoPlayerProps {
@@ -40,6 +40,7 @@ export const YouTubeVideoPlayer = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load YouTube IFrame API
@@ -82,6 +83,7 @@ export const YouTubeVideoPlayer = ({
       events: {
         onReady: (event: any) => {
           setIsReady(true);
+          setIsLoading(false);
           setDuration(event.target.getDuration());
           setVolume(event.target.getVolume());
           if (autoplay) {
@@ -92,6 +94,7 @@ export const YouTubeVideoPlayer = ({
           switch (event.data) {
             case window.YT.PlayerState.PLAYING:
               setIsPlaying(true);
+              setIsLoading(false);
               startProgressTracking();
               break;
             case window.YT.PlayerState.PAUSED:
@@ -100,6 +103,9 @@ export const YouTubeVideoPlayer = ({
             case window.YT.PlayerState.ENDED:
               setIsPlaying(false);
               onEnded?.();
+              break;
+            case window.YT.PlayerState.BUFFERING:
+              setIsLoading(true);
               break;
           }
         },
@@ -223,6 +229,7 @@ export const YouTubeVideoPlayer = ({
   // Re-initialize when videoId changes
   useEffect(() => {
     if (playerRef.current?.loadVideoById && isReady) {
+      setIsLoading(true);
       playerRef.current.loadVideoById(videoId);
     }
   }, [videoId, isReady]);
@@ -230,7 +237,7 @@ export const YouTubeVideoPlayer = ({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-black"
+      className="relative w-full aspect-video min-h-[300px] bg-black rounded-xl overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
@@ -238,6 +245,13 @@ export const YouTubeVideoPlayer = ({
       <div className="absolute inset-0">
         <div id="youtube-player" className="w-full h-full" />
       </div>
+
+      {/* Loading Spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
+          <Loader2 className="h-12 w-12 text-white animate-spin" />
+        </div>
+      )}
 
       {/* Overlay for click to play/pause */}
       <div
@@ -273,7 +287,7 @@ export const YouTubeVideoPlayer = ({
         </div>
 
         {/* Center Play Button */}
-        {!isPlaying && (
+        {!isPlaying && !isLoading && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
             <Button
               size="lg"
@@ -285,10 +299,10 @@ export const YouTubeVideoPlayer = ({
           </div>
         )}
 
-        {/* Bottom Controls */}
+        {/* Bottom Controls - Centered */}
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-auto">
           {/* Progress Bar */}
-          <div className="mb-3">
+          <div className="mb-4 px-2">
             <Slider
               value={[currentTime]}
               max={duration || 100}
@@ -296,33 +310,22 @@ export const YouTubeVideoPlayer = ({
               onValueChange={handleSeek}
               className="cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-white/80 mt-1">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
           </div>
 
-          {/* Control Buttons */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={togglePlay}
-                className="text-white hover:bg-white/20"
-              >
-                {isPlaying ? (
-                  <Pause className="h-5 w-5" />
-                ) : (
-                  <Play className="h-5 w-5 fill-current" />
-                )}
-              </Button>
-              
+          {/* Control Buttons - Centered */}
+          <div className="flex items-center justify-center gap-1">
+            {/* Time Display */}
+            <span className="text-white/80 text-sm min-w-[80px] text-center">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+
+            {/* Main Controls Group - Centered */}
+            <div className="flex items-center gap-1 mx-4">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => skip(-10)}
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white/20 h-10 w-10"
               >
                 <SkipBack className="h-5 w-5" />
               </Button>
@@ -330,51 +333,63 @@ export const YouTubeVideoPlayer = ({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => skip(10)}
-                className="text-white hover:bg-white/20"
+                onClick={togglePlay}
+                className="text-white hover:bg-white/20 h-12 w-12"
               >
-                <SkipForward className="h-5 w-5" />
+                {isPlaying ? (
+                  <Pause className="h-7 w-7" />
+                ) : (
+                  <Play className="h-7 w-7 fill-current" />
+                )}
               </Button>
-
-              {/* Volume Controls */}
-              <div className="flex items-center gap-2 group">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleMute}
-                  className="text-white hover:bg-white/20"
-                >
-                  {isMuted || volume === 0 ? (
-                    <VolumeX className="h-5 w-5" />
-                  ) : (
-                    <Volume2 className="h-5 w-5" />
-                  )}
-                </Button>
-                <div className="w-0 group-hover:w-24 overflow-hidden transition-all">
-                  <Slider
-                    value={[isMuted ? 0 : volume]}
-                    max={100}
-                    step={1}
-                    onValueChange={handleVolumeChange}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
+              
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={toggleFullscreen}
-                className="text-white hover:bg-white/20"
+                onClick={() => skip(10)}
+                className="text-white hover:bg-white/20 h-10 w-10"
               >
-                {isFullscreen ? (
-                  <Minimize className="h-5 w-5" />
-                ) : (
-                  <Maximize className="h-5 w-5" />
-                )}
+                <SkipForward className="h-5 w-5" />
               </Button>
             </div>
+
+            {/* Volume Controls */}
+            <div className="flex items-center gap-1 group">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleMute}
+                className="text-white hover:bg-white/20 h-10 w-10"
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="h-5 w-5" />
+                ) : (
+                  <Volume2 className="h-5 w-5" />
+                )}
+              </Button>
+              <div className="w-0 group-hover:w-20 overflow-hidden transition-all duration-200">
+                <Slider
+                  value={[isMuted ? 0 : volume]}
+                  max={100}
+                  step={1}
+                  onValueChange={handleVolumeChange}
+                />
+              </div>
+            </div>
+
+            {/* Fullscreen */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              className="text-white hover:bg-white/20 h-10 w-10 ml-2"
+            >
+              {isFullscreen ? (
+                <Minimize className="h-5 w-5" />
+              ) : (
+                <Maximize className="h-5 w-5" />
+              )}
+            </Button>
           </div>
         </div>
       </div>
