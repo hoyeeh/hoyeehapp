@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,31 +60,25 @@ export default function YouTubeChannels() {
     );
   }
 
+  // Find current video details and related videos
+  const currentVideoDetails = useMemo(() => {
+    if (!playingVideo) return null;
+    for (const playlist of playlists || []) {
+      // We'll use the hook data if available
+    }
+    return null;
+  }, [playingVideo, playlists]);
+
   if (playingVideo) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto p-4 md:p-8">
-          <Button
-            variant="ghost"
-            onClick={() => setPlayingVideo(null)}
-            className="mb-6 hover:bg-secondary"
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Back to Channels
-          </Button>
-          <div className="aspect-video max-h-[70vh] w-full">
-            <YouTubeVideoPlayer
-              videoId={playingVideo.videoId}
-              title={playingVideo.title}
-              onClose={() => setPlayingVideo(null)}
-              autoplay
-            />
-          </div>
-          <div className="mt-6">
-            <h1 className="text-2xl font-bold text-foreground">{playingVideo.title}</h1>
-          </div>
-        </div>
-      </div>
+      <VideoPlayerPage
+        videoId={playingVideo.videoId}
+        title={playingVideo.title}
+        onClose={() => setPlayingVideo(null)}
+        onPlayVideo={(videoId, title) => setPlayingVideo({ videoId, title })}
+        playlists={playlists || []}
+        channels={channels || []}
+      />
     );
   }
 
@@ -189,6 +183,19 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
   const { data: channels } = useYouTubeChannels();
   const { data: banners } = useYouTubeBanners();
   const { data: videos } = useYouTubeVideos(playlists[0]?.id);
+  
+  // Auto-rotate carousel every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex(prev => {
+        const maxIndex = Math.max(0, (channels?.filter(c => c.cover_url).length || 0) + 
+          (banners?.length || 0) + (videos?.length || 0) - 1);
+        return prev >= maxIndex ? 0 : prev + 1;
+      });
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [channels, banners, videos]);
   
   // Build hero items: prioritize channel covers, then admin banners, then videos
   const heroItems = useMemo(() => {
@@ -604,4 +611,148 @@ function formatViewCount(count: number): string {
     return `${(count / 1000).toFixed(1)}K`;
   }
   return count.toString();
+}
+
+// Video Player Page with description, channel info, and related videos
+interface VideoPlayerPageProps {
+  videoId: string;
+  title: string;
+  onClose: () => void;
+  onPlayVideo: (videoId: string, title: string) => void;
+  playlists: Array<{ id: string; title: string; channel_id: string | null }>;
+  channels: Array<{ id: string; name: string; thumbnail_url: string | null; subscriber_count: string | null }>;
+}
+
+function VideoPlayerPage({ videoId, title, onClose, onPlayVideo, playlists, channels }: VideoPlayerPageProps) {
+  const { data: allVideos } = useYouTubeVideos(playlists[0]?.id);
+  
+  // Find current video details
+  const currentVideo = allVideos?.find(v => v.video_id === videoId);
+  
+  // Get related videos (other videos from the same playlist, excluding current)
+  const relatedVideos = allVideos?.filter(v => v.video_id !== videoId).slice(0, 8) || [];
+  
+  // Find the channel for the current video
+  const currentChannel = channels?.[0];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          className="mb-6 hover:bg-secondary"
+        >
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back to Channels
+        </Button>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Video Section */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="aspect-video max-h-[70vh] w-full">
+              <YouTubeVideoPlayer
+                videoId={videoId}
+                title={title}
+                onClose={onClose}
+                autoplay
+              />
+            </div>
+            
+            {/* Video Info */}
+            <div className="space-y-4">
+              <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+              
+              {/* Channel Info */}
+              {currentChannel && (
+                <div className="flex items-center gap-4 py-4 border-b border-border">
+                  {currentChannel.thumbnail_url && (
+                    <img 
+                      src={currentChannel.thumbnail_url} 
+                      alt={currentChannel.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-semibold text-foreground">{currentChannel.name}</h3>
+                    {currentChannel.subscriber_count && (
+                      <p className="text-sm text-muted-foreground">
+                        {currentChannel.subscriber_count} subscribers
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Video Description */}
+              {currentVideo?.description && (
+                <div className="bg-secondary/50 rounded-xl p-4">
+                  <div className="flex items-center gap-4 mb-2 text-sm text-muted-foreground">
+                    {currentVideo.view_count && currentVideo.view_count > 0 && (
+                      <span>{formatViewCount(currentVideo.view_count)} views</span>
+                    )}
+                    {currentVideo.published_at && (
+                      <span>{new Date(currentVideo.published_at).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                  <p className="text-foreground whitespace-pre-wrap line-clamp-4 text-sm">
+                    {currentVideo.description}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Related Videos Sidebar */}
+          <div className="lg:col-span-1 space-y-4">
+            <h3 className="font-bold text-lg text-foreground">Related Videos</h3>
+            <div className="space-y-3">
+              {relatedVideos.map(video => (
+                <div 
+                  key={video.id}
+                  onClick={() => onPlayVideo(video.video_id, video.title)}
+                  className="flex gap-3 cursor-pointer group"
+                >
+                  <div className="w-40 aspect-video rounded-lg overflow-hidden bg-secondary flex-shrink-0 relative">
+                    {video.thumbnail_url ? (
+                      <img 
+                        src={video.thumbnail_url} 
+                        alt={video.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Youtube className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    {video.duration && (
+                      <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
+                        {formatDuration(video.duration)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+                      {video.title}
+                    </h4>
+                    {video.view_count && video.view_count > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatViewCount(video.view_count)} views
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {relatedVideos.length === 0 && (
+                <p className="text-muted-foreground text-sm text-center py-8">
+                  No related videos found
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -358,78 +358,25 @@ export const YouTubeChannelManagement = () => {
               </p>
             ) : (
               channels.map((channel) => (
-                <div
+                <ChannelCard
                   key={channel.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    selectedChannel === channel.id 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onClick={() => {
+                  channel={channel}
+                  isSelected={selectedChannel === channel.id}
+                  onSelect={() => {
                     setSelectedChannel(channel.id);
                     setSelectedPlaylist(null);
                   }}
-                >
-                  <div className="flex items-start gap-3">
-                    <img
-                      src={channel.thumbnail_url || "/placeholder.svg"}
-                      alt={channel.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium truncate text-sm">{channel.name}</h4>
-                        {!channel.is_active && (
-                          <Badge variant="secondary" className="text-xs">Inactive</Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatCount(channel.subscriber_count)} subs
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={channel.is_active}
-                        onCheckedChange={(checked) => 
-                          toggleChannel.mutate({ id: channel.id, is_active: checked })
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <span className="text-xs text-muted-foreground">Active</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          syncPlaylists(channel);
-                        }}
-                        disabled={syncingChannelId === channel.id}
-                      >
-                        <RefreshCw className={`h-3.5 w-3.5 ${syncingChannelId === channel.id ? 'animate-spin' : ''}`} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('Delete this channel and all its playlists?')) {
-                            deleteChannel.mutate(channel.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                  onToggle={(checked) => toggleChannel.mutate({ id: channel.id, is_active: checked })}
+                  onSync={() => syncPlaylists(channel)}
+                  onDelete={() => {
+                    if (confirm('Delete this channel and all its playlists?')) {
+                      deleteChannel.mutate(channel.id);
+                    }
+                  }}
+                  isSyncing={syncingChannelId === channel.id}
+                  formatCount={formatCount}
+                  queryClient={queryClient}
+                />
               ))
             )}
           </CardContent>
@@ -611,3 +558,194 @@ export const YouTubeChannelManagement = () => {
     </div>
   );
 };
+
+// Channel Card Component with Cover URL editing
+interface ChannelCardProps {
+  channel: YouTubeChannel;
+  isSelected: boolean;
+  onSelect: () => void;
+  onToggle: (checked: boolean) => void;
+  onSync: () => void;
+  onDelete: () => void;
+  isSyncing: boolean;
+  formatCount: (count: number | string | null) => string;
+  queryClient: ReturnType<typeof useQueryClient>;
+}
+
+function ChannelCard({ 
+  channel, 
+  isSelected, 
+  onSelect, 
+  onToggle, 
+  onSync, 
+  onDelete, 
+  isSyncing, 
+  formatCount,
+  queryClient 
+}: ChannelCardProps) {
+  const [editCoverOpen, setEditCoverOpen] = useState(false);
+  const [coverUrl, setCoverUrl] = useState(channel.cover_url || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const saveCoverUrl = async () => {
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('youtube_channels')
+        .update({ cover_url: coverUrl || null })
+        .eq('id', channel.id);
+      
+      if (error) throw error;
+      
+      toast.success("Cover image updated");
+      queryClient.invalidateQueries({ queryKey: ['youtube-channels'] });
+      setEditCoverOpen(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update cover");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+        isSelected 
+          ? 'border-primary bg-primary/5' 
+          : 'border-border hover:border-primary/50'
+      }`}
+      onClick={onSelect}
+    >
+      <div className="flex items-start gap-3">
+        <img
+          src={channel.thumbnail_url || "/placeholder.svg"}
+          alt={channel.name}
+          className="w-10 h-10 rounded-full object-cover"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium truncate text-sm">{channel.name}</h4>
+            {!channel.is_active && (
+              <Badge variant="secondary" className="text-xs">Inactive</Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {formatCount(channel.subscriber_count)} subs
+          </p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      </div>
+      
+      {/* Cover URL indicator */}
+      <div className="mt-2 flex items-center gap-2">
+        <Dialog open={editCoverOpen} onOpenChange={setEditCoverOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ImageIcon className="h-3 w-3" />
+              {channel.cover_url ? "Edit Cover" : "Add Cover"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle>Channel Cover Image</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Cover Image URL</label>
+                <Input
+                  placeholder="https://example.com/cover.jpg"
+                  value={coverUrl}
+                  onChange={(e) => setCoverUrl(e.target.value)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  This image will be used in the hero carousel on the YouTube page
+                </p>
+              </div>
+              
+              {coverUrl && (
+                <div className="aspect-video bg-secondary rounded-lg overflow-hidden">
+                  <img 
+                    src={coverUrl} 
+                    alt="Cover preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={saveCoverUrl}
+                  disabled={isSaving}
+                  className="flex-1"
+                >
+                  {isSaving ? <LoadingSpinner size="sm" /> : "Save Cover"}
+                </Button>
+                {channel.cover_url && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setCoverUrl("");
+                      saveCoverUrl();
+                    }}
+                    disabled={isSaving}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {channel.cover_url && (
+          <span className="text-xs text-green-500">✓ Has cover</span>
+        )}
+      </div>
+      
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={channel.is_active}
+            onCheckedChange={onToggle}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span className="text-xs text-muted-foreground">Active</span>
+        </div>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSync();
+            }}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
