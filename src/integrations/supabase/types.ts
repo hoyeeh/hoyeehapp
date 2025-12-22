@@ -211,6 +211,44 @@ export type Database = {
         }
         Relationships: []
       }
+      coming_soon_sync_log: {
+        Row: {
+          content_id: string | null
+          content_type: string
+          id: string
+          synced_at: string
+          title: string
+          tmdb_id: number | null
+          users_notified: number
+        }
+        Insert: {
+          content_id?: string | null
+          content_type: string
+          id?: string
+          synced_at?: string
+          title: string
+          tmdb_id?: number | null
+          users_notified?: number
+        }
+        Update: {
+          content_id?: string | null
+          content_type?: string
+          id?: string
+          synced_at?: string
+          title?: string
+          tmdb_id?: number | null
+          users_notified?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coming_soon_sync_log_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coming_soon_watchlist: {
         Row: {
           coming_soon_id: string

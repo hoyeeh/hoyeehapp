@@ -35,6 +35,8 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -108,6 +110,7 @@ serve(async (req) => {
 
     // Step 4: Process each match
     let totalNotified = 0;
+    let totalPushSent = 0;
     const processedItems: string[] = [];
 
     for (const match of matches) {
@@ -127,6 +130,8 @@ serve(async (req) => {
 
       const userIds = watchlistUsers?.map((w) => w.user_id) || [];
       console.log(`[sync-coming-soon] Found ${userIds.length} users in watchlist for "${comingSoon.title}"`);
+
+      let usersNotifiedForThisItem = 0;
 
       if (userIds.length > 0) {
         // Get notification preferences for these users
@@ -165,7 +170,55 @@ serve(async (req) => {
             console.error("[sync-coming-soon] Error creating notifications:", notifError);
           } else {
             totalNotified += optedInUsers.length;
+            usersNotifiedForThisItem = optedInUsers.length;
             console.log(`[sync-coming-soon] Created ${optedInUsers.length} in-app notifications`);
+          }
+
+          // Send push notifications if VAPID keys are configured
+          if (vapidPublicKey && vapidPrivateKey) {
+            // Get push subscriptions for opted-in users
+            const { data: pushSubs, error: pushSubsError } = await supabase
+              .from("push_subscriptions")
+              .select("user_id, endpoint, p256dh, auth")
+              .in("user_id", optedInUsers);
+
+            if (pushSubsError) {
+              console.error("[sync-coming-soon] Error fetching push subscriptions:", pushSubsError);
+            } else if (pushSubs && pushSubs.length > 0) {
+              console.log(`[sync-coming-soon] Sending ${pushSubs.length} push notifications`);
+              
+              // Send push notifications using web-push
+              const webPush = await import("https://esm.sh/web-push@3.6.7");
+              
+              webPush.setVapidDetails(
+                "mailto:notifications@hoyeeh.com",
+                vapidPublicKey,
+                vapidPrivateKey
+              );
+
+              for (const sub of pushSubs) {
+                try {
+                  await webPush.sendNotification(
+                    {
+                      endpoint: sub.endpoint,
+                      keys: {
+                        p256dh: sub.p256dh,
+                        auth: sub.auth,
+                      },
+                    },
+                    JSON.stringify({
+                      title: "🎬 Now Available!",
+                      body: `"${comingSoon.title}" is now available to watch!`,
+                      url: `/content/${content.id}`,
+                    })
+                  );
+                  totalPushSent++;
+                } catch (pushError) {
+                  console.error(`[sync-coming-soon] Push error for ${sub.user_id}:`, pushError);
+                }
+              }
+              console.log(`[sync-coming-soon] Sent ${totalPushSent} push notifications`);
+            }
           }
 
           // Send email notifications if Resend is configured
@@ -219,6 +272,21 @@ serve(async (req) => {
         }
       }
 
+      // Log to sync history
+      const { error: logError } = await supabase
+        .from("coming_soon_sync_log")
+        .insert({
+          title: comingSoon.title,
+          content_type: comingSoon.content_type,
+          content_id: content.id,
+          tmdb_id: comingSoon.tmdb_id,
+          users_notified: usersNotifiedForThisItem,
+        });
+
+      if (logError) {
+        console.error(`[sync-coming-soon] Error logging sync for ${comingSoon.title}:`, logError);
+      }
+
       // Delete from coming_soon
       const { error: deleteError } = await supabase
         .from("coming_soon")
@@ -232,7 +300,7 @@ serve(async (req) => {
         processedItems.push(comingSoon.title);
       }
 
-      // Clean up watchlist entries (cascade should handle this, but just in case)
+      // Clean up watchlist entries
       const { error: watchlistDeleteError } = await supabase
         .from("coming_soon_watchlist")
         .delete()
@@ -243,13 +311,14 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[sync-coming-soon] Sync complete. Processed ${processedItems.length} items, notified ${totalNotified} users`);
+    console.log(`[sync-coming-soon] Sync complete. Processed ${processedItems.length} items, notified ${totalNotified} users, sent ${totalPushSent} push notifications`);
 
     return new Response(
       JSON.stringify({
         success: true,
         processed: processedItems.length,
         notified: totalNotified,
+        pushSent: totalPushSent,
         items: processedItems,
         timestamp: new Date().toISOString(),
       }),

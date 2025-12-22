@@ -31,8 +31,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check, ListPlus, RefreshCw, Clock } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check, ListPlus, RefreshCw, Clock, History, Users, Bell } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 
 interface TMDBResult {
   tmdb_id: number;
@@ -53,6 +53,7 @@ export const ComingSoonManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("import");
+  const [viewTab, setViewTab] = useState<"upcoming" | "history">("upcoming");
   
   // TMDB Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,6 +95,20 @@ export const ComingSoonManagement = () => {
         .from("coming_soon")
         .select("*")
         .order("expected_release_date", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch sync history
+  const { data: syncHistory = [], isLoading: isLoadingSyncHistory } = useQuery({
+    queryKey: ["admin-coming-soon-sync-history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coming_soon_sync_log")
+        .select("*")
+        .order("synced_at", { ascending: false })
+        .limit(50);
       if (error) throw error;
       return data || [];
     },
@@ -725,87 +740,171 @@ export const ComingSoonManagement = () => {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : items.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No coming soon items yet. Add one to get started.
-        </div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Genre</TableHead>
-              <TableHead>Release Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item: any) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {item.thumbnail_url && (
-                      <img src={item.thumbnail_url} alt="" className="w-8 h-12 object-cover rounded" />
-                    )}
-                    {item.title}
-                  </div>
-                </TableCell>
-                <TableCell className="capitalize">{item.content_type}</TableCell>
-                <TableCell>{item.genre || "-"}</TableCell>
-                <TableCell>
-                  {item.expected_release_date
-                    ? format(new Date(item.expected_release_date), "MMM d, yyyy")
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      item.is_active
-                        ? "bg-green-500/20 text-green-500"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {item.is_active ? "Active" : "Inactive"}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => sendReleaseNotification.mutate(item)}
-                      title="Send release notification"
-                      disabled={sendReleaseNotification.isPending}
-                    >
-                      <Send className="h-4 w-4 text-primary" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEditDialog(item)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteItem.mutate(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {/* View Tabs */}
+      <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "upcoming" | "history")} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="upcoming" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Upcoming ({items.length})
+          </TabsTrigger>
+          <TabsTrigger value="history" className="gap-2">
+            <History className="h-4 w-4" />
+            Sync History ({syncHistory.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="upcoming" className="mt-4">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No coming soon items yet. Add one to get started.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Genre</TableHead>
+                  <TableHead>Release Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item: any) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {item.thumbnail_url && (
+                          <img src={item.thumbnail_url} alt="" className="w-8 h-12 object-cover rounded" />
+                        )}
+                        {item.title}
+                      </div>
+                    </TableCell>
+                    <TableCell className="capitalize">{item.content_type}</TableCell>
+                    <TableCell>{item.genre || "-"}</TableCell>
+                    <TableCell>
+                      {item.expected_release_date
+                        ? format(new Date(item.expected_release_date), "MMM d, yyyy")
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          item.is_active
+                            ? "bg-green-500/20 text-green-500"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {item.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => sendReleaseNotification.mutate(item)}
+                          title="Send release notification"
+                          disabled={sendReleaseNotification.isPending}
+                        >
+                          <Send className="h-4 w-4 text-primary" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(item)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteItem.mutate(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-4">
+          {isLoadingSyncHistory ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : syncHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No sync history yet.</p>
+              <p className="text-sm">Items will appear here when they're automatically synced to the content library.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Synced</TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      Notified
+                    </div>
+                  </TableHead>
+                  <TableHead>TMDB ID</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {syncHistory.map((log: any) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="font-medium">{log.title}</TableCell>
+                    <TableCell className="capitalize">{log.content_type}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-sm">
+                          {format(new Date(log.synced_at), "MMM d, yyyy")}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(log.synced_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {log.users_notified > 0 ? (
+                        <div className="flex items-center gap-1 text-green-500">
+                          <Bell className="h-4 w-4" />
+                          <span>{log.users_notified}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {log.tmdb_id ? (
+                        <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                          {log.tmdb_id}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
