@@ -42,6 +42,8 @@ interface MobileVideoPlayerProps {
   isKidsMode?: boolean;
   kidsProfileId?: string;
   onTimeUpdate?: (watchedMinutes: number) => void;
+  kidsTimeRemaining?: number | null;
+  kidsTimeLimitReached?: boolean;
 }
 
 // Available quality options
@@ -73,6 +75,8 @@ export function MobileVideoPlayer({
   isKidsMode = false,
   kidsProfileId,
   onTimeUpdate,
+  kidsTimeRemaining,
+  kidsTimeLimitReached = false,
 }: MobileVideoPlayerProps) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -396,6 +400,17 @@ export function MobileVideoPlayer({
       }
     }
   }, [currentTime, recapStartTime, recapEndTime, skipPrefs.autoSkipRecap]);
+
+  // Auto-pause when kids time limit is reached
+  useEffect(() => {
+    if (isKidsMode && kidsTimeLimitReached && isPlaying) {
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+        setIsPlaying(false);
+      }
+    }
+  }, [isKidsMode, kidsTimeLimitReached, isPlaying]);
 
   // Next episode prompt
   useEffect(() => {
@@ -1471,6 +1486,77 @@ export function MobileVideoPlayer({
                 Play Now
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Kids Time Warning Overlay - Shows when 5 or less minutes remain */}
+      <AnimatePresence>
+        {isKidsMode && kidsTimeRemaining !== null && kidsTimeRemaining <= 5 && kidsTimeRemaining > 0 && !kidsTimeLimitReached && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-20 left-4 right-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-white font-semibold">Time is running low!</p>
+                <p className="text-white/80 text-sm">
+                  Only {kidsTimeRemaining} minute{kidsTimeRemaining !== 1 ? 's' : ''} left today
+                </p>
+              </div>
+              <div className="text-3xl">⏰</div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Kids Time's Up Screen - Full screen overlay when limit reached */}
+      <AnimatePresence>
+        {isKidsMode && kidsTimeLimitReached && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex flex-col items-center justify-center z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="text-center px-8"
+            >
+              <motion.div
+                animate={{ 
+                  rotate: [0, 10, -10, 10, 0],
+                  scale: [1, 1.1, 1]
+                }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                className="text-8xl mb-6"
+              >
+                🌙
+              </motion.div>
+              <h1 className="text-4xl font-bold text-white mb-4">Time's Up!</h1>
+              <p className="text-white/90 text-lg mb-2">
+                Great job watching today!
+              </p>
+              <p className="text-white/70 text-base mb-8">
+                Come back tomorrow for more fun adventures! 🌟
+              </p>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                className="px-8 py-4 bg-white text-purple-600 rounded-2xl font-bold text-lg shadow-xl"
+              >
+                See You Tomorrow!
+              </motion.button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
