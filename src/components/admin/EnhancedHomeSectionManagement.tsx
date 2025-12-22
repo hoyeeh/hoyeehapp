@@ -58,6 +58,7 @@ const SECTION_TYPES = [
   { value: "trending", label: "Trending" },
   { value: "genre", label: "Genre-based" },
   { value: "curated", label: "Curated (Select specific content)" },
+  { value: "youtube", label: "YouTube Videos" },
   { value: "custom", label: "Custom (All content)" },
   { value: "my_list", label: "My List" },
   { value: "continue_watching", label: "Continue Watching" },
