@@ -45,6 +45,7 @@ import Install from "./pages/Install";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import Parental from "./pages/Parental";
 import ComingSoon from "./pages/ComingSoon";
+import YouTubeChannels from "./pages/YouTubeChannels";
 
 const queryClient = new QueryClient();
 
@@ -202,6 +203,7 @@ const App = () => (
                   <Route path="/notification-preferences" element={<NotificationPreferences />} />
                   <Route path="/parental" element={<Parental />} />
                   <Route path="/coming-soon" element={<ComingSoon />} />
+                  <Route path="/youtube" element={<YouTubeChannels />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <PersistentMobileVideoPlayer />
