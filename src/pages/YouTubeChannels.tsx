@@ -47,6 +47,15 @@ export default function YouTubeChannels() {
 
   // Get featured videos for hero carousel from all playlists
   const allVideosQuery = useYouTubeVideos(playlists?.[0]?.id);
+
+  // Find current video details and related videos - MUST be before any returns
+  const currentVideoDetails = useMemo(() => {
+    if (!playingVideo) return null;
+    for (const playlist of playlists || []) {
+      // We'll use the hook data if available
+    }
+    return null;
+  }, [playingVideo, playlists]);
   
   if (channelsLoading || playlistsLoading) {
     return (
@@ -60,15 +69,6 @@ export default function YouTubeChannels() {
       </div>
     );
   }
-
-  // Find current video details and related videos
-  const currentVideoDetails = useMemo(() => {
-    if (!playingVideo) return null;
-    for (const playlist of playlists || []) {
-      // We'll use the hook data if available
-    }
-    return null;
-  }, [playingVideo, playlists]);
 
   if (playingVideo) {
     return (
