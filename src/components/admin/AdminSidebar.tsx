@@ -1,4 +1,4 @@
-import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone } from "lucide-react";
+import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 import { useIsSuperAdmin } from "@/hooks/useSuperAdmin";
@@ -35,6 +35,7 @@ const menuItems = [
   { id: "support", label: "Support Chat", icon: MessageCircle },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "push", label: "Push Notifications", icon: Send },
+  { id: "email-templates", label: "Email Templates", icon: Mail },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 

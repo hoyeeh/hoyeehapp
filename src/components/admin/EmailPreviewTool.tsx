@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Mail, Eye, RefreshCw, Send, Copy, Check,
+  Mail, Eye, RefreshCw, Send, Copy, Check, Loader2,
   CreditCard, Clock, AlertTriangle, XCircle, UserPlus, MessageSquare, Baby
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const EMAIL_TEMPLATES = {
   welcome: {
@@ -77,9 +79,11 @@ const SAMPLE_DATA = {
 };
 
 export const EmailPreviewTool = () => {
+  const { user } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof EMAIL_TEMPLATES>("welcome");
   const [sampleData, setSampleData] = useState(SAMPLE_DATA);
   const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const generateEmailHtml = (template: keyof typeof EMAIL_TEMPLATES) => {
     const { userName, amount, currency, planType, expiryDate, daysUntilExpiry, ticketSubject, replyMessage, childName, totalMinutes, dailyLimit, viewingSummary, recommendations } = sampleData;
@@ -301,6 +305,33 @@ export const EmailPreviewTool = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleSendTestEmail = async () => {
+    if (!user?.email) {
+      toast.error("No email address found for your account");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-test-email", {
+        body: {
+          templateType: selectedTemplate,
+          emailHtml: generateEmailHtml(selectedTemplate),
+          recipientEmail: user.email,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Test email sent to ${user.email}`);
+    } catch (error: any) {
+      console.error("Error sending test email:", error);
+      toast.error(error.message || "Failed to send test email");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -425,23 +456,42 @@ export const EmailPreviewTool = () => {
                   How this email will appear to recipients
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyHtml}
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy HTML
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyHtml}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy HTML
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSendTestEmail}
+                  disabled={sending}
+                >
+                  {sending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Test Email
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg overflow-hidden bg-[#0a0a0a]">
