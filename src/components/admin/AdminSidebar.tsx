@@ -2,6 +2,14 @@ import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, U
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 import { useIsSuperAdmin } from "@/hooks/useSuperAdmin";
+import { useKidsNearingLimit } from "@/hooks/useKidsNearingLimit";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface AdminSidebarProps {
   activeTab: string;
@@ -32,6 +40,7 @@ const menuItems = [
 
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   const { data: isSuperAdmin } = useIsSuperAdmin();
+  const { data: kidsNearingLimit } = useKidsNearingLimit();
 
   return (
     <aside className="fixed left-0 top-0 h-full w-16 md:w-64 bg-sidebar border-r border-sidebar-border z-50 flex flex-col">
@@ -68,20 +77,49 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         <ul className="space-y-1">
           {menuItems.map((item) => {
             const isActive = activeTab === item.id;
+            const showKidsBadge = item.id === "kids" && kidsNearingLimit && kidsNearingLimit.count > 0;
+            
             return (
               <li key={item.id}>
-                <button
-                  onClick={() => onTabChange(item.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
-                  )}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  <span className="hidden md:inline font-medium">{item.label}</span>
-                </button>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onTabChange(item.id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors relative",
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent"
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="hidden md:inline font-medium">{item.label}</span>
+                        
+                        {showKidsBadge && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 p-0 flex items-center justify-center text-xs md:relative md:right-auto md:top-auto md:translate-y-0"
+                          >
+                            {kidsNearingLimit.count}
+                          </Badge>
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    {showKidsBadge && (
+                      <TooltipContent side="right" className="max-w-[200px]">
+                        <p className="font-medium mb-1">{kidsNearingLimit.count} kid(s) nearing limit</p>
+                        <ul className="text-xs space-y-1">
+                          {kidsNearingLimit.profiles.slice(0, 3).map((p) => (
+                            <li key={p.id}>
+                              {p.name}: {p.percentage}% used
+                            </li>
+                          ))}
+                        </ul>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               </li>
             );
           })}

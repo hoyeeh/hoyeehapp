@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.notify-kids-content]
 verify_jwt = true
+
+[functions.kids-recommendations]
+verify_jwt = false

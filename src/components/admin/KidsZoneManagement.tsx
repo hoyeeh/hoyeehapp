@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, Trash2, Edit2, Save, X, Baby, Tag, Clock, Moon, 
   Users, BarChart3, Eye, Calendar, Star, Shield, Mail, Send, Loader2,
-  RotateCcw, TrendingUp
+  RotateCcw, TrendingUp, Download, FileText, Sparkles
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { exportToCSV, exportToPDF } from "@/utils/exportReport";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -804,7 +805,64 @@ export const KidsZoneManagement = () => {
             </CardContent>
           </Card>
           
-          <h3 className="text-lg font-semibold">Recent Viewing Activity</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Recent Viewing Activity</h3>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const exportData = kidsProfiles.map((profile: any) => {
+                    const profileStats = viewingStats.filter((s: any) => s.profile_id === profile.id);
+                    const totalMinutes = profileStats.reduce((sum: number, s: any) => sum + (s.duration_watched_minutes || 0), 0);
+                    const topContent = [...new Set(profileStats.map((s: any) => s.content?.title))].filter(Boolean).slice(0, 5);
+                    
+                    return {
+                      profileName: profile.name,
+                      parentName: profile.profiles?.display_name || "Unknown",
+                      totalMinutes,
+                      videosWatched: profileStats.length,
+                      topContent: topContent as string[],
+                      dailyLimit: profile.daily_time_limit_minutes,
+                      bedtime: profile.bedtime_time,
+                    };
+                  });
+                  exportToCSV(exportData, "kids_viewing_report");
+                  toast.success("CSV exported successfully!");
+                }}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const exportData = kidsProfiles.map((profile: any) => {
+                    const profileStats = viewingStats.filter((s: any) => s.profile_id === profile.id);
+                    const totalMinutes = profileStats.reduce((sum: number, s: any) => sum + (s.duration_watched_minutes || 0), 0);
+                    const topContent = [...new Set(profileStats.map((s: any) => s.content?.title))].filter(Boolean).slice(0, 5);
+                    
+                    return {
+                      profileName: profile.name,
+                      parentName: profile.profiles?.display_name || "Unknown",
+                      totalMinutes,
+                      videosWatched: profileStats.length,
+                      topContent: topContent as string[],
+                      dailyLimit: profile.daily_time_limit_minutes,
+                      bedtime: profile.bedtime_time,
+                    };
+                  });
+                  exportToPDF(exportData, "kids_viewing_report");
+                }}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                PDF
+              </Button>
+            </div>
+          </div>
           <div className="space-y-2">
             {viewingStats.slice(0, 20).map((stat: any, index: number) => (
               <Card key={index}>
