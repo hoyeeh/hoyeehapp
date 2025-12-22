@@ -47,8 +47,9 @@ export const AdminSupportChat = () => {
   const { data: users } = useQuery({
     queryKey: ["all-users-support"],
     queryFn: async () => {
+      // Use profiles_safe view which excludes sensitive fields
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_safe")
         .select("id, display_name");
       if (error) throw error;
       return data || [];

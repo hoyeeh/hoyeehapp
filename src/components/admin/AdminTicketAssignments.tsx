@@ -40,8 +40,9 @@ export const AdminTicketAssignments = () => {
 
       const adminIds = roles?.map(r => r.user_id) || [];
       
+      // Use profiles_safe view which excludes sensitive fields
       const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
+        .from("profiles_safe")
         .select("id, display_name")
         .in("id", adminIds);
       
