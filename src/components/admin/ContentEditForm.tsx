@@ -149,7 +149,11 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                   <Label>Content Type</Label>
                   <Select
                     value={formData.content_type}
-                    onValueChange={(value) => setFormData({ ...formData, content_type: value })}
+                    onValueChange={(value) => setFormData({ 
+                      ...formData, 
+                      content_type: value,
+                      is_premium: value === "series" ? true : formData.is_premium 
+                    })}
                   >
                     <SelectTrigger className="bg-secondary">
                       <SelectValue />
@@ -245,8 +249,12 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                 <Switch
                   checked={formData.is_premium}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_premium: checked })}
+                  disabled={formData.content_type === "series"}
                 />
                 <Label>Premium Content</Label>
+                {formData.content_type === "series" && (
+                  <span className="text-xs text-muted-foreground">(TV Shows are always premium)</span>
+                )}
               </div>
             </div>
 
