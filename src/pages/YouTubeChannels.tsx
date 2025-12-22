@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useYouTubeChannels, useYouTubePlaylists, useYouTubeVideos } from "@/hooks/useYouTubeChannels";
 import { YouTubeVideoPlayer } from "@/components/YouTubeVideoPlayer";
 import { Sidebar } from "@/components/Sidebar";
-import { ChevronLeft, ChevronRight, Play, Youtube, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Youtube, Clock, BookmarkPlus, BookmarkCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,6 +13,7 @@ import { MobileHeader, MobileBottomNav } from "@/components/mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useYouTubeWatchlist, useToggleWatchlist, useIsInWatchlist } from "@/hooks/useYouTubeWatchlist";
 
 // Hook to fetch admin fallback banners
 function useYouTubeBanners() {
@@ -122,6 +123,9 @@ export default function YouTubeChannels() {
 
       {/* Playlists / Recommended Sections */}
       <div className="px-4 md:px-8 pb-8 space-y-10">
+        {/* Watch Later Section */}
+        <WatchLaterSection onPlayVideo={(videoId, title) => setPlayingVideo({ videoId, title })} />
+        
         {filteredPlaylists && filteredPlaylists.length > 0 ? (
           filteredPlaylists.map(playlist => (
             <PlaylistRow
@@ -527,7 +531,7 @@ function PlaylistRow({ playlist, onPlayVideo }: PlaylistRowProps) {
   );
 }
 
-// Video Card Component with Overlay Text
+// Video Card Component with Overlay Text and Watch Later
 interface VideoCardProps {
   video: {
     id: string;
@@ -538,9 +542,25 @@ interface VideoCardProps {
     view_count: number | null;
   };
   onClick: () => void;
+  channelName?: string;
 }
 
-function VideoCard({ video, onClick }: VideoCardProps) {
+function VideoCard({ video, onClick, channelName }: VideoCardProps) {
+  const isInWatchlist = useIsInWatchlist(video.video_id);
+  const toggleWatchlist = useToggleWatchlist();
+
+  const handleWatchLater = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleWatchlist.mutate({
+      videoId: video.video_id,
+      videoTitle: video.title,
+      thumbnailUrl: video.thumbnail_url,
+      duration: video.duration,
+      channelName: channelName,
+      isInWatchlist,
+    });
+  };
+
   return (
     <div
       onClick={onClick}
@@ -575,6 +595,25 @@ function VideoCard({ video, onClick }: VideoCardProps) {
             {formatDuration(video.duration)}
           </div>
         )}
+
+        {/* Watch Later Button */}
+        <button
+          onClick={handleWatchLater}
+          className={cn(
+            "absolute top-3 left-3 p-2 rounded-full transition-all",
+            "opacity-0 group-hover:opacity-100",
+            isInWatchlist 
+              ? "bg-primary text-primary-foreground" 
+              : "bg-black/70 text-white hover:bg-black/90"
+          )}
+          title={isInWatchlist ? "Remove from Watch Later" : "Add to Watch Later"}
+        >
+          {isInWatchlist ? (
+            <BookmarkCheck className="h-4 w-4" />
+          ) : (
+            <BookmarkPlus className="h-4 w-4" />
+          )}
+        </button>
         
         {/* Video Info Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -611,6 +650,229 @@ function formatViewCount(count: number): string {
     return `${(count / 1000).toFixed(1)}K`;
   }
   return count.toString();
+}
+
+// Watch Later Button Component
+interface WatchLaterButtonProps {
+  videoId: string;
+  videoTitle: string;
+  thumbnailUrl?: string | null;
+  duration?: number | null;
+  channelName?: string | null;
+}
+
+function WatchLaterButton({ videoId, videoTitle, thumbnailUrl, duration, channelName }: WatchLaterButtonProps) {
+  const isInWatchlist = useIsInWatchlist(videoId);
+  const toggleWatchlist = useToggleWatchlist();
+
+  const handleClick = () => {
+    toggleWatchlist.mutate({
+      videoId,
+      videoTitle,
+      thumbnailUrl,
+      duration,
+      channelName,
+      isInWatchlist,
+    });
+  };
+
+  return (
+    <Button
+      variant={isInWatchlist ? "default" : "secondary"}
+      size="sm"
+      onClick={handleClick}
+      disabled={toggleWatchlist.isPending}
+      className="gap-2"
+    >
+      {isInWatchlist ? (
+        <>
+          <BookmarkCheck className="h-4 w-4" />
+          In Watch Later
+        </>
+      ) : (
+        <>
+          <BookmarkPlus className="h-4 w-4" />
+          Watch Later
+        </>
+      )}
+    </Button>
+  );
+}
+
+// Watch Later Section Component
+interface WatchLaterSectionProps {
+  onPlayVideo: (videoId: string, title: string) => void;
+}
+
+function WatchLaterSection({ onPlayVideo }: WatchLaterSectionProps) {
+  const { data: watchlist, isLoading } = useYouTubeWatchlist();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = scrollRef.current.clientWidth * 0.8;
+      scrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setShowLeftArrow(scrollLeft > 20);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 20);
+    }
+  };
+
+  // Don't show section if empty or loading
+  if (isLoading || !watchlist || watchlist.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="group/section relative">
+      {/* Section Header */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Clock className="h-5 w-5 text-primary" />
+          <h3 className="font-bold text-xl text-foreground">Watch Later</h3>
+          <span className="text-muted-foreground text-sm px-2 py-0.5 bg-secondary rounded-full">
+            {watchlist.length} videos
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => scroll("left")}
+            className={cn(
+              "w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-all",
+              !showLeftArrow && "opacity-50 cursor-not-allowed"
+            )}
+            disabled={!showLeftArrow}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => scroll("right")}
+            className={cn(
+              "w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-all",
+              !showRightArrow && "opacity-50 cursor-not-allowed"
+            )}
+            disabled={!showRightArrow}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Videos Scroll Container */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex gap-4 overflow-x-auto scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {watchlist.map(item => (
+          <WatchLaterCard
+            key={item.id}
+            item={item}
+            onClick={() => onPlayVideo(item.video_id, item.video_title)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Watch Later Card Component
+interface WatchLaterCardProps {
+  item: {
+    id: string;
+    video_id: string;
+    video_title: string;
+    thumbnail_url: string | null;
+    duration: number | null;
+    channel_name: string | null;
+  };
+  onClick: () => void;
+}
+
+function WatchLaterCard({ item, onClick }: WatchLaterCardProps) {
+  const toggleWatchlist = useToggleWatchlist();
+
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleWatchlist.mutate({
+      videoId: item.video_id,
+      videoTitle: item.video_title,
+      thumbnailUrl: item.thumbnail_url,
+      duration: item.duration,
+      channelName: item.channel_name,
+      isInWatchlist: true,
+    });
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className="flex-shrink-0 w-72 md:w-80 cursor-pointer group"
+    >
+      <div className="aspect-video rounded-2xl overflow-hidden relative bg-secondary">
+        {item.thumbnail_url ? (
+          <img
+            src={item.thumbnail_url}
+            alt={item.video_title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Youtube className="h-10 w-10 text-muted-foreground" />
+          </div>
+        )}
+        
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+        
+        {/* Play Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform">
+            <Play className="h-6 w-6 text-primary-foreground fill-current ml-0.5" />
+          </div>
+        </div>
+        
+        {/* Duration Badge */}
+        {item.duration && (
+          <div className="absolute top-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded-md font-medium backdrop-blur-sm">
+            {formatDuration(item.duration)}
+          </div>
+        )}
+
+        {/* Remove Button */}
+        <button
+          onClick={handleRemove}
+          className="absolute top-3 left-3 p-2 rounded-full bg-primary text-primary-foreground opacity-0 group-hover:opacity-100 transition-all"
+          title="Remove from Watch Later"
+        >
+          <BookmarkCheck className="h-4 w-4" />
+        </button>
+        
+        {/* Video Info Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <h4 className="text-white font-semibold line-clamp-2 text-sm md:text-base">
+            {item.video_title}
+          </h4>
+          {item.channel_name && (
+            <p className="text-white/60 text-xs mt-1">
+              {item.channel_name}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Video Player Page with description, channel info, and related videos
@@ -661,7 +923,16 @@ function VideoPlayerPage({ videoId, title, onClose, onPlayVideo, playlists, chan
             
             {/* Video Info */}
             <div className="space-y-4">
-              <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-foreground flex-1">{title}</h1>
+                <WatchLaterButton 
+                  videoId={videoId} 
+                  videoTitle={title}
+                  thumbnailUrl={currentVideo?.thumbnail_url}
+                  duration={currentVideo?.duration}
+                  channelName={currentChannel?.name}
+                />
+              </div>
               
               {/* Channel Info */}
               {currentChannel && (
