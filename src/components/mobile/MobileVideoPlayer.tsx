@@ -22,6 +22,7 @@ import { useCastHistory } from "@/hooks/useCastHistory";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
+import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface MobileVideoPlayerProps {
@@ -105,7 +106,7 @@ export function MobileVideoPlayer({
   const [selectedQuality, setSelectedQuality] = useState("auto");
   const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
   const [volumeLevel, setVolumeLevel] = useState(100);
-  const [settingsTab, setSettingsTab] = useState<"speed" | "quality" | "intro" | "recap">("speed");
+  const [settingsTab, setSettingsTab] = useState<"speed" | "quality" | "intro" | "recap" | "skip">("speed");
   
   // Intro skip setter states (for admins)
   const [localIntroStart, setLocalIntroStart] = useState<number>(introStartTime ?? 0);
@@ -190,6 +191,9 @@ export function MobileVideoPlayer({
   const pip = usePictureInPicture(videoRef);
   const castHistory = useCastHistory();
   const { data: isAdmin } = useIsAdmin();
+  const skipPrefs = useSkipPreferences();
+  const autoSkippedIntroRef = useRef(false);
+  const autoSkippedRecapRef = useRef(false);
 
   // Save intro times to database (for admins)
   const handleSaveIntroTimes = useCallback(async () => {
@@ -326,12 +330,59 @@ export function MobileVideoPlayer({
   }, [resetControlsTimeout]);
 
   // Skip intro visibility
+  // Handle intro skip (auto or manual)
   useEffect(() => {
     if (introStartTime && introEndTime) {
       const isInIntro = currentTime >= introStartTime && currentTime < introEndTime;
-      setShowSkipIntro(isInIntro);
+      
+      // Auto-skip if preference is enabled
+      if (skipPrefs.autoSkipIntro && isInIntro && !autoSkippedIntroRef.current) {
+        autoSkippedIntroRef.current = true;
+        const video = videoRef.current;
+        if (video) {
+          video.currentTime = introEndTime;
+          setCurrentTime(introEndTime);
+        }
+        setShowSkipIntro(false);
+        return;
+      }
+      
+      // Show skip button only if not auto-skipping
+      if (!skipPrefs.autoSkipIntro) {
+        setShowSkipIntro(isInIntro);
+      } else {
+        setShowSkipIntro(false);
+      }
+      
+      // Reset auto-skip flag when outside intro
+      if (!isInIntro) {
+        autoSkippedIntroRef.current = false;
+      }
     }
-  }, [currentTime, introStartTime, introEndTime]);
+  }, [currentTime, introStartTime, introEndTime, skipPrefs.autoSkipIntro]);
+  
+  // Handle recap skip (auto or manual)
+  useEffect(() => {
+    if (recapStartTime && recapEndTime) {
+      const isInRecap = currentTime >= recapStartTime && currentTime < recapEndTime;
+      
+      // Auto-skip if preference is enabled
+      if (skipPrefs.autoSkipRecap && isInRecap && !autoSkippedRecapRef.current) {
+        autoSkippedRecapRef.current = true;
+        const video = videoRef.current;
+        if (video) {
+          video.currentTime = recapEndTime;
+          setCurrentTime(recapEndTime);
+        }
+        return;
+      }
+      
+      // Reset auto-skip flag when outside recap
+      if (!isInRecap) {
+        autoSkippedRecapRef.current = false;
+      }
+    }
+  }, [currentTime, recapStartTime, recapEndTime, skipPrefs.autoSkipRecap]);
 
   // Next episode prompt
   useEffect(() => {
@@ -1660,6 +1711,17 @@ export function MobileVideoPlayer({
                 >
                   Quality
                 </button>
+                <button
+                  onClick={() => setSettingsTab("skip")}
+                  className={cn(
+                    "flex-1 py-2 px-4 rounded-lg font-medium transition-colors",
+                    settingsTab === "skip"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  )}
+                >
+                  Skip
+                </button>
                 {isAdmin && episodeId && (
                   <>
                     <button
@@ -1752,6 +1814,58 @@ export function MobileVideoPlayer({
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Skip Preferences Tab */}
+              {settingsTab === "skip" && (
+                <div>
+                  <h3 className="text-lg font-bold mb-4">Auto-Skip Preferences</h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Automatically skip intros and recaps when available.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => skipPrefs.toggleAutoSkipIntro()}
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-lg font-medium transition-colors",
+                        skipPrefs.autoSkipIntro
+                          ? "bg-primary text-white"
+                          : "bg-secondary text-foreground"
+                      )}
+                    >
+                      <span>Auto-skip intros</span>
+                      <div className={cn(
+                        "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                        skipPrefs.autoSkipIntro ? "bg-white border-white" : "border-muted-foreground"
+                      )}>
+                        {skipPrefs.autoSkipIntro && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => skipPrefs.toggleAutoSkipRecap()}
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-lg font-medium transition-colors",
+                        skipPrefs.autoSkipRecap
+                          ? "bg-primary text-white"
+                          : "bg-secondary text-foreground"
+                      )}
+                    >
+                      <span>Auto-skip recaps</span>
+                      <div className={cn(
+                        "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                        skipPrefs.autoSkipRecap ? "bg-white border-white" : "border-muted-foreground"
+                      )}>
+                        {skipPrefs.autoSkipRecap && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    </button>
+                  </div>
+                  
+                  <p className="text-muted-foreground text-xs mt-4">
+                    Your preferences are saved and will apply to all videos.
+                  </p>
                 </div>
               )}
 
