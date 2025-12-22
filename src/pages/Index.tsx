@@ -41,6 +41,7 @@ import { MobileErrorBoundary } from "@/components/mobile/MobileErrorBoundary";
 import { MobileLandingPage } from "@/components/mobile/MobileLandingPage";
 import { MiniPlayerProvider } from "@/contexts/MiniPlayerContext";
 import { MiniPlayer } from "@/components/MiniPlayer";
+import { HomeYouTubeRow } from "@/components/HomeYouTubeRow";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -562,27 +563,38 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
+                          cardStyle="poster"
+                        />
+                      ) : null;
+                    }
+
+                    // YouTube section - show YouTube channels row
+                    if (section.section_type === "youtube") {
+                      return (
+                        <HomeYouTubeRow
+                          key={section.id}
+                          title={section.title}
+                          maxItems={section.max_items || 15}
+                        />
+                      );
+                    }
+
+                    const sectionContent = getSectionContent(section);
+                    if (sectionContent.length === 0) return null;
+
+                    return (
+                      <ContentRow
+                        key={section.id}
+                        title={section.title}
+                        content={sectionContent}
+                        onPlay={handlePlay}
+                        onToggleList={handleToggleList}
+                        onDetails={handleDetails}
+                        userList={watchlistIds}
                         cardStyle="poster"
                       />
-                    ) : null;
-                  }
-
-                  const sectionContent = getSectionContent(section);
-                  if (sectionContent.length === 0) return null;
-
-                  return (
-                    <ContentRow
-                      key={section.id}
-                      title={section.title}
-                      content={sectionContent}
-                      onPlay={handlePlay}
-                      onToggleList={handleToggleList}
-                      onDetails={handleDetails}
-                      userList={watchlistIds}
-                      cardStyle="poster"
-                    />
-                  );
-                })}
+                    );
+                  })}
                 </div>
               </>
             )}
