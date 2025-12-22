@@ -44,6 +44,7 @@ import Copyright from "./pages/Copyright";
 import Install from "./pages/Install";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import Parental from "./pages/Parental";
+import ComingSoon from "./pages/ComingSoon";
 
 const queryClient = new QueryClient();
 
@@ -200,6 +201,7 @@ const App = () => (
                   <Route path="/notifications" element={<NotificationPreferences />} />
                   <Route path="/notification-preferences" element={<NotificationPreferences />} />
                   <Route path="/parental" element={<Parental />} />
+                  <Route path="/coming-soon" element={<ComingSoon />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <PersistentMobileVideoPlayer />
