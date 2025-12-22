@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const LOGO_URL = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
 const BASE_URL = "https://hoyeeh.com";
+const SUPABASE_FUNCTIONS_URL = Deno.env.get('SUPABASE_URL') + '/functions/v1';
 
 interface NotifyRequest {
   profileId: string;
@@ -169,7 +170,11 @@ serve(async (req) => {
     const { data: parentUser } = await supabase.auth.admin.getUserById(parentUserId);
     
     if (parentUser?.user?.email && type === 'time_limit') {
-      // Send detailed email with viewing summary
+      // Generate secure token for one-click actions
+      const timestamp = Date.now();
+      const actionToken = btoa(`${profileId}:${parentUserId}:${timestamp}`);
+      
+      // Send detailed email with viewing summary and action buttons
       await sendDetailedEmail({
         email: parentUser.user.email,
         parentName: parentUser.user.user_metadata?.display_name || 'Parent',
@@ -178,6 +183,7 @@ serve(async (req) => {
         dailyLimit: kidsProfile.daily_time_limit_minutes || 0,
         viewingSummary,
         recommendations,
+        actionToken,
       });
     }
 
@@ -250,10 +256,11 @@ interface DetailedEmailParams {
   dailyLimit: number;
   viewingSummary: ViewingData[];
   recommendations: string[];
+  actionToken: string;
 }
 
 async function sendDetailedEmail(params: DetailedEmailParams): Promise<void> {
-  const { email, parentName, childName, totalMinutes, dailyLimit, viewingSummary, recommendations } = params;
+  const { email, parentName, childName, totalMinutes, dailyLimit, viewingSummary, recommendations, actionToken } = params;
   
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -340,6 +347,18 @@ async function sendDetailedEmail(params: DetailedEmailParams): Promise<void> {
                 ${viewingList || '<tr><td colspan="2" style="padding: 12px; color: #888; text-align: center;">No viewing data available</td></tr>'}
               </tbody>
             </table>
+          </div>
+          
+          <!-- Quick Actions -->
+          <div style="background: linear-gradient(135deg, #1f2937 0%, #1a1a2e 100%); border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #374151;">
+            <h3 style="color: #ffffff; margin: 0 0 8px 0; font-size: 16px;">⚡ Quick Actions</h3>
+            <p style="color: #9ca3af; font-size: 14px; margin: 0 0 16px 0;">Need to extend ${childName}'s screen time? Click a button below:</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <a href="${SUPABASE_FUNCTIONS_URL}/adjust-kids-time-limit?token=${actionToken}&action=add15" style="background: #374151; color: #e0e0e0; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block;">➕ 15 min</a>
+              <a href="${SUPABASE_FUNCTIONS_URL}/adjust-kids-time-limit?token=${actionToken}&action=add30" style="background: #374151; color: #e0e0e0; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block;">➕ 30 min</a>
+              <a href="${SUPABASE_FUNCTIONS_URL}/adjust-kids-time-limit?token=${actionToken}&action=reset" style="background: #ff6300; color: #ffffff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; display: inline-block;">🔄 Reset Timer</a>
+            </div>
+            <p style="color: #6b7280; font-size: 12px; margin: 12px 0 0 0;">Links expire in 24 hours for security</p>
           </div>
           
           <!-- Recommendations -->

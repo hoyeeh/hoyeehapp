@@ -113,3 +113,6 @@ verify_jwt = true
 
 [functions.kids-recommendations]
 verify_jwt = false
+
+[functions.adjust-kids-time-limit]
+verify_jwt = false
