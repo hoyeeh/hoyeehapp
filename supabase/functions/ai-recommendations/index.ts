@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAI, parseJSONFromAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,11 +61,6 @@ serve(async (req) => {
     }
 
     const { watchHistory, preferences, isKids } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
     // Build the prompt based on user data
     const prompt = `Based on the user's watch history and preferences, suggest 5 movie or TV show recommendations.
@@ -85,60 +81,51 @@ Return a JSON array with exactly 5 recommendations. Each recommendation should h
 
 Only return the JSON array, no other text.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "You are a movie and TV show recommendation expert. Always respond with valid JSON arrays only." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.7,
-      }),
-    });
+    const messages = [
+      { role: "system" as const, content: "You are a movie and TV show recommendation expert. Always respond with valid JSON arrays only." },
+      { role: "user" as const, content: prompt },
+    ];
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later.", recommendations: [] }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required", recommendations: [] }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "[]";
-    
-    // Parse the JSON response
-    let recommendations = [];
     try {
-      // Extract JSON from potential markdown code blocks
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        recommendations = JSON.parse(jsonMatch[0]);
+      const { content, provider } = await callAI(messages);
+      console.log(`AI recommendations generated using: ${provider}`);
+      
+      // Parse the JSON response
+      let recommendations = [];
+      try {
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          recommendations = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.error("Failed to parse AI response:", e);
+        recommendations = [];
       }
-    } catch (e) {
-      console.error("Failed to parse AI response:", e);
-      recommendations = [];
-    }
 
-    return new Response(
-      JSON.stringify({ recommendations }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      return new Response(
+        JSON.stringify({ recommendations, provider }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (aiError) {
+      console.error("AI call failed:", aiError);
+      
+      // Check if it's a rate limit or payment error
+      if (aiError instanceof Error) {
+        if (aiError.message.includes("429")) {
+          return new Response(
+            JSON.stringify({ error: "Rate limits exceeded, please try again later.", recommendations: [] }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (aiError.message.includes("402")) {
+          return new Response(
+            JSON.stringify({ error: "Payment required", recommendations: [] }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+      throw aiError;
+    }
   } catch (error: unknown) {
     console.error("ai-recommendations error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
