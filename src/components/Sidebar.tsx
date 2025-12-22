@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell, MessageCircle, Youtube } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell, MessageCircle, Youtube, Clock } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ const navItems = [
   { icon: Film, label: "Movies", view: "movies" as ViewState },
   { icon: Tv, label: "TV Shows", view: "shows" as ViewState },
   { icon: Youtube, label: "YouTube", view: "youtube" as const },
+  { icon: Clock, label: "Watch Later", view: "watch-later" as const },
   { icon: List, label: "My List", view: "mylist" as ViewState },
 ];
 
@@ -63,6 +64,8 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
                       navigate("/genres");
                     } else if (item.view === "youtube") {
                       navigate("/youtube");
+                    } else if (item.view === "watch-later") {
+                      navigate("/watch-later");
                     } else {
                       onNavigate(item.view);
                     }
