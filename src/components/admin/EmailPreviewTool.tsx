@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { EmailDeliveryStats } from "./EmailDeliveryStats";
 
 const EMAIL_TEMPLATES = {
   welcome: {
@@ -334,15 +335,22 @@ export const EmailPreviewTool = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-          <Mail className="h-6 w-6 text-white" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold">Email Preview Tool</h2>
-          <p className="text-muted-foreground">Preview and test all email templates</p>
-        </div>
-      </div>
+      <Tabs defaultValue="preview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="preview">Template Preview</TabsTrigger>
+          <TabsTrigger value="stats">Delivery Stats</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="preview">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+              <Mail className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">Email Preview Tool</h2>
+              <p className="text-muted-foreground">Preview and test all email templates</p>
+            </div>
+          </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Template Selector */}
@@ -507,6 +515,12 @@ export const EmailPreviewTool = () => {
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="stats">
+          <EmailDeliveryStats />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

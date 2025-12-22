@@ -386,6 +386,66 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          bounce_reason: string | null
+          bounce_type: string | null
+          bounced_at: string | null
+          clicked_at: string | null
+          created_at: string
+          delivered_at: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          opened_at: string | null
+          recipient_email: string
+          sent_at: string
+          status: string
+          subject: string
+          template_type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          bounce_reason?: string | null
+          bounce_type?: string | null
+          bounced_at?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          opened_at?: string | null
+          recipient_email: string
+          sent_at?: string
+          status?: string
+          subject: string
+          template_type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          bounce_reason?: string | null
+          bounce_type?: string | null
+          bounced_at?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          opened_at?: string | null
+          recipient_email?: string
+          sent_at?: string
+          status?: string
+          subject?: string
+          template_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       episodes: {
         Row: {
           created_at: string
