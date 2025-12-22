@@ -18,6 +18,8 @@ interface MobileVideoPlayerState {
   hasNextEpisode?: boolean;
   nextEpisode?: Episode | null;
   allEpisodes?: Episode[];
+  isKidsMode?: boolean;
+  kidsProfileId?: string;
 }
 
 interface MobileVideoPlayerContextType {
@@ -37,6 +39,8 @@ interface MobileVideoPlayerContextType {
     hasNextEpisode?: boolean;
     nextEpisode?: Episode | null;
     allEpisodes?: Episode[];
+    isKidsMode?: boolean;
+    kidsProfileId?: string;
   }) => void;
   closePlayer: () => void;
   playNextEpisode: () => void;
@@ -48,6 +52,7 @@ const initialState: MobileVideoPlayerState = {
   content: null,
   videoUrl: "",
   title: "",
+  isKidsMode: false,
 };
 
 const MobileVideoPlayerContext = createContext<MobileVideoPlayerContextType | null>(null);
