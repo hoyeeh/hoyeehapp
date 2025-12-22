@@ -55,12 +55,61 @@ export const KidsZoneManagement = () => {
   const queryClient = useQueryClient();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isSendingReport, setIsSendingReport] = useState(false);
   const [newCategory, setNewCategory] = useState({
     name: "",
     emoji: "📚",
     color: "from-pink-500 to-rose-500",
+  });
+
+  // Fetch weekly report preview data
+  const { data: reportPreview, isLoading: isLoadingPreview } = useQuery({
+    queryKey: ["admin-weekly-report-preview"],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      // Get all kids profiles with their parent info
+      const { data: profiles } = await supabase
+        .from("user_profiles")
+        .select("id, name, user_id, daily_time_limit_minutes, bedtime_time, time_watched_today_minutes")
+        .eq("is_kids", true);
+
+      if (!profiles?.length) return { profiles: [], viewingData: [] };
+
+      // Get viewing history for the past week
+      const { data: viewingHistory } = await supabase
+        .from("kids_viewing_history")
+        .select(`
+          profile_id,
+          duration_watched_minutes,
+          completed,
+          watched_at,
+          content:content_id(title, thumbnail_url)
+        `)
+        .gte("watched_at", sevenDaysAgo.toISOString())
+        .order("watched_at", { ascending: false });
+
+      // Group by profile
+      const groupedData = profiles.map(profile => {
+        const history = viewingHistory?.filter(v => v.profile_id === profile.id) || [];
+        const totalMinutes = history.reduce((sum, v) => sum + (v.duration_watched_minutes || 0), 0);
+        const uniqueContent = [...new Set(history.map(v => (v.content as any)?.title))].filter(Boolean);
+        
+        return {
+          profile,
+          totalMinutes,
+          videosWatched: history.length,
+          uniqueContent: uniqueContent.slice(0, 5),
+          history: history.slice(0, 5),
+        };
+      });
+
+      return { profiles: groupedData, viewingData: viewingHistory || [] };
+    },
+    enabled: showPreviewDialog,
   });
 
   // Send weekly viewing report
@@ -73,6 +122,7 @@ export const KidsZoneManagement = () => {
       
       if (error) throw error;
       toast.success(`Weekly report sent to ${data?.emailsSent || 0} parents!`);
+      setShowPreviewDialog(false);
     } catch (error: any) {
       console.error('Error sending weekly report:', error);
       toast.error('Failed to send weekly report');
@@ -280,19 +330,28 @@ export const KidsZoneManagement = () => {
                 <p className="text-sm text-muted-foreground">Send a summary of kids' viewing activity to all parents</p>
               </div>
             </div>
-            <Button 
-              onClick={handleSendWeeklyReport} 
-              disabled={isSendingReport}
-              variant="outline"
-              className="gap-2"
-            >
-              {isSendingReport ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              {isSendingReport ? 'Sending...' : 'Send Now'}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowPreviewDialog(true)} 
+                variant="outline"
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                Preview
+              </Button>
+              <Button 
+                onClick={handleSendWeeklyReport} 
+                disabled={isSendingReport}
+                className="gap-2"
+              >
+                {isSendingReport ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {isSendingReport ? 'Sending...' : 'Send Now'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -689,6 +748,105 @@ export const KidsZoneManagement = () => {
               );
             })}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Weekly Report Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-purple-500" />
+              Weekly Viewing Report Preview
+            </DialogTitle>
+          </DialogHeader>
+          
+          {isLoadingPreview ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : reportPreview?.profiles?.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Baby className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No kids profiles with viewing activity this week.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This is a preview of the weekly report that will be sent to parents. The report covers the last 7 days of viewing activity.
+              </p>
+              
+              {reportPreview?.profiles?.map((item: any) => (
+                <Card key={item.profile.id} className="border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-xl flex-shrink-0">
+                        👶
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-lg">{item.profile.name}</h4>
+                        
+                        <div className="grid grid-cols-3 gap-4 mt-3">
+                          <div className="bg-muted/50 rounded-lg p-3 text-center">
+                            <p className="text-2xl font-bold text-primary">{item.totalMinutes}</p>
+                            <p className="text-xs text-muted-foreground">Minutes Watched</p>
+                          </div>
+                          <div className="bg-muted/50 rounded-lg p-3 text-center">
+                            <p className="text-2xl font-bold text-green-500">{item.videosWatched}</p>
+                            <p className="text-xs text-muted-foreground">Videos Watched</p>
+                          </div>
+                          <div className="bg-muted/50 rounded-lg p-3 text-center">
+                            <p className="text-2xl font-bold text-blue-500">{item.uniqueContent.length}</p>
+                            <p className="text-xs text-muted-foreground">Unique Titles</p>
+                          </div>
+                        </div>
+                        
+                        {item.uniqueContent.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Top Content:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {item.uniqueContent.map((title: string, i: number) => (
+                                <span key={i} className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                                  {title}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Limit: {item.profile.daily_time_limit_minutes ? `${item.profile.daily_time_limit_minutes}m/day` : 'Unlimited'}
+                          </span>
+                          {item.profile.bedtime_time && (
+                            <span className="flex items-center gap-1">
+                              <Moon className="h-3 w-3" />
+                              Bedtime: {item.profile.bedtime_time}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSendWeeklyReport} disabled={isSendingReport} className="gap-2">
+                  {isSendingReport ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {isSendingReport ? 'Sending...' : 'Send Report to Parents'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

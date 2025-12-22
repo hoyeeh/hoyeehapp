@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Bell, BellRing, Film, Calendar, CreditCard, Mail, Megaphone, Loader2 } from "lucide-react";
+import { ArrowLeft, Bell, BellRing, Film, Calendar, CreditCard, Mail, Megaphone, Loader2, Baby, Clock, Moon } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const NotificationPreferences = () => {
@@ -198,6 +198,78 @@ const NotificationPreferences = () => {
                 <Switch
                   checked={preferences?.promotional ?? false}
                   onCheckedChange={(checked) => handleToggle("promotional", checked)}
+                  disabled={updatePreferences.isPending}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Kids Profile Alerts - Only show if user has kids profiles */}
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Baby className="h-5 w-5 text-pink-500" />
+                Kids Profile Alerts
+              </CardTitle>
+              <CardDescription>
+                Get notified about your kids' viewing activity and limits
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Time Limit Alerts */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                  <Clock className="h-5 w-5 text-amber-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Time Limit Alerts</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get notified when your child reaches their daily watch time limit
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={(preferences as any)?.kids_time_limit_alerts ?? true}
+                  onCheckedChange={(checked) => handleToggle("kids_time_limit_alerts", checked)}
+                  disabled={updatePreferences.isPending}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Bedtime Alerts */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                  <Moon className="h-5 w-5 text-indigo-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Bedtime Alerts</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get notified when it's past your child's bedtime and playback is paused
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={(preferences as any)?.kids_bedtime_alerts ?? true}
+                  onCheckedChange={(checked) => handleToggle("kids_bedtime_alerts", checked)}
+                  disabled={updatePreferences.isPending}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Weekly Report */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-purple-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Weekly Kids Report</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receive a weekly email summary of your kids' viewing activity
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={(preferences as any)?.kids_weekly_report ?? true}
+                  onCheckedChange={(checked) => handleToggle("kids_weekly_report", checked)}
                   disabled={updatePreferences.isPending}
                 />
               </div>
