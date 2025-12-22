@@ -62,6 +62,7 @@ const Admin = () => {
   // Content grid filters, sorting, and pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
+  const [premiumFilter, setPremiumFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,6 +87,12 @@ const Admin = () => {
       filtered = filtered.filter((item) => item.content_type === contentTypeFilter);
     }
     
+    if (premiumFilter !== "all") {
+      filtered = filtered.filter((item) => 
+        premiumFilter === "premium" ? item.is_premium : !item.is_premium
+      );
+    }
+    
     // Sort content
     filtered = [...filtered].sort((a, b) => {
       let comparison = 0;
@@ -106,7 +113,7 @@ const Admin = () => {
     });
     
     return filtered;
-  }, [content, searchQuery, contentTypeFilter, sortBy, sortOrder]);
+  }, [content, searchQuery, contentTypeFilter, premiumFilter, sortBy, sortOrder]);
   
   const totalPages = Math.ceil(filteredContent.length / itemsPerPage);
   const paginatedContent = useMemo(() => {
@@ -118,7 +125,7 @@ const Admin = () => {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedItems(new Set());
-  }, [searchQuery, contentTypeFilter, sortBy, sortOrder]);
+  }, [searchQuery, contentTypeFilter, premiumFilter, sortBy, sortOrder]);
 
   // Toggle item selection
   const toggleItemSelection = (id: string) => {
@@ -233,6 +240,16 @@ const Admin = () => {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="movie">Movies</SelectItem>
                   <SelectItem value="series">TV Series</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={premiumFilter} onValueChange={setPremiumFilter}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Access" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Access</SelectItem>
+                  <SelectItem value="premium">Premium Only</SelectItem>
+                  <SelectItem value="free">Free Only</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
