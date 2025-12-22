@@ -386,6 +386,137 @@ export type Database = {
           },
         ]
       }
+      drip_sequence_steps: {
+        Row: {
+          created_at: string
+          delay_days: number
+          delay_hours: number
+          html_content: string | null
+          id: string
+          sequence_id: string
+          step_order: number
+          subject: string
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delay_days?: number
+          delay_hours?: number
+          html_content?: string | null
+          id?: string
+          sequence_id: string
+          step_order: number
+          subject: string
+          template_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delay_days?: number
+          delay_hours?: number
+          html_content?: string | null
+          id?: string
+          sequence_id?: string
+          step_order?: number
+          subject?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drip_sequence_steps_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "drip_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drip_sequences: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          trigger_event: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          trigger_event?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          trigger_event?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_campaigns: {
+        Row: {
+          campaign_type: string
+          created_at: string
+          created_by: string | null
+          filters: Json | null
+          html_content: string | null
+          id: string
+          name: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          target_audience: string
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_type?: string
+          created_at?: string
+          created_by?: string | null
+          filters?: Json | null
+          html_content?: string | null
+          id?: string
+          name: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          target_audience?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_type?: string
+          created_at?: string
+          created_by?: string | null
+          filters?: Json | null
+          html_content?: string | null
+          id?: string
+          name?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          target_audience?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           bounce_reason: string | null
@@ -1065,6 +1196,51 @@ export type Database = {
           },
         ]
       }
+      scheduled_emails: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          html_content: string
+          id: string
+          recipient_email: string
+          scheduled_for: string
+          sent_at: string | null
+          source_id: string | null
+          source_type: string
+          status: string
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          html_content: string
+          id?: string
+          recipient_email: string
+          scheduled_for: string
+          sent_at?: string | null
+          source_id?: string | null
+          source_type: string
+          status?: string
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          html_content?: string
+          id?: string
+          recipient_email?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       seasons: {
         Row: {
           content_id: string
@@ -1417,6 +1593,47 @@ export type Database = {
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_drip_enrollments: {
+        Row: {
+          completed_at: string | null
+          current_step: number
+          enrolled_at: string
+          id: string
+          next_email_at: string | null
+          sequence_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          current_step?: number
+          enrolled_at?: string
+          id?: string
+          next_email_at?: string | null
+          sequence_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          current_step?: number
+          enrolled_at?: string
+          id?: string
+          next_email_at?: string | null
+          sequence_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_drip_enrollments_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "drip_sequences"
             referencedColumns: ["id"]
           },
         ]
