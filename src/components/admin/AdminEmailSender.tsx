@@ -26,10 +26,10 @@ export const AdminEmailSender = () => {
     queryFn: async () => {
       const { data, error } = await supabase.auth.admin.listUsers();
       if (error) {
-        // Fallback to profiles if admin API not available
+        // Fallback to profiles_safe if admin API not available (uses view that excludes sensitive data)
         const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, display_name, mobile_number");
+          .from("profiles_safe")
+          .select("id, display_name");
         return profiles?.map(p => ({ 
           id: p.id, 
           email: null,

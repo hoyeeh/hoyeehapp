@@ -26,8 +26,9 @@ export const AdminSubscriptionCredits = () => {
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ["all-users-credits"],
     queryFn: async () => {
+      // Use profiles_safe view which excludes sensitive fields
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_safe")
         .select("id, display_name, is_subscribed, subscription_expiry")
         .order("display_name");
       if (error) throw error;
