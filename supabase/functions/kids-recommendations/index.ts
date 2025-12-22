@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,43 +125,28 @@ serve(async (req) => {
     let aiRecommendation = null;
     
     if (viewingHistory && viewingHistory.length > 0) {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      
-      if (LOVABLE_API_KEY) {
-        const watchedTitles = viewingHistory
-          .slice(0, 10)
-          .map((v: any) => v.content?.title)
-          .filter(Boolean);
+      const watchedTitles = viewingHistory
+        .slice(0, 10)
+        .map((v: any) => v.content?.title)
+        .filter(Boolean);
 
-        const prompt = `Based on a child named ${profile.name} who has recently watched: ${watchedTitles.join(", ")}. 
+      const prompt = `Based on a child named ${profile.name} who has recently watched: ${watchedTitles.join(", ")}. 
 Their favorite genres appear to be: ${topGenres.join(", ") || "various"}.
 
 Provide a brief, friendly recommendation message (2-3 sentences) suggesting what types of content they might enjoy next. Keep it fun and appropriate for children. Don't mention specific titles, just describe the type of content.`;
 
-        try {
-          const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash",
-              messages: [
-                { role: "system", content: "You are a friendly kids content recommendation assistant. Keep responses fun, positive, and age-appropriate." },
-                { role: "user", content: prompt },
-              ],
-            }),
-          });
+      try {
+        const messages = [
+          { role: "system" as const, content: "You are a friendly kids content recommendation assistant. Keep responses fun, positive, and age-appropriate." },
+          { role: "user" as const, content: prompt },
+        ];
 
-          if (aiResponse.ok) {
-            const aiData = await aiResponse.json();
-            aiRecommendation = aiData.choices?.[0]?.message?.content;
-          }
-        } catch (aiError) {
-          console.error("AI recommendation error:", aiError);
-          // Continue without AI recommendation
-        }
+        const { content, provider } = await callAI(messages);
+        console.log(`Kids recommendation generated using: ${provider}`);
+        aiRecommendation = content;
+      } catch (aiError) {
+        console.error("AI recommendation error:", aiError);
+        // Continue without AI recommendation
       }
     }
 

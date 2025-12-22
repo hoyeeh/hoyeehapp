@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,8 +55,6 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch user's watch history
@@ -185,33 +184,22 @@ serve(async (req) => {
 
     // If we have recommendations, use AI to generate a personalized message
     let aiMessage = "";
-    if (lovableApiKey && preferredGenres.length > 0) {
+    if (preferredGenres.length > 0) {
       try {
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
+        const messages = [
+          {
+            role: "system" as const,
+            content: "You are a friendly movie recommendation assistant. Generate a very brief (1-2 sentences) personalized message about why these recommendations were selected. Be warm and concise."
           },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
-            messages: [
-              {
-                role: "system",
-                content: "You are a friendly movie recommendation assistant. Generate a very brief (1-2 sentences) personalized message about why these recommendations were selected. Be warm and concise."
-              },
-              {
-                role: "user",
-                content: `User's favorite genres are: ${preferredGenres.join(", ")}. They've watched ${watchHistory?.length || 0} titles. Generate a brief personalized recommendation intro.`
-              }
-            ],
-          }),
-        });
+          {
+            role: "user" as const,
+            content: `User's favorite genres are: ${preferredGenres.join(", ")}. They've watched ${watchHistory?.length || 0} titles. Generate a brief personalized recommendation intro.`
+          }
+        ];
 
-        if (aiResponse.ok) {
-          const aiData = await aiResponse.json();
-          aiMessage = aiData.choices?.[0]?.message?.content || "";
-        }
+        const { content, provider } = await callAI(messages);
+        console.log(`Personalized message generated using: ${provider}`);
+        aiMessage = content;
       } catch (aiError) {
         console.error("AI message generation failed:", aiError);
       }
