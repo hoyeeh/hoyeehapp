@@ -71,6 +71,19 @@ export const useKidsTimeLimit = () => {
         } else if (remaining <= 0) {
           setIsTimeLimitReached(true);
           toast.info("Watch time is over for today! See you tomorrow! 🌟");
+          
+          // Notify parent via push notification
+          try {
+            await supabase.functions.invoke('notify-kids-limit', {
+              body: {
+                profileId: currentProfile.id,
+                type: 'time_limit',
+                profileName: currentProfile.name,
+              }
+            });
+          } catch (err) {
+            console.error('Failed to notify parent:', err);
+          }
         }
       }
     }

@@ -104,3 +104,9 @@ verify_jwt = false
 
 [functions.generate-signed-url]
 verify_jwt = true
+
+[functions.notify-kids-limit]
+verify_jwt = false
+
+[functions.notify-kids-content]
+verify_jwt = true
