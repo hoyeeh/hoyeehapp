@@ -5,6 +5,7 @@ import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   SkipBack, SkipForward, X, Loader2
 } from "lucide-react";
+import { useYouTubeVideoProgress } from "@/hooks/useYouTubeVideoProgress";
 
 interface YouTubeVideoPlayerProps {
   videoId: string;
@@ -31,6 +32,8 @@ export const YouTubeVideoPlayer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const saveProgressInterval = useRef<NodeJS.Timeout | null>(null);
+  const hasResumed = useRef(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -41,7 +44,11 @@ export const YouTubeVideoPlayer = ({
   const [showControls, setShowControls] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [savedProgress, setSavedProgress] = useState(0);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const { saveProgress, getProgress } = useYouTubeVideoProgress();
 
   // Load YouTube IFrame API
   useEffect(() => {
@@ -84,9 +91,17 @@ export const YouTubeVideoPlayer = ({
         onReady: (event: any) => {
           setIsReady(true);
           setIsLoading(false);
-          setDuration(event.target.getDuration());
+          const videoDuration = event.target.getDuration();
+          setDuration(videoDuration);
           setVolume(event.target.getVolume());
-          if (autoplay) {
+          
+          // Check for saved progress
+          const saved = getProgress(videoId);
+          if (saved > 10 && saved < videoDuration - 30) {
+            setSavedProgress(saved);
+            setShowResumePrompt(true);
+            event.target.pauseVideo();
+          } else if (autoplay) {
             event.target.playVideo();
           }
         },
@@ -99,6 +114,10 @@ export const YouTubeVideoPlayer = ({
               break;
             case window.YT.PlayerState.PAUSED:
               setIsPlaying(false);
+              // Save progress on pause
+              if (playerRef.current?.getCurrentTime && duration > 0) {
+                saveProgress(videoId, playerRef.current.getCurrentTime(), duration);
+              }
               break;
             case window.YT.PlayerState.ENDED:
               setIsPlaying(false);
@@ -111,7 +130,7 @@ export const YouTubeVideoPlayer = ({
         },
       },
     });
-  }, [videoId, autoplay, onEnded]);
+  }, [videoId, autoplay, onEnded, getProgress, saveProgress]);
 
   const startProgressTracking = () => {
     if (progressInterval.current) {
@@ -119,9 +138,30 @@ export const YouTubeVideoPlayer = ({
     }
     progressInterval.current = setInterval(() => {
       if (playerRef.current?.getCurrentTime) {
-        setCurrentTime(playerRef.current.getCurrentTime());
+        const time = playerRef.current.getCurrentTime();
+        setCurrentTime(time);
+        // Save progress every 10 seconds
+        if (duration > 0 && Math.floor(time) % 10 === 0) {
+          saveProgress(videoId, time, duration);
+        }
       }
     }, 500);
+  };
+
+  const handleResume = () => {
+    setShowResumePrompt(false);
+    if (playerRef.current) {
+      playerRef.current.seekTo(savedProgress, true);
+      playerRef.current.playVideo();
+    }
+  };
+
+  const handleStartOver = () => {
+    setShowResumePrompt(false);
+    if (playerRef.current) {
+      playerRef.current.seekTo(0, true);
+      playerRef.current.playVideo();
+    }
   };
 
   const togglePlay = () => {
@@ -211,7 +251,7 @@ export const YouTubeVideoPlayer = ({
     };
   }, []);
 
-  // Cleanup on unmount
+  // Cleanup and save progress on unmount
   useEffect(() => {
     return () => {
       if (progressInterval.current) {
@@ -220,16 +260,21 @@ export const YouTubeVideoPlayer = ({
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
       }
+      // Save progress on close
+      if (playerRef.current?.getCurrentTime && duration > 0) {
+        saveProgress(videoId, playerRef.current.getCurrentTime(), duration);
+      }
       if (playerRef.current?.destroy) {
         playerRef.current.destroy();
       }
     };
-  }, []);
+  }, [videoId, duration, saveProgress]);
 
   // Re-initialize when videoId changes
   useEffect(() => {
     if (playerRef.current?.loadVideoById && isReady) {
       setIsLoading(true);
+      hasResumed.current = false;
       playerRef.current.loadVideoById(videoId);
     }
   }, [videoId, isReady]);
@@ -250,6 +295,26 @@ export const YouTubeVideoPlayer = ({
       {isLoading && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
           <Loader2 className="h-12 w-12 text-white animate-spin" />
+        </div>
+      )}
+
+      {/* Resume Prompt */}
+      {showResumePrompt && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/80">
+          <div className="bg-card p-6 rounded-xl text-center max-w-sm mx-4">
+            <h3 className="text-lg font-semibold mb-2">Resume watching?</h3>
+            <p className="text-muted-foreground mb-4">
+              You left off at {formatTime(savedProgress)}
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={handleStartOver}>
+                Start Over
+              </Button>
+              <Button onClick={handleResume}>
+                Resume
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -287,7 +352,7 @@ export const YouTubeVideoPlayer = ({
         </div>
 
         {/* Center Play Button */}
-        {!isPlaying && !isLoading && (
+        {!isPlaying && !isLoading && !showResumePrompt && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
             <Button
               size="lg"
@@ -299,9 +364,8 @@ export const YouTubeVideoPlayer = ({
           </div>
         )}
 
-        {/* Bottom Controls - Centered */}
+        {/* Bottom Controls */}
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-auto">
-          {/* Progress Bar */}
           <div className="mb-4 px-2">
             <Slider
               value={[currentTime]}
@@ -312,83 +376,34 @@ export const YouTubeVideoPlayer = ({
             />
           </div>
 
-          {/* Control Buttons - Centered */}
           <div className="flex items-center justify-center gap-1">
-            {/* Time Display */}
             <span className="text-white/80 text-sm min-w-[80px] text-center">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
-            {/* Main Controls Group - Centered */}
             <div className="flex items-center gap-1 mx-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => skip(-10)}
-                className="text-white hover:bg-white/20 h-10 w-10"
-              >
+              <Button variant="ghost" size="icon" onClick={() => skip(-10)} className="text-white hover:bg-white/20 h-10 w-10">
                 <SkipBack className="h-5 w-5" />
               </Button>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={togglePlay}
-                className="text-white hover:bg-white/20 h-12 w-12"
-              >
-                {isPlaying ? (
-                  <Pause className="h-7 w-7" />
-                ) : (
-                  <Play className="h-7 w-7 fill-current" />
-                )}
+              <Button variant="ghost" size="icon" onClick={togglePlay} className="text-white hover:bg-white/20 h-12 w-12">
+                {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 fill-current" />}
               </Button>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => skip(10)}
-                className="text-white hover:bg-white/20 h-10 w-10"
-              >
+              <Button variant="ghost" size="icon" onClick={() => skip(10)} className="text-white hover:bg-white/20 h-10 w-10">
                 <SkipForward className="h-5 w-5" />
               </Button>
             </div>
 
-            {/* Volume Controls */}
             <div className="flex items-center gap-1 group">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMute}
-                className="text-white hover:bg-white/20 h-10 w-10"
-              >
-                {isMuted || volume === 0 ? (
-                  <VolumeX className="h-5 w-5" />
-                ) : (
-                  <Volume2 className="h-5 w-5" />
-                )}
+              <Button variant="ghost" size="icon" onClick={toggleMute} className="text-white hover:bg-white/20 h-10 w-10">
+                {isMuted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
               </Button>
               <div className="w-0 group-hover:w-20 overflow-hidden transition-all duration-200">
-                <Slider
-                  value={[isMuted ? 0 : volume]}
-                  max={100}
-                  step={1}
-                  onValueChange={handleVolumeChange}
-                />
+                <Slider value={[isMuted ? 0 : volume]} max={100} step={1} onValueChange={handleVolumeChange} />
               </div>
             </div>
 
-            {/* Fullscreen */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleFullscreen}
-              className="text-white hover:bg-white/20 h-10 w-10 ml-2"
-            >
-              {isFullscreen ? (
-                <Minimize className="h-5 w-5" />
-              ) : (
-                <Maximize className="h-5 w-5" />
-              )}
+            <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20 h-10 w-10 ml-2">
+              {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
             </Button>
           </div>
         </div>
