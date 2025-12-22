@@ -51,6 +51,8 @@ const handler = async (req: Request): Promise<Response> => {
     const actionInfo = actionMessages[actionType];
     const displayName = userName || "User";
 
+    const logoUrl = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -58,41 +60,44 @@ const handler = async (req: Request): Promise<Response> => {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
       </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background-color: #ffffff; border-radius: 8px; padding: 32px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #0a0a0a;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <img src="${logoUrl}" alt="Hoyeeh" style="height: 50px;">
+          </div>
+          <div style="background-color: #141414; border-radius: 12px; padding: 32px;">
             <div style="text-align: center; margin-bottom: 24px;">
-              <div style="display: inline-block; background-color: #fef2f2; border-radius: 50%; padding: 12px;">
-                <span style="font-size: 24px;">🔒</span>
+              <div style="display: inline-block; background-color: #3d0a0a; border-radius: 50%; padding: 16px;">
+                <span style="font-size: 32px;">🔒</span>
               </div>
             </div>
             
-            <h1 style="color: #dc2626; font-size: 24px; text-align: center; margin: 0 0 16px 0;">
+            <h1 style="color: #dc2626; font-size: 24px; text-align: center; margin: 0 0 24px 0;">
               ${actionInfo.heading}
             </h1>
             
-            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
+            <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
               Hello ${displayName},
             </p>
             
-            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
+            <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
               ${actionInfo.message}
             </p>
             
-            <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin: 24px 0; border-radius: 4px;">
-              <p style="color: #991b1b; font-size: 14px; margin: 0; font-weight: 600;">
+            <div style="background-color: #3d0a0a; border-left: 4px solid #dc2626; padding: 16px; margin: 24px 0; border-radius: 4px;">
+              <p style="color: #fca5a5; font-size: 14px; margin: 0; font-weight: 600;">
                 ⚠️ ${actionInfo.warning}
               </p>
             </div>
             
-            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 24px 0 0 0;">
+            <p style="color: #888; font-size: 14px; line-height: 1.6; margin: 24px 0 0 0;">
               This is an automated security notification. Please do not reply to this email.
             </p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-            
-            <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
-              This email was sent at ${new Date().toUTCString()}
+          </div>
+          
+          <div style="text-align: center; padding: 20px; margin-top: 20px;">
+            <p style="color: #666; font-size: 12px; margin: 0;">
+              © ${new Date().getFullYear()} Hoyeeh. All rights reserved.
             </p>
           </div>
         </div>
