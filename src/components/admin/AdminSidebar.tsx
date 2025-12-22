@@ -1,4 +1,4 @@
-import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone, Mail } from "lucide-react";
+import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone, Mail, HeartPulse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 import { useIsSuperAdmin } from "@/hooks/useSuperAdmin";
@@ -19,6 +19,7 @@ interface AdminSidebarProps {
 const menuItems = [
   { id: "overview", label: "Overview", icon: Home },
   { id: "content", label: "Content", icon: Film },
+  { id: "contenthealth", label: "Content Health", icon: HeartPulse },
   { id: "tvshows", label: "TV Shows", icon: Tv },
   { id: "upload", label: "Upload", icon: Upload },
   { id: "transcoding", label: "Transcoding", icon: Clapperboard },
