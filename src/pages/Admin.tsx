@@ -42,6 +42,7 @@ import { WalkthroughManagement } from "@/components/admin/WalkthroughManagement"
 import { VideoUrlMigrationTool } from "@/components/admin/VideoUrlMigrationTool";
 import { BulkVideoUrlManager } from "@/components/admin/BulkVideoUrlManager";
 import { EmailPreviewTool } from "@/components/admin/EmailPreviewTool";
+import { EmailCampaigns } from "@/components/admin/EmailCampaigns";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -549,6 +550,8 @@ const Admin = () => {
       case "email-templates":
         return (
           <div className="space-y-6">
+            <h2 className="text-2xl font-display">Email Marketing</h2>
+            <EmailCampaigns />
             <EmailPreviewTool />
           </div>
         );
