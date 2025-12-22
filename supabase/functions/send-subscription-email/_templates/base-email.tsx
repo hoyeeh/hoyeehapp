@@ -47,10 +47,12 @@ export const BaseEmail = ({ previewText, children }: BaseEmailProps) => (
           <Text style={footerText}>
             © {new Date().getFullYear()} Hoyeeh. All rights reserved.
           </Text>
-          <Text style={footerLinks}>
+        <Text style={footerLinks}>
             <Link href="https://hoyeeh.com" style={footerLink}>Visit Hoyeeh</Link>
             {' • '}
             <Link href="https://hoyeeh.com/subscription" style={footerLink}>Manage Subscription</Link>
+            {' • '}
+            <Link href="https://hoyeeh.com/notifications" style={footerLink}>Email Preferences</Link>
           </Text>
         </Section>
       </Container>
