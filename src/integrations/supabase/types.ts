@@ -2017,6 +2017,39 @@ export type Database = {
           },
         ]
       }
+      youtube_watchlist: {
+        Row: {
+          added_at: string
+          channel_name: string | null
+          duration: number | null
+          id: string
+          thumbnail_url: string | null
+          user_id: string
+          video_id: string
+          video_title: string
+        }
+        Insert: {
+          added_at?: string
+          channel_name?: string | null
+          duration?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          user_id: string
+          video_id: string
+          video_title: string
+        }
+        Update: {
+          added_at?: string
+          channel_name?: string | null
+          duration?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          user_id?: string
+          video_id?: string
+          video_title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       profiles_safe: {
