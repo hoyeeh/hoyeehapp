@@ -6,6 +6,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useUpdateContent } from "@/hooks/useAdmin";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +82,8 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
   const [castMembers, setCastMembers] = useState<CastMember[]>(parseCast(content.cast_members));
   const [newCastName, setNewCastName] = useState("");
   const [newCastCharacter, setNewCastCharacter] = useState("");
+  const [showTypeChangeDialog, setShowTypeChangeDialog] = useState(false);
+  const [pendingContentType, setPendingContentType] = useState<string | null>(null);
 
   // Fetch genres from database
   const { data: genres = [] } = useQuery({
@@ -82,6 +94,32 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
       return data;
     },
   });
+
+  const handleContentTypeChange = (value: string) => {
+    // If changing from series to movie, show confirmation dialog
+    if (formData.content_type === "series" && value === "movie") {
+      setPendingContentType(value);
+      setShowTypeChangeDialog(true);
+    } else {
+      // Auto-enable premium for series
+      setFormData({ 
+        ...formData, 
+        content_type: value,
+        is_premium: value === "series" ? true : formData.is_premium 
+      });
+    }
+  };
+
+  const confirmTypeChange = () => {
+    if (pendingContentType) {
+      setFormData({ 
+        ...formData, 
+        content_type: pendingContentType 
+      });
+    }
+    setShowTypeChangeDialog(false);
+    setPendingContentType(null);
+  };
 
   const handleAddCastMember = () => {
     if (!newCastName.trim()) {
@@ -149,11 +187,7 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                   <Label>Content Type</Label>
                   <Select
                     value={formData.content_type}
-                    onValueChange={(value) => setFormData({ 
-                      ...formData, 
-                      content_type: value,
-                      is_premium: value === "series" ? true : formData.is_premium 
-                    })}
+                    onValueChange={handleContentTypeChange}
                   >
                     <SelectTrigger className="bg-secondary">
                       <SelectValue />
@@ -352,6 +386,25 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
           </div>
         </form>
       </CardContent>
+
+      {/* Confirmation Dialog for Series → Movie change */}
+      <AlertDialog open={showTypeChangeDialog} onOpenChange={setShowTypeChangeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change to Movie?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Changing from TV Series to Movie will remove the premium content lock. 
+              Movies can be set as free content, unlike TV Shows which are always premium.
+              <br /><br />
+              Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingContentType(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmTypeChange}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

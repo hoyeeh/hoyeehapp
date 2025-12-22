@@ -256,8 +256,8 @@ const Admin = () => {
               </Button>
             </div>
 
-            {/* Bulk Actions */}
-            <div className="flex items-center justify-between">
+            {/* Bulk Actions & Content Stats */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -280,9 +280,24 @@ const Admin = () => {
                   </Button>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
-                Showing {paginatedContent.length} of {filteredContent.length} items
-              </p>
+              <div className="flex items-center gap-4">
+                {/* Premium/Free Stats */}
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Premium:</span>
+                    <span className="font-medium">{content.filter(c => c.is_premium).length}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                    <span className="text-muted-foreground">Free:</span>
+                    <span className="font-medium">{content.filter(c => !c.is_premium).length}</span>
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Showing {paginatedContent.length} of {filteredContent.length} items
+                </p>
+              </div>
             </div>
 
             {showUploadForm && (
