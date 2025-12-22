@@ -31,8 +31,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check, ListPlus, RefreshCw, Clock, History, Users, Bell } from "lucide-react";
+import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check, ListPlus, RefreshCw, Clock, History, Users, Bell, BarChart3 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { ComingSoonAnalytics } from "./ComingSoonAnalytics";
 
 interface TMDBResult {
   tmdb_id: number;
@@ -53,7 +54,7 @@ export const ComingSoonManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("import");
-  const [viewTab, setViewTab] = useState<"upcoming" | "history">("upcoming");
+  const [viewTab, setViewTab] = useState<"upcoming" | "history" | "analytics">("upcoming");
   
   // TMDB Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -751,6 +752,10 @@ export const ComingSoonManagement = () => {
             <History className="h-4 w-4" />
             Sync History ({syncHistory.length})
           </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="upcoming" className="mt-4">
@@ -903,6 +908,10 @@ export const ComingSoonManagement = () => {
               </TableBody>
             </Table>
           )}
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-4">
+          <ComingSoonAnalytics />
         </TabsContent>
       </Tabs>
     </div>
