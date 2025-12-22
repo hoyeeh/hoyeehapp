@@ -58,26 +58,26 @@ const emailWrapper = (content: string, previewText: string) => `
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <!-- Logo -->
     <div style="text-align: center; margin-bottom: 32px;">
-      <img src="https://hoyeeh.sgp1.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png" width="150" height="auto" alt="Hoyeeh" style="margin: 0 auto;">
+      <img src="https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png" width="150" height="auto" alt="Hoyeeh" style="margin: 0 auto;">
     </div>
     
     <!-- Content -->
     <div style="background-color: #141414; border-radius: 12px; padding: 32px;">
-      ${content}
+      \${content}
     </div>
     
     <!-- Footer -->
     <hr style="border-color: #333; margin: 32px 0;">
     <div style="text-align: center;">
       <p style="color: #666; font-size: 12px; margin: 0 0 8px 0;">
-        © ${new Date().getFullYear()} Hoyeeh. All rights reserved.
+        © \${new Date().getFullYear()} Hoyeeh. All rights reserved.
       </p>
       <p style="color: #666; font-size: 12px; margin: 0;">
-        <a href="https://hoyeeh.lovable.app" style="color: #ff6300; text-decoration: none;">Visit Hoyeeh</a>
+        <a href="https://hoyeeh.com" style="color: #ff6300; text-decoration: none;">Visit Hoyeeh</a>
         &bull;
-        <a href="https://hoyeeh.lovable.app/subscription" style="color: #ff6300; text-decoration: none;">Manage Subscription</a>
+        <a href="https://hoyeeh.com/subscription" style="color: #ff6300; text-decoration: none;">Manage Subscription</a>
         &bull;
-        <a href="https://hoyeeh.lovable.app/notifications" style="color: #ff6300; text-decoration: none;">Email Preferences</a>
+        <a href="https://hoyeeh.com/notifications" style="color: #ff6300; text-decoration: none;">Email Preferences</a>
       </p>
     </div>
   </div>
@@ -126,7 +126,7 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
           <p style="color: #e0e0e0; font-size: 14px; margin: 8px 0;"><strong>Valid Until:</strong> ${expiryDate}</p>
         </div>
         <p style="${styles.text}">Enjoy unlimited access to African movies, TV shows, and exclusive content!</p>
-        <a href="https://hoyeeh.lovable.app" style="${styles.button}">Start Watching Now</a>
+        <a href="https://hoyeeh.com" style="${styles.button}">Start Watching Now</a>
         <p style="${styles.muted}">If you have any questions, contact us at support@hoyeeh.com</p>
       `, "Payment Confirmed");
       break;
@@ -143,7 +143,7 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
           <p style="color: #e0e0e0; font-size: 14px; margin: 8px 0;"><strong>Renewal Date:</strong> ${expiryDate}</p>
         </div>
         <p style="${styles.text}">No action is required. Your subscription will continue seamlessly.</p>
-        <a href="https://hoyeeh.lovable.app/subscription" style="${styles.button}">Manage Subscription</a>
+        <a href="https://hoyeeh.com/subscription" style="${styles.button}">Manage Subscription</a>
         <p style="${styles.muted}">Questions? Contact us at support@hoyeeh.com</p>
       `, "Renewal Reminder");
       break;
@@ -165,7 +165,7 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
           <li>Watch on any device</li>
           <li>Download for offline viewing</li>
         </ul>
-        <a href="https://hoyeeh.lovable.app/subscription" style="${styles.button}">Renew Now</a>
+        <a href="https://hoyeeh.com/subscription" style="${styles.button}">Renew Now</a>
         <p style="${styles.muted}">Need help? Contact support@hoyeeh.com</p>
       `, "Subscription Expiring");
       break;
@@ -181,7 +181,7 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
         </div>
         <p style="${styles.text}">You can continue enjoying premium content until ${expiryDate}. After that, your account will revert to free access.</p>
         <p style="${styles.text}">We'd love to have you back! You can resubscribe anytime to regain full access to our library.</p>
-        <a href="https://hoyeeh.lovable.app/subscription" style="${styles.button}">Resubscribe</a>
+        <a href="https://hoyeeh.com/subscription" style="${styles.button}">Resubscribe</a>
         <p style="${styles.muted}">Feedback? Let us know at info@hoyeeh.com</p>
       `, "Subscription Cancelled");
       break;
@@ -199,7 +199,7 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
           <li>Set up a Kids profile for age-appropriate content</li>
           <li>Subscribe to Premium for unlimited access</li>
         </ul>
-        <a href="https://hoyeeh.lovable.app" style="${styles.button}">Start Exploring</a>
+        <a href="https://hoyeeh.com" style="${styles.button}">Start Exploring</a>
         <p style="${styles.muted}">Questions? We're here to help at support@hoyeeh.com</p>
       `, "Welcome to Hoyeeh");
       break;
@@ -227,7 +227,7 @@ function getEmailContent(type: EmailRequest["type"], data: EmailRequest["data"])
           <p style="color: #e0e0e0; font-size: 14px; margin: 0; white-space: pre-wrap;">${replyMessage}</p>
         </div>
         <p style="${styles.text}">You can reply to this message in the app.</p>
-        <a href="https://hoyeeh.lovable.app" style="${styles.button}">View Conversation</a>
+        <a href="https://hoyeeh.com" style="${styles.button}">View Conversation</a>
         <p style="${styles.muted}">Thank you for contacting Hoyeeh Support!</p>
       `, "Support Reply");
       break;
