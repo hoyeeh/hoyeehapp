@@ -44,6 +44,7 @@ import { BulkVideoUrlManager } from "@/components/admin/BulkVideoUrlManager";
 import { EmailPreviewTool } from "@/components/admin/EmailPreviewTool";
 import { EmailCampaigns } from "@/components/admin/EmailCampaigns";
 import { EmailDeliveryStats } from "@/components/admin/EmailDeliveryStats";
+import { ContentHealthDashboard } from "@/components/admin/ContentHealthDashboard";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -506,6 +507,9 @@ const Admin = () => {
             )}
           </div>
         );
+      
+      case "contenthealth":
+        return <ContentHealthDashboard />;
       
       case "tvshows":
         return <TVShowsList content={content} onDelete={handleDeleteContent} />;
