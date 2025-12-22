@@ -1833,6 +1833,151 @@ export type Database = {
           },
         ]
       }
+      youtube_channels: {
+        Row: {
+          channel_id: string
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          subscriber_count: string | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          video_count: number | null
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subscriber_count?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_count?: number | null
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subscriber_count?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_count?: number | null
+        }
+        Relationships: []
+      }
+      youtube_playlists: {
+        Row: {
+          channel_id: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          playlist_id: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          video_count: number | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          playlist_id: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          video_count?: number | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          playlist_id?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          video_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_playlists_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      youtube_videos: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          duration: number | null
+          id: string
+          playlist_id: string | null
+          position: number | null
+          published_at: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          video_id: string
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          playlist_id?: string | null
+          position?: number | null
+          published_at?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          video_id: string
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          playlist_id?: string | null
+          position?: number | null
+          published_at?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          video_id?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_videos_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       profiles_safe: {

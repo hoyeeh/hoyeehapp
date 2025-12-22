@@ -45,6 +45,7 @@ import { EmailPreviewTool } from "@/components/admin/EmailPreviewTool";
 import { EmailCampaigns } from "@/components/admin/EmailCampaigns";
 import { EmailDeliveryStats } from "@/components/admin/EmailDeliveryStats";
 import { ContentHealthDashboard } from "@/components/admin/ContentHealthDashboard";
+import { YouTubeChannelManagement } from "@/components/admin/YouTubeChannelManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -522,6 +523,9 @@ const Admin = () => {
             <ContentUploadForm onClose={() => setActiveTab("content")} />
           </div>
         );
+      
+      case "youtube":
+        return <YouTubeChannelManagement />;
       
       case "users":
         return (
