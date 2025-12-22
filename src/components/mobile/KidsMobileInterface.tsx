@@ -7,6 +7,8 @@ import { KidsMobileSearch } from "./KidsMobileSearch";
 import { KidsMobileMyList } from "./KidsMobileMyList";
 import { Content } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
+import { toast } from "sonner";
 
 interface KidsMobileInterfaceProps {
   children?: ReactNode;
@@ -40,9 +42,23 @@ const tabOrder = ["home", "search", "favorites"] as const;
 export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const mobilePlayer = useMobileVideoPlayer();
 
   const handlePlay = (content: Content) => {
-    navigate(`/content/${content.id}?autoplay=true`);
+    // For movies with video URL, use mobile player directly
+    if (content.contentType === "movie" && content.videoUrl) {
+      mobilePlayer.openPlayer({
+        content,
+        videoUrl: content.videoUrl,
+        title: content.title,
+        thumbnail: content.thumbnailUrl,
+      });
+    } else if (content.contentType === "series") {
+      // For series, navigate to details to select episode
+      navigate(`/content/${content.id}?autoplay=true`);
+    } else {
+      toast.error("No video available");
+    }
   };
 
   const handleDetails = (content: Content) => {
