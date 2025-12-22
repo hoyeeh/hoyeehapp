@@ -28,6 +28,7 @@ import {
   Sofa,
   UtensilsCrossed,
   Folder,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -55,6 +56,7 @@ import { CastPanel } from "@/components/cast/CastPanel";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { supabase } from "@/integrations/supabase/client";
+import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
 
 interface NextEpisodeInfo {
@@ -150,6 +152,10 @@ export const VideoPlayer = ({
   const [isSavingIntro, setIsSavingIntro] = useState(false);
   const [isSavingRecap, setIsSavingRecap] = useState(false);
 
+  // Skip preferences hook
+  const skipPrefs = useSkipPreferences();
+  const autoSkippedIntroRef = useRef(false);
+  const autoSkippedRecapRef = useRef(false);
   const { saveProgressImmediately } = useWatchProgress({
     contentId,
     onProgressLoaded: useCallback((progress: number) => {
@@ -337,18 +343,42 @@ export const VideoPlayer = ({
       const time = video.currentTime;
       setCurrentTime(time);
 
-      // Show skip intro button during intro segment
-      if (time >= introStartTime && time < introEndTime) {
+      // Auto-skip intro if preference is enabled
+      if (skipPrefs.autoSkipIntro && time >= introStartTime && time < introEndTime && !autoSkippedIntroRef.current) {
+        autoSkippedIntroRef.current = true;
+        video.currentTime = introEndTime;
+        setShowSkipIntro(false);
+        return;
+      }
+      
+      // Auto-skip recap if preference is enabled
+      if (skipPrefs.autoSkipRecap && recapStartTime && recapEndTime && time >= recapStartTime && time < recapEndTime && !autoSkippedRecapRef.current) {
+        autoSkippedRecapRef.current = true;
+        video.currentTime = recapEndTime;
+        setShowSkipRecap(false);
+        return;
+      }
+
+      // Show skip intro button during intro segment (only if not auto-skipping)
+      if (!skipPrefs.autoSkipIntro && time >= introStartTime && time < introEndTime) {
         setShowSkipIntro(true);
       } else {
         setShowSkipIntro(false);
       }
 
-      // Show skip recap button during recap segment
-      if (recapStartTime && recapEndTime && time >= recapStartTime && time < recapEndTime) {
+      // Show skip recap button during recap segment (only if not auto-skipping)
+      if (!skipPrefs.autoSkipRecap && recapStartTime && recapEndTime && time >= recapStartTime && time < recapEndTime) {
         setShowSkipRecap(true);
       } else {
         setShowSkipRecap(false);
+      }
+      
+      // Reset auto-skip flags when outside segments
+      if (time < introStartTime || time >= introEndTime) {
+        autoSkippedIntroRef.current = false;
+      }
+      if (!recapStartTime || !recapEndTime || time < recapStartTime || time >= recapEndTime) {
+        autoSkippedRecapRef.current = false;
       }
 
       // Show next episode prompt near the end (last 30 seconds)
@@ -1184,7 +1214,7 @@ export const VideoPlayer = ({
                 </DropdownMenu>
               )}
 
-              {/* Playback Speed */}
+              {/* Playback Speed & Skip Preferences */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="hidden sm:flex items-center gap-1 hover:text-brand transition-colors text-sm">
@@ -1192,7 +1222,8 @@ export const VideoPlayer = ({
                     {playbackRate}x
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card">
+                <DropdownMenuContent align="end" className="bg-card min-w-[200px]">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Playback Speed</DropdownMenuLabel>
                   {PLAYBACK_RATES.map((rate) => (
                     <DropdownMenuItem
                       key={rate}
@@ -1205,8 +1236,40 @@ export const VideoPlayer = ({
                       {rate}x
                     </DropdownMenuItem>
                   ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Auto-Skip Preferences</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      skipPrefs.toggleAutoSkipIntro();
+                    }}
+                    className="cursor-pointer flex items-center justify-between"
+                  >
+                    <span>Auto-skip intros</span>
+                    <div className={cn(
+                      "w-4 h-4 rounded border-2 flex items-center justify-center transition-colors",
+                      skipPrefs.autoSkipIntro ? "bg-brand border-brand" : "border-muted-foreground"
+                    )}>
+                      {skipPrefs.autoSkipIntro && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      skipPrefs.toggleAutoSkipRecap();
+                    }}
+                    className="cursor-pointer flex items-center justify-between"
+                  >
+                    <span>Auto-skip recaps</span>
+                    <div className={cn(
+                      "w-4 h-4 rounded border-2 flex items-center justify-center transition-colors",
+                      skipPrefs.autoSkipRecap ? "bg-brand border-brand" : "border-muted-foreground"
+                    )}>
+                      {skipPrefs.autoSkipRecap && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
-                </DropdownMenu>
+              </DropdownMenu>
 
               {/* Admin Settings Button - only show for admins when episode is selected */}
               {isAdmin && episodeId && (
