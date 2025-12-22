@@ -37,6 +37,10 @@ export const YouTubeVideoPlayer = ({
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   const hasResumed = useRef(false);
   const isInitializing = useRef(false);
+
+  // Keep latest values for cleanup without re-running the cleanup effect
+  const latestVideoIdRef = useRef(videoId);
+  const latestDurationRef = useRef(0);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -53,6 +57,14 @@ export const YouTubeVideoPlayer = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { saveProgress, getProgress } = useYouTubeVideoProgress();
+
+  useEffect(() => {
+    latestVideoIdRef.current = videoId;
+  }, [videoId]);
+
+  useEffect(() => {
+    latestDurationRef.current = duration;
+  }, [duration]);
 
   // Check if YouTube API is loaded
   useEffect(() => {
@@ -296,8 +308,11 @@ export const YouTubeVideoPlayer = ({
       }
       if (playerRef.current) {
         try {
-          if (playerRef.current.getCurrentTime && duration > 0) {
-            saveProgress(videoId, playerRef.current.getCurrentTime(), duration);
+          const latestVideoId = latestVideoIdRef.current;
+          const latestDuration = latestDurationRef.current;
+
+          if (playerRef.current.getCurrentTime && latestDuration > 0) {
+            saveProgress(latestVideoId, playerRef.current.getCurrentTime(), latestDuration);
           }
           playerRef.current.destroy();
         } catch (e) {
@@ -305,8 +320,9 @@ export const YouTubeVideoPlayer = ({
         }
         playerRef.current = null;
       }
+      isInitializing.current = false;
     };
-  }, [videoId, duration, saveProgress]);
+  }, [saveProgress]);
 
   // Handle video ID changes for existing player
   useEffect(() => {
