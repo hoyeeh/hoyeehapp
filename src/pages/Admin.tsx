@@ -34,7 +34,7 @@ import { BulkCastImport } from "@/components/admin/BulkCastImport";
 import { UploadQueuePanel } from "@/components/admin/UploadQueuePanel";
 import { CDNMigrationTool } from "@/components/admin/CDNMigrationTool";
 import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
-import { KidsCategoryManagement } from "@/components/admin/KidsCategoryManagement";
+import { KidsZoneManagement } from "@/components/admin/KidsZoneManagement";
 import { AdminSubscriptionCredits } from "@/components/admin/AdminSubscriptionCredits";
 import { AdminSupportChat } from "@/components/admin/AdminSupportChat";
 import { AdminTicketAssignments } from "@/components/admin/AdminTicketAssignments";
@@ -543,12 +543,7 @@ const Admin = () => {
         );
       
       case "kids":
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-display">Kids Zone Management</h2>
-            <KidsCategoryManagement />
-          </div>
-        );
+        return <KidsZoneManagement />;
       
       case "analytics":
         navigate("/analytics");
