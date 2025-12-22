@@ -700,6 +700,9 @@ export type Database = {
           coming_soon_alerts: boolean
           created_at: string
           id: string
+          kids_bedtime_alerts: boolean
+          kids_time_limit_alerts: boolean
+          kids_weekly_report: boolean
           new_releases: boolean
           promotional: boolean
           subscription_reminders: boolean
@@ -711,6 +714,9 @@ export type Database = {
           coming_soon_alerts?: boolean
           created_at?: string
           id?: string
+          kids_bedtime_alerts?: boolean
+          kids_time_limit_alerts?: boolean
+          kids_weekly_report?: boolean
           new_releases?: boolean
           promotional?: boolean
           subscription_reminders?: boolean
@@ -722,6 +728,9 @@ export type Database = {
           coming_soon_alerts?: boolean
           created_at?: string
           id?: string
+          kids_bedtime_alerts?: boolean
+          kids_time_limit_alerts?: boolean
+          kids_weekly_report?: boolean
           new_releases?: boolean
           promotional?: boolean
           subscription_reminders?: boolean

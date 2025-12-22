@@ -46,6 +46,25 @@ serve(async (req) => {
     const parentUserId = kidsProfile.user_id;
     const childName = kidsProfile.name || profileName;
 
+    // Check parent's notification preferences
+    const { data: prefs } = await supabase
+      .from('notification_preferences')
+      .select('kids_time_limit_alerts, kids_bedtime_alerts')
+      .eq('user_id', parentUserId)
+      .single();
+
+    // Check if parent has opted out of this notification type
+    const prefField = type === 'time_limit' ? 'kids_time_limit_alerts' : 'kids_bedtime_alerts';
+    const hasOptedIn = prefs ? (prefs as any)[prefField] !== false : true;
+
+    if (!hasOptedIn) {
+      console.log(`Parent ${parentUserId} has opted out of ${type} notifications`);
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, reason: 'opted_out' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create notification title and body based on type
     let title: string;
     let body: string;
