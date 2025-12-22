@@ -31,7 +31,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check, ListPlus } from "lucide-react";
+import { Plus, Edit2, Trash2, Calendar, Loader2, Send, Search, Film, Tv, Check, ListPlus, RefreshCw, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 interface TMDBResult {
@@ -64,6 +64,14 @@ export const ComingSoonManagement = () => {
   // Bulk import state
   const [selectedForBulk, setSelectedForBulk] = useState<Set<number>>(new Set());
   const [isBulkImporting, setIsBulkImporting] = useState(false);
+  
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncResult, setLastSyncResult] = useState<{
+    processed: number;
+    notified: number;
+    timestamp: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -286,6 +294,34 @@ export const ComingSoonManagement = () => {
     },
   });
 
+  // Manual sync function
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-coming-soon-releases");
+      
+      if (error) throw error;
+      
+      if (data.processed > 0) {
+        queryClient.invalidateQueries({ queryKey: ["admin-coming-soon"] });
+        toast.success(`Synced ${data.processed} items, notified ${data.notified} users`);
+      } else {
+        toast.info("No new releases to sync");
+      }
+      
+      setLastSyncResult({
+        processed: data.processed,
+        notified: data.notified,
+        timestamp: data.timestamp,
+      });
+    } catch (error: any) {
+      console.error("Sync error:", error);
+      toast.error("Sync failed: " + error.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -351,13 +387,43 @@ export const ComingSoonManagement = () => {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Coming Soon
+        <div className="flex items-center gap-3">
+          {/* Sync Status & Button */}
+          <div className="flex items-center gap-2">
+            {lastSyncResult && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Last sync: {format(new Date(lastSyncResult.timestamp), "h:mm a")}
+                {lastSyncResult.processed > 0 && (
+                  <span className="text-green-500 ml-1">
+                    ({lastSyncResult.processed} synced)
+                  </span>
+                )}
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="gap-2"
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Sync Now
             </Button>
-          </DialogTrigger>
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => resetForm()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Coming Soon
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -656,6 +722,7 @@ export const ComingSoonManagement = () => {
             </Tabs>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {isLoading ? (
