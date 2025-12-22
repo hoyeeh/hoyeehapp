@@ -50,14 +50,14 @@ function parseDuration(duration: string): number {
 
 // Extract channel ID from various URL formats
 function extractChannelId(input: string): string {
-  // Already a channel ID
+  // Already a channel ID (24 chars starting with UC)
   if (input.startsWith('UC') && input.length === 24) {
     return input;
   }
   
-  // URL formats
+  // URL formats - UC followed by exactly 22 more characters = 24 total
   const patterns = [
-    /youtube\.com\/channel\/([UC][a-zA-Z0-9_-]{22})/,
+    /youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/,
     /youtube\.com\/@([a-zA-Z0-9_-]+)/,
     /youtube\.com\/c\/([a-zA-Z0-9_-]+)/,
     /youtube\.com\/user\/([a-zA-Z0-9_-]+)/,
