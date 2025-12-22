@@ -111,6 +111,7 @@ serve(async (req) => {
     // Step 4: Process each match
     let totalNotified = 0;
     let totalPushSent = 0;
+    let totalEmailsSent = 0;
     const processedItems: string[] = [];
 
     for (const match of matches) {
@@ -257,14 +258,16 @@ serve(async (req) => {
                     }),
                   });
 
-                  if (!emailResponse.ok) {
+                  if (emailResponse.ok) {
+                    totalEmailsSent++;
+                  } else {
                     console.error(`[sync-coming-soon] Failed to send email to ${user.email}`);
                   }
                 } catch (emailError) {
                   console.error(`[sync-coming-soon] Email error for ${user.email}:`, emailError);
                 }
               }
-              console.log(`[sync-coming-soon] Sent ${usersWithEmails.length} email notifications`);
+              console.log(`[sync-coming-soon] Sent ${totalEmailsSent} email notifications for "${comingSoon.title}"`);
             } catch (emailBatchError) {
               console.error("[sync-coming-soon] Error sending emails:", emailBatchError);
             }
@@ -311,7 +314,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[sync-coming-soon] Sync complete. Processed ${processedItems.length} items, notified ${totalNotified} users, sent ${totalPushSent} push notifications`);
+    console.log(`[sync-coming-soon] Sync complete. Processed ${processedItems.length} items, notified ${totalNotified} users, sent ${totalPushSent} push, ${totalEmailsSent} emails`);
 
     return new Response(
       JSON.stringify({
@@ -319,6 +322,7 @@ serve(async (req) => {
         processed: processedItems.length,
         notified: totalNotified,
         pushSent: totalPushSent,
+        emailsSent: totalEmailsSent,
         items: processedItems,
         timestamp: new Date().toISOString(),
       }),
