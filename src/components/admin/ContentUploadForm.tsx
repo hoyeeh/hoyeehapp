@@ -137,7 +137,8 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     setFetchingDetails(true);
     setTmdbDetails(null);
     
-    // Immediately set basic data
+    // Immediately set basic data - series are always premium
+    const isSeries = searchType === "series";
     setFormData(prev => ({
       ...prev,
       title: result.title,
@@ -147,6 +148,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       content_type: searchType,
       thumbnail_url: result.thumbnail_url || "",
       tmdb_id: result.tmdb_id,
+      is_premium: isSeries ? true : prev.is_premium,
     }));
 
     // Fetch details to get duration, genres, cast, director, and content_rating
@@ -448,7 +450,11 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                   <Switch
                     checked={formData.is_premium}
                     onCheckedChange={(v) => setFormData({ ...formData, is_premium: v })}
+                    disabled={formData.content_type === "series"}
                   />
+                  {formData.content_type === "series" && (
+                    <span className="text-xs text-muted-foreground">(TV Shows are always premium)</span>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -497,7 +503,10 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                 </div>
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <Select value={formData.content_type} onValueChange={(v) => setFormData({ ...formData, content_type: v })}>
+                  <Select 
+                    value={formData.content_type} 
+                    onValueChange={(v) => setFormData({ ...formData, content_type: v, is_premium: v === "series" ? true : formData.is_premium })}
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="movie">Movie</SelectItem>
@@ -540,7 +549,14 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
               <div className="flex items-center gap-4">
                 <Label>Premium Content</Label>
-                <Switch checked={formData.is_premium} onCheckedChange={(v) => setFormData({ ...formData, is_premium: v })} />
+                <Switch 
+                  checked={formData.is_premium} 
+                  onCheckedChange={(v) => setFormData({ ...formData, is_premium: v })}
+                  disabled={formData.content_type === "series"}
+                />
+                {formData.content_type === "series" && (
+                  <span className="text-xs text-muted-foreground">(TV Shows are always premium)</span>
+                )}
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
