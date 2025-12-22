@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { 
   Youtube, Plus, Trash2, RefreshCw, ExternalLink, 
-  Play, List, Eye, Clock, ChevronRight, Search, Image as ImageIcon
+  Play, List, Eye, Clock, ChevronRight, Search, Image as ImageIcon,
+  Smartphone, Monitor, Baby
 } from "lucide-react";
 import { YouTubeBannerManagement } from "./YouTubeBannerManagement";
 
@@ -27,6 +28,9 @@ interface YouTubeChannel {
   video_count: number;
   is_active: boolean;
   display_order: number;
+  is_kids_friendly: boolean;
+  show_on_mobile: boolean;
+  show_on_desktop: boolean;
 }
 
 interface YouTubePlaylist {
@@ -559,7 +563,7 @@ export const YouTubeChannelManagement = () => {
   );
 };
 
-// Channel Card Component with Cover URL editing
+// Channel Card Component with Cover URL editing and visibility toggles
 interface ChannelCardProps {
   channel: YouTubeChannel;
   isSelected: boolean;
@@ -607,6 +611,21 @@ function ChannelCard({
     }
   };
 
+  const updateVisibility = async (field: 'show_on_mobile' | 'show_on_desktop' | 'is_kids_friendly', value: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('youtube_channels')
+        .update({ [field]: value })
+        .eq('id', channel.id);
+      
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['youtube-channels'] });
+      toast.success("Visibility updated");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update visibility");
+    }
+  };
+
   return (
     <div
       className={`p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -634,6 +653,57 @@ function ChannelCard({
           </p>
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      </div>
+      
+      {/* Visibility Toggles */}
+      <div className="mt-3 pt-2 border-t border-border">
+        <p className="text-xs text-muted-foreground mb-2 font-medium">Visibility</p>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              updateVisibility('show_on_mobile', !channel.show_on_mobile);
+            }}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${
+              channel.show_on_mobile 
+                ? 'bg-primary/10 border-primary text-primary' 
+                : 'bg-muted/30 border-border text-muted-foreground'
+            }`}
+          >
+            <Smartphone className="h-4 w-4" />
+            <span className="text-[10px] font-medium">Mobile</span>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              updateVisibility('show_on_desktop', !channel.show_on_desktop);
+            }}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${
+              channel.show_on_desktop 
+                ? 'bg-primary/10 border-primary text-primary' 
+                : 'bg-muted/30 border-border text-muted-foreground'
+            }`}
+          >
+            <Monitor className="h-4 w-4" />
+            <span className="text-[10px] font-medium">Desktop</span>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              updateVisibility('is_kids_friendly', !channel.is_kids_friendly);
+            }}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${
+              channel.is_kids_friendly 
+                ? 'bg-green-500/10 border-green-500 text-green-500' 
+                : 'bg-muted/30 border-border text-muted-foreground'
+            }`}
+          >
+            <Baby className="h-4 w-4" />
+            <span className="text-[10px] font-medium">Kids</span>
+          </button>
+        </div>
       </div>
       
       {/* Cover URL indicator */}
