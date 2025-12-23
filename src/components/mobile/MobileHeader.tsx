@@ -4,8 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { useCast } from "@/contexts/CastContext";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { MobileCastSheet } from "./MobileCastSheet";
+import { MobileNotificationSheet } from "./MobileNotificationSheet";
 
 interface MobileHeaderProps {
   onSearchClick?: () => void;
@@ -32,7 +34,9 @@ export function MobileHeader({
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
   const cast = useCast();
+  const { data: unreadCount } = useUnreadNotificationCount();
   const [showCastSheet, setShowCastSheet] = useState(false);
+  const [showNotificationSheet, setShowNotificationSheet] = useState(false);
 
   // Use profile avatar from profiles table, fallback to currentProfile
   const avatarUrl = profile?.avatar_url || currentProfile?.avatar_url;
@@ -83,12 +87,17 @@ export function MobileHeader({
               )}
             </button>
             <button 
-              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation"
+              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation relative"
               style={{ minWidth: 44, minHeight: 44 }}
               aria-label="Notifications"
-              onClick={() => navigate("/notification-preferences")}
+              onClick={() => setShowNotificationSheet(true)}
             >
               <Bell className="h-5 w-5" />
+              {unreadCount && unreadCount > 0 && (
+                <span className="absolute top-1 right-1 h-4 w-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
             <button 
               onClick={onSearchClick}
@@ -127,8 +136,12 @@ export function MobileHeader({
       <MobileCastSheet 
         open={showCastSheet} 
         onClose={() => setShowCastSheet(false)}
-        videoUrl=""
-        videoTitle=""
+      />
+
+      {/* Notification Sheet */}
+      <MobileNotificationSheet
+        open={showNotificationSheet}
+        onClose={() => setShowNotificationSheet(false)}
       />
     </>
   );
