@@ -343,11 +343,11 @@ const Index = () => {
         if (!genreName) return [];
         return content.filter((c) => c.genre.toLowerCase().includes(genreName.toLowerCase())).slice(0, section.max_items || 15);
       case "curated":
-        // Get curated content from section_content table
+        // Get curated content from section_content table, sorted by year (newest first)
         const curatedItems = sectionContentData
           .filter((sc: any) => sc.section_id === section.id && sc.content)
-          .sort((a: any, b: any) => a.display_order - b.display_order)
-          .map((sc: any) => transformRawContent(sc.content));
+          .map((sc: any) => transformRawContent(sc.content))
+          .sort((a: any, b: any) => (b.year || 0) - (a.year || 0));
         return curatedItems.slice(0, section.max_items || 15);
       case "by_year":
         // Extract year from section title (e.g., "Movies 2024", "2023 Films")
