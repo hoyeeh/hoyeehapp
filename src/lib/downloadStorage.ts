@@ -29,6 +29,7 @@ export interface DownloadMetadata {
   speed?: number; // bytes per second
   eta?: number; // estimated time remaining in seconds
   startedAt?: number; // timestamp when download started
+  contentRating?: string; // For filtering kids content
 }
 
 export interface DownloadLicense {

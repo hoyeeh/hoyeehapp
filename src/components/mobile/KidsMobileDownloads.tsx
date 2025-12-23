@@ -3,8 +3,7 @@ import { ArrowLeft, Download, HardDrive, Play, Trash2, CheckCircle, Clock } from
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { formatDistanceToNow } from "date-fns";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
@@ -16,17 +15,8 @@ interface KidsMobileDownloadsProps {
   onBack?: () => void;
 }
 
-interface DownloadItem {
-  id: string;
-  title: string;
-  thumbnailUrl: string;
-  size: string;
-  status: "completed" | "expired" | "downloading";
-  expiresAt?: string;
-  contentType: "movie" | "series";
-  episodeInfo?: string;
-  content?: Content;
-}
+// Kids-appropriate content ratings
+const KIDS_RATINGS = ["G", "PG", "TV-Y", "TV-Y7", "TV-G", "TV-PG"];
 
 export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps) {
   const { user } = useAuth();
@@ -34,73 +24,42 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const { lightTap, selectionTap, warningFeedback, successFeedback } = useHaptics();
+  
+  // Use unified download manager
+  const {
+    downloads: allDownloads,
+    isLoading,
+    deleteDownload,
+    getOfflineVideoUrl,
+    getLicenseExpiry,
+    formatBytes,
+    loadDownloads,
+  } = useDownloadManager();
 
-  // Fetch download licenses for kids content only (G, PG ratings)
-  const { data: downloads = [], isLoading, refetch } = useQuery({
-    queryKey: ["kids-downloads", user?.id, currentProfile?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from("download_licenses")
-        .select(`
-          id,
-          content_id,
-          quality,
-          total_size,
-          status,
-          expires_at,
-          downloaded_at,
-          content:content_id (
-            id, title, thumbnail_url, content_type, content_rating
-          ),
-          episode:episode_id (
-            id, title, episode_number, season:season_id (season_number)
-          )
-        `)
-        .eq("user_id", user.id)
-        .order("downloaded_at", { ascending: false });
-
-      if (error) throw error;
-      
-      // Filter to only kids-appropriate content (G, PG, TV-Y, TV-G, TV-PG)
-      const kidsRatings = ["G", "PG", "TV-Y", "TV-Y7", "TV-G", "TV-PG"];
-      
-      return (data || [])
-        .filter((item: any) => {
-          const rating = item.content?.content_rating;
-          return !rating || kidsRatings.includes(rating);
-        })
-        .map((item: any) => ({
-          id: item.id,
-          title: item.content?.title || "Unknown",
-          thumbnailUrl: item.content?.thumbnail_url || "",
-          size: formatBytes(item.total_size || 0),
-          status: new Date(item.expires_at) < new Date() ? "expired" : item.status,
-          expiresAt: item.expires_at,
-          contentType: item.content?.content_type || "movie",
-          episodeInfo: item.episode 
-            ? `S${item.episode.season?.season_number || 1}:E${item.episode.episode_number}` 
-            : undefined,
-          content: item.content as Content,
-        })) as DownloadItem[];
-    },
-    enabled: !!user,
+  // Filter to only show completed downloads with kids-appropriate ratings
+  const downloads = allDownloads.filter(d => {
+    if (d.status !== 'completed') return false;
+    // Filter by content rating if available
+    const rating = d.contentRating;
+    return !rating || KIDS_RATINGS.includes(rating);
   });
 
   // Calculate storage usage
-  const storagePercentage = Math.min(downloads.length * 10, 100);
+  const totalSize = downloads.reduce((acc, d) => acc + d.downloadedSize, 0);
+  const storagePercentage = Math.min((totalSize / (5 * 1024 * 1024 * 1024)) * 100, 100); // 5GB limit for kids
 
   const handleDelete = async (ids: string[]) => {
     warningFeedback();
     for (const id of ids) {
-      await supabase.from("download_licenses").delete().eq("id", id);
+      const download = downloads.find(d => d.id === id);
+      if (download) {
+        await deleteDownload(download.contentId, download.episodeId);
+      }
     }
     setSelectedItems([]);
     setIsEditMode(false);
     successFeedback();
     toast.success(`${ids.length} download${ids.length > 1 ? "s" : ""} removed`);
-    refetch();
   };
 
   const toggleSelect = (id: string) => {
@@ -110,15 +69,45 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
     );
   };
 
-  const handlePlayItem = (item: DownloadItem) => {
-    if (item.status === "expired") {
+  const handlePlayItem = async (download: typeof downloads[0]) => {
+    // Check license expiry
+    const expiry = await getLicenseExpiry(download.contentId, download.episodeId);
+    if (expiry && expiry < Date.now()) {
       toast.error("This download has expired");
       return;
     }
-    if (item.content) {
-      lightTap();
-      onPlay(item.content);
+    
+    // Get offline video URL
+    const offlineUrl = await getOfflineVideoUrl(download.contentId, download.episodeId);
+    if (!offlineUrl) {
+      toast.error("Failed to load offline video");
+      return;
     }
+    
+    lightTap();
+    
+    // Create content object for playback
+    const content: Content = {
+      id: download.contentId,
+      title: download.title,
+      description: '',
+      thumbnailUrl: download.thumbnailUrl || '',
+      videoUrl: offlineUrl,
+      contentType: 'movie',
+      genre: '',
+      year: 0,
+      rating: '',
+      duration: download.duration,
+      isPremium: false,
+      contentRating: download.contentRating || 'G',
+    };
+    
+    onPlay(content);
+  };
+
+  const getExpiryStatus = async (download: typeof downloads[0]) => {
+    const expiry = await getLicenseExpiry(download.contentId, download.episodeId);
+    return expiry ? (expiry < Date.now() ? 'expired' : 'valid') : 'unknown';
   };
 
   return (
@@ -158,7 +147,7 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
             </div>
             <div>
               <p className="text-sm font-medium text-white">Storage</p>
-              <p className="text-xs text-white/60">{downloads.length} items saved</p>
+              <p className="text-xs text-white/60">{downloads.length} items saved • {formatBytes(totalSize)}</p>
             </div>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -203,75 +192,17 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
         ) : (
           <AnimatePresence>
             {downloads.map((item, index) => (
-              <motion.div
+              <DownloadItem
                 key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => isEditMode ? toggleSelect(item.id) : handlePlayItem(item)}
-                className={cn(
-                  "flex gap-3 p-2 rounded-2xl transition-all cursor-pointer",
-                  isEditMode && "bg-white/5",
-                  selectedItems.includes(item.id) && "bg-purple-500/20 ring-2 ring-purple-400/50"
-                )}
-              >
-                {/* Thumbnail */}
-                <div className="relative w-28 aspect-video rounded-xl overflow-hidden bg-white/10 flex-shrink-0">
-                  <img
-                    src={item.thumbnailUrl}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* Status overlay */}
-                  {item.status === "expired" ? (
-                    <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-amber-400" />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/30">
-                      <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                        <Play className="h-4 w-4 text-slate-900 ml-0.5" fill="currentColor" />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Selection checkbox */}
-                  {isEditMode && (
-                    <div className={cn(
-                      "absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
-                      selectedItems.includes(item.id) 
-                        ? "bg-purple-500 border-purple-500" 
-                        : "bg-slate-900/50 border-white/50"
-                    )}>
-                      {selectedItems.includes(item.id) && (
-                        <CheckCircle className="h-4 w-4 text-white" />
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
-                  <h4 className="text-sm font-semibold text-white line-clamp-1">{item.title}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    {item.episodeInfo && (
-                      <span className="text-xs text-white/60 bg-white/10 px-2 py-0.5 rounded-full">
-                        {item.episodeInfo}
-                      </span>
-                    )}
-                    <span className="text-xs text-white/50">{item.size}</span>
-                  </div>
-                  {item.status === "expired" ? (
-                    <span className="text-xs text-amber-400 mt-1">Expired</span>
-                  ) : item.expiresAt && (
-                    <span className="text-xs text-white/40 mt-1">
-                      Expires {formatDistanceToNow(new Date(item.expiresAt), { addSuffix: true })}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
+                item={item}
+                index={index}
+                isEditMode={isEditMode}
+                isSelected={selectedItems.includes(item.id)}
+                onSelect={() => toggleSelect(item.id)}
+                onPlay={() => handlePlayItem(item)}
+                getLicenseExpiry={getLicenseExpiry}
+                formatBytes={formatBytes}
+              />
             ))}
           </AnimatePresence>
         )}
@@ -323,9 +254,105 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
   );
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 MB";
-  const mb = bytes / (1024 * 1024);
-  if (mb < 1024) return `${mb.toFixed(1)} MB`;
-  return `${(mb / 1024).toFixed(1)} GB`;
+// Separate component for download item to handle async expiry check
+function DownloadItem({
+  item,
+  index,
+  isEditMode,
+  isSelected,
+  onSelect,
+  onPlay,
+  getLicenseExpiry,
+  formatBytes,
+}: {
+  item: any;
+  index: number;
+  isEditMode: boolean;
+  isSelected: boolean;
+  onSelect: () => void;
+  onPlay: () => void;
+  getLicenseExpiry: (contentId: string, episodeId?: string) => Promise<number | null>;
+  formatBytes: (bytes: number) => string;
+}) {
+  const [expiry, setExpiry] = useState<number | null>(null);
+  
+  // Load expiry on mount
+  useState(() => {
+    getLicenseExpiry(item.contentId, item.episodeId).then(setExpiry);
+  });
+
+  const isExpired = expiry ? expiry < Date.now() : false;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -100 }}
+      transition={{ delay: index * 0.05 }}
+      onClick={() => isEditMode ? onSelect() : onPlay()}
+      className={cn(
+        "flex gap-3 p-2 rounded-2xl transition-all cursor-pointer",
+        isEditMode && "bg-white/5",
+        isSelected && "bg-purple-500/20 ring-2 ring-purple-400/50"
+      )}
+    >
+      {/* Thumbnail */}
+      <div className="relative w-28 aspect-video rounded-xl overflow-hidden bg-white/10 flex-shrink-0">
+        <img
+          src={item.thumbnailUrl || '/placeholder.svg'}
+          alt={item.title}
+          className="w-full h-full object-cover"
+        />
+        
+        {/* Status overlay */}
+        {isExpired ? (
+          <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center">
+            <Clock className="h-6 w-6 text-amber-400" />
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/30">
+            <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+              <Play className="h-4 w-4 text-slate-900 ml-0.5" fill="currentColor" />
+            </div>
+          </div>
+        )}
+
+        {/* Selection checkbox */}
+        {isEditMode && (
+          <div className={cn(
+            "absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+            isSelected 
+              ? "bg-purple-500 border-purple-500" 
+              : "bg-slate-900/50 border-white/50"
+          )}>
+            {isSelected && (
+              <CheckCircle className="h-4 w-4 text-white" />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
+        <h4 className="text-sm font-semibold text-white line-clamp-1">
+          {item.episodeTitle || item.title}
+        </h4>
+        <div className="flex items-center gap-2 mt-1">
+          {item.episodeTitle && (
+            <span className="text-xs text-white/60 bg-white/10 px-2 py-0.5 rounded-full">
+              {item.title}
+            </span>
+          )}
+          <span className="text-xs text-white/50">{formatBytes(item.downloadedSize)}</span>
+        </div>
+        {isExpired ? (
+          <span className="text-xs text-amber-400 mt-1">Expired</span>
+        ) : expiry && (
+          <span className="text-xs text-white/40 mt-1">
+            Expires {formatDistanceToNow(new Date(expiry), { addSuffix: true })}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
 }
