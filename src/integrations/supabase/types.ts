@@ -294,6 +294,7 @@ export type Database = {
       }
       content: {
         Row: {
+          age_limit: number | null
           cast_members: Json | null
           content_rating: string | null
           content_type: string
@@ -315,6 +316,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          age_limit?: number | null
           cast_members?: Json | null
           content_rating?: string | null
           content_type: string
@@ -336,6 +338,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          age_limit?: number | null
           cast_members?: Json | null
           content_rating?: string | null
           content_type?: string
