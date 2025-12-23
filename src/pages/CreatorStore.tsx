@@ -83,12 +83,12 @@ export default function CreatorStore() {
       {/* Creator Filter */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Creator</label>
-        <Select value={selectedCreator} onValueChange={setSelectedCreator}>
+        <Select value={selectedCreator || "all"} onValueChange={(v) => setSelectedCreator(v === "all" ? "" : v)}>
           <SelectTrigger>
             <SelectValue placeholder="All Creators" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Creators</SelectItem>
+            <SelectItem value="all">All Creators</SelectItem>
             {creators.map((creator: any) => (
               <SelectItem key={creator.id} value={creator.id}>
                 {creator.display_name} {creator.is_verified && "✓"}
@@ -101,12 +101,12 @@ export default function CreatorStore() {
       {/* Genre Filter */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Genre</label>
-        <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+        <Select value={selectedGenre || "all"} onValueChange={(v) => setSelectedGenre(v === "all" ? "" : v)}>
           <SelectTrigger>
             <SelectValue placeholder="All Genres" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Genres</SelectItem>
+            <SelectItem value="all">All Genres</SelectItem>
             {genres.map((genre) => (
               <SelectItem key={genre} value={genre}>{genre}</SelectItem>
             ))}
