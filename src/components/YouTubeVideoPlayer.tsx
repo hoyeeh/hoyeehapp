@@ -120,6 +120,8 @@ export const YouTubeVideoPlayer = ({
           rel: 0,
           showinfo: 0,
           playsinline: 1,
+          cc_load_policy: 0,
+          origin: window.location.origin,
         },
         events: {
           onReady: (event: any) => {
