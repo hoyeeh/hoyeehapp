@@ -575,6 +575,7 @@ const Index = () => {
                           key={section.id}
                           title={section.title}
                           maxItems={section.max_items || 15}
+                          cardStyle={section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal"}
                         />
                       );
                     }
