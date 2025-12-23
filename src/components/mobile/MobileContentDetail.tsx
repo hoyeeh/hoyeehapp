@@ -730,6 +730,8 @@ export function MobileContentDetail({
                     onDetails={(c) => {
                       lightTap();
                       onClose();
+                      // Navigate to the content detail page
+                      navigate(`/content/${c.id}`);
                     }}
                     variant="poster"
                     showBadges={false}
