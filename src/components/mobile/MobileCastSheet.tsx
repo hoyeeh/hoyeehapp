@@ -22,8 +22,8 @@ import { MobileQRScanner } from "./MobileQRScanner";
 interface MobileCastSheetProps {
   open: boolean;
   onClose: () => void;
-  videoUrl: string;
-  videoTitle: string;
+  videoUrl?: string;
+  videoTitle?: string;
   thumbnail?: string;
   currentTime?: number;
   duration?: number;
@@ -33,13 +33,15 @@ interface MobileCastSheetProps {
 export function MobileCastSheet({
   open,
   onClose,
-  videoUrl,
-  videoTitle,
+  videoUrl = "",
+  videoTitle = "",
   thumbnail,
   currentTime = 0,
   duration = 0,
   onCastStart,
 }: MobileCastSheetProps) {
+  // Device management mode when no video is provided
+  const isDeviceManagementMode = !videoUrl;
   const [activeTab, setActiveTab] = useState<"quick" | "dlna" | "history">("quick");
   const [showPairingDialog, setShowPairingDialog] = useState(false);
   const [showDLNASetup, setShowDLNASetup] = useState(false);
@@ -62,15 +64,21 @@ export function MobileCastSheet({
     try {
       await googleCast.connect();
       if (googleCast.isConnected) {
-        onCastStart?.();
-        await googleCast.loadMedia(videoUrl, videoTitle, thumbnail, currentTime);
         castHistory.addDevice({
           id: "chromecast-default",
           name: googleCast.deviceName || "Chromecast",
           type: "chromecast",
         });
-        toast.success(`Casting to ${googleCast.deviceName}`);
-        onClose();
+        
+        // Only load media if we have a video URL
+        if (videoUrl) {
+          onCastStart?.();
+          await googleCast.loadMedia(videoUrl, videoTitle, thumbnail, currentTime);
+          toast.success(`Casting to ${googleCast.deviceName}`);
+          onClose();
+        } else {
+          toast.success(`Connected to ${googleCast.deviceName}`);
+        }
       }
     } catch (error) {
       console.error("[MobileCastSheet] Chromecast error:", error);
@@ -91,11 +99,17 @@ export function MobileCastSheet({
   const handlePairWithCode = async (code: string) => {
     try {
       await cast.pairWithCode(code);
-      onCastStart?.();
-      await cast.loadVideo(videoUrl, videoTitle, thumbnail, currentTime, duration);
       setShowPairingDialog(false);
-      toast.success(`Connected to TV`);
-      onClose();
+      
+      // Only load video if we have a URL
+      if (videoUrl) {
+        onCastStart?.();
+        await cast.loadVideo(videoUrl, videoTitle, thumbnail, currentTime, duration);
+        toast.success(`Connected and casting to TV`);
+        onClose();
+      } else {
+        toast.success(`Connected to TV`);
+      }
     } catch (error) {
       console.error("[MobileCastSheet] Pairing error:", error);
       toast.error("Failed to pair with TV");
@@ -113,10 +127,15 @@ export function MobileCastSheet({
         type: castDeviceType as 'remote' | 'dlna' | 'chromecast',
       });
       if (cast.isConnected) {
-        onCastStart?.();
-        await cast.loadVideo(videoUrl, videoTitle, thumbnail, currentTime, duration);
-        toast.success(`Connected to ${device.name}`);
-        onClose();
+        // Only load video if we have a URL
+        if (videoUrl) {
+          onCastStart?.();
+          await cast.loadVideo(videoUrl, videoTitle, thumbnail, currentTime, duration);
+          toast.success(`Connected to ${device.name}`);
+          onClose();
+        } else {
+          toast.success(`Connected to ${device.name}`);
+        }
       }
     } catch (error) {
       console.error("[MobileCastSheet] Reconnect error:", error);
@@ -128,15 +147,21 @@ export function MobileCastSheet({
   const handleDLNADevice = async (device: any) => {
     try {
       await dlna.connectToDevice(device);
-      onCastStart?.();
-      await dlna.playMedia(videoUrl, videoTitle, currentTime);
       castHistory.addDevice({
         id: device.id,
         name: device.name,
         type: "dlna",
       });
-      toast.success(`Casting to ${device.name}`);
-      onClose();
+      
+      // Only play media if we have a URL
+      if (videoUrl) {
+        onCastStart?.();
+        await dlna.playMedia(videoUrl, videoTitle, currentTime);
+        toast.success(`Casting to ${device.name}`);
+        onClose();
+      } else {
+        toast.success(`Connected to ${device.name}`);
+      }
     } catch (error) {
       console.error("[MobileCastSheet] DLNA error:", error);
       toast.error("Failed to connect to Smart TV");

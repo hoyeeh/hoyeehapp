@@ -20,6 +20,7 @@ import { useScheduledDownloadNotifications } from "@/hooks/useScheduledDownloadN
 import { migrateLegacyKeys, initializeCacheManagement } from "@/utils/cacheManager";
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
+import { PusherNotificationHandler } from "@/components/PusherNotificationHandler";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PinAuth from "./pages/PinAuth";
@@ -179,6 +180,7 @@ const App = () => (
                 <PWANavigationHandler />
                 <CapacitorBackHandler />
                 <CastProvider>
+                  <PusherNotificationHandler />
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<Auth />} />
