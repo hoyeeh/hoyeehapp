@@ -30,11 +30,10 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
-      // Use the production domain for redirect to ensure proper handling
+      // Always use production URL for password resets, except localhost
       const productionUrl = 'https://hoyeeh.com';
       const currentOrigin = window.location.origin;
-      // Prefer production URL, fallback to current origin for local development
-      const redirectUrl = currentOrigin.includes('localhost') || currentOrigin.includes('lovable.app') 
+      const redirectUrl = currentOrigin.includes('localhost') 
         ? currentOrigin 
         : productionUrl;
       
