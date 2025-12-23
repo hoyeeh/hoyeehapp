@@ -166,6 +166,31 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
           {!hasTorch && <div className="w-12" />}
         </div>
 
+        {/* Instructions Banner at Top */}
+        <div className="absolute top-20 left-0 right-0 z-10 px-6">
+          <div className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-border/50">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary font-bold text-sm">1</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground mb-2">On your TV browser, go to:</p>
+                <div className="bg-primary/10 border border-primary/30 rounded-xl px-4 py-3 text-center">
+                  <p className="text-xl font-bold text-primary tracking-wide">hoyeeh.com/tv</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 mt-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary font-bold text-sm">2</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-foreground">Point your camera at the QR code on your TV</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Camera view */}
         <div className="absolute inset-0 flex items-center justify-center">
           {isLoading && (
@@ -204,7 +229,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
 
         {/* Scanning overlay */}
         {hasCamera && !isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ paddingTop: '120px' }}>
             {/* Darkened corners */}
             <div className="absolute inset-0 bg-black/50" />
             
@@ -234,10 +259,10 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
           </div>
         )}
 
-        {/* Instructions */}
+        {/* Bottom hint */}
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-safe text-center">
-          <p className="text-white/80 text-sm">
-            Point your camera at the QR code on your TV screen
+          <p className="text-white/60 text-xs">
+            Make sure your TV and phone are on the same WiFi network
           </p>
         </div>
       </motion.div>
