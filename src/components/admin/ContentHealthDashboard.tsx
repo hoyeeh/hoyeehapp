@@ -80,7 +80,7 @@ export const ContentHealthDashboard = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
   const [editingUrls, setEditingUrls] = useState<Map<string, string>>(new Map());
-
+  const [missingUrlFilter, setMissingUrlFilter] = useState<"all" | "movie" | "series">("all");
   // Fetch all content
   const { data: content = [], isLoading: contentLoading, refetch: refetchContent } = useQuery({
     queryKey: ["content-health-content"],
@@ -509,8 +509,46 @@ export const ContentHealthDashboard = () => {
 
         {/* Missing URLs Tab */}
         <TabsContent value="missing-urls" className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
+              {/* Content Type Filter */}
+              <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+                <Button
+                  variant={missingUrlFilter === "all" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMissingUrlFilter("all")}
+                  className="gap-1"
+                >
+                  All
+                  <Badge variant="secondary" className="ml-1">
+                    {healthMetrics.contentWithoutUrl.length}
+                  </Badge>
+                </Button>
+                <Button
+                  variant={missingUrlFilter === "movie" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMissingUrlFilter("movie")}
+                  className="gap-1"
+                >
+                  <Film className="h-3.5 w-3.5" />
+                  Movies
+                  <Badge variant="secondary" className="ml-1">
+                    {healthMetrics.contentWithoutUrl.filter(c => c.content_type === "movie").length}
+                  </Badge>
+                </Button>
+                <Button
+                  variant={missingUrlFilter === "series" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMissingUrlFilter("series")}
+                  className="gap-1"
+                >
+                  <Tv className="h-3.5 w-3.5" />
+                  TV Shows
+                  <Badge variant="secondary" className="ml-1">
+                    {healthMetrics.contentWithoutUrl.filter(c => c.content_type === "series").length}
+                  </Badge>
+                </Button>
+              </div>
               {selectedContent.size > 0 && (
                 <Button
                   variant="destructive"
@@ -533,7 +571,11 @@ export const ContentHealthDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileVideo className="h-5 w-5" />
-                Content Without Video URLs ({healthMetrics.contentWithoutUrl.length})
+                Content Without Video URLs ({
+                  missingUrlFilter === "all" 
+                    ? healthMetrics.contentWithoutUrl.length 
+                    : healthMetrics.contentWithoutUrl.filter(c => c.content_type === missingUrlFilter).length
+                })
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -545,7 +587,9 @@ export const ContentHealthDashboard = () => {
               ) : (
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-3">
-                    {healthMetrics.contentWithoutUrl.map(item => (
+                    {healthMetrics.contentWithoutUrl
+                      .filter(item => missingUrlFilter === "all" || item.content_type === missingUrlFilter)
+                      .map(item => (
                       <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
                         <Checkbox
                           checked={selectedContent.has(item.id)}
