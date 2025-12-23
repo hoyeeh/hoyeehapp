@@ -30,8 +30,16 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
+      // Use the production domain for redirect to ensure proper handling
+      const productionUrl = 'https://hoyeeh.com';
+      const currentOrigin = window.location.origin;
+      // Prefer production URL, fallback to current origin for local development
+      const redirectUrl = currentOrigin.includes('localhost') || currentOrigin.includes('lovable.app') 
+        ? currentOrigin 
+        : productionUrl;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${redirectUrl}/reset-password`,
       });
 
       if (error) {
