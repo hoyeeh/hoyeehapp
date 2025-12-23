@@ -174,7 +174,7 @@ export const CreatorManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applications?.map((app) => (
+                  {applications?.map((app: any) => (
                     <TableRow key={app.id}>
                       <TableCell>{app.profiles?.display_name || 'Unknown'}</TableCell>
                       <TableCell className="max-w-xs truncate">{app.description}</TableCell>
