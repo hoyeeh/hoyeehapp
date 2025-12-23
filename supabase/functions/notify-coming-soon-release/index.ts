@@ -181,7 +181,7 @@ serve(async (req) => {
                               <p style="margin: 0; color: #666666; font-size: 12px; text-align: center;">
                                 You're receiving this because you added "${title}" to your coming soon watchlist.
                                 <br>
-                                <a href="https://hoyeeh.lovable.app/notifications" style="color: #ff6300;">Manage notification preferences</a>
+                                <a href="https://hoyeeh.com/notifications" style="color: #ff6300;">Manage notification preferences</a>
                               </p>
                             </td>
                           </tr>
