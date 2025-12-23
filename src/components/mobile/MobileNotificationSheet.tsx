@@ -125,7 +125,7 @@ export function MobileNotificationSheet({ open, onClose }: MobileNotificationShe
             </div>
 
             {/* Content */}
-            <div className="overflow-y-auto max-h-[65vh] pb-safe">
+            <div className="overflow-y-auto max-h-[55vh] pb-24">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
