@@ -60,10 +60,22 @@ export function PusherNotificationHandler() {
   useEffect(() => {
     if (!user) return;
 
+    // Listen for service worker sync messages
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data?.type === "SYNC_NOTIFICATIONS") {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      }
+    };
+    
+    navigator.serviceWorker?.addEventListener('message', handleSWMessage);
+
     // Skip if no Pusher key configured
     if (!PUSHER_KEY) {
       console.log("Pusher key not configured - real-time notifications disabled");
-      return;
+      return () => {
+        navigator.serviceWorker?.removeEventListener('message', handleSWMessage);
+      };
     }
 
     let pusherInstance: any = null;

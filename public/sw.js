@@ -309,7 +309,7 @@ async function broadcastToClients(message) {
   }
 }
 
-// Push notification handling
+// Push notification handling - supports both visible and silent notifications
 self.addEventListener("push", (event) => {
   console.log("Push notification received", event);
 
@@ -320,6 +320,7 @@ self.addEventListener("push", (event) => {
     badge: "/pwa-icon-192.png",
     url: "/",
     tag: "hoyeeh-notification",
+    silent: false, // If true, sync in background without showing notification
   };
 
   try {
@@ -331,6 +332,28 @@ self.addEventListener("push", (event) => {
     console.error("Error parsing push data:", e);
   }
 
+  // Handle silent push - sync notifications in background
+  if (data.silent) {
+    console.log("Silent push - syncing notifications in background");
+    event.waitUntil(
+      (async () => {
+        // Notify all open clients to refresh their notification data
+        await broadcastToClients({
+          type: "SYNC_NOTIFICATIONS",
+          payload: { timestamp: Date.now() }
+        });
+        
+        // If no clients are open, we can still cache the notification for later
+        const clientList = await clients.matchAll({ type: "window" });
+        if (clientList.length === 0) {
+          console.log("No clients open - notification will sync when app opens");
+        }
+      })()
+    );
+    return;
+  }
+
+  // Visible notification
   const options = {
     body: data.body,
     icon: data.icon,
