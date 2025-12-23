@@ -271,7 +271,7 @@ function getEmailContent(
           </div>
           <p>Make sure your payment method is up to date to continue enjoying Hoyeeh Premium.</p>
           <div style="text-align: center; margin-top: 30px;">
-            <a href="https://hoyeeh.lovable.app/subscription" style="background-color: #ff6300; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Manage Subscription</a>
+            <a href="https://hoyeeh.com/subscription" style="background-color: #ff6300; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Manage Subscription</a>
           </div>
           <p style="color: #888; font-size: 12px; margin-top: 40px; text-align: center;">© 2024 Hoyeeh. All rights reserved.</p>
         </div>
@@ -300,7 +300,7 @@ function getEmailContent(
           </ul>
         </div>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="https://hoyeeh.lovable.app/subscription" style="background-color: #ff6300; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 18px; display: inline-block;">Renew Now for ${amount?.toLocaleString()} ${currency}</a>
+          <a href="https://hoyeeh.com/subscription" style="background-color: #ff6300; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 18px; display: inline-block;">Renew Now for ${amount?.toLocaleString()} ${currency}</a>
         </div>
         <p style="color: #888;">If you've already renewed, please ignore this email.</p>
         <p style="color: #888; font-size: 12px; margin-top: 40px; text-align: center;">© 2024 Hoyeeh. All rights reserved.</p>

@@ -116,13 +116,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [updateActiveSession, checkAndUpdateSession]);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
-    const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "/";
+    // Use production URL for redirect to ensure proper handling
+    const productionUrl = 'https://hoyeeh.com';
+    const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+    // Prefer production URL, fallback to current origin for local development
+    const redirectUrl = currentOrigin.includes('localhost') || currentOrigin.includes('lovable.app') 
+      ? currentOrigin 
+      : productionUrl;
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: `${redirectUrl}/`,
         data: {
           display_name: displayName || email.split("@")[0],
         },

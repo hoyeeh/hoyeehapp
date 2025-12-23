@@ -214,7 +214,7 @@ function generateDigestEmail(
     
     const contentCards = items.slice(0, 3).map(item => `
       <td style="width: 33%; padding: 8px; vertical-align: top;">
-        <a href="https://hoyeeh.lovable.app/content/${item.id}" style="text-decoration: none; color: inherit;">
+        <a href="https://hoyeeh.com/content/${item.id}" style="text-decoration: none; color: inherit;">
           <div style="background: #1a1a1a; border-radius: 8px; overflow: hidden;">
             <img src="${item.thumbnail_url || 'https://via.placeholder.com/150x225?text=No+Image'}" 
                  alt="${item.title}" 
@@ -273,7 +273,7 @@ function generateDigestEmail(
 
           <!-- CTA Button -->
           <div style="text-align: center; margin-top: 30px;">
-            <a href="https://hoyeeh.lovable.app" 
+            <a href="https://hoyeeh.com" 
                style="display: inline-block; background: linear-gradient(135deg, #ff6300 0%, #b64700 100%); 
                       color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 8px; 
                       font-weight: 600; font-size: 16px;">
@@ -288,9 +288,9 @@ function generateDigestEmail(
             You're receiving this because you're subscribed to weekly digest emails.
           </p>
           <p style="color: #666; font-size: 12px; margin: 0;">
-            <a href="https://hoyeeh.lovable.app/notifications" style="color: #ff6300;">Manage preferences</a>
+            <a href="https://hoyeeh.com/notifications" style="color: #ff6300;">Manage preferences</a>
             &nbsp;•&nbsp;
-            <a href="https://hoyeeh.lovable.app" style="color: #ff6300;">Visit Hoyeeh</a>
+            <a href="https://hoyeeh.com" style="color: #ff6300;">Visit Hoyeeh</a>
           </p>
           <p style="color: #444; font-size: 11px; margin: 15px 0 0 0;">
             © ${new Date().getFullYear()} Hoyeeh. All rights reserved.

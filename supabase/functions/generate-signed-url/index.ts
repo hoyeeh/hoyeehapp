@@ -24,6 +24,7 @@ const ALLOWED_REFERRERS = [
   "127.0.0.1",
   "lovable.app",
   "lovableproject.com",
+  "hoyeeh.com",
 ];
 
 interface SignedUrlRequest {
