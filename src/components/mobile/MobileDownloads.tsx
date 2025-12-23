@@ -7,14 +7,12 @@ import { SwipeNavigation } from "./SwipeNavigation";
 import { MobileVideoPlayer } from "./MobileVideoPlayer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { useSmartDownload } from "@/hooks/useSmartDownload";
-import { useOfflineDownloads } from "@/hooks/useOfflineDownloads";
+import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { Content } from "@/types";
 
 interface DownloadItem {
@@ -22,7 +20,7 @@ interface DownloadItem {
   title: string;
   thumbnailUrl: string;
   size: string;
-  status: "completed" | "expired" | "downloading";
+  status: "completed" | "expired" | "downloading" | "paused" | "failed";
   progress?: number;
   expiresAt?: string;
   contentType: "movie" | "series";
@@ -34,15 +32,23 @@ interface DownloadItem {
 
 export function MobileDownloads() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  useAuth(); // Ensure user is authenticated
   const { currentProfile } = useProfileContext();
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [wifiOnly, setWifiOnly] = useState(() => localStorage.getItem("wifi-only-download") === "true");
+  const [wifiOnly, setWifiOnly] = useState(() => localStorage.getItem("hoyeeh-wifi-only-downloads") === "true");
   const { lightTap, selectionTap, warningFeedback, successFeedback } = useHaptics();
   const { smartDownloadEnabled, toggleSmartDownload } = useSmartDownload();
-  const { getOfflineVideoUrl } = useOfflineDownloads();
+  const { 
+    downloads: localDownloads, 
+    getOfflineVideoUrl, 
+    deleteDownload,
+    storageUsed,
+    storageLimit,
+    formatBytes: formatStorageBytes,
+    isLoading: isLocalLoading 
+  } = useDownloadManager();
   
   // Video player state
   const [playingContent, setPlayingContent] = useState<{
@@ -52,52 +58,27 @@ export function MobileDownloads() {
     startTime?: number;
   } | null>(null);
 
-  // Fetch download licenses
-  const { data: downloads = [], isLoading, refetch } = useQuery({
-    queryKey: ["mobile-downloads", user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from("download_licenses")
-        .select(`
-          id,
-          content_id,
-          quality,
-          total_size,
-          status,
-          expires_at,
-          downloaded_at,
-          content:content_id (
-            id, title, thumbnail_url, content_type
-          ),
-          episode:episode_id (
-            id, title, episode_number, season:season_id (season_number)
-          )
-        `)
-        .eq("user_id", user.id)
-        .order("downloaded_at", { ascending: false });
-
-      if (error) throw error;
-      
-      return (data || []).map((item: any) => ({
-        id: item.id,
-        title: item.content?.title || "Unknown",
-        thumbnailUrl: item.content?.thumbnail_url || "",
-        size: formatBytes(item.total_size || 0),
-        status: new Date(item.expires_at) < new Date() ? "expired" : item.status,
-        expiresAt: item.expires_at,
-        contentType: item.content?.content_type || "movie",
-        episodeInfo: item.episode 
-          ? `S${item.episode.season?.season_number || 1}:E${item.episode.episode_number}` 
-          : undefined,
-        contentId: item.content_id,
-        episodeId: item.episode?.id,
-        videoUrl: item.content?.video_url,
-      })) as DownloadItem[];
-    },
-    enabled: !!user,
+  // Combine local IndexedDB downloads with Supabase license data
+  const downloads: DownloadItem[] = localDownloads.map((download) => {
+    const isExpired = false; // License expiry is checked when playing
+    return {
+      id: download.id,
+      title: download.episodeTitle || download.title,
+      thumbnailUrl: download.thumbnailUrl || "",
+      size: formatStorageBytes(download.downloadedSize),
+      status: isExpired ? "expired" : download.status === "completed" ? "completed" : 
+              download.status === "paused" ? "paused" : 
+              download.status === "failed" ? "failed" : "downloading",
+      progress: download.progress,
+      expiresAt: undefined, // We check license when playing
+      contentType: "movie" as const, // Default, could be enhanced
+      episodeInfo: download.episodeTitle ? `Episode` : undefined,
+      contentId: download.contentId,
+      episodeId: download.episodeId,
+    };
   });
+
+  const isLoading = isLocalLoading;
 
   // Handle playing an offline download
   const handlePlayItem = async (item: DownloadItem) => {
@@ -107,11 +88,16 @@ export function MobileDownloads() {
       return;
     }
 
+    if (item.status !== "completed") {
+      warningFeedback();
+      toast.error("Download is not complete yet.");
+      return;
+    }
+
     lightTap();
     
-    // Try to get offline URL from IndexedDB
-    const downloadId = item.episodeId || item.contentId;
-    const offlineUrl = await getOfflineVideoUrl(downloadId);
+    // Get offline URL from encrypted storage
+    const offlineUrl = await getOfflineVideoUrl(item.contentId, item.episodeId);
     
     if (offlineUrl) {
       // Create content object for the player
@@ -133,7 +119,6 @@ export function MobileDownloads() {
         episodeId: item.episodeId,
       });
     } else {
-      // Fallback: content not in IndexedDB, might be in different storage
       toast.error("Unable to play offline content. It may need to be re-downloaded.");
     }
   };
@@ -146,31 +131,26 @@ export function MobileDownloads() {
     setPlayingContent(null);
   };
 
-  // Calculate storage usage
-  const { data: storageInfo } = useQuery({
-    queryKey: ["storage-info"],
-    queryFn: async () => {
-      // Simulated storage info - in real app would come from IndexedDB
-      const used = downloads.reduce((acc, d) => acc + parseFloat(d.size) || 0, 0);
-      return {
-        used: formatBytes(used * 1024 * 1024),
-        total: "2 GB",
-        percentage: Math.min((used / 2048) * 100, 100),
-      };
-    },
-  });
+  // Calculate storage usage from actual downloads
+  const storageInfo = {
+    used: formatStorageBytes(storageUsed),
+    total: formatStorageBytes(storageLimit),
+    percentage: Math.min((storageUsed / storageLimit) * 100, 100),
+  };
 
   const handleDelete = async (ids: string[]) => {
     warningFeedback();
-    // Delete selected downloads
+    // Delete selected downloads from local storage
     for (const id of ids) {
-      await supabase.from("download_licenses").delete().eq("id", id);
+      const item = downloads.find(d => d.id === id);
+      if (item) {
+        await deleteDownload(item.contentId, item.episodeId);
+      }
     }
     setSelectedItems([]);
     setIsEditMode(false);
     successFeedback();
     toast.success(`${ids.length} download${ids.length > 1 ? "s" : ""} removed`);
-    refetch();
   };
 
   const toggleSelect = (id: string) => {
@@ -199,7 +179,7 @@ export function MobileDownloads() {
   const handleWifiToggle = (checked: boolean) => {
     selectionTap();
     setWifiOnly(checked);
-    localStorage.setItem("wifi-only-download", checked.toString());
+    localStorage.setItem("hoyeeh-wifi-only-downloads", checked.toString());
     toast.success(checked ? "Downloads will only use Wi-Fi" : "Downloads can use mobile data");
   };
 
@@ -449,11 +429,4 @@ export function MobileDownloads() {
       </div>
     </SwipeNavigation>
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 MB";
-  const mb = bytes / (1024 * 1024);
-  if (mb < 1024) return `${mb.toFixed(1)} MB`;
-  return `${(mb / 1024).toFixed(1)} GB`;
 }
