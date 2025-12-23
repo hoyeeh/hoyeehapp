@@ -26,7 +26,9 @@ import {
   Palette,
   Clock,
   Lock,
-  BellRing
+  BellRing,
+  Store,
+  Brush
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
@@ -49,6 +51,8 @@ import { MobileAppearanceSettings } from "./MobileAppearanceSettings";
 import { MobileWatchHistory } from "./MobileWatchHistory";
 import { MobileAccountSecurity } from "./MobileAccountSecurity";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { useIsCreator } from "@/hooks/useCreator";
+import { useIsAdmin } from "@/hooks/useAdmin";
 
 // Import avatar images
 import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
@@ -93,6 +97,8 @@ export function MobileProfile() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: profile, refetch } = useProfile();
+  const { data: isCreator } = useIsCreator();
+  const { data: isAdmin } = useIsAdmin();
   const { lightTap, successFeedback, selectionTap, mediumTap } = useHaptics();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -229,6 +235,14 @@ export function MobileProfile() {
       ],
     },
     {
+      title: "Explore",
+      items: [
+        { icon: Store, label: "Creator Store", path: "/creator-store" },
+        ...(isCreator ? [{ icon: Brush, label: "Creator Dashboard", path: "/creator-dashboard" }] : []),
+        ...(isAdmin ? [{ icon: Shield, label: "Admin Panel", path: "/admin" }] : []),
+      ],
+    },
+    {
       title: "Notifications",
       items: [
         { icon: BellRing, label: "Push Notifications", toggleKey: "push" },
@@ -273,7 +287,7 @@ export function MobileProfile() {
         { icon: Settings, label: "Terms of Use", path: "/terms" },
       ],
     },
-  ];
+  ].filter(section => section.items.length > 0);
 
   const renderMenuItem = (item: MenuSection["items"][0]) => {
     // Special case for push notifications toggle

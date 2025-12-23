@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell, MessageCircle, Youtube, Clock } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell, MessageCircle, Youtube, Clock, Store, Palette } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import { useIsCreator } from "@/hooks/useCreator";
 import NotificationBell from "./NotificationBell";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -29,6 +30,7 @@ const navItems = [
   { icon: Film, label: "Movies", view: "movies" as ViewState },
   { icon: Tv, label: "TV Shows", view: "shows" as ViewState },
   { icon: Youtube, label: "YouTube", view: "youtube" as const },
+  { icon: Store, label: "Creator Store", view: "creator-store" as const },
   { icon: Clock, label: "Watch Later", view: "watch-later" as const },
   { icon: List, label: "My List", view: "mylist" as ViewState },
 ];
@@ -36,6 +38,7 @@ const navItems = [
 export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: SidebarProps) => {
   const navigate = useNavigate();
   const { data: isAdmin } = useIsAdmin();
+  const { data: isCreator } = useIsCreator();
   const { setCurrentProfile, currentProfile } = useProfileContext();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -66,6 +69,8 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
                       navigate("/youtube");
                     } else if (item.view === "watch-later") {
                       navigate("/watch-later");
+                    } else if (item.view === "creator-store") {
+                      navigate("/creator-store");
                     } else {
                       onNavigate(item.view);
                     }
@@ -204,6 +209,17 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
               <Baby className="h-4 w-4 flex-shrink-0 ml-1" />
               <span className="hidden md:inline text-sm">Parental Controls</span>
             </button>
+
+            {/* Creator Dashboard - Only for creators */}
+            {isCreator && (
+              <button
+                onClick={() => navigate("/creator-dashboard")}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-amber-500 hover:bg-sidebar-accent transition-colors"
+              >
+                <Palette className="h-4 w-4 flex-shrink-0 ml-1" />
+                <span className="hidden md:inline text-sm">Creator Dashboard</span>
+              </button>
+            )}
 
             {/* Admin Link - Only for admins */}
             {isAdmin && (
