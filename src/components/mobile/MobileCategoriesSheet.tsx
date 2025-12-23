@@ -148,53 +148,89 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                   </button>
                 </div>
               ) : (
-                // Genre Content
+                // Genre Content - Full scrollable grid
                 <div className="pb-24">
                   {/* Genre Title */}
-                  <div className="px-5 py-4">
+                  <div className="px-5 py-4 border-b border-border/30">
                     <h3 className="text-xl font-bold">{selectedGenre}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {filteredContent.movies.length + filteredContent.shows.length} titles
+                      {filteredContent.movies.length + filteredContent.shows.length} titles available
                     </p>
                   </div>
 
-                  {/* Movies Section */}
+                  {/* Movies Section - Grid Layout */}
                   {filteredContent.movies.length > 0 && (
                     <section className="mb-6">
-                      <div className="flex items-center gap-2 px-5 mb-3">
+                      <div className="flex items-center gap-2 px-5 py-3 bg-secondary/30 sticky top-0 z-10">
                         <Film className="h-4 w-4 text-primary" />
                         <h4 className="font-semibold text-sm">Movies</h4>
-                        <span className="text-xs text-muted-foreground">({filteredContent.movies.length})</span>
+                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                          {filteredContent.movies.length}
+                        </span>
                       </div>
-                      <div className="flex gap-3 overflow-x-auto px-5 pb-2 hide-scrollbar">
+                      <div className="grid grid-cols-3 gap-2 px-4 py-3">
                         {filteredContent.movies.map((item) => (
-                          <div key={item.id} className="flex-shrink-0">
-                            <MobileContentCard
-                              content={item}
-                              onDetails={handleDetails}
+                          <motion.div 
+                            key={item.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform"
+                            onClick={() => handleDetails(item)}
+                          >
+                            <img
+                              src={item.thumbnailUrl || "/placeholder.svg"}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
                             />
-                          </div>
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2">
+                              <p className="text-[10px] font-medium text-white line-clamp-2 leading-tight">
+                                {item.title}
+                              </p>
+                              {item.year && (
+                                <p className="text-[8px] text-white/70 mt-0.5">{item.year}</p>
+                              )}
+                            </div>
+                          </motion.div>
                         ))}
                       </div>
                     </section>
                   )}
 
-                  {/* TV Shows Section */}
+                  {/* TV Shows Section - Grid Layout */}
                   {filteredContent.shows.length > 0 && (
                     <section className="mb-6">
-                      <div className="flex items-center gap-2 px-5 mb-3">
+                      <div className="flex items-center gap-2 px-5 py-3 bg-secondary/30 sticky top-0 z-10">
                         <Tv className="h-4 w-4 text-primary" />
                         <h4 className="font-semibold text-sm">TV Shows</h4>
-                        <span className="text-xs text-muted-foreground">({filteredContent.shows.length})</span>
+                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                          {filteredContent.shows.length}
+                        </span>
                       </div>
-                      <div className="flex gap-3 overflow-x-auto px-5 pb-2 hide-scrollbar">
+                      <div className="grid grid-cols-3 gap-2 px-4 py-3">
                         {filteredContent.shows.map((item) => (
-                          <div key={item.id} className="flex-shrink-0">
-                            <MobileContentCard
-                              content={item}
-                              onDetails={handleDetails}
+                          <motion.div 
+                            key={item.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform"
+                            onClick={() => handleDetails(item)}
+                          >
+                            <img
+                              src={item.thumbnailUrl || "/placeholder.svg"}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
                             />
-                          </div>
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2">
+                              <p className="text-[10px] font-medium text-white line-clamp-2 leading-tight">
+                                {item.title}
+                              </p>
+                              {item.year && (
+                                <p className="text-[8px] text-white/70 mt-0.5">{item.year}</p>
+                              )}
+                            </div>
+                          </motion.div>
                         ))}
                       </div>
                     </section>
