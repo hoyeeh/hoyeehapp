@@ -25,6 +25,7 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
         .from("content")
         .select("*")
         .in("content_rating", KIDS_RATINGS)
+        .or("genre.ilike.%animation%,genre.ilike.%family%")
         .ilike("title", `%${searchQuery}%`)
         .limit(20);
       
@@ -53,6 +54,7 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
         .from("content")
         .select("*")
         .in("content_rating", KIDS_RATINGS)
+        .or("genre.ilike.%animation%,genre.ilike.%family%")
         .order("view_count", { ascending: false })
         .limit(12);
       
@@ -81,7 +83,7 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/30" strokeWidth={2} />
           <Input
             type="text"
-            placeholder="Search shows and movies..."
+            placeholder="Search cartoons and family movies..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-12 py-3.5 h-12 bg-white/[0.06] border-white/[0.06] rounded-2xl text-[15px] text-white placeholder:text-white/30 focus-visible:ring-violet-500/50 font-medium"
@@ -135,8 +137,8 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
                   <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
                     <Search className="h-8 w-8 text-white/20" strokeWidth={1.5} />
                   </div>
-                  <p className="text-[15px] text-white/40 font-medium">No shows found</p>
-                  <p className="text-[13px] text-white/25 mt-1 font-medium">Try a different search</p>
+                  <p className="text-[15px] text-white/40 font-medium">No cartoons found</p>
+                  <p className="text-[13px] text-white/25 mt-1 font-medium">Try searching for your favorite cartoon</p>
                 </div>
               ) : null}
             </motion.div>
@@ -152,7 +154,7 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-white" strokeWidth={2} />
                 </div>
-                <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">Popular</h2>
+                <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">Popular Cartoons & Family</h2>
               </div>
               
               <div className="grid grid-cols-3 gap-3">
