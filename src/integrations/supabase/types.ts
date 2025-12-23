@@ -2378,6 +2378,7 @@ export type Database = {
           id: string | null
           is_subscribed: boolean | null
           last_login_at: string | null
+          mobile_number_masked: string | null
           parental_controls_enabled: boolean | null
           parental_rating_limit: string | null
           subscription_expiry: string | null
@@ -2391,6 +2392,7 @@ export type Database = {
           id?: string | null
           is_subscribed?: boolean | null
           last_login_at?: string | null
+          mobile_number_masked?: never
           parental_controls_enabled?: boolean | null
           parental_rating_limit?: string | null
           subscription_expiry?: string | null
@@ -2404,6 +2406,7 @@ export type Database = {
           id?: string | null
           is_subscribed?: boolean | null
           last_login_at?: string | null
+          mobile_number_masked?: never
           parental_controls_enabled?: boolean | null
           parental_rating_limit?: string | null
           subscription_expiry?: string | null
@@ -2446,6 +2449,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_can_access_sensitive_profile_data: {
+        Args: { _admin_id: string; _target_user_id: string }
+        Returns: boolean
+      }
       admin_reset_pin: {
         Args: { target_user_id: string }
         Returns: {
