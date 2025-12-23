@@ -330,7 +330,7 @@ export function MobileCastSheet({
                       <div className="flex-1 text-left">
                         <p className="font-medium">Scan QR Code</p>
                         <p className="text-sm text-muted-foreground">
-                          Scan the QR code on your TV screen
+                          Open <span className="font-semibold text-primary">hoyeeh.com/tv</span> on your TV
                         </p>
                       </div>
                       <ChevronRight className="h-5 w-5 text-muted-foreground" />

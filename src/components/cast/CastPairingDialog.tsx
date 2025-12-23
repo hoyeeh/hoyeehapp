@@ -192,7 +192,8 @@ export function CastPairingDialog({
     setError('');
   };
 
-  const tvReceiverUrl = 'https://hoyeeh.com/tv-receiver/';
+  const tvReceiverUrl = 'https://hoyeeh.com/tv';
+  const tvReceiverDisplay = 'hoyeeh.com/tv';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -221,9 +222,11 @@ export function CastPairingDialog({
                 On your Smart TV's browser, go to:
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 rounded bg-muted px-3 py-2 text-sm font-mono break-all">
-                  {tvReceiverUrl}
-                </code>
+                <div className="flex-1 rounded-lg bg-primary/10 border border-primary/30 px-4 py-3 text-center">
+                  <span className="text-lg font-bold text-primary tracking-wide">
+                    {tvReceiverDisplay}
+                  </span>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
