@@ -330,6 +330,7 @@ export function useDownloadManager() {
         progress: 0,
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        contentRating: manifest.contentRating || content.contentRating, // Store content rating for kids filtering
       };
 
       await saveMetadata(metadata);
@@ -494,6 +495,22 @@ export function useDownloadManager() {
         updatedAt: Date.now(),
       };
       await saveMetadata(completedMetadata);
+
+      // Sync completion status to database
+      const deviceId = getDeviceId();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        await supabase
+          .from('download_licenses')
+          .update({ 
+            status: 'completed', 
+            downloaded_at: new Date().toISOString(),
+            total_size: totalLength,
+          })
+          .eq('content_id', metadata.contentId)
+          .eq('device_id', deviceId)
+          .eq('user_id', sessionData.session.user.id);
+      }
 
       // Remove from active downloads
       setActiveDownloads(prev => {

@@ -79,6 +79,7 @@ serve(async (req) => {
     let thumbnailUrl: string | null = null;
     let duration: number = 0;
     let episodeTitle: string | undefined;
+    let contentRating: string | null = null;
 
     if (episodeId) {
       // Get episode details
@@ -87,7 +88,7 @@ serve(async (req) => {
         .select(`
           id, title, video_url, thumbnail_url, duration,
           season:seasons!inner(
-            content:content!inner(id, title, thumbnail_url)
+            content:content!inner(id, title, thumbnail_url, content_rating)
           )
         `)
         .eq('id', episodeId)
@@ -105,11 +106,12 @@ serve(async (req) => {
       title = (episode.season as any)?.content?.title || episode.title;
       thumbnailUrl = episode.thumbnail_url || (episode.season as any)?.content?.thumbnail_url;
       duration = episode.duration || 0;
+      contentRating = (episode.season as any)?.content?.content_rating || null;
     } else {
       // Get movie details
       const { data: content, error: contentError } = await supabase
         .from('content')
-        .select('id, title, video_url, thumbnail_url, duration')
+        .select('id, title, video_url, thumbnail_url, duration, content_rating')
         .eq('id', contentId)
         .single();
 
@@ -124,6 +126,7 @@ serve(async (req) => {
       title = content.title;
       thumbnailUrl = content.thumbnail_url;
       duration = content.duration || 0;
+      contentRating = content.content_rating;
     }
 
     if (!videoUrl) {
@@ -166,7 +169,7 @@ serve(async (req) => {
     const bitrate = bitrateKbps[preferredQuality] || 3000;
     const estimatedSize = Math.round((duration * bitrate * 1000) / 8); // bytes
 
-    // Create or update license in database
+    // Create or update license in database with pending status
     const downloadId = episodeId ? `${contentId}_${episodeId}` : contentId;
     
     const { error: licenseError } = await supabase
@@ -180,7 +183,8 @@ serve(async (req) => {
         expires_at: expiresAt.toISOString(),
         quality: preferredQuality,
         total_size: estimatedSize,
-        status: 'active',
+        status: 'pending', // Start as pending, updated to completed when download finishes
+        downloaded_at: null, // Set when download completes
         last_verified: new Date().toISOString(),
       }, {
         onConflict: 'user_id,content_id,episode_id,device_id',
@@ -206,6 +210,7 @@ serve(async (req) => {
       quality: preferredQuality,
       videoUrl,
       estimatedSize,
+      contentRating, // Include content rating for kids filtering
       license: {
         expiresAt: expiresAt.getTime(),
         canPlayOffline: true,

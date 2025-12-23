@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOfflineDownloads } from "@/hooks/useOfflineDownloads";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { Sidebar } from "@/components/Sidebar";
 import { useState, useEffect } from "react";
@@ -27,23 +26,21 @@ const Downloads = () => {
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
   const { data: profile } = useProfile();
+  
+  // Use unified download manager for all download operations
   const {
     downloads,
     isLoading,
-    removeDownload,
+    storageUsed,
+    deleteDownload,
+    getProgress,
+    getLicenseExpiry,
     getOfflineVideoUrl,
-    getTotalStorageUsed,
-    formatBytes,
-  } = useOfflineDownloads();
-
-  const {
-    downloads: downloadQueue,
     pauseDownload,
     resumeDownload,
     cancelDownload,
     cleanupExpiredDownloads,
-    getProgress,
-    getLicenseExpiry,
+    formatBytes,
   } = useDownloadManager();
 
   const { getPendingBackgroundDownloads } = useBackgroundDownload();
@@ -56,12 +53,15 @@ const Downloads = () => {
   const [showStorageManagement, setShowStorageManagement] = useState(false);
   const [licenseExpiries, setLicenseExpiries] = useState<Record<string, number>>({});
 
+  // Filter to only show completed downloads
+  const completedDownloads = downloads.filter(d => d.status === 'completed');
+
   // Load license expiries for all downloads
   useEffect(() => {
     const loadExpiries = async () => {
       const expiries: Record<string, number> = {};
-      for (const d of downloads) {
-        const expiry = await getLicenseExpiry(d.id);
+      for (const d of completedDownloads) {
+        const expiry = await getLicenseExpiry(d.contentId, d.episodeId);
         if (expiry) {
           expiries[d.id] = expiry;
         }
@@ -69,10 +69,10 @@ const Downloads = () => {
       setLicenseExpiries(expiries);
     };
     
-    if (downloads.length > 0) {
+    if (completedDownloads.length > 0) {
       loadExpiries();
     }
-  }, [downloads, getLicenseExpiry]);
+  }, [completedDownloads, getLicenseExpiry]);
 
   // Check for expiring downloads
   useEffect(() => {
@@ -95,13 +95,36 @@ const Downloads = () => {
     navigate("/auth");
   };
 
-  const handlePlay = async (content: Content, downloadId: string) => {
-    const offlineUrl = await getOfflineVideoUrl(downloadId);
+  const handlePlay = async (downloadId: string, contentId: string, episodeId?: string) => {
+    const offlineUrl = await getOfflineVideoUrl(contentId, episodeId);
     if (offlineUrl) {
-      setPlayingContent({ content, offlineUrl });
+      const download = downloads.find(d => d.id === downloadId);
+      if (download) {
+        setPlayingContent({
+          content: {
+            id: download.contentId,
+            title: download.title,
+            description: '',
+            thumbnailUrl: download.thumbnailUrl || '',
+            videoUrl: '',
+            contentType: 'movie',
+            genre: '',
+            year: 0,
+            rating: '',
+            duration: download.duration,
+            isPremium: false,
+            contentRating: download.contentRating || 'PG',
+          },
+          offlineUrl,
+        });
+      }
     } else {
       toast.error("Failed to load offline video");
     }
+  };
+
+  const handleDeleteDownload = async (contentId: string, episodeId?: string) => {
+    await deleteDownload(contentId, episodeId);
   };
 
   if (!user) {
@@ -128,6 +151,11 @@ const Downloads = () => {
   if (isMobile) {
     return <MobileDownloads />;
   }
+
+  // Active downloads for notification panel
+  const activeDownloads = downloads.filter(d => 
+    d.status === 'downloading' || d.status === 'paused' || d.status === 'pending'
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -171,7 +199,7 @@ const Downloads = () => {
                   <div>
                     <p className="text-sm font-medium">Storage Used</p>
                     <p className="text-lg font-bold text-brand">
-                      {formatBytes(getTotalStorageUsed())} / {formatBytes(STORAGE_LIMIT)}
+                      {formatBytes(storageUsed)} / {formatBytes(STORAGE_LIMIT)}
                     </p>
                   </div>
                 </CardContent>
@@ -186,20 +214,23 @@ const Downloads = () => {
               <WifiOnlyToggle />
               
               <StorageManagement
-                downloads={downloads.map(d => ({
+                downloads={completedDownloads.map(d => ({
                   id: d.id,
-                  title: d.episodeTitle || d.content.title,
-                  size: d.totalSize,
+                  title: d.episodeTitle || d.title,
+                  size: d.downloadedSize,
                   status: 'completed',
-                  createdAt: new Date(d.downloadedAt).getTime(),
-                  lastWatchedAt: undefined,
-                  isExpired: false,
+                  createdAt: d.createdAt,
+                  lastWatchedAt: d.lastWatchedPosition ? d.updatedAt : undefined,
+                  isExpired: licenseExpiries[d.id] ? licenseExpiries[d.id] < Date.now() : false,
                 }))}
-                storageUsed={getTotalStorageUsed()}
+                storageUsed={storageUsed}
                 storageLimit={STORAGE_LIMIT}
                 onRemoveDownloads={async (ids) => {
                   for (const id of ids) {
-                    await removeDownload(id);
+                    const download = downloads.find(d => d.id === id);
+                    if (download) {
+                      await deleteDownload(download.contentId, download.episodeId);
+                    }
                   }
                 }}
                 onCleanupExpired={cleanupExpiredDownloads}
@@ -212,7 +243,7 @@ const Downloads = () => {
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-12 w-12 animate-spin text-brand" />
             </div>
-          ) : downloads.length === 0 ? (
+          ) : completedDownloads.length === 0 ? (
             <div className="text-center py-16">
               <Download className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
               <h2 className="text-xl font-semibold mb-2">No downloads yet</h2>
@@ -225,22 +256,22 @@ const Downloads = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {downloads.map((download) => (
+              {completedDownloads.map((download) => (
                 <Card
                   key={download.id}
                   className="bg-secondary border-border overflow-hidden group hover:border-brand/50 transition-colors"
                 >
                   <div className="relative aspect-video">
                     <img
-                      src={download.content.thumbnailUrl}
-                      alt={download.content.title}
+                      src={download.thumbnailUrl || '/placeholder.svg'}
+                      alt={download.title}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                       <Button
                         size="icon"
                         className="rounded-full bg-brand hover:bg-brand/90"
-                        onClick={() => handlePlay(download.content, download.id)}
+                        onClick={() => handlePlay(download.id, download.contentId, download.episodeId)}
                       >
                         <Play className="h-5 w-5" fill="currentColor" />
                       </Button>
@@ -248,7 +279,7 @@ const Downloads = () => {
                         size="icon"
                         variant="outline"
                         className="rounded-full"
-                        onClick={() => removeDownload(download.id)}
+                        onClick={() => handleDeleteDownload(download.contentId, download.episodeId)}
                       >
                         <Trash2 className="h-5 w-5" />
                       </Button>
@@ -256,20 +287,20 @@ const Downloads = () => {
                   </div>
                   <CardContent className="p-4">
                     <h3 className="font-semibold truncate">
-                      {download.episodeTitle || download.content.title}
+                      {download.episodeTitle || download.title}
                     </h3>
                     {download.episodeTitle && (
                       <p className="text-sm text-muted-foreground truncate">
-                        {download.content.title}
+                        {download.title}
                       </p>
                     )}
                     <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                      <span>{formatBytes(download.totalSize)}</span>
+                      <span>{formatBytes(download.downloadedSize)}</span>
                       {licenseExpiries[download.id] ? (
                         <DownloadExpiryWarning expiresAt={licenseExpiries[download.id]} variant="badge" />
                       ) : (
                         <span>
-                          {new Date(download.downloadedAt).toLocaleDateString()}
+                          {new Date(download.createdAt).toLocaleDateString()}
                         </span>
                       )}
                     </div>
@@ -285,7 +316,7 @@ const Downloads = () => {
         <ContentDetailsModal
           content={selectedContent}
           onClose={() => setSelectedContent(null)}
-          onPlay={(c) => handlePlay(c, c.id)}
+          onPlay={(c) => handlePlay(c.id, c.id)}
           onToggleList={() => {}}
           isInList={false}
         />
@@ -293,20 +324,29 @@ const Downloads = () => {
 
       {/* Global Download Notifications */}
       <GlobalDownloadNotifications
-        activeDownloads={downloadQueue.map(d => {
+        activeDownloads={activeDownloads.map(d => {
           const progress = getProgress(d.contentId, d.episodeId);
           return {
             id: d.id,
-            title: d.title,
+            title: d.episodeTitle || d.title,
             progress: progress?.progress || 0,
             status: d.status,
             speed: progress?.speed,
             eta: progress?.eta,
           };
         })}
-        onPause={pauseDownload}
-        onResume={resumeDownload}
-        onCancel={cancelDownload}
+        onPause={(id) => {
+          const download = downloads.find(d => d.id === id);
+          if (download) pauseDownload(download.contentId, download.episodeId);
+        }}
+        onResume={(id) => {
+          const download = downloads.find(d => d.id === id);
+          if (download) resumeDownload(download.contentId, download.episodeId);
+        }}
+        onCancel={(id) => {
+          const download = downloads.find(d => d.id === id);
+          if (download) cancelDownload(download.contentId, download.episodeId);
+        }}
       />
     </div>
   );
