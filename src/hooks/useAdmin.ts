@@ -120,6 +120,8 @@ export const useAdminContent = () => {
       if (error) throw error;
       return data || [];
     },
+    refetchOnMount: true,
+    staleTime: 0, // Always consider data stale to ensure refresh
   });
 };
 
@@ -139,6 +141,9 @@ export const useCreateContent = () => {
       year?: number;
       rating?: string;
       tmdb_id?: number | null;
+      content_rating?: string;
+      director?: string;
+      cast_members?: any;
     }) => {
       const { data, error } = await supabase
         .from("content")
@@ -150,8 +155,12 @@ export const useCreateContent = () => {
       return data;
     },
     onSuccess: () => {
+      // Invalidate all content-related queries to ensure list refresh
       queryClient.invalidateQueries({ queryKey: ["admin-content"] });
       queryClient.invalidateQueries({ queryKey: ["content"] });
+      queryClient.invalidateQueries({ queryKey: ["tv-trending"] });
+      queryClient.invalidateQueries({ queryKey: ["tv-movies"] });
+      queryClient.invalidateQueries({ queryKey: ["tv-series"] });
     },
   });
 };
