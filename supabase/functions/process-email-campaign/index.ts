@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LOGO_URL = "https://wpczgwxsriezaubncuom.lovableproject.com/logo/hoyeeh-logo-email.png";
+const LOGO_URL = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
 
 const wrapInTemplate = (content: string, subject: string) => `
 <!DOCTYPE html>
