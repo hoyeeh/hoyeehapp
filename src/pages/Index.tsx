@@ -104,6 +104,18 @@ const Index = () => {
     },
   });
 
+  // Fetch section content for curated sections
+  const { data: sectionContentData = [] } = useQuery({
+    queryKey: ["section-content-display"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("section_content")
+        .select("*, content:content_id(*)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Fetch recently added content
   const { data: recentlyAdded = [] } = useQuery({
     queryKey: ["recently-added-home"],
@@ -304,6 +316,21 @@ const Index = () => {
   const shows = content.filter((c) => c.contentType === "series");
   const featuredContent = content[0];
 
+  // Transform raw content to Content type
+  const transformRawContent = (item: any): Content => ({
+    id: item.id,
+    title: item.title,
+    description: item.description || "",
+    thumbnailUrl: item.thumbnail_url || "",
+    videoUrl: item.video_url || "",
+    genre: item.genre || "",
+    contentType: item.content_type as "movie" | "series",
+    isPremium: item.is_premium || false,
+    duration: item.duration || 0,
+    year: item.year,
+    rating: item.rating,
+  });
+
   // Get section content based on type
   const getSectionContent = (section: any): Content[] => {
     switch (section.section_type) {
@@ -315,7 +342,20 @@ const Index = () => {
         const genreName = section.genre?.name;
         if (!genreName) return [];
         return content.filter((c) => c.genre.toLowerCase().includes(genreName.toLowerCase())).slice(0, section.max_items || 15);
+      case "curated":
+        // Get curated content from section_content table
+        const curatedItems = sectionContentData
+          .filter((sc: any) => sc.section_id === section.id && sc.content)
+          .sort((a: any, b: any) => a.display_order - b.display_order)
+          .map((sc: any) => transformRawContent(sc.content));
+        return curatedItems.slice(0, section.max_items || 15);
       case "custom":
+        // Filter by content type if specified
+        if (section.content_type_filter === "movie") {
+          return movies.slice(0, section.max_items || 15);
+        } else if (section.content_type_filter === "series") {
+          return shows.slice(0, section.max_items || 15);
+        }
         if (section.title.toLowerCase().includes("movie")) {
           return movies.slice(0, section.max_items || 15);
         } else if (section.title.toLowerCase().includes("show") || section.title.toLowerCase().includes("series")) {
