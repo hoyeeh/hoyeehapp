@@ -604,6 +604,8 @@ const Index = () => {
                           onDetails={handleDetails}
                           userList={watchlistIds}
                           cardStyle="poster"
+                          showSeeAll
+                          onSeeAll={() => navigate("/my-list")}
                         />
                       ) : null;
                     }
@@ -633,6 +635,8 @@ const Index = () => {
                         onDetails={handleDetails}
                         userList={watchlistIds}
                         cardStyle="poster"
+                        showSeeAll
+                        onSeeAll={() => navigate("/genres")}
                       />
                     );
                   })}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Cast, Search, Bell } from "lucide-react";
+import { Cast, Search, Bell, Grid3X3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useProfile } from "@/hooks/useDatabase";
@@ -8,6 +8,7 @@ import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { MobileCastSheet } from "./MobileCastSheet";
 import { MobileNotificationSheet } from "./MobileNotificationSheet";
+import { MobileCategoriesSheet } from "./MobileCategoriesSheet";
 
 interface MobileHeaderProps {
   onSearchClick?: () => void;
@@ -21,9 +22,7 @@ const filters = [
   { id: "all", label: "All" },
   { id: "series", label: "TV Shows" },
   { id: "movie", label: "Movies" },
-  { id: "kids", label: "Kids" },
-  { id: "new", label: "New Releases" },
-  { id: "trending", label: "Trending" },
+  { id: "categories", label: "Categories", isSpecial: true },
 ];
 
 export function MobileHeader({ 
@@ -40,6 +39,7 @@ export function MobileHeader({
   const { data: unreadCount } = useUnreadNotificationCount();
   const [showCastSheet, setShowCastSheet] = useState(false);
   const [showNotificationSheet, setShowNotificationSheet] = useState(false);
+  const [showCategoriesSheet, setShowCategoriesSheet] = useState(false);
 
   // Use profile avatar from profiles table, fallback to currentProfile
   const avatarUrl = profile?.avatar_url || currentProfile?.avatar_url;
@@ -74,11 +74,11 @@ export function MobileHeader({
           </button>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button 
               onClick={() => setShowCastSheet(true)}
               className={cn(
-                "p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation",
+                "relative p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation",
                 cast.isConnected && "text-primary"
               )}
               style={{ minWidth: 44, minHeight: 44 }}
@@ -86,18 +86,18 @@ export function MobileHeader({
             >
               <Cast className="h-5 w-5" />
               {cast.isConnected && (
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-primary rounded-full" />
+                <span className="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full" />
               )}
             </button>
             <button 
-              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation relative"
+              className="relative p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation"
               style={{ minWidth: 44, minHeight: 44 }}
               aria-label="Notifications"
               onClick={() => setShowNotificationSheet(true)}
             >
               <Bell className="h-5 w-5" />
               {unreadCount && unreadCount > 0 && (
-                <span className="absolute top-1 right-1 h-4 w-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -119,15 +119,24 @@ export function MobileHeader({
             {filters.map((filter) => (
               <button
                 key={filter.id}
-                onClick={() => onFilterChange?.(filter.id)}
+                onClick={() => {
+                  if ((filter as any).isSpecial) {
+                    setShowCategoriesSheet(true);
+                  } else {
+                    onFilterChange?.(filter.id);
+                  }
+                }}
                 className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300",
+                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300",
                   "border active:scale-95 touch-manipulation",
-                  activeFilter === filter.id
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-transparent text-foreground border-border/60 hover:border-foreground/50"
+                  (filter as any).isSpecial
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : activeFilter === filter.id
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-transparent text-foreground border-border/60 hover:border-foreground/50"
                 )}
               >
+                {(filter as any).isSpecial && <Grid3X3 className="h-3.5 w-3.5" />}
                 {filter.label}
               </button>
             ))}
@@ -145,6 +154,12 @@ export function MobileHeader({
       <MobileNotificationSheet
         open={showNotificationSheet}
         onClose={() => setShowNotificationSheet(false)}
+      />
+
+      {/* Categories Sheet */}
+      <MobileCategoriesSheet
+        open={showCategoriesSheet}
+        onClose={() => setShowCategoriesSheet(false)}
       />
     </>
   );

@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsMobileContentCard } from "./KidsMobileContentCard";
 import { KidsHeroCarousel } from "./KidsHeroCarousel";
-import { Film, Tv, Clock, Moon, TrendingUp, Sparkles } from "lucide-react";
+import { Film, Tv, Clock, Moon, TrendingUp, Sparkles, ChevronRight } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -22,21 +23,35 @@ interface KidsMobileHomeProps {
 const SectionHeader = ({ 
   icon: Icon, 
   title, 
-  color 
+  color,
+  onSeeAll
 }: { 
   icon: typeof Film; 
   title: string; 
   color: string;
+  onSeeAll?: () => void;
 }) => (
-  <div className="flex items-center gap-2.5 px-5 mb-4">
-    <div className={`w-8 h-8 rounded-xl ${color} flex items-center justify-center`}>
-      <Icon className="h-4 w-4 text-white" strokeWidth={2} />
+  <div className="flex items-center justify-between px-5 mb-4">
+    <div className="flex items-center gap-2.5">
+      <div className={`w-8 h-8 rounded-xl ${color} flex items-center justify-center`}>
+        <Icon className="h-4 w-4 text-white" strokeWidth={2} />
+      </div>
+      <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">{title}</h2>
     </div>
-    <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">{title}</h2>
+    {onSeeAll && (
+      <button 
+        onClick={onSeeAll}
+        className="flex items-center gap-1 text-xs text-white/60 active:scale-95 transition-transform"
+      >
+        <span>See All</span>
+        <ChevronRight className="h-3 w-3" />
+      </button>
+    )}
   </div>
 );
 
 export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
+  const navigate = useNavigate();
   const { currentProfile } = useProfileContext();
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
@@ -210,7 +225,12 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       {/* Animation Section - Featured First */}
       {animationContent.length > 0 && (
         <section>
-          <SectionHeader icon={Sparkles} title="Animation" color="bg-gradient-to-br from-fuchsia-500 to-purple-600" />
+          <SectionHeader 
+            icon={Sparkles} 
+            title="Animation" 
+            color="bg-gradient-to-br from-fuchsia-500 to-purple-600"
+            onSeeAll={() => navigate("/genres")} 
+          />
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
             {animationContent.slice(0, 8).map((item, index) => (
               <KidsMobileContentCard
@@ -229,7 +249,12 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       {/* Trending Now */}
       {kidsContent.length > 0 && (
         <section>
-          <SectionHeader icon={TrendingUp} title="Trending Now" color="bg-gradient-to-br from-rose-500 to-pink-600" />
+          <SectionHeader 
+            icon={TrendingUp} 
+            title="Trending Now" 
+            color="bg-gradient-to-br from-rose-500 to-pink-600"
+            onSeeAll={() => navigate("/genres")} 
+          />
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
             {sortedContent.slice(0, 8).map((item, index) => (
               <KidsMobileContentCard
@@ -251,7 +276,12 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       {/* Movies */}
       {movies.length > 0 && (
         <section>
-          <SectionHeader icon={Film} title="Movies" color="bg-gradient-to-br from-blue-500 to-cyan-600" />
+          <SectionHeader 
+            icon={Film} 
+            title="Movies" 
+            color="bg-gradient-to-br from-blue-500 to-cyan-600"
+            onSeeAll={() => navigate("/genres")} 
+          />
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
             {movies.slice(0, 12).map((item, index) => (
               <KidsMobileContentCard
@@ -269,7 +299,12 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       {/* TV Shows */}
       {shows.length > 0 && (
         <section>
-          <SectionHeader icon={Tv} title="TV Shows" color="bg-gradient-to-br from-emerald-500 to-green-600" />
+          <SectionHeader 
+            icon={Tv} 
+            title="TV Shows" 
+            color="bg-gradient-to-br from-emerald-500 to-green-600"
+            onSeeAll={() => navigate("/genres")} 
+          />
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
             {shows.slice(0, 12).map((item, index) => (
               <KidsMobileContentCard
