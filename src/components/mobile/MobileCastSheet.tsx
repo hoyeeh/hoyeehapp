@@ -2,16 +2,13 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Cast, Wifi, Smartphone, Tv, ChevronRight, 
-  Loader2, Check, Scan, Link2, Settings, X, QrCode
+  Loader2, Check, Scan, Link2, Settings, X, QrCode, AlertCircle, Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Hooks
 import { useCast } from "@/contexts/CastContext";
-import { useGoogleCast } from "@/hooks/useGoogleCast";
-import { useDLNA } from "@/hooks/useDLNA";
-import { useAirPlay } from "@/hooks/useAirPlay";
 import { useCastHistory, CastDevice as HistoryDevice } from "@/hooks/useCastHistory";
 
 // Components
@@ -47,37 +44,40 @@ export function MobileCastSheet({
   const [showDLNASetup, setShowDLNASetup] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
 
-  // Hooks
+  // Use unified CastContext
   const cast = useCast();
-  const googleCast = useGoogleCast();
-  const dlna = useDLNA();
-  const airPlay = useAirPlay();
   const castHistory = useCastHistory();
 
   // Handle Chromecast connection
   const handleChromecast = async () => {
-    if (!googleCast.isAvailable) {
-      toast.error("Chromecast not available");
+    // Check for platform warning first
+    if (cast.chromecast.platformWarning) {
+      toast.error(cast.chromecast.platformWarning);
+      return;
+    }
+
+    if (!cast.chromecast.isAvailable) {
+      toast.error("Chromecast not available on this device");
       return;
     }
 
     try {
-      await googleCast.connect();
-      if (googleCast.isConnected) {
+      await cast.chromecast.connect();
+      if (cast.chromecast.isConnected) {
         castHistory.addDevice({
           id: "chromecast-default",
-          name: googleCast.deviceName || "Chromecast",
+          name: cast.chromecast.deviceName || "Chromecast",
           type: "chromecast",
         });
         
         // Only load media if we have a video URL
         if (videoUrl) {
           onCastStart?.();
-          await googleCast.loadMedia(videoUrl, videoTitle, thumbnail, currentTime);
-          toast.success(`Casting to ${googleCast.deviceName}`);
+          await cast.chromecast.loadMedia(videoUrl, videoTitle, thumbnail, currentTime);
+          toast.success(`Casting to ${cast.chromecast.deviceName}`);
           onClose();
         } else {
-          toast.success(`Connected to ${googleCast.deviceName}`);
+          toast.success(`Connected to ${cast.chromecast.deviceName}`);
         }
       }
     } catch (error) {
@@ -88,31 +88,38 @@ export function MobileCastSheet({
 
   // Handle AirPlay
   const handleAirPlay = () => {
-    if (!airPlay.isAvailable) {
-      toast.error("AirPlay only works in Safari");
+    if (!cast.airPlay.isAvailable) {
+      toast.error("AirPlay only works in Safari on Mac or iOS");
       return;
     }
-    airPlay.showPicker();
+    
+    // AirPlay requires a video element to be set up first
+    cast.airPlay.showPicker();
   };
 
   // Handle TV Code pairing
-  const handlePairWithCode = async (code: string) => {
+  const handlePairWithCode = async (code: string): Promise<boolean> => {
     try {
-      await cast.pairWithCode(code);
-      setShowPairingDialog(false);
-      
-      // Only load video if we have a URL
-      if (videoUrl) {
-        onCastStart?.();
-        await cast.loadVideo(videoUrl, videoTitle, thumbnail, currentTime, duration);
-        toast.success(`Connected and casting to TV`);
-        onClose();
-      } else {
-        toast.success(`Connected to TV`);
+      const success = await cast.pairWithCode(code);
+      if (success) {
+        setShowPairingDialog(false);
+        
+        // Only load video if we have a URL
+        if (videoUrl) {
+          onCastStart?.();
+          await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime);
+          toast.success(`Connected and casting to TV`);
+          onClose();
+        } else {
+          toast.success(`Connected to TV`);
+        }
+        return true;
       }
+      return false;
     } catch (error) {
       console.error("[MobileCastSheet] Pairing error:", error);
       toast.error("Failed to pair with TV");
+      return false;
     }
   };
 
@@ -121,16 +128,16 @@ export function MobileCastSheet({
     try {
       // Convert HistoryDevice type to CastDevice type for useUniversalCast
       const castDeviceType = device.type === 'airplay' ? 'remote' : device.type;
-      await cast.reconnectToDevice({ 
+      const success = await cast.reconnectToDevice({ 
         id: device.id, 
         name: device.customName || device.name,
         type: castDeviceType as 'remote' | 'dlna' | 'chromecast',
       });
-      if (cast.isConnected) {
+      if (success && cast.isConnected) {
         // Only load video if we have a URL
         if (videoUrl) {
           onCastStart?.();
-          await cast.loadVideo(videoUrl, videoTitle, thumbnail, currentTime, duration);
+          await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime);
           toast.success(`Connected to ${device.name}`);
           onClose();
         } else {
@@ -146,7 +153,7 @@ export function MobileCastSheet({
   // Handle DLNA device selection
   const handleDLNADevice = async (device: any) => {
     try {
-      await dlna.connectToDevice(device);
+      await cast.dlna.connect(device);
       castHistory.addDevice({
         id: device.id,
         name: device.name,
@@ -156,7 +163,7 @@ export function MobileCastSheet({
       // Only play media if we have a URL
       if (videoUrl) {
         onCastStart?.();
-        await dlna.playMedia(videoUrl, videoTitle, currentTime);
+        await cast.dlna.playMedia(videoUrl, videoTitle, currentTime);
         toast.success(`Casting to ${device.name}`);
         onClose();
       } else {
@@ -170,11 +177,14 @@ export function MobileCastSheet({
 
   // Scan for DLNA devices
   const handleDLNAScan = () => {
-    dlna.scanForDevices();
+    cast.dlna.scanForDevices();
   };
 
   // Recent devices from history
   const recentDevices = castHistory.devices.slice(0, 5);
+
+  // Get current active connection
+  const activeConnection = cast.getActiveConnection();
 
   return (
     <>
@@ -244,12 +254,14 @@ export function MobileCastSheet({
                     {/* Chromecast */}
                     <button
                       onClick={handleChromecast}
-                      disabled={!googleCast.isAvailable}
+                      disabled={!!cast.chromecast.platformWarning}
                       className={cn(
                         "w-full flex items-center gap-4 p-4 rounded-xl transition-colors",
-                        googleCast.isAvailable
-                          ? "bg-secondary hover:bg-secondary/80"
-                          : "bg-muted opacity-50"
+                        cast.chromecast.platformWarning
+                          ? "bg-muted opacity-60"
+                          : cast.chromecast.isAvailable
+                            ? "bg-secondary hover:bg-secondary/80"
+                            : "bg-muted opacity-50"
                       )}
                     >
                       <div className="p-3 rounded-full bg-primary/10">
@@ -258,28 +270,41 @@ export function MobileCastSheet({
                       <div className="flex-1 text-left">
                         <p className="font-medium">Chromecast</p>
                         <p className="text-sm text-muted-foreground">
-                          {googleCast.isAvailable
-                            ? googleCast.isConnected
-                              ? `Connected to ${googleCast.deviceName}`
-                              : "Cast to nearby devices"
-                            : "Not available"}
+                          {cast.chromecast.platformWarning
+                            ? "Not available on mobile web"
+                            : cast.chromecast.isAvailable
+                              ? cast.chromecast.isConnected
+                                ? `Connected to ${cast.chromecast.deviceName}`
+                                : "Cast to nearby devices"
+                              : "Not available"}
                         </p>
                       </div>
-                      {googleCast.isConnected && (
+                      {cast.chromecast.isConnected ? (
                         <Check className="h-5 w-5 text-primary" />
-                      )}
-                      {!googleCast.isConnected && googleCast.isAvailable && (
+                      ) : cast.chromecast.platformWarning ? (
+                        <Info className="h-5 w-5 text-muted-foreground" />
+                      ) : (
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       )}
                     </button>
 
+                    {/* Platform warning for Chromecast */}
+                    {cast.chromecast.platformWarning && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          {cast.chromecast.platformWarning}
+                        </p>
+                      </div>
+                    )}
+
                     {/* AirPlay */}
                     <button
                       onClick={handleAirPlay}
-                      disabled={!airPlay.isAvailable}
+                      disabled={!cast.airPlay.isAvailable}
                       className={cn(
                         "w-full flex items-center gap-4 p-4 rounded-xl transition-colors",
-                        airPlay.isAvailable
+                        cast.airPlay.isAvailable
                           ? "bg-secondary hover:bg-secondary/80"
                           : "bg-muted opacity-50"
                       )}
@@ -290,14 +315,14 @@ export function MobileCastSheet({
                       <div className="flex-1 text-left">
                         <p className="font-medium">AirPlay</p>
                         <p className="text-sm text-muted-foreground">
-                          {airPlay.isAvailable
-                            ? airPlay.isConnected
-                              ? `Connected to ${airPlay.deviceName}`
+                          {cast.airPlay.isAvailable
+                            ? cast.airPlay.isConnected
+                              ? `Connected to ${cast.airPlay.deviceName}`
                               : "Cast to Apple TV"
                             : "Only available in Safari"}
                         </p>
                       </div>
-                      {airPlay.isConnected && (
+                      {cast.airPlay.isConnected && (
                         <Check className="h-5 w-5 text-blue-500" />
                       )}
                     </button>
@@ -337,7 +362,7 @@ export function MobileCastSheet({
                     </button>
 
                     {/* Already connected */}
-                    {cast.isConnected && cast.connectedDevice && (
+                    {activeConnection.type && activeConnection.device && (
                       <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/30">
                         <div className="flex items-center gap-3">
                           <div className="p-2 rounded-full bg-primary">
@@ -345,11 +370,11 @@ export function MobileCastSheet({
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-medium">Currently casting to</p>
-                            <p className="text-primary font-semibold">{cast.connectedDevice.name}</p>
+                            <p className="text-primary font-semibold">{activeConnection.device}</p>
                           </div>
                           <button
-                            onClick={async () => {
-                              await cast.disconnect();
+                            onClick={() => {
+                              cast.disconnectAll();
                               toast.info("Disconnected");
                             }}
                             className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded-lg"
@@ -365,27 +390,65 @@ export function MobileCastSheet({
                 {/* DLNA/Smart TV Tab */}
                 {activeTab === "dlna" && (
                   <div className="space-y-3">
-                    {/* Scan button */}
+                    {/* Platform limitation notice */}
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                      <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        <p className="font-medium mb-1">Web Browser Limitation</p>
+                        <p>Automatic device discovery isn't available in browsers. Use "Link with TV Code" for the best experience, or manually add your Smart TV below.</p>
+                      </div>
+                    </div>
+
+                    {/* Saved/Manual devices */}
+                    {cast.dlna.savedDevices.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Saved devices</p>
+                        {cast.dlna.savedDevices.map((device) => (
+                          <button
+                            key={device.id}
+                            onClick={() => handleDLNADevice({
+                              id: device.id,
+                              name: device.name,
+                              type: 'dlna' as const,
+                              location: `http://${device.ipAddress}:${device.port}`,
+                            })}
+                            className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
+                          >
+                            <div className="p-3 rounded-full bg-primary/10">
+                              <Tv className="h-6 w-6 text-primary" />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className="font-medium">{device.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {device.ipAddress}:{device.port}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Scan button (shows limitations) */}
                     <button
                       onClick={handleDLNAScan}
-                      disabled={dlna.isScanning}
-                      className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-primary text-white"
+                      disabled={cast.dlna.isScanning}
+                      className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
                     >
-                      {dlna.isScanning ? (
+                      {cast.dlna.isScanning ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
                         <Scan className="h-5 w-5" />
                       )}
                       <span className="font-medium">
-                        {dlna.isScanning ? "Scanning..." : "Scan for Smart TVs"}
+                        {cast.dlna.isScanning ? "Scanning..." : "Scan for Smart TVs"}
                       </span>
                     </button>
 
-                    {/* Device list */}
-                    {dlna.devices.length > 0 ? (
+                    {/* Device list from scan */}
+                    {cast.dlna.devices.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Available devices</p>
-                        {dlna.devices.map((device) => (
+                        <p className="text-sm text-muted-foreground">Found devices</p>
+                        {cast.dlna.devices.map((device) => (
                           <button
                             key={device.id}
                             onClick={() => handleDLNADevice(device)}
@@ -400,29 +463,32 @@ export function MobileCastSheet({
                                 {device.manufacturer || "Smart TV"}
                               </p>
                             </div>
-                            {dlna.connectedDevice?.id === device.id && (
+                            {cast.dlna.connectedDevice?.id === device.id && (
                               <Check className="h-5 w-5 text-primary" />
                             )}
                           </button>
                         ))}
                       </div>
-                    ) : !dlna.isScanning ? (
-                      <div className="text-center py-8">
-                        <Wifi className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-                        <p className="text-muted-foreground mb-1">No devices found</p>
-                        <p className="text-sm text-muted-foreground/70">
-                          Make sure your TV is on the same WiFi network
+                    )}
+
+                    {/* Empty state */}
+                    {cast.dlna.devices.length === 0 && cast.dlna.savedDevices.length === 0 && !cast.dlna.isScanning && (
+                      <div className="text-center py-6">
+                        <Wifi className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                        <p className="text-muted-foreground mb-1">No devices configured</p>
+                        <p className="text-sm text-muted-foreground/70 mb-4">
+                          Add your Smart TV manually or use TV Code linking
                         </p>
                       </div>
-                    ) : null}
+                    )}
 
                     {/* Setup guide link */}
                     <button
                       onClick={() => setShowDLNASetup(true)}
-                      className="w-full flex items-center gap-3 p-3 text-sm text-muted-foreground"
+                      className="w-full flex items-center gap-3 p-3 text-sm text-muted-foreground hover:bg-secondary/50 rounded-lg transition-colors"
                     >
                       <Settings className="h-4 w-4" />
-                      <span>Need help setting up your Smart TV?</span>
+                      <span>Add Smart TV manually</span>
                     </button>
                   </div>
                 )}
@@ -440,17 +506,18 @@ export function MobileCastSheet({
                             className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
                           >
                             <div className="p-3 rounded-full bg-primary/10">
-                              {device.type === "chromecast" && <Cast className="h-6 w-6 text-primary" />}
-                              {device.type === "dlna" && <Tv className="h-6 w-6 text-primary" />}
-                              {device.type === "airplay" && <Tv className="h-6 w-6 text-blue-500" />}
-                              {!["chromecast", "dlna", "airplay"].includes(device.type) && (
-                                <Smartphone className="h-6 w-6 text-primary" />
+                              {device.type === "chromecast" ? (
+                                <Cast className="h-6 w-6 text-primary" />
+                              ) : device.type === "airplay" ? (
+                                <Tv className="h-6 w-6 text-blue-500" />
+                              ) : (
+                                <Tv className="h-6 w-6 text-primary" />
                               )}
                             </div>
                             <div className="flex-1 text-left">
                               <p className="font-medium">{device.customName || device.name}</p>
                               <p className="text-sm text-muted-foreground capitalize">
-                                {device.type} • Last used {new Date(device.lastUsed).toLocaleDateString()}
+                                {device.type === "dlna" ? "Smart TV" : device.type}
                               </p>
                             </div>
                             <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -459,25 +526,12 @@ export function MobileCastSheet({
                       </>
                     ) : (
                       <div className="text-center py-8">
-                        <Cast className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                        <Smartphone className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
                         <p className="text-muted-foreground">No recent devices</p>
                         <p className="text-sm text-muted-foreground/70">
                           Cast to a device to see it here
                         </p>
                       </div>
-                    )}
-
-                    {/* Clear history */}
-                    {recentDevices.length > 0 && (
-                      <button
-                        onClick={() => {
-                          castHistory.clearHistory();
-                          toast.success("Device history cleared");
-                        }}
-                        className="w-full text-center text-sm text-destructive p-3"
-                      >
-                        Clear device history
-                      </button>
                     )}
                   </div>
                 )}
@@ -487,30 +541,42 @@ export function MobileCastSheet({
         )}
       </AnimatePresence>
 
-      {/* Pairing Dialog */}
+      {/* Dialogs */}
       <CastPairingDialog
         open={showPairingDialog}
         onOpenChange={setShowPairingDialog}
-        onPair={async (code: string) => {
-          await handlePairWithCode(code);
-          return true;
-        }}
+        onPair={handlePairWithCode}
         isConnecting={cast.isConnecting}
       />
 
-      {/* DLNA Setup Guide */}
       <DLNASetupGuide
         open={showDLNASetup}
         onOpenChange={setShowDLNASetup}
+        onDeviceSelect={(device) => {
+          // Add to saved devices using the device info from the guide
+          cast.dlna.addManualDevice({
+            id: device.id,
+            name: device.name,
+            ipAddress: device.ipAddress || '192.168.1.1',
+            port: device.port || 8080,
+          });
+          handleDLNADevice({
+            id: device.id,
+            name: device.name,
+            type: 'dlna' as const,
+            location: `http://${device.ipAddress || '192.168.1.1'}:${device.port || 8080}`,
+          });
+        }}
       />
 
-      {/* QR Code Scanner */}
       <MobileQRScanner
         open={showQRScanner}
         onClose={() => setShowQRScanner(false)}
         onCodeScanned={async (code) => {
-          setShowQRScanner(false);
-          await handlePairWithCode(code);
+          const success = await handlePairWithCode(code);
+          if (success) {
+            setShowQRScanner(false);
+          }
         }}
       />
     </>
