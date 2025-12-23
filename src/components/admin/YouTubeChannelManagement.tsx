@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { 
   Youtube, Plus, Trash2, RefreshCw, ExternalLink, 
   Play, List, Eye, Clock, ChevronRight, Search, Image as ImageIcon,
-  Smartphone, Monitor, Baby
+  Smartphone, Monitor, Baby, Zap, CheckSquare
 } from "lucide-react";
 import { YouTubeBannerManagement } from "./YouTubeBannerManagement";
 
@@ -66,6 +67,27 @@ export const YouTubeChannelManagement = () => {
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
   const [syncingChannelId, setSyncingChannelId] = useState<string | null>(null);
   const [syncingPlaylistId, setSyncingPlaylistId] = useState<string | null>(null);
+  const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<Set<string>>(new Set());
+  const [isBulkSyncing, setIsBulkSyncing] = useState(false);
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
+  const [unsyncedCount, setUnsyncedCount] = useState(0);
+
+  // Fetch unsynced playlist count
+  useEffect(() => {
+    const fetchUnsyncedCount = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('youtube-auto-sync', {
+          body: { action: 'get-unsynced-count' },
+        });
+        if (!error && data) {
+          setUnsyncedCount(data.unsyncedCount || 0);
+        }
+      } catch (err) {
+        console.error('Error fetching unsynced count:', err);
+      }
+    };
+    fetchUnsyncedCount();
+  }, []);
 
   // Fetch channels
   const { data: channels = [], isLoading: channelsLoading } = useQuery({
@@ -251,10 +273,97 @@ export const YouTubeChannelManagement = () => {
       toast.success(`Synced ${data.count} videos`);
       queryClient.invalidateQueries({ queryKey: ['youtube-videos'] });
       queryClient.invalidateQueries({ queryKey: ['youtube-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['kids-youtube-videos'] });
+      // Update unsynced count
+      setUnsyncedCount(prev => Math.max(0, prev - 1));
     } catch (error: any) {
       toast.error(error.message || "Failed to sync videos");
     } finally {
       setSyncingPlaylistId(null);
+    }
+  };
+
+  // Bulk sync selected playlists
+  const bulkSyncPlaylists = async () => {
+    if (selectedPlaylistIds.size === 0) {
+      toast.error("Select at least one playlist to sync");
+      return;
+    }
+    
+    setIsBulkSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('youtube-auto-sync', {
+        body: { 
+          action: 'bulk-sync',
+          playlistIds: Array.from(selectedPlaylistIds),
+        },
+      });
+      
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      toast.success(`Synced ${data.playlistsSynced} playlists with ${data.totalVideos} videos`);
+      queryClient.invalidateQueries({ queryKey: ['youtube-videos'] });
+      queryClient.invalidateQueries({ queryKey: ['youtube-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['kids-youtube-videos'] });
+      setSelectedPlaylistIds(new Set());
+      setUnsyncedCount(prev => Math.max(0, prev - data.playlistsSynced));
+    } catch (error: any) {
+      toast.error(error.message || "Failed to bulk sync playlists");
+    } finally {
+      setIsBulkSyncing(false);
+    }
+  };
+
+  // Auto-sync unsynced playlists
+  const autoSyncUnsynced = async () => {
+    setIsAutoSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('youtube-auto-sync', {
+        body: { 
+          action: 'auto-sync-unsynced',
+          limit: 10,
+        },
+      });
+      
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      if (data.playlistsSynced === 0) {
+        toast.info("All playlists are already synced!");
+      } else {
+        toast.success(`Auto-synced ${data.playlistsSynced} playlists with ${data.totalVideos} videos`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['youtube-videos'] });
+      queryClient.invalidateQueries({ queryKey: ['youtube-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['kids-youtube-videos'] });
+      setUnsyncedCount(prev => Math.max(0, prev - data.playlistsSynced));
+    } catch (error: any) {
+      toast.error(error.message || "Failed to auto-sync playlists");
+    } finally {
+      setIsAutoSyncing(false);
+    }
+  };
+
+  // Toggle playlist selection
+  const togglePlaylistSelection = (playlistId: string) => {
+    setSelectedPlaylistIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(playlistId)) {
+        newSet.delete(playlistId);
+      } else {
+        newSet.add(playlistId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all playlists in current view
+  const selectAllPlaylists = () => {
+    if (selectedPlaylistIds.size === playlists.length) {
+      setSelectedPlaylistIds(new Set());
+    } else {
+      setSelectedPlaylistIds(new Set(playlists.map(p => p.id)));
     }
   };
 
@@ -279,7 +388,7 @@ export const YouTubeChannelManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-display flex items-center gap-2">
             <Youtube className="h-6 w-6 text-red-500" />
@@ -290,63 +399,82 @@ export const YouTubeChannelManagement = () => {
           </p>
         </div>
         
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Channel
+        <div className="flex items-center gap-2">
+          {/* Auto-sync button */}
+          {unsyncedCount > 0 && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={autoSyncUnsynced}
+              disabled={isAutoSyncing}
+            >
+              {isAutoSyncing ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4" />
+              )}
+              Auto-Sync ({unsyncedCount} unsynced)
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add YouTube Channel</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Channel ID, URL, or @handle"
-                  value={channelInput}
-                  onChange={(e) => setChannelInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && validateChannel()}
-                />
-                <Button onClick={validateChannel} disabled={isValidating}>
-                  {isValidating ? <LoadingSpinner size="sm" /> : <Search className="h-4 w-4" />}
-                </Button>
-              </div>
-              
-              {previewChannel && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <img
-                        src={previewChannel.thumbnailUrl}
-                        alt={previewChannel.title}
-                        className="w-16 h-16 rounded-full object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold truncate">{previewChannel.title}</h4>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {previewChannel.description}
-                        </p>
-                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                          <span>{formatCount(previewChannel.subscriberCount)} subscribers</span>
-                          <span>{formatCount(previewChannel.videoCount)} videos</span>
+          )}
+          
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Channel
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Add YouTube Channel</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Channel ID, URL, or @handle"
+                    value={channelInput}
+                    onChange={(e) => setChannelInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && validateChannel()}
+                  />
+                  <Button onClick={validateChannel} disabled={isValidating}>
+                    {isValidating ? <LoadingSpinner size="sm" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+                
+                {previewChannel && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-4">
+                        <img
+                          src={previewChannel.thumbnailUrl}
+                          alt={previewChannel.title}
+                          className="w-16 h-16 rounded-full object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold truncate">{previewChannel.title}</h4>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {previewChannel.description}
+                          </p>
+                          <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                            <span>{formatCount(previewChannel.subscriberCount)} subscribers</span>
+                            <span>{formatCount(previewChannel.videoCount)} videos</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <Button 
-                      className="w-full mt-4" 
-                      onClick={() => addChannel.mutate()}
-                      disabled={addChannel.isPending}
-                    >
-                      {addChannel.isPending ? <LoadingSpinner size="sm" /> : "Add Channel"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+                      <Button 
+                        className="w-full mt-4" 
+                        onClick={() => addChannel.mutate()}
+                        disabled={addChannel.isPending}
+                      >
+                        {addChannel.isPending ? <LoadingSpinner size="sm" /> : "Add Channel"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -389,13 +517,43 @@ export const YouTubeChannelManagement = () => {
         {/* Playlists List */}
         <Card className="lg:col-span-1">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <List className="h-4 w-4" />
-              Playlists
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <List className="h-4 w-4" />
+                Playlists
+                {playlists.length > 0 && (
+                  <Badge variant="secondary">{playlists.length}</Badge>
+                )}
+              </CardTitle>
               {playlists.length > 0 && (
-                <Badge variant="secondary">{playlists.length}</Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={selectAllPlaylists}
+                  >
+                    <CheckSquare className="h-3 w-3" />
+                    {selectedPlaylistIds.size === playlists.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  {selectedPlaylistIds.size > 0 && (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={bulkSyncPlaylists}
+                      disabled={isBulkSyncing}
+                    >
+                      {isBulkSyncing ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                      Sync ({selectedPlaylistIds.size})
+                    </Button>
+                  )}
+                </div>
               )}
-            </CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
             {!selectedChannel ? (
@@ -425,11 +583,19 @@ export const YouTubeChannelManagement = () => {
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                     selectedPlaylist === playlist.id 
                       ? 'border-primary bg-primary/5' 
+                      : selectedPlaylistIds.has(playlist.id)
+                      ? 'border-primary/50 bg-primary/5'
                       : 'border-border hover:border-primary/50'
                   }`}
                   onClick={() => setSelectedPlaylist(playlist.id)}
                 >
                   <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedPlaylistIds.has(playlist.id)}
+                      onCheckedChange={() => togglePlaylistSelection(playlist.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1"
+                    />
                     <div className="relative w-20 aspect-video rounded overflow-hidden bg-muted flex-shrink-0">
                       <img
                         src={playlist.thumbnail_url || "/placeholder.svg"}
@@ -442,6 +608,11 @@ export const YouTubeChannelManagement = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm line-clamp-2">{playlist.title}</h4>
+                      {playlist.video_count === 0 && (
+                        <Badge variant="outline" className="text-xs mt-1 text-amber-600 border-amber-600">
+                          Not synced
+                        </Badge>
+                      )}
                       {!playlist.is_active && (
                         <Badge variant="secondary" className="text-xs mt-1">Inactive</Badge>
                       )}
