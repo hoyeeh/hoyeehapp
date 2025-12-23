@@ -9,6 +9,7 @@ import { YouTubeVideoPlayer } from "./YouTubeVideoPlayer";
 interface HomeYouTubeRowProps {
   title?: string;
   maxItems?: number;
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
   onPlayVideo?: (videoId: string, title: string) => void;
 }
 
@@ -21,9 +22,28 @@ interface YouTubeVideo {
   view_count: number | null;
 }
 
+// Get card dimensions based on style
+const getCardStyles = (style: string) => {
+  switch (style) {
+    case "poster":
+      return { container: "w-36 md:w-44", aspect: "aspect-[2/3]" };
+    case "backdrop":
+      return { container: "w-64 md:w-72", aspect: "aspect-video" };
+    case "wide":
+      return { container: "w-52 md:w-60", aspect: "aspect-[4/3]" };
+    case "square":
+      return { container: "w-40 md:w-48", aspect: "aspect-square" };
+    case "minimal":
+      return { container: "w-48 md:w-56", aspect: "aspect-video" };
+    default:
+      return { container: "w-64 md:w-72", aspect: "aspect-video" };
+  }
+};
+
 export function HomeYouTubeRow({ 
   title = "YouTube Videos", 
   maxItems = 15,
+  cardStyle = "backdrop",
   onPlayVideo 
 }: HomeYouTubeRowProps) {
   const navigate = useNavigate();
@@ -181,45 +201,48 @@ export function HomeYouTubeRow({
             className="flex gap-4 overflow-x-auto scrollbar-hide px-4 md:px-12 pb-2 scroll-smooth"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-            {videos.map(video => (
-              <div
-                key={video.id}
-                onClick={() => handleVideoClick(video)}
-                className="flex-shrink-0 w-64 md:w-72 cursor-pointer group"
-              >
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                  {video.thumbnail_url ? (
-                    <img
-                      src={video.thumbnail_url}
-                      alt={video.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-500 to-red-700">
-                      <Youtube className="h-12 w-12 text-white" />
+            {videos.map(video => {
+              const styles = getCardStyles(cardStyle);
+              return (
+                <div
+                  key={video.id}
+                  onClick={() => handleVideoClick(video)}
+                  className={cn("flex-shrink-0 cursor-pointer group", styles.container)}
+                >
+                  <div className={cn("relative rounded-lg overflow-hidden bg-muted", styles.aspect)}>
+                    {video.thumbnail_url ? (
+                      <img
+                        src={video.thumbnail_url}
+                        alt={video.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-500 to-red-700">
+                        <Youtube className="h-12 w-12 text-white" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <div className="w-14 h-14 rounded-full bg-red-600/90 flex items-center justify-center">
+                        <Play className="h-6 w-6 text-white fill-current" />
+                      </div>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="w-14 h-14 rounded-full bg-red-600/90 flex items-center justify-center">
-                      <Play className="h-6 w-6 text-white fill-current" />
-                    </div>
+                    {video.duration && (
+                      <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
+                        {formatDuration(video.duration)}
+                      </div>
+                    )}
                   </div>
-                  {video.duration && (
-                    <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
-                      {formatDuration(video.duration)}
-                    </div>
+                  <h4 className="mt-2 text-sm font-medium text-foreground line-clamp-2 group-hover:text-red-500 transition-colors">
+                    {video.title}
+                  </h4>
+                  {video.view_count && cardStyle !== "minimal" && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatViewCount(video.view_count)}
+                    </p>
                   )}
                 </div>
-                <h4 className="mt-2 text-sm font-medium text-foreground line-clamp-2 group-hover:text-red-500 transition-colors">
-                  {video.title}
-                </h4>
-                {video.view_count && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatViewCount(video.view_count)}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

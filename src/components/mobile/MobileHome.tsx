@@ -26,6 +26,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { FadeIn } from "./PageTransition";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MobileCastStatusIndicator } from "./MobileCastStatusIndicator";
+import { MobileHomeYouTubeRow } from "./MobileHomeYouTubeRow";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -406,6 +407,19 @@ export function MobileHome() {
                     />
                   </FadeIn>
                 ) : null;
+              }
+
+              // YouTube section
+              if (section.section_type === "youtube") {
+                return (
+                  <FadeIn key={section.id} delay={100 + index * 50}>
+                    <MobileHomeYouTubeRow
+                      title={section.title}
+                      maxItems={section.max_items || 15}
+                      cardStyle={section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal"}
+                    />
+                  </FadeIn>
+                );
               }
 
               // Genre and other sections
