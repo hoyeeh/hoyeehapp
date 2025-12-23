@@ -21,6 +21,9 @@ const filters = [
   { id: "all", label: "All" },
   { id: "series", label: "TV Shows" },
   { id: "movie", label: "Movies" },
+  { id: "kids", label: "Kids" },
+  { id: "new", label: "New Releases" },
+  { id: "trending", label: "Trending" },
 ];
 
 export function MobileHeader({ 

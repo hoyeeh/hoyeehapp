@@ -184,7 +184,7 @@ export function MobileCastSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[210] bg-black/60"
+            className="fixed inset-0 z-[210] bg-black/60"
             onClick={onClose}
           >
             <motion.div
