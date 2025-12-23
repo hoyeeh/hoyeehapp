@@ -13,6 +13,8 @@ interface ContentRowProps {
   userList?: string[];
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
   showRank?: boolean;
+  showSeeAll?: boolean;
+  onSeeAll?: () => void;
 }
 
 export const ContentRow = ({
@@ -24,6 +26,8 @@ export const ContentRow = ({
   userList = [],
   cardStyle = "poster",
   showRank = false,
+  showSeeAll = false,
+  onSeeAll,
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -56,9 +60,14 @@ export const ContentRow = ({
         <h2 className="font-display text-lg md:text-xl lg:text-2xl text-foreground tracking-wide">
           {title}
         </h2>
-        <span className="text-brand text-sm font-medium opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer hover:underline">
-          Explore All →
-        </span>
+        {(showSeeAll || onSeeAll) && (
+          <button 
+            onClick={onSeeAll}
+            className="text-brand text-sm font-medium opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer hover:underline"
+          >
+            Explore All →
+          </button>
+        )}
       </div>
       
       <div className="relative">

@@ -357,6 +357,7 @@ export function MobileHome() {
                 content={filteredContent}
                 onDetails={handleDetails}
                 showSeeAll
+                onSeeAll={() => navigate("/genres")}
               />
             </FadeIn>
           ) : (
@@ -403,6 +404,7 @@ export function MobileHome() {
                       content={newContent.slice(0, section.max_items || 15)}
                       onDetails={handleDetails}
                       showSeeAll
+                      onSeeAll={() => navigate("/genres")}
                       isLoading={isLoadingNewReleases}
                     />
                   </FadeIn>
@@ -433,6 +435,7 @@ export function MobileHome() {
                     content={sectionContent}
                     onDetails={handleDetails}
                     showSeeAll
+                    onSeeAll={() => navigate("/genres")}
                   />
                 </FadeIn>
               );
@@ -448,6 +451,7 @@ export function MobileHome() {
                   content={newContent}
                   onDetails={handleDetails}
                   showSeeAll
+                  onSeeAll={() => navigate("/genres")}
                   isLoading={isLoadingNewReleases}
                 />
               </FadeIn>
