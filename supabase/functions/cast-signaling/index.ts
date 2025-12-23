@@ -60,9 +60,28 @@ serve(async (req) => {
     const action = url.searchParams.get('action');
     const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
 
+    // Health check endpoint
+    if (action === 'health') {
+      console.log('[cast-signaling] Health check requested');
+      return new Response(JSON.stringify({
+        success: true,
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Generate pairing code for TV receiver (no auth needed)
     if (action === 'generate-code') {
-      const { deviceName, deviceType } = await req.json();
+      let body;
+      try {
+        body = await req.json();
+      } catch (e) {
+        body = {};
+      }
+      const { deviceName, deviceType } = body;
+      
+      console.log('[cast-signaling] Generating code for device:', deviceName || 'Smart TV');
       
       const { data: receiver, error: receiverError } = await supabase
         .from('cast_receivers')
@@ -288,14 +307,23 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: 'Invalid action' }), {
+    console.error('[cast-signaling] Invalid action requested:', action);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: 'Invalid action',
+      validActions: ['health', 'generate-code', 'pair', 'command', 'status', 'heartbeat', 'disconnect']
+    }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Cast signaling error:', error);
-    return new Response(JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }), {
+    console.error('[cast-signaling] Error:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

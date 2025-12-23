@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface DLNADevice {
   id: string;
@@ -19,8 +20,10 @@ interface DLNAState {
   duration: number;
 }
 
+const SAVED_DLNA_DEVICES_KEY = 'hoyeeh-dlna-devices';
+
 // DLNA/UPnP requires a server-side component for SSDP discovery
-// This hook provides the client-side interface
+// This hook provides the client-side interface with manual device support
 export function useDLNA() {
   const [state, setState] = useState<DLNAState>({
     isScanning: false,
@@ -33,43 +36,84 @@ export function useDLNA() {
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Note: True DLNA discovery requires SSDP multicast which isn't available in browsers
-  // This implementation provides the interface for when a server-side DLNA bridge is available
-  // For now, we simulate device discovery for UI demonstration
+  // Load saved devices on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SAVED_DLNA_DEVICES_KEY);
+      if (saved) {
+        const savedDevices: DLNADevice[] = JSON.parse(saved);
+        setState(prev => ({ ...prev, devices: savedDevices }));
+      }
+    } catch (error) {
+      console.error('[DLNA] Failed to load saved devices:', error);
+    }
+  }, []);
+
+  // Test device connectivity
+  const testDeviceConnectivity = useCallback(async (device: DLNADevice): Promise<boolean> => {
+    try {
+      // Try to call the DLNA edge function to test the device
+      const { data, error } = await supabase.functions.invoke('dlna-discover', {
+        body: {
+          action: 'control',
+          deviceUrl: device.location,
+          command: 'GetTransportInfo',
+        },
+      });
+      
+      return !error && data?.success !== false;
+    } catch {
+      // Device might still work, just can't verify
+      return true;
+    }
+  }, []);
   
   const scanForDevices = useCallback(async () => {
     setState(prev => ({ ...prev, isScanning: true }));
     
     try {
-      // In a real implementation, this would call a backend service
-      // that performs SSDP discovery on the local network
-      // Example: await supabase.functions.invoke('dlna-discover')
+      // Note: True DLNA discovery via SSDP multicast is NOT possible in browsers
+      // or edge functions due to security restrictions and lack of UDP support.
+      // 
+      // This scan will:
+      // 1. Load any manually saved devices
+      // 2. Test connectivity to saved devices
+      // 3. Show a helpful message about manual setup
       
-      // For demonstration, we'll show how the UI would work
-      // In production, replace with actual SSDP discovery via server
+      const saved = localStorage.getItem(SAVED_DLNA_DEVICES_KEY);
+      const savedDevices: DLNADevice[] = saved ? JSON.parse(saved) : [];
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Small delay for UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // This would be populated from actual SSDP responses
-      const mockDevices: DLNADevice[] = [];
+      // Test saved devices for connectivity
+      const availableDevices: DLNADevice[] = [];
+      for (const device of savedDevices) {
+        const isAvailable = await testDeviceConnectivity(device);
+        if (isAvailable) {
+          availableDevices.push(device);
+        }
+      }
       
       setState(prev => ({
         ...prev,
-        devices: mockDevices,
+        devices: availableDevices,
         isScanning: false,
       }));
       
-      if (mockDevices.length === 0) {
-        toast.info('No DLNA devices found on network');
+      if (savedDevices.length === 0) {
+        toast.info('No saved devices. Use "Link with TV Code" or add devices manually.');
+      } else if (availableDevices.length === 0) {
+        toast.warning('Saved devices are not responding. Check your network connection.');
       } else {
-        toast.success(`Found ${mockDevices.length} DLNA device(s)`);
+        toast.success(`Found ${availableDevices.length} device(s)`);
       }
     } catch (error) {
-      console.error('DLNA scan error:', error);
+      console.error('[DLNA] Scan error:', error);
       setState(prev => ({ ...prev, isScanning: false }));
-      toast.error('Failed to scan for DLNA devices');
+      toast.error('Failed to scan for devices');
     }
-  }, []);
+  }, [testDeviceConnectivity]);
 
   const connectToDevice = useCallback(async (device: DLNADevice) => {
     try {
