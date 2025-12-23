@@ -96,7 +96,7 @@ export function MobileHeader({
               onClick={() => setShowNotificationSheet(true)}
             >
               <Bell className="h-5 w-5" />
-              {unreadCount && unreadCount > 0 && (
+              {typeof unreadCount === 'number' && unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
@@ -115,7 +115,7 @@ export function MobileHeader({
 
         {/* Filter Pills Row */}
         {showFilters && (
-          <div className="flex items-center gap-2 px-4 pb-3 pt-1 overflow-x-auto hide-scrollbar">
+          <div className="flex items-center gap-1.5 px-3 pb-3 pt-1 overflow-x-auto hide-scrollbar">
             {filters.map((filter) => (
               <button
                 key={filter.id}
@@ -127,7 +127,7 @@ export function MobileHeader({
                   }
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300",
+                  "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-300",
                   "border active:scale-95 touch-manipulation",
                   (filter as any).isSpecial
                     ? "bg-primary/10 text-primary border-primary/30"
@@ -136,7 +136,7 @@ export function MobileHeader({
                       : "bg-transparent text-foreground border-border/60 hover:border-foreground/50"
                 )}
               >
-                {(filter as any).isSpecial && <Grid3X3 className="h-3.5 w-3.5" />}
+                {(filter as any).isSpecial && <Grid3X3 className="h-3 w-3" />}
                 {filter.label}
               </button>
             ))}

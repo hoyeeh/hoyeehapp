@@ -349,6 +349,21 @@ const Index = () => {
           .sort((a: any, b: any) => a.display_order - b.display_order)
           .map((sc: any) => transformRawContent(sc.content));
         return curatedItems.slice(0, section.max_items || 15);
+      case "by_year":
+        // Extract year from section title (e.g., "Movies 2024", "2023 Films")
+        const yearMatch = section.title.match(/\b(19|20)\d{2}\b/);
+        if (yearMatch) {
+          const year = parseInt(yearMatch[0]);
+          return content
+            .filter((c) => c.year === year)
+            .sort((a, b) => (b.year || 0) - (a.year || 0))
+            .slice(0, section.max_items || 15);
+        }
+        // Fallback: group by most recent years
+        return content
+          .filter((c) => c.year)
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
       case "custom":
         // Filter by content type if specified
         if (section.content_type_filter === "movie") {
