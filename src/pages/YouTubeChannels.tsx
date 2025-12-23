@@ -176,30 +176,17 @@ export default function YouTubeChannels() {
   );
 }
 
-// Hero Carousel Component - Uses channel covers with admin banner fallback
+// Hero Carousel Component - Full-width image cover slider
 interface HeroCarouselProps {
   playlists: Array<{ id: string; title: string; channel_id: string | null }>;
   onPlayVideo: (videoId: string, title: string) => void;
 }
 
 function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
-  const [activeIndex, setActiveIndex] = useState(1);
+  const [activeIndex, setActiveIndex] = useState(0);
   const { data: channels } = useYouTubeChannels();
   const { data: banners } = useYouTubeBanners();
   const { data: videos } = useYouTubeVideos(playlists[0]?.id);
-  
-  // Auto-rotate carousel every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveIndex(prev => {
-        const maxIndex = Math.max(0, (channels?.filter(c => c.cover_url).length || 0) + 
-          (banners?.length || 0) + (videos?.length || 0) - 1);
-        return prev >= maxIndex ? 0 : prev + 1;
-      });
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [channels, banners, videos]);
   
   // Build hero items: prioritize channel covers, then admin banners, then videos
   const heroItems = useMemo(() => {
@@ -214,23 +201,21 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
       channel_thumbnail?: string;
     }> = [];
 
-    // Add channels with cover images (randomized)
+    // Add channels with cover images
     const channelsWithCovers = channels?.filter(c => c.cover_url) || [];
-    const shuffledChannels = [...channelsWithCovers].sort(() => Math.random() - 0.5).slice(0, 3);
-    
-    shuffledChannels.forEach(channel => {
+    channelsWithCovers.slice(0, 5).forEach(channel => {
       items.push({
         id: `channel-${channel.id}`,
         type: 'channel',
         title: channel.name,
-        subtitle: channel.description?.substring(0, 100) || `${channel.subscriber_count} subscribers`,
+        subtitle: channel.description?.substring(0, 120) || `${channel.subscriber_count} subscribers`,
         image_url: channel.cover_url!,
         channel_name: channel.name,
         channel_thumbnail: channel.thumbnail_url || undefined
       });
     });
 
-    // Add admin fallback banners
+    // Add admin banners
     banners?.slice(0, 3).forEach(banner => {
       items.push({
         id: `banner-${banner.id}`,
@@ -257,12 +242,37 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
       });
     }
 
-    return items.slice(0, 5);
+    return items.slice(0, 7);
   }, [channels, banners, videos]);
+
+  // Auto-rotate carousel every 6 seconds
+  useEffect(() => {
+    if (heroItems.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setActiveIndex(prev => (prev + 1) % heroItems.length);
+    }, 6000);
+    
+    return () => clearInterval(interval);
+  }, [heroItems.length]);
+
+  const handlePrev = () => {
+    setActiveIndex(prev => (prev - 1 + heroItems.length) % heroItems.length);
+  };
+
+  const handleNext = () => {
+    setActiveIndex(prev => (prev + 1) % heroItems.length);
+  };
+
+  const handleItemClick = (item: typeof heroItems[0]) => {
+    if (item.type === 'video' && item.video_id) {
+      onPlayVideo(item.video_id, item.title);
+    }
+  };
 
   if (!heroItems.length) {
     return (
-      <div className="relative h-[400px] md:h-[500px] bg-gradient-to-b from-secondary/50 to-background flex items-center justify-center">
+      <div className="relative h-[60vh] md:h-[70vh] bg-gradient-to-b from-secondary/50 to-background flex items-center justify-center">
         <div className="text-center">
           <Youtube className="h-20 w-20 mx-auto text-primary mb-4" />
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">YouTube Channels</h1>
@@ -272,153 +282,157 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
     );
   }
 
-  const getCardStyle = (index: number) => {
-    const diff = index - activeIndex;
-    if (diff === 0) {
-      return "z-20 scale-100 opacity-100";
-    } else if (Math.abs(diff) === 1) {
-      return "z-10 scale-[0.85] opacity-70";
-    } else {
-      return "z-0 scale-[0.7] opacity-40";
-    }
-  };
-
-  const getCardTransform = (index: number) => {
-    const diff = index - activeIndex;
-    const baseTranslate = diff * 280;
-    return `translateX(${baseTranslate}px)`;
-  };
-
-  const handleItemClick = (item: typeof heroItems[0], isActive: boolean) => {
-    if (!isActive) return;
-    
-    if (item.type === 'video' && item.video_id) {
-      onPlayVideo(item.video_id, item.title);
-    }
-    // For channel and banner types, could navigate to channel page in the future
-  };
+  const currentItem = heroItems[activeIndex];
 
   return (
-    <div className="relative h-[400px] md:h-[500px] bg-gradient-to-b from-secondary/30 to-background overflow-hidden">
-      {/* Background Blur */}
-      {heroItems[activeIndex]?.image_url && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-20 blur-3xl scale-110"
-          style={{ backgroundImage: `url(${heroItems[activeIndex].image_url})` }}
-        />
-      )}
+    <div className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden">
+      {/* Background Images with Crossfade */}
+      {heroItems.map((item, index) => (
+        <div
+          key={item.id}
+          className={cn(
+            "absolute inset-0 transition-opacity duration-700 ease-in-out",
+            index === activeIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+          )}
+        >
+          <img
+            src={item.image_url}
+            alt={item.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ))}
 
-      {/* Carousel Container */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-full max-w-6xl flex items-center justify-center">
-          {heroItems.map((item, index) => (
-            <div
-              key={item.id}
-              className={cn(
-                "absolute transition-all duration-500 ease-out cursor-pointer",
-                getCardStyle(index)
-              )}
-              style={{ transform: getCardTransform(index) }}
-              onClick={() => {
-                if (index === activeIndex) {
-                  handleItemClick(item, true);
-                } else {
-                  setActiveIndex(index);
-                }
-              }}
-            >
-              <div className="w-[320px] md:w-[480px] aspect-video rounded-2xl overflow-hidden shadow-2xl relative group">
-                <img
-                  src={item.image_url}
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
-                
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                
-                {/* Play Button (video type, center card only) */}
-                {index === activeIndex && item.type === 'video' && (
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg">
-                      <Play className="h-7 w-7 text-primary-foreground fill-current ml-1" />
-                    </div>
-                  </div>
-                )}
-                
-                {/* Item Info */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-                  {/* Channel Avatar for channel type */}
-                  {item.type === 'channel' && item.channel_thumbnail && (
-                    <div className="flex items-center gap-3 mb-2">
-                      <img 
-                        src={item.channel_thumbnail} 
-                        alt={item.channel_name} 
-                        className="w-10 h-10 rounded-full border-2 border-white/20"
-                      />
-                      <span className="text-white/80 text-sm font-medium">Channel</span>
-                    </div>
-                  )}
-                  
-                  {/* Type Badge for banners */}
-                  {item.type === 'banner' && (
-                    <span className="inline-block px-2 py-1 bg-primary/80 text-primary-foreground text-xs rounded-full mb-2">
-                      Featured
-                    </span>
-                  )}
-                  
-                  <h3 className="text-white font-bold text-lg md:text-xl line-clamp-2 mb-1">
-                    {item.title}
-                  </h3>
-                  {item.subtitle && (
-                    <p className="text-white/70 text-sm line-clamp-1">
-                      {item.subtitle}
-                    </p>
-                  )}
-                </div>
+      {/* Gradient Overlays */}
+      <div className="absolute inset-0 z-20 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+      <div className="absolute inset-0 z-20 bg-gradient-to-t from-background via-transparent to-black/30" />
+
+      {/* Content Overlay - Bottom Left */}
+      <div className="absolute bottom-0 left-0 right-0 z-30 p-6 md:p-12 lg:p-16">
+        <div className="max-w-3xl">
+          {/* Channel Avatar */}
+          {currentItem.type === 'channel' && currentItem.channel_thumbnail && (
+            <div className="flex items-center gap-3 mb-4 animate-fade-in">
+              <img 
+                src={currentItem.channel_thumbnail} 
+                alt={currentItem.channel_name} 
+                className="w-12 h-12 md:w-14 md:h-14 rounded-full border-2 border-white/30 shadow-lg"
+              />
+              <div>
+                <span className="text-white/90 text-sm font-medium">Channel</span>
+                <div className="text-white/60 text-xs">{currentItem.channel_name}</div>
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Type Badge for banners */}
+          {currentItem.type === 'banner' && (
+            <span className="inline-block px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-full mb-4 animate-fade-in">
+              Featured
+            </span>
+          )}
+
+          {/* Video Badge */}
+          {currentItem.type === 'video' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-destructive text-destructive-foreground text-xs font-semibold rounded-full mb-4 animate-fade-in">
+              <Play className="h-3 w-3 fill-current" />
+              Video
+            </span>
+          )}
+
+          {/* Title */}
+          <h2 className="text-white font-bold text-2xl md:text-4xl lg:text-5xl line-clamp-2 mb-3 animate-fade-in">
+            {currentItem.title}
+          </h2>
+
+          {/* Subtitle */}
+          {currentItem.subtitle && (
+            <p className="text-white/70 text-sm md:text-base lg:text-lg line-clamp-2 mb-6 max-w-2xl animate-fade-in">
+              {currentItem.subtitle}
+            </p>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3 animate-fade-in">
+            {currentItem.type === 'video' && currentItem.video_id && (
+              <Button 
+                onClick={() => handleItemClick(currentItem)}
+                className="bg-white text-black hover:bg-white/90 font-semibold px-6 py-3 text-base"
+              >
+                <Play className="h-5 w-5 mr-2 fill-current" />
+                Play Now
+              </Button>
+            )}
+            {currentItem.type === 'channel' && (
+              <Button 
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 font-semibold px-6 py-3 text-base"
+              >
+                <Youtube className="h-5 w-5 mr-2" />
+                View Channel
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Navigation Arrows */}
       <button
-        onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
-        disabled={activeIndex === 0}
+        onClick={handlePrev}
         className={cn(
           "absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30",
-          "w-12 h-12 rounded-full bg-background/80 backdrop-blur flex items-center justify-center",
-          "hover:bg-background transition-all shadow-lg",
-          activeIndex === 0 && "opacity-50 cursor-not-allowed"
+          "w-12 h-12 md:w-14 md:h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center",
+          "hover:bg-black/60 transition-all border border-white/10",
+          "opacity-0 group-hover:opacity-100 hover:opacity-100"
         )}
+        style={{ opacity: 1 }}
       >
-        <ChevronLeft className="h-6 w-6" />
+        <ChevronLeft className="h-6 w-6 md:h-7 md:w-7 text-white" />
       </button>
       <button
-        onClick={() => setActiveIndex(Math.min(heroItems.length - 1, activeIndex + 1))}
-        disabled={activeIndex === heroItems.length - 1}
+        onClick={handleNext}
         className={cn(
           "absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30",
-          "w-12 h-12 rounded-full bg-background/80 backdrop-blur flex items-center justify-center",
-          "hover:bg-background transition-all shadow-lg",
-          activeIndex === heroItems.length - 1 && "opacity-50 cursor-not-allowed"
+          "w-12 h-12 md:w-14 md:h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center",
+          "hover:bg-black/60 transition-all border border-white/10",
+          "opacity-0 group-hover:opacity-100 hover:opacity-100"
         )}
+        style={{ opacity: 1 }}
       >
-        <ChevronRight className="h-6 w-6" />
+        <ChevronRight className="h-6 w-6 md:h-7 md:w-7 text-white" />
       </button>
 
-      {/* Dots Indicator */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+      {/* Dots Indicator - Bottom Center */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2 md:hidden">
         {heroItems.map((_, index) => (
           <button
             key={index}
             onClick={() => setActiveIndex(index)}
             className={cn(
-              "w-2 h-2 rounded-full transition-all",
-              index === activeIndex ? "w-6 bg-primary" : "bg-white/40 hover:bg-white/60"
+              "h-2 rounded-full transition-all duration-300",
+              index === activeIndex 
+                ? "w-8 bg-white" 
+                : "w-2 bg-white/40 hover:bg-white/60"
             )}
           />
+        ))}
+      </div>
+
+      {/* Progress Bar - Desktop */}
+      <div className="absolute bottom-0 left-0 right-0 z-30 hidden md:flex gap-1 px-12 lg:px-16 pb-6">
+        {heroItems.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setActiveIndex(index)}
+            className="flex-1 h-1 rounded-full overflow-hidden bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            <div 
+              className={cn(
+                "h-full bg-white transition-all duration-300",
+                index === activeIndex ? "w-full" : "w-0"
+              )}
+            />
+          </button>
         ))}
       </div>
     </div>
