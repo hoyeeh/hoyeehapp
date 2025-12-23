@@ -3,24 +3,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
+// Get platform settings
+export const usePlatformSettings = () => {
+  return useQuery({
+    queryKey: ["platform-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('*');
+      
+      if (error) throw error;
+      
+      // Convert to key-value object
+      const settings: Record<string, string> = {};
+      data?.forEach(item => {
+        settings[item.setting_key] = item.setting_value;
+      });
+      return settings;
+    },
+  });
+};
+
 // Get all creator applications (admin)
 export const useCreatorApplications = (status?: string) => {
   return useQuery({
     queryKey: ["admin-creator-applications", status],
     queryFn: async () => {
+      // First get applications
       let query = supabase
         .from('creator_applications')
-        .select('*, profiles!creator_applications_user_id_fkey(display_name, avatar_url)')
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (status) {
         query = query.eq('status', status);
       }
       
-      const { data, error } = await query;
+      const { data: applications, error } = await query;
       
       if (error) throw error;
-      return data;
+      
+      // Then get profiles for each application
+      if (applications && applications.length > 0) {
+        const userIds = applications.map(app => app.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name, avatar_url')
+          .in('id', userIds);
+        
+        // Merge profiles into applications
+        return applications.map(app => ({
+          ...app,
+          profiles: profiles?.find(p => p.id === app.user_id) || null
+        }));
+      }
+      
+      return applications;
     },
   });
 };
