@@ -51,6 +51,8 @@ import Parental from "./pages/Parental";
 import ComingSoon from "./pages/ComingSoon";
 import YouTubeChannels from "./pages/YouTubeChannels";
 import WatchLater from "./pages/WatchLater";
+import CreatorStore from "./pages/CreatorStore";
+import CreatorDashboard from "./pages/CreatorDashboard";
 
 const queryClient = new QueryClient();
 
