@@ -1,16 +1,14 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { YouTubeVideoPlayer } from "@/components/YouTubeVideoPlayer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
 
 interface MobileHomeYouTubeRowProps {
   title?: string;
   maxItems?: number;
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
-  onPlayVideo?: (videoId: string, title: string) => void;
 }
 
 interface YouTubeVideo {
@@ -51,9 +49,8 @@ export function MobileHomeYouTubeRow({
   title = "YouTube Videos",
   maxItems = 15,
   cardStyle = "backdrop",
-  onPlayVideo,
 }: MobileHomeYouTubeRowProps) {
-  const [playingVideo, setPlayingVideo] = useState<{ videoId: string; title: string } | null>(null);
+  const { openPlayer } = useMobileYouTubePlayer();
 
   // Fetch YouTube videos from channels that should show on mobile
   const { data: videos, isLoading } = useQuery({
@@ -97,11 +94,11 @@ export function MobileHomeYouTubeRow({
   });
 
   const handleVideoClick = (video: YouTubeVideo) => {
-    if (onPlayVideo) {
-      onPlayVideo(video.video_id, video.title);
-    } else {
-      setPlayingVideo({ videoId: video.video_id, title: video.title });
-    }
+    openPlayer({
+      videoId: video.video_id,
+      title: video.title,
+      thumbnail: video.thumbnail_url || undefined,
+    });
   };
 
   if (isLoading) {
@@ -125,64 +122,53 @@ export function MobileHomeYouTubeRow({
   const styles = getCardStyles(cardStyle);
 
   return (
-    <>
-      <section className="py-3">
-        <div className="px-4 mb-2 flex items-center gap-2">
-          <Youtube className="h-4 w-4 text-red-500" />
-          <h2 className="font-semibold text-base text-foreground">{title}</h2>
-        </div>
+    <section className="py-3">
+      <div className="px-4 mb-2 flex items-center gap-2">
+        <Youtube className="h-4 w-4 text-red-500" />
+        <h2 className="font-semibold text-base text-foreground">{title}</h2>
+      </div>
 
-        <div
-          className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          {videos.map((video) => (
-            <div
-              key={video.id}
-              onClick={() => handleVideoClick(video)}
-              className={cn("flex-shrink-0 cursor-pointer group active:scale-95 transition-transform", styles.container)}
-            >
-              <div className={cn("relative rounded-lg overflow-hidden bg-muted", styles.aspect)}>
-                {video.thumbnail_url ? (
-                  <img
-                    src={video.thumbnail_url}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-500 to-red-700">
-                    <Youtube className="h-8 w-8 text-white" />
-                  </div>
-                )}
-                {/* Play overlay */}
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                  <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
-                    <Play className="h-4 w-4 text-white fill-current" />
-                  </div>
+      <div
+        className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {videos.map((video) => (
+          <div
+            key={video.id}
+            onClick={() => handleVideoClick(video)}
+            className={cn("flex-shrink-0 cursor-pointer group active:scale-95 transition-transform", styles.container)}
+          >
+            <div className={cn("relative rounded-lg overflow-hidden bg-muted", styles.aspect)}>
+              {video.thumbnail_url ? (
+                <img
+                  src={video.thumbnail_url}
+                  alt={video.title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-500 to-red-700">
+                  <Youtube className="h-8 w-8 text-white" />
                 </div>
-                {video.duration && (
-                  <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 py-0.5 rounded">
-                    {formatDuration(video.duration)}
-                  </div>
-                )}
+              )}
+              {/* Play overlay */}
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
+                  <Play className="h-4 w-4 text-white fill-current" />
+                </div>
               </div>
-              <h4 className="mt-1.5 text-xs font-medium text-foreground line-clamp-2">
-                {video.title}
-              </h4>
+              {video.duration && (
+                <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 py-0.5 rounded">
+                  {formatDuration(video.duration)}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      </section>
-
-      {playingVideo && (
-        <YouTubeVideoPlayer
-          videoId={playingVideo.videoId}
-          title={playingVideo.title}
-          onClose={() => setPlayingVideo(null)}
-          autoplay
-        />
-      )}
-    </>
+            <h4 className="mt-1.5 text-xs font-medium text-foreground line-clamp-2">
+              {video.title}
+            </h4>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

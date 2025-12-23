@@ -11,16 +11,45 @@ interface KidsYouTubePlayerProps {
 export const KidsYouTubePlayer = ({ videoId, title, onClose }: KidsYouTubePlayerProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const handleFullscreen = () => {
-    const iframe = document.querySelector("iframe");
-    if (iframe) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-        setIsFullscreen(false);
-      } else {
-        iframe.requestFullscreen();
+  const handleFullscreen = async () => {
+    const iframe = document.querySelector("iframe") as any;
+    const doc = document as any;
+
+    if (!iframe) return;
+
+    try {
+      const isCurrentlyFullscreen = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+
+      if (!isCurrentlyFullscreen) {
+        if (iframe.requestFullscreen) {
+          await iframe.requestFullscreen();
+        } else if (iframe.webkitRequestFullscreen) {
+          await iframe.webkitRequestFullscreen();
+        } else if (iframe.mozRequestFullScreen) {
+          await iframe.mozRequestFullScreen();
+        } else if (iframe.msRequestFullscreen) {
+          await iframe.msRequestFullscreen();
+        }
         setIsFullscreen(true);
+      } else {
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
+        }
+        setIsFullscreen(false);
       }
+    } catch (error) {
+      console.warn('Fullscreen request failed:', error);
     }
   };
 

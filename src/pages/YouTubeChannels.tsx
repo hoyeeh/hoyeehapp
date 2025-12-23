@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useYouTubeWatchlist, useToggleWatchlist, useIsInWatchlist } from "@/hooks/useYouTubeWatchlist";
+import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
 
 // Hook to fetch admin fallback banners
 function useYouTubeBanners() {
@@ -36,10 +37,20 @@ export default function YouTubeChannels() {
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
   const isMobile = useIsMobile();
+  const { openPlayer: openMobilePlayer } = useMobileYouTubePlayer();
   const { data: channels, isLoading: channelsLoading } = useYouTubeChannels();
   const { data: playlists, isLoading: playlistsLoading } = useYouTubePlaylists();
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [playingVideo, setPlayingVideo] = useState<{ videoId: string; title: string } | null>(null);
+
+  // Handle video play - use mobile player on mobile, desktop player otherwise
+  const handlePlayVideo = (videoId: string, title: string) => {
+    if (isMobile) {
+      openMobilePlayer({ videoId, title });
+    } else {
+      setPlayingVideo({ videoId, title });
+    }
+  };
 
   const filteredPlaylists = selectedChannel
     ? playlists?.filter(p => p.channel_id === selectedChannel)
@@ -88,7 +99,7 @@ export default function YouTubeChannels() {
       {/* Hero Carousel Section */}
       <HeroCarousel 
         playlists={playlists || []} 
-        onPlayVideo={(videoId, title) => setPlayingVideo({ videoId, title })}
+        onPlayVideo={handlePlayVideo}
       />
 
       {/* Channel Filter Pills */}
