@@ -46,6 +46,7 @@ import { EmailCampaigns } from "@/components/admin/EmailCampaigns";
 import { EmailDeliveryStats } from "@/components/admin/EmailDeliveryStats";
 import { ContentHealthDashboard } from "@/components/admin/ContentHealthDashboard";
 import { YouTubeChannelManagement } from "@/components/admin/YouTubeChannelManagement";
+import { CreatorManagement } from "@/components/admin/CreatorManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -654,6 +655,14 @@ const Admin = () => {
       
       case "email-analytics":
         return <EmailDeliveryStats />;
+      
+      case "creators":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Creator Management</h2>
+            <CreatorManagement />
+          </div>
+        );
       
       case "analytics":
         navigate("/analytics");
