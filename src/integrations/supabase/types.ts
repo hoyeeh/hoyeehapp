@@ -358,6 +358,222 @@ export type Database = {
         }
         Relationships: []
       }
+      content_purchases: {
+        Row: {
+          amount: number
+          content_id: string
+          created_at: string
+          creator_id: string
+          creator_share: number
+          currency: string
+          id: string
+          paid_content_id: string
+          payment_provider: string
+          payment_reference: string | null
+          platform_share: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          content_id: string
+          created_at?: string
+          creator_id: string
+          creator_share: number
+          currency?: string
+          id?: string
+          paid_content_id: string
+          payment_provider: string
+          payment_reference?: string | null
+          platform_share: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          content_id?: string
+          created_at?: string
+          creator_id?: string
+          creator_share?: number
+          currency?: string
+          id?: string
+          paid_content_id?: string
+          payment_provider?: string
+          payment_reference?: string | null
+          platform_share?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_purchases_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_purchases_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_purchases_paid_content_id_fkey"
+            columns: ["paid_content_id"]
+            isOneToOne: false
+            referencedRelation: "paid_content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_applications: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          portfolio_url: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          portfolio_url?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          portfolio_url?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      creator_payouts: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          creator_id: string
+          currency: string
+          error_message: string | null
+          flutterwave_ref: string | null
+          id: string
+          notes: string | null
+          payout_details: Json
+          payout_method: string
+          processed_at: string | null
+          requested_at: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          approved_by?: string | null
+          creator_id: string
+          currency?: string
+          error_message?: string | null
+          flutterwave_ref?: string | null
+          id?: string
+          notes?: string | null
+          payout_details: Json
+          payout_method: string
+          processed_at?: string | null
+          requested_at?: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          creator_id?: string
+          currency?: string
+          error_message?: string | null
+          flutterwave_ref?: string | null
+          id?: string
+          notes?: string | null
+          payout_details?: Json
+          payout_method?: string
+          processed_at?: string | null
+          requested_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_payouts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          cover_url: string | null
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          is_verified: boolean
+          payout_details: Json | null
+          payout_method: string | null
+          pending_balance: number
+          total_earnings: number
+          total_withdrawn: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          is_verified?: boolean
+          payout_details?: Json | null
+          payout_method?: string | null
+          pending_balance?: number
+          total_earnings?: number
+          total_withdrawn?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          is_verified?: boolean
+          payout_details?: Json | null
+          payout_method?: string | null
+          pending_balance?: number
+          total_earnings?: number
+          total_withdrawn?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       download_licenses: {
         Row: {
           content_id: string
@@ -1038,6 +1254,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      paid_content: {
+        Row: {
+          content_id: string
+          created_at: string
+          creator_id: string
+          currency: string
+          id: string
+          is_active: boolean
+          price: number
+          sale_count: number
+          total_revenue: number
+          updated_at: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          creator_id: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          price: number
+          sale_count?: number
+          total_revenue?: number
+          updated_at?: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          creator_id?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          price?: number
+          sale_count?: number
+          total_revenue?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paid_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: true
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_content_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       profile_watch_preferences: {
         Row: {
@@ -2166,6 +2463,18 @@ export type Database = {
         }[]
       }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
+      get_creator_profile: {
+        Args: { _user_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          display_name: string
+          id: string
+          is_verified: boolean
+          pending_balance: number
+          total_earnings: number
+        }[]
+      }
       get_masked_mobile: { Args: { user_uuid: string }; Returns: string }
       get_subscription_summary: {
         Args: { user_uuid: string }
@@ -2177,6 +2486,10 @@ export type Database = {
           status: string
         }[]
       }
+      has_purchased_content: {
+        Args: { _content_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2184,6 +2497,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_creator: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       reset_pin_secure: {
         Args: { input_secret: string; new_pin: string; user_mobile: string }
@@ -2215,7 +2529,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "super_admin"
+      app_role: "admin" | "moderator" | "user" | "super_admin" | "creator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2343,7 +2657,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "super_admin"],
+      app_role: ["admin", "moderator", "user", "super_admin", "creator"],
     },
   },
 } as const
