@@ -215,6 +215,8 @@ const App = () => (
                     <Route path="/coming-soon" element={<ComingSoon />} />
                     <Route path="/youtube" element={<YouTubeChannels />} />
                     <Route path="/watch-later" element={<WatchLater />} />
+                    <Route path="/creator-store" element={<CreatorStore />} />
+                    <Route path="/creator-dashboard" element={<CreatorDashboard />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                   <PersistentMobileVideoPlayer />
