@@ -53,6 +53,7 @@ import { DeviceGroupManager } from "@/components/cast/DeviceGroupManager";
 import { NativeCastButton } from "@/components/cast/NativeCastButton";
 import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
+import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { supabase } from "@/integrations/supabase/client";
@@ -1595,6 +1596,15 @@ export const VideoPlayer = ({
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Cast to TV Button - QR Code Pairing */}
+              <CastToTVButton
+                videoUrl={src}
+                videoTitle={title}
+                startTime={currentTime}
+                duration={duration}
+                className="hidden sm:flex"
+              />
 
               {/* Picture-in-Picture Button */}
               {pip.isSupported && (
