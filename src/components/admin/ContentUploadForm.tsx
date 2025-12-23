@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, X, Upload, Search, Film, Tv, Check } from "lucide-react";
+import { Loader2, X, Upload, Search, Film, Tv, Check, AlertCircle } from "lucide-react";
 
 interface ContentUploadFormProps {
   onClose: () => void;
@@ -57,6 +57,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const [selectedResult, setSelectedResult] = useState<TMDBResult | null>(null);
   const [fetchingDetails, setFetchingDetails] = useState(false);
   const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
+  const [duplicateTmdbIds, setDuplicateTmdbIds] = useState<Set<number>>(new Set());
 
   // Form state - is_premium defaults to true
   const [formData, setFormData] = useState({
@@ -100,6 +101,23 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     },
   });
 
+  // Check which TMDB IDs already exist in the database
+  const checkExistingContent = async (tmdbIds: number[]): Promise<Set<number>> => {
+    if (tmdbIds.length === 0) return new Set();
+    
+    const { data, error } = await supabase
+      .from("content")
+      .select("tmdb_id")
+      .in("tmdb_id", tmdbIds);
+    
+    if (error) {
+      console.error("Error checking duplicates:", error);
+      return new Set();
+    }
+    
+    return new Set(data?.map(item => item.tmdb_id).filter(Boolean) as number[]);
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a search query");
@@ -109,6 +127,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     setSearching(true);
     setSearchResults([]);
     setSelectedResult(null);
+    setDuplicateTmdbIds(new Set());
 
     try {
       const { data, error } = await supabase.functions.invoke('tmdb-search', {
@@ -119,7 +138,18 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
       if (data.results && data.results.length > 0) {
         setSearchResults(data.results);
-        toast.success(`Found ${data.results.length} results`);
+        
+        // Check which results already exist in database
+        const tmdbIds = data.results.map((r: TMDBResult) => r.tmdb_id);
+        const existingIds = await checkExistingContent(tmdbIds);
+        setDuplicateTmdbIds(existingIds);
+        
+        const duplicateCount = existingIds.size;
+        if (duplicateCount > 0) {
+          toast.info(`Found ${data.results.length} results (${duplicateCount} already in database)`);
+        } else {
+          toast.success(`Found ${data.results.length} results`);
+        }
       } else {
         // No results found - informational, not an error
         toast.info("No results found. Try a different search term.");
@@ -132,10 +162,35 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     }
   };
 
+  // Check if content already exists in database
+  const checkDuplicateContent = async (tmdbId: number): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from("content")
+      .select("id, title")
+      .eq("tmdb_id", tmdbId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Error checking duplicate:", error);
+      return false;
+    }
+    
+    return !!data;
+  };
+
   const handleSelectResult = async (result: TMDBResult) => {
     setSelectedResult(result);
     setFetchingDetails(true);
     setTmdbDetails(null);
+    
+    // Check for duplicate content
+    const isDuplicate = await checkDuplicateContent(result.tmdb_id);
+    if (isDuplicate) {
+      toast.warning(`"${result.title}" already exists in the database`, {
+        description: "This content has already been added. Please select a different title.",
+        duration: 5000,
+      });
+    }
     
     // Immediately set basic data - series are always premium
     const isSeries = searchType === "series";
@@ -245,6 +300,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     setVideoFile(null);
     setThumbnailFile(null);
     setTmdbDetails(null);
+    setDuplicateTmdbIds(new Set());
     resetProgress();
   };
 
@@ -303,46 +359,66 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                 <div className="space-y-2">
                   <Label>Search Results ({searchResults.length})</Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-1">
-                    {searchResults.map((result) => (
-                      <div
-                        key={result.tmdb_id}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                          selectedResult?.tmdb_id === result.tmdb_id
-                            ? 'border-primary ring-2 ring-primary/50'
-                            : 'border-transparent hover:border-muted-foreground/50'
-                        }`}
-                        onClick={() => handleSelectResult(result)}
-                      >
-                        {result.thumbnail_url ? (
-                          <img
-                            src={result.thumbnail_url}
-                            alt={result.title}
-                            className="w-full h-36 object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-36 bg-muted flex items-center justify-center">
-                            <Film className="h-8 w-8 text-muted-foreground" />
+                    {searchResults.map((result) => {
+                      const isDuplicate = duplicateTmdbIds.has(result.tmdb_id);
+                      return (
+                        <div
+                          key={result.tmdb_id}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                            isDuplicate 
+                              ? 'opacity-60 border-destructive/50' 
+                              : selectedResult?.tmdb_id === result.tmdb_id
+                                ? 'border-primary ring-2 ring-primary/50'
+                                : 'border-transparent hover:border-muted-foreground/50'
+                          }`}
+                          onClick={() => handleSelectResult(result)}
+                        >
+                          {result.thumbnail_url ? (
+                            <img
+                              src={result.thumbnail_url}
+                              alt={result.title}
+                              className="w-full h-36 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-36 bg-muted flex items-center justify-center">
+                              <Film className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                          <div className="absolute bottom-0 left-0 right-0 p-2">
+                            <p className="text-xs font-medium text-white line-clamp-2">{result.title}</p>
+                            <p className="text-xs text-white/70">{result.year} • ⭐ {result.rating}</p>
                           </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                        <div className="absolute bottom-0 left-0 right-0 p-2">
-                          <p className="text-xs font-medium text-white line-clamp-2">{result.title}</p>
-                          <p className="text-xs text-white/70">{result.year} • ⭐ {result.rating}</p>
+                          {isDuplicate && (
+                            <div className="absolute top-2 left-2 bg-destructive rounded-full p-1" title="Already in database">
+                              <AlertCircle className="h-3 w-3 text-destructive-foreground" />
+                            </div>
+                          )}
+                          {selectedResult?.tmdb_id === result.tmdb_id && (
+                            <div className="absolute top-2 right-2 bg-primary rounded-full p-1">
+                              <Check className="h-3 w-3 text-primary-foreground" />
+                            </div>
+                          )}
                         </div>
-                        {selectedResult?.tmdb_id === result.tmdb_id && (
-                          <div className="absolute top-2 right-2 bg-primary rounded-full p-1">
-                            <Check className="h-3 w-3 text-primary-foreground" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {/* Selected Content Preview */}
               {selectedResult && (
-                <div className="border border-border rounded-lg p-4 bg-secondary/30 space-y-4">
+                <div className={`border rounded-lg p-4 space-y-4 ${
+                  duplicateTmdbIds.has(selectedResult.tmdb_id) 
+                    ? 'border-destructive bg-destructive/10' 
+                    : 'border-border bg-secondary/30'
+                }`}>
+                  {duplicateTmdbIds.has(selectedResult.tmdb_id) && (
+                    <div className="flex items-center gap-2 text-destructive text-sm font-medium">
+                      <AlertCircle className="h-4 w-4" />
+                      This content already exists in the database. Adding it will create a duplicate.
+                    </div>
+                  )}
                   <div className="flex gap-4">
                     {selectedResult.thumbnail_url && (
                       <img
