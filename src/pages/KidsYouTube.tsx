@@ -409,21 +409,48 @@ const KidsYouTubeContent = () => {
       if (channelsError) throw channelsError;
       if (!channels?.length) return [];
 
-      // Get playlists from those channels
+      const channelIds = channels.map((c) => c.id);
+
+      // Get playlists from those channels - remove is_active filter to catch more playlists
       const { data: playlists, error: playlistsError } = await supabase
         .from("youtube_playlists")
         .select("id, channel_id")
-        .in("channel_id", channels.map((c) => c.id))
-        .eq("is_active", true);
+        .in("channel_id", channelIds);
 
       if (playlistsError) throw playlistsError;
-      if (!playlists?.length) return [];
+      
+      // If no playlists found, try fetching videos directly by joining through channels
+      if (!playlists?.length) {
+        // Fallback: fetch all videos and filter by channel
+        const { data: allVideosData, error: allVideosError } = await supabase
+          .from("youtube_videos")
+          .select("*, playlist:playlist_id(channel_id)")
+          .order("created_at", { ascending: false })
+          .limit(500);
+        
+        if (allVideosError) throw allVideosError;
+        
+        // Filter videos to only those from kids-friendly channels
+        return (allVideosData || [])
+          .filter((video: any) => channelIds.includes(video.playlist?.channel_id))
+          .map((video: any) => {
+            const channelId = video.playlist?.channel_id;
+            const channel = channels.find((c) => c.id === channelId);
+            return {
+              ...video,
+              categoryId: channel?.kids_category_id,
+              channelId: channelId,
+            };
+          });
+      }
+
+      const playlistIds = playlists.map((p) => p.id);
 
       // Get videos from those playlists (increased limit)
       const { data: videosData, error: videosError } = await supabase
         .from("youtube_videos")
         .select("*, playlist:playlist_id(channel_id)")
-        .in("playlist_id", playlists.map((p) => p.id))
+        .in("playlist_id", playlistIds)
         .order("created_at", { ascending: false })
         .limit(500);
 
