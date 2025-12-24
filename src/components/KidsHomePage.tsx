@@ -6,7 +6,7 @@ import { Clock, Moon, Film, Tv, TrendingUp, Play, ChevronLeft, ChevronRight, Spa
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -190,9 +190,10 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
       
       if (error) throw error;
       
-      // Additional client-side filter to ensure strict age compliance
+      // Additional client-side filter to ensure strict age compliance and block specific titles
       return (data || [])
         .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
+        .filter((item: any) => !isBlockedTitle(item.title || ""))
         .map((item: any) => ({
           id: item.id,
           title: item.title,

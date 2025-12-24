@@ -10,7 +10,7 @@ import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
 import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
 import { useState } from "react";
@@ -73,9 +73,10 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       
       if (error) throw error;
       
-      // Additional client-side filter to ensure strict age compliance
+      // Additional client-side filter to ensure strict age compliance and block specific titles
       return (data || [])
         .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
+        .filter((item: any) => !isBlockedTitle(item.title || ""))
         .map((item: any) => ({
           id: item.id,
           title: item.title,
