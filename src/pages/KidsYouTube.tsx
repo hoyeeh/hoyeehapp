@@ -314,7 +314,7 @@ const KidsYouTubeContent = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="space-y-4 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 rounded-2xl p-4 md:p-6 border border-amber-500/10"
+          className="space-y-4 bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/20 rounded-2xl p-4 md:p-6 border border-amber-500/20"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
@@ -335,14 +335,14 @@ const KidsYouTubeContent = () => {
         const gradient = getCategoryGradient(category.color);
 
         // Get light background color based on gradient
-        const bgGradient = gradient.includes("red") ? "from-red-500/10 via-red-500/5 to-rose-500/10 border-red-500/10" :
-                          gradient.includes("teal") ? "from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-teal-500/10" :
-                          gradient.includes("sky") ? "from-sky-500/10 via-sky-500/5 to-blue-500/10 border-sky-500/10" :
-                          gradient.includes("emerald") ? "from-emerald-500/10 via-emerald-500/5 to-green-500/10 border-emerald-500/10" :
-                          gradient.includes("amber") ? "from-amber-500/10 via-amber-500/5 to-yellow-500/10 border-amber-500/10" :
-                          gradient.includes("purple") ? "from-purple-500/10 via-purple-500/5 to-fuchsia-500/10 border-purple-500/10" :
-                          gradient.includes("yellow") ? "from-yellow-500/10 via-yellow-500/5 to-amber-500/10 border-yellow-500/10" :
-                          "from-violet-500/10 via-violet-500/5 to-purple-500/10 border-violet-500/10";
+        const bgGradient = gradient.includes("red") ? "from-red-500/20 via-red-500/10 to-rose-500/20 border-red-500/20" :
+                          gradient.includes("teal") ? "from-teal-500/20 via-teal-500/10 to-cyan-500/20 border-teal-500/20" :
+                          gradient.includes("sky") ? "from-sky-500/20 via-sky-500/10 to-blue-500/20 border-sky-500/20" :
+                          gradient.includes("emerald") ? "from-emerald-500/20 via-emerald-500/10 to-green-500/20 border-emerald-500/20" :
+                          gradient.includes("amber") ? "from-amber-500/20 via-amber-500/10 to-yellow-500/20 border-amber-500/20" :
+                          gradient.includes("purple") ? "from-purple-500/20 via-purple-500/10 to-fuchsia-500/20 border-purple-500/20" :
+                          gradient.includes("yellow") ? "from-yellow-500/20 via-yellow-500/10 to-amber-500/20 border-yellow-500/20" :
+                          "from-violet-500/20 via-violet-500/10 to-purple-500/20 border-violet-500/20";
 
         return (
           <motion.section 

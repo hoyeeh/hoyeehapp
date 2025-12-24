@@ -234,7 +234,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-30px" }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="bg-gradient-to-br from-fuchsia-500/10 via-fuchsia-500/5 to-purple-500/10 rounded-xl mx-3 py-4 border border-fuchsia-500/10"
+          className="bg-gradient-to-br from-fuchsia-500/20 via-fuchsia-500/10 to-purple-500/20 rounded-xl mx-3 py-4 border border-fuchsia-500/20"
         >
           <SectionHeader 
             icon={Sparkles} 
@@ -264,7 +264,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-30px" }}
           transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
-          className="bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-pink-500/10 rounded-xl mx-3 py-4 border border-rose-500/10"
+          className="bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-pink-500/20 rounded-xl mx-3 py-4 border border-rose-500/20"
         >
           <SectionHeader 
             icon={TrendingUp} 
@@ -297,7 +297,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-30px" }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-cyan-500/10 rounded-xl mx-3 py-4 border border-blue-500/10"
+          className="bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-cyan-500/20 rounded-xl mx-3 py-4 border border-blue-500/20"
         >
           <SectionHeader 
             icon={Film} 
@@ -326,7 +326,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-30px" }}
           transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
-          className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-green-500/10 rounded-xl mx-3 py-4 border border-emerald-500/10"
+          className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-green-500/20 rounded-xl mx-3 py-4 border border-emerald-500/20"
         >
           <SectionHeader 
             icon={Tv} 

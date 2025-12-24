@@ -349,7 +349,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="bg-gradient-to-br from-fuchsia-500/10 via-fuchsia-500/5 to-purple-500/10 rounded-2xl p-4 md:p-6 border border-fuchsia-500/10"
+          className="bg-gradient-to-br from-fuchsia-500/20 via-fuchsia-500/10 to-purple-500/20 rounded-2xl p-4 md:p-6 border border-fuchsia-500/20"
         >
           <SectionHeader icon={Sparkles} title="Animation" color="bg-gradient-to-br from-fuchsia-500 to-purple-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -373,7 +373,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-          className="bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-pink-500/10 rounded-2xl p-4 md:p-6 border border-rose-500/10"
+          className="bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-pink-500/20 rounded-2xl p-4 md:p-6 border border-rose-500/20"
         >
           <SectionHeader icon={TrendingUp} title="Trending Now" color="bg-gradient-to-br from-rose-500 to-pink-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -400,7 +400,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-cyan-500/10 rounded-2xl p-4 md:p-6 border border-blue-500/10"
+          className="bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-cyan-500/20 rounded-2xl p-4 md:p-6 border border-blue-500/20"
         >
           <SectionHeader icon={Film} title="Movies" color="bg-gradient-to-br from-blue-500 to-cyan-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -424,7 +424,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-          className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-green-500/10 rounded-2xl p-4 md:p-6 border border-emerald-500/10"
+          className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-green-500/20 rounded-2xl p-4 md:p-6 border border-emerald-500/20"
         >
           <SectionHeader icon={Tv} title="TV Shows" color="bg-gradient-to-br from-emerald-500 to-green-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
