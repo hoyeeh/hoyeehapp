@@ -4,39 +4,41 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCreatorProfile } from "./useCreator";
 import { toast } from "sonner";
 
-export const useCreatorTips = () => {
+export const useCreatorTips = (creatorIdProp?: string) => {
   const { data: creatorProfile } = useCreatorProfile();
+  const creatorId = creatorIdProp || creatorProfile?.id;
   
   return useQuery({
-    queryKey: ["creator-tips", creatorProfile?.id],
+    queryKey: ["creator-tips", creatorId],
     queryFn: async () => {
-      if (!creatorProfile) return [];
+      if (!creatorId) return [];
       
       const { data, error } = await supabase
         .from("creator_tips")
         .select("*")
-        .eq("creator_id", creatorProfile.id)
+        .eq("creator_id", creatorId)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
       return data;
     },
-    enabled: !!creatorProfile,
+    enabled: !!creatorId,
   });
 };
 
-export const useTipStats = () => {
+export const useTipStats = (creatorIdProp?: string) => {
   const { data: creatorProfile } = useCreatorProfile();
+  const creatorId = creatorIdProp || creatorProfile?.id;
   
   return useQuery({
-    queryKey: ["tip-stats", creatorProfile?.id],
+    queryKey: ["tip-stats", creatorId],
     queryFn: async () => {
-      if (!creatorProfile) return null;
+      if (!creatorId) return null;
       
       const { data, error } = await supabase
         .from("creator_tips")
         .select("amount, created_at")
-        .eq("creator_id", creatorProfile.id)
+        .eq("creator_id", creatorId)
         .eq("status", "completed");
       
       if (error) throw error;
@@ -58,7 +60,7 @@ export const useTipStats = () => {
         averageTip: tipCount > 0 ? totalTips / tipCount : 0,
       };
     },
-    enabled: !!creatorProfile,
+    enabled: !!creatorId,
   });
 };
 

@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, X, DollarSign, Users, Film, TrendingUp, Settings, Loader2, BadgeCheck, Ban } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Check, X, DollarSign, Users, Film, TrendingUp, Settings, Loader2, BadgeCheck, Ban, Eye, ExternalLink } from "lucide-react";
 import { 
   useCreatorApplications, 
   useApproveCreatorApplication, 
@@ -20,14 +22,18 @@ import {
   useUpdatePlatformSettings,
   useAdminUpdateCreator
 } from "@/hooks/useCreatorAdmin";
+import { FollowersList } from "@/components/creator/FollowersList";
+import { TipsHistory } from "@/components/creator/TipsHistory";
 import { format } from "date-fns";
 
 export const CreatorManagement = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
   const [rejectReason, setRejectReason] = useState("");
   const [settingsDialog, setSettingsDialog] = useState(false);
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>({});
+  const [viewCreatorDialog, setViewCreatorDialog] = useState<{ open: boolean; creator: any }>({ open: false, creator: null });
 
   const { data: stats, isLoading: statsLoading } = useCreatorMarketplaceStats();
   const { data: applications } = useCreatorApplications();
@@ -73,6 +79,14 @@ export const CreatorManagement = () => {
   const openSettingsDialog = () => {
     setSettingsForm(platformSettings || {});
     setSettingsDialog(true);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'XAF',
+      minimumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -125,7 +139,7 @@ export const CreatorManagement = () => {
             <div className="flex items-center gap-4">
               <DollarSign className="h-8 w-8 text-amber-500" />
               <div>
-                <p className="text-2xl font-bold">{(stats?.platformRevenue || 0).toLocaleString()} XAF</p>
+                <p className="text-2xl font-bold">{formatCurrency(stats?.platformRevenue || 0)}</p>
                 <p className="text-sm text-muted-foreground">Platform Revenue</p>
               </div>
             </div>
@@ -143,7 +157,7 @@ export const CreatorManagement = () => {
           )}
           {pendingPayouts.length > 0 && (
             <Badge variant="secondary" className="text-sm py-1 px-3 bg-amber-500/20 text-amber-500">
-              {pendingPayouts.length} pending payout(s) - {stats?.pendingPayoutAmount?.toLocaleString()} XAF
+              {pendingPayouts.length} pending payout(s) - {formatCurrency(stats?.pendingPayoutAmount || 0)}
             </Badge>
           )}
         </div>
@@ -218,15 +232,16 @@ export const CreatorManagement = () => {
           <Card>
             <CardHeader>
               <CardTitle>All Creators</CardTitle>
+              <CardDescription>Manage creator accounts and access their dashboards</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Creator</TableHead>
-                    <TableHead>Total Earnings</TableHead>
-                    <TableHead>Pending Balance</TableHead>
-                    <TableHead>Withdrawn</TableHead>
+                    <TableHead>Earnings</TableHead>
+                    <TableHead>Followers</TableHead>
+                    <TableHead>Tips</TableHead>
                     <TableHead>Verified</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -235,10 +250,18 @@ export const CreatorManagement = () => {
                 <TableBody>
                   {creators?.map((creator) => (
                     <TableRow key={creator.id}>
-                      <TableCell className="font-medium">{creator.display_name}</TableCell>
-                      <TableCell>{Number(creator.total_earnings).toLocaleString()} XAF</TableCell>
-                      <TableCell>{Number(creator.pending_balance).toLocaleString()} XAF</TableCell>
-                      <TableCell>{Number(creator.total_withdrawn).toLocaleString()} XAF</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={creator.avatar_url || undefined} />
+                            <AvatarFallback>{creator.display_name?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium">{creator.display_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatCurrency(Number(creator.total_earnings))}</TableCell>
+                      <TableCell>{creator.follower_count || 0}</TableCell>
+                      <TableCell>{formatCurrency(Number(creator.total_tips_received || 0))}</TableCell>
                       <TableCell>
                         {creator.is_verified ? <BadgeCheck className="h-5 w-5 text-primary" /> : '-'}
                       </TableCell>
@@ -249,6 +272,13 @@ export const CreatorManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setViewCreatorDialog({ open: true, creator })}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button 
                             size="sm" 
                             variant="outline"
@@ -294,7 +324,7 @@ export const CreatorManagement = () => {
                   {payouts?.map((payout) => (
                     <TableRow key={payout.id}>
                       <TableCell>{payout.creator_profiles?.display_name}</TableCell>
-                      <TableCell>{Number(payout.amount).toLocaleString()} {payout.currency}</TableCell>
+                      <TableCell>{formatCurrency(Number(payout.amount))}</TableCell>
                       <TableCell className="capitalize">{payout.payout_method.replace('_', ' ')}</TableCell>
                       <TableCell>{format(new Date(payout.requested_at), 'MMM d, yyyy')}</TableCell>
                       <TableCell>
@@ -337,6 +367,76 @@ export const CreatorManagement = () => {
             <Button variant="outline" onClick={() => setRejectDialog({ open: false, id: "" })}>Cancel</Button>
             <Button variant="destructive" onClick={handleReject} disabled={rejectApplication.isPending}>
               Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Creator Dialog */}
+      <Dialog open={viewCreatorDialog.open} onOpenChange={(open) => setViewCreatorDialog({ open, creator: viewCreatorDialog.creator })}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={viewCreatorDialog.creator?.avatar_url || undefined} />
+                <AvatarFallback>{viewCreatorDialog.creator?.display_name?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <span className="flex items-center gap-2">
+                  {viewCreatorDialog.creator?.display_name}
+                  {viewCreatorDialog.creator?.is_verified && <BadgeCheck className="h-5 w-5 text-primary" />}
+                </span>
+                <p className="text-sm text-muted-foreground font-normal">
+                  {viewCreatorDialog.creator?.bio || 'No bio'}
+                </p>
+              </div>
+            </DialogTitle>
+            <DialogDescription>
+              Viewing creator account details as admin
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewCreatorDialog.creator && (
+            <div className="space-y-6">
+              {/* Creator Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Total Earnings</p>
+                    <p className="text-xl font-bold">{formatCurrency(Number(viewCreatorDialog.creator.total_earnings))}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Pending Balance</p>
+                    <p className="text-xl font-bold text-green-500">{formatCurrency(Number(viewCreatorDialog.creator.pending_balance))}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Followers</p>
+                    <p className="text-xl font-bold">{viewCreatorDialog.creator.follower_count || 0}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">Total Tips</p>
+                    <p className="text-xl font-bold">{formatCurrency(Number(viewCreatorDialog.creator.total_tips_received || 0))}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Followers List */}
+              <FollowersList creatorId={viewCreatorDialog.creator.id} />
+
+              {/* Tips History */}
+              <TipsHistory creatorId={viewCreatorDialog.creator.id} />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewCreatorDialog({ open: false, creator: null })}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

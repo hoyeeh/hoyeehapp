@@ -1,31 +1,29 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsCreator, useCreatorProfile, useCreatorContent, useCreatorSales, useCreatorPayouts, useRequestPayout, useUpdateCreatorProfile, usePlatformSettings } from "@/hooks/useCreator";
+import { useIsCreator, useCreatorProfile, useCreatorContent, useCreatorSales, useCreatorPayouts, usePlatformSettings } from "@/hooks/useCreator";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { Sidebar } from "@/components/Sidebar";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { 
   DollarSign, TrendingUp, Film, Users, ArrowLeft, 
-  Plus, Settings, Wallet, CheckCircle, Clock, XCircle,
-  BarChart3, CreditCard, Smartphone, Mail
+  Wallet, CheckCircle, Clock, XCircle,
+  BarChart3, Heart
 } from "lucide-react";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { CreatorApplicationForm } from "@/components/creator/CreatorApplicationForm";
 import { CreatorContentManager } from "@/components/creator/CreatorContentManager";
 import { CreatorPayoutForm } from "@/components/creator/CreatorPayoutForm";
+import { AnalyticsDashboard } from "@/components/creator/AnalyticsDashboard";
+import { FollowersList } from "@/components/creator/FollowersList";
+import { TipsHistory } from "@/components/creator/TipsHistory";
 
 export default function CreatorDashboard() {
   const navigate = useNavigate();
@@ -84,6 +82,8 @@ export default function CreatorDashboard() {
   const totalWithdrawn = creatorProfile?.total_withdrawn || 0;
   const totalSales = sales.length;
   const totalContent = creatorContent.length;
+  const followerCount = creatorProfile?.follower_count || 0;
+  const totalTips = creatorProfile?.total_tips_received || 0;
 
   // Recent sales
   const recentSales = sales.slice(0, 5);
@@ -91,7 +91,7 @@ export default function CreatorDashboard() {
   const DashboardContent = () => (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
@@ -100,7 +100,7 @@ export default function CreatorDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalEarnings)}</p>
+            <p className="text-xl font-bold">{formatCurrency(totalEarnings)}</p>
           </CardContent>
         </Card>
 
@@ -108,11 +108,11 @@ export default function CreatorDashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
               <Wallet className="h-4 w-4" />
-              Available Balance
+              Available
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-500">{formatCurrency(pendingBalance)}</p>
+            <p className="text-xl font-bold text-green-500">{formatCurrency(pendingBalance)}</p>
           </CardContent>
         </Card>
 
@@ -120,11 +120,11 @@ export default function CreatorDashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Total Sales
+              Sales
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{totalSales}</p>
+            <p className="text-xl font-bold">{totalSales}</p>
           </CardContent>
         </Card>
 
@@ -132,21 +132,48 @@ export default function CreatorDashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
               <Film className="h-4 w-4" />
-              Content Items
+              Content
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{totalContent}</p>
+            <p className="text-xl font-bold">{totalContent}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Followers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold">{followerCount}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
+              <Heart className="h-4 w-4" />
+              Tips
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold">{formatCurrency(totalTips)}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="sales">Sales</TabsTrigger>
+          <TabsTrigger value="followers">Followers</TabsTrigger>
+          <TabsTrigger value="tips">Tips</TabsTrigger>
           <TabsTrigger value="payouts">Payouts</TabsTrigger>
         </TabsList>
 
@@ -269,6 +296,11 @@ export default function CreatorDashboard() {
           <CreatorContentManager creatorProfile={creatorProfile} />
         </TabsContent>
 
+        {/* Analytics Tab */}
+        <TabsContent value="analytics">
+          {creatorProfile && <AnalyticsDashboard creatorId={creatorProfile.id} />}
+        </TabsContent>
+
         {/* Sales Tab */}
         <TabsContent value="sales">
           <Card>
@@ -311,6 +343,16 @@ export default function CreatorDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Followers Tab */}
+        <TabsContent value="followers">
+          {creatorProfile && <FollowersList creatorId={creatorProfile.id} />}
+        </TabsContent>
+
+        {/* Tips Tab */}
+        <TabsContent value="tips">
+          {creatorProfile && <TipsHistory creatorId={creatorProfile.id} />}
         </TabsContent>
 
         {/* Payouts Tab */}
@@ -392,6 +434,12 @@ export default function CreatorDashboard() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-lg font-bold">Creator Dashboard</h1>
+            {creatorProfile?.is_verified && (
+              <Badge variant="secondary" className="ml-auto gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Verified
+              </Badge>
+            )}
           </div>
         </div>
 

@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileProfile } from "@/components/mobile/MobileProfile";
+import { CreatorSection } from "@/components/creator/CreatorSection";
 
 // Import avatar images
 import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
@@ -462,6 +463,9 @@ const Profile = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Creator Section */}
+        <CreatorSection />
 
         {/* Account Actions */}
         <Card className="bg-card mb-6">
