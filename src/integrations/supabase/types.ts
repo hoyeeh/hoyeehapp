@@ -431,6 +431,56 @@ export type Database = {
           },
         ]
       }
+      creator_analytics: {
+        Row: {
+          created_at: string
+          creator_id: string
+          date: string
+          id: string
+          new_followers: number
+          revenue: number
+          sales: number
+          tips_received: number
+          unique_viewers: number
+          views: number
+          watch_time_minutes: number
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          date: string
+          id?: string
+          new_followers?: number
+          revenue?: number
+          sales?: number
+          tips_received?: number
+          unique_viewers?: number
+          views?: number
+          watch_time_minutes?: number
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          date?: string
+          id?: string
+          new_followers?: number
+          revenue?: number
+          sales?: number
+          tips_received?: number
+          unique_viewers?: number
+          views?: number
+          watch_time_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_analytics_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_applications: {
         Row: {
           created_at: string
@@ -466,6 +516,117 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      creator_followers: {
+        Row: {
+          creator_id: string
+          followed_at: string
+          follower_user_id: string
+          id: string
+        }
+        Insert: {
+          creator_id: string
+          followed_at?: string
+          follower_user_id: string
+          id?: string
+        }
+        Update: {
+          creator_id?: string
+          followed_at?: string
+          follower_user_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_followers_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_imported_content: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          duration: number | null
+          id: string
+          imported_content_id: string | null
+          is_imported_to_content: boolean
+          like_count: number | null
+          original_published_at: string | null
+          platform: string
+          platform_content_id: string
+          social_account_id: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          video_url: string | null
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          imported_content_id?: string | null
+          is_imported_to_content?: boolean
+          like_count?: number | null
+          original_published_at?: string | null
+          platform: string
+          platform_content_id: string
+          social_account_id?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_url?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          imported_content_id?: string | null
+          is_imported_to_content?: boolean
+          like_count?: number | null
+          original_published_at?: string | null
+          platform?: string
+          platform_content_id?: string
+          social_account_id?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_url?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_imported_content_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_imported_content_imported_content_id_fkey"
+            columns: ["imported_content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_imported_content_social_account_id_fkey"
+            columns: ["social_account_id"]
+            isOneToOne: false
+            referencedRelation: "creator_social_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       creator_payouts: {
         Row: {
@@ -530,6 +691,7 @@ export type Database = {
           cover_url: string | null
           created_at: string
           display_name: string
+          follower_count: number
           id: string
           is_active: boolean
           is_verified: boolean
@@ -537,6 +699,7 @@ export type Database = {
           payout_method: string | null
           pending_balance: number
           total_earnings: number
+          total_tips_received: number
           total_withdrawn: number
           updated_at: string
           user_id: string
@@ -547,6 +710,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           display_name: string
+          follower_count?: number
           id?: string
           is_active?: boolean
           is_verified?: boolean
@@ -554,6 +718,7 @@ export type Database = {
           payout_method?: string | null
           pending_balance?: number
           total_earnings?: number
+          total_tips_received?: number
           total_withdrawn?: number
           updated_at?: string
           user_id: string
@@ -564,6 +729,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           display_name?: string
+          follower_count?: number
           id?: string
           is_active?: boolean
           is_verified?: boolean
@@ -571,11 +737,153 @@ export type Database = {
           payout_method?: string | null
           pending_balance?: number
           total_earnings?: number
+          total_tips_received?: number
           total_withdrawn?: number
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      creator_reports: {
+        Row: {
+          creator_id: string
+          email_sent_at: string | null
+          generated_at: string
+          id: string
+          period_end: string
+          period_start: string
+          report_data: Json | null
+          report_type: string
+        }
+        Insert: {
+          creator_id: string
+          email_sent_at?: string | null
+          generated_at?: string
+          id?: string
+          period_end: string
+          period_start: string
+          report_data?: Json | null
+          report_type: string
+        }
+        Update: {
+          creator_id?: string
+          email_sent_at?: string | null
+          generated_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          report_data?: Json | null
+          report_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_reports_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_social_accounts: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          creator_id: string
+          id: string
+          is_active: boolean
+          last_synced_at: string | null
+          platform: string
+          platform_user_id: string | null
+          platform_username: string | null
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          creator_id: string
+          id?: string
+          is_active?: boolean
+          last_synced_at?: string | null
+          platform: string
+          platform_user_id?: string | null
+          platform_username?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          creator_id?: string
+          id?: string
+          is_active?: boolean
+          last_synced_at?: string | null
+          platform?: string
+          platform_user_id?: string | null
+          platform_username?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_social_accounts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_tips: {
+        Row: {
+          amount: number
+          created_at: string
+          creator_id: string
+          currency: string
+          id: string
+          message: string | null
+          payment_provider: string
+          payment_reference: string | null
+          status: string
+          tipper_user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          creator_id: string
+          currency?: string
+          id?: string
+          message?: string | null
+          payment_provider: string
+          payment_reference?: string | null
+          status?: string
+          tipper_user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          creator_id?: string
+          currency?: string
+          id?: string
+          message?: string | null
+          payment_provider?: string
+          payment_reference?: string | null
+          status?: string
+          tipper_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_tips_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       download_licenses: {
         Row: {
