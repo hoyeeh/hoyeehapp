@@ -84,7 +84,13 @@ export const KidsMobileYouTubeRow = ({ onPlayVideo }: KidsMobileYouTubeRowProps)
   if (videos.length === 0) return null;
 
   return (
-    <section className="space-y-4 bg-red-500/5 rounded-xl mx-3 py-4">
+    <motion.section 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-30px" }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-4 bg-gradient-to-br from-red-500/10 via-red-500/5 to-rose-500/10 rounded-xl mx-3 py-4 border border-red-500/10"
+    >
       {/* Header */}
       <div className="flex items-center gap-2.5 px-5">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
@@ -132,6 +138,6 @@ export const KidsMobileYouTubeRow = ({ onPlayVideo }: KidsMobileYouTubeRowProps)
           </motion.button>
         ))}
       </div>
-    </section>
+    </motion.section>
   );
 };
