@@ -84,7 +84,7 @@ export const KidsMobileYouTubeRow = ({ onPlayVideo }: KidsMobileYouTubeRowProps)
   if (videos.length === 0) return null;
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 bg-red-500/5 rounded-xl mx-3 py-4">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-5">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">

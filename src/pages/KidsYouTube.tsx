@@ -309,7 +309,7 @@ const KidsYouTubeContent = () => {
 
       {/* Featured Section */}
       {featuredVideos.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-4 bg-amber-500/5 rounded-2xl p-4 md:p-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
               <Sparkles className="h-5 w-5 text-white" />
@@ -328,8 +328,18 @@ const KidsYouTubeContent = () => {
         const Icon = getCategoryIcon(category.slug);
         const gradient = getCategoryGradient(category.color);
 
+        // Get light background color based on gradient
+        const bgColor = gradient.includes("red") ? "bg-red-500/5" :
+                        gradient.includes("teal") ? "bg-teal-500/5" :
+                        gradient.includes("sky") ? "bg-sky-500/5" :
+                        gradient.includes("emerald") ? "bg-emerald-500/5" :
+                        gradient.includes("amber") ? "bg-amber-500/5" :
+                        gradient.includes("purple") ? "bg-purple-500/5" :
+                        gradient.includes("yellow") ? "bg-yellow-500/5" :
+                        "bg-violet-500/5";
+
         return (
-          <section key={category.id} className="space-y-4">
+          <section key={category.id} className={`space-y-4 ${bgColor} rounded-2xl p-4 md:p-6`}>
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
                 <Icon className="h-5 w-5 text-white" />
