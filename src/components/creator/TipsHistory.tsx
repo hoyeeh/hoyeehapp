@@ -5,9 +5,13 @@ import { Gift, TrendingUp, DollarSign, Heart } from "lucide-react";
 import { useCreatorTips, useTipStats } from "@/hooks/useCreatorTips";
 import { format } from "date-fns";
 
-export function TipsHistory() {
-  const { data: tips = [], isLoading } = useCreatorTips();
-  const { data: stats } = useTipStats();
+interface TipsHistoryProps {
+  creatorId?: string;
+}
+
+export function TipsHistory({ creatorId }: TipsHistoryProps) {
+  const { data: tips = [], isLoading } = useCreatorTips(creatorId);
+  const { data: stats } = useTipStats(creatorId);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
