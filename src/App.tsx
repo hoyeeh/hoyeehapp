@@ -56,6 +56,7 @@ import CreatorDashboard from "./pages/CreatorDashboard";
 import TV from "./pages/TV";
 import TVReceiver from "./pages/TVReceiver";
 import TVApp from "./pages/TVApp";
+import KidsYouTube from "./pages/KidsYouTube";
 
 const queryClient = new QueryClient();
 
@@ -223,6 +224,7 @@ const App = () => (
                     <Route path="/tv" element={<TV />} />
                     <Route path="/tv-receiver" element={<TVReceiver />} />
                     <Route path="/tv-app" element={<TVApp />} />
+                    <Route path="/kids-youtube" element={<KidsYouTube />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                   <PersistentMobileVideoPlayer />

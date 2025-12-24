@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -35,15 +35,26 @@ export const AIRecommendationsRow = ({
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["ai-recommendations", currentProfile?.id],
     queryFn: async () => {
-      // Get watch history genres
+      // Get watch history with genres and content types
       const { data: watchHistory } = await supabase
         .from("watch_history")
-        .select("content:content_id(genre)")
-        .limit(20);
+        .select("content:content_id(genre, content_type, title)")
+        .order("last_watched", { ascending: false })
+        .limit(30);
 
-      const genres = watchHistory
-        ?.map((item: any) => item.content?.genre)
-        .filter(Boolean) || [];
+      const watchedItems = watchHistory?.map((item: any) => ({
+        genre: item.content?.genre,
+        contentType: item.content?.content_type,
+        title: item.content?.title,
+      })).filter((item: any) => item.genre) || [];
+
+      // Extract unique genres from watch history
+      const genres = [...new Set(watchedItems.map((item: any) => item.genre))];
+      
+      // Get content types user watches
+      const movieCount = watchedItems.filter((item: any) => item.content_type === 'movie').length;
+      const seriesCount = watchedItems.filter((item: any) => item.content_type === 'series').length;
+      const preferredType = movieCount > seriesCount ? 'movie' : seriesCount > movieCount ? 'series' : 'both';
 
       // Get profile preferences if available
       let preferences: any[] = [];
@@ -60,6 +71,8 @@ export const AIRecommendationsRow = ({
         {
           body: {
             watchHistory: genres,
+            watchedTitles: watchedItems.map((item: any) => item.title).slice(0, 10),
+            preferredContentType: preferredType,
             preferences,
             isKids: currentProfile?.is_kids || false,
           },
@@ -76,22 +89,32 @@ export const AIRecommendationsRow = ({
   // Match AI recommendations with actual content in database
   const matchedContent = (data as AIRecommendation[] || [])
     .map((rec) => {
-      // Find content that matches the recommendation title
+      // Find content that matches the recommendation title and type
       const match = allContent.find(
-        (c) => c.title.toLowerCase().includes(rec.title.toLowerCase()) ||
-               rec.title.toLowerCase().includes(c.title.toLowerCase())
+        (c) => (c.title.toLowerCase().includes(rec.title.toLowerCase()) ||
+               rec.title.toLowerCase().includes(c.title.toLowerCase())) &&
+               (rec.type === 'movie' ? c.contentType === 'movie' : c.contentType === 'series' || true)
       );
       return match ? { content: match, reason: rec.reason } : null;
     })
     .filter(Boolean) as { content: Content; reason: string }[];
 
-  // If we don't have enough matches, supplement with genre-based content
-  const recommendedContent = matchedContent.length >= 3 
-    ? matchedContent 
-    : allContent
-        .filter(c => !userList.includes(c.id))
-        .slice(0, 5)
-        .map(c => ({ content: c, reason: "Based on your preferences" }));
+  // If we don't have enough matches, supplement with content from user's preferred genres
+  const recommendedContent = useMemo(() => {
+    if (matchedContent.length >= 5) {
+      return matchedContent.slice(0, 15);
+    }
+    
+    // Get additional content based on view count and not in user's list
+    const existingIds = new Set(matchedContent.map(m => m.content.id));
+    const additionalContent = allContent
+      .filter(c => !userList.includes(c.id) && !existingIds.has(c.id))
+      .sort((a, b) => (b.duration || 0) - (a.duration || 0))
+      .slice(0, 15 - matchedContent.length)
+      .map(c => ({ content: c, reason: "Recommended for you" }));
+    
+    return [...matchedContent, ...additionalContent].slice(0, 15);
+  }, [matchedContent, allContent, userList]);
 
   const displayName = currentProfile?.name || profile?.display_name || "You";
 

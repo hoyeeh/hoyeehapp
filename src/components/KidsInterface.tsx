@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from "react";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { Home, Search, Heart, LogOut } from "lucide-react";
+import { Home, Search, Heart, LogOut, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -34,7 +34,7 @@ const pageVariants = {
   }),
 };
 
-const tabOrder = ["home", "search", "list"] as const;
+const tabOrder = ["home", "search", "youtube", "list"] as const;
 
 export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   const { currentProfile, setCurrentProfile } = useProfileContext();
@@ -54,6 +54,7 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   const getActiveTab = () => {
     if (location.pathname === "/search") return "search";
     if (location.pathname === "/my-list") return "list";
+    if (location.pathname === "/kids-youtube") return "youtube";
     return "home";
   };
 
@@ -113,6 +114,13 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
               active={activeTab === "search"}
             />
             <NavButton 
+              icon={Youtube} 
+              label="Just Kids" 
+              onClick={() => navigate("/kids-youtube")}
+              active={activeTab === "youtube"}
+              isYouTube
+            />
+            <NavButton 
               icon={Heart} 
               label="Favorites" 
               onClick={() => navigate("/my-list")}
@@ -170,11 +178,13 @@ const NavButton = ({
   label, 
   onClick,
   active = false,
+  isYouTube = false,
 }: { 
   icon: typeof Home; 
   label: string;
   onClick: () => void;
   active?: boolean;
+  isYouTube?: boolean;
 }) => {
   return (
     <button
@@ -182,7 +192,9 @@ const NavButton = ({
       className={cn(
         "flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
         active 
-          ? "bg-white text-[#0A0A0F] shadow-lg" 
+          ? isYouTube 
+            ? "bg-red-500 text-white shadow-lg" 
+            : "bg-white text-[#0A0A0F] shadow-lg" 
           : "text-white/60 hover:text-white hover:bg-white/[0.06]"
       )}
     >
