@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileSearch } from "@/components/mobile/MobileSearch";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, KIDS_ALLOWED_GENRES } from "@/constants/kidsRatings";
 
 // Parse cast members from content
 const parseCastMembers = (castMembers: any): { name: string }[] => {
@@ -42,10 +44,14 @@ const Search = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
+  const { currentProfile } = useProfileContext();
   const { data: content = [], isLoading: contentLoading } = useContent();
   const { data: watchlistIds = [] } = useWatchlist();
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
+
+  // Check if current profile is kids profile
+  const isKidsProfile = currentProfile?.is_kids === true;
 
   // Return mobile version for mobile devices
   if (isMobile) {
@@ -128,6 +134,21 @@ const Search = () => {
   // Filter and sort content
   const filteredContent = useMemo(() => {
     let filtered = content;
+
+    // KIDS FILTER: If in kids profile, only show kids-appropriate content
+    if (isKidsProfile) {
+      filtered = filtered.filter((c: any) => {
+        // Check content rating is G or PG
+        const ratingOk = c.contentRating && KIDS_RATINGS.includes(c.contentRating);
+        // Check age limit is 13 or under
+        const ageOk = !c.ageLimit || c.ageLimit <= KIDS_MAX_AGE_LIMIT;
+        // Check genre is animation or family
+        const genreOk = c.genre && KIDS_ALLOWED_GENRES.some(g => 
+          c.genre.toLowerCase().includes(g)
+        );
+        return ratingOk && ageOk && genreOk;
+      });
+    }
 
     // Apply search query
     if (searchQuery) {
