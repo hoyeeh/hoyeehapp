@@ -6,7 +6,7 @@ import {
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
   RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
   PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown,
-  Clock, Save
+  Clock, Save, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -1662,8 +1662,17 @@ export function MobileVideoPlayer({
                 )}
               </div>
               
-              {/* Spacer for balance */}
-              <div style={{ width: 44 }} />
+              {/* Close Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBack();
+                }}
+                className="p-3 rounded-full bg-black/30 backdrop-blur-sm active:bg-black/50 touch-manipulation"
+                style={{ minWidth: 44, minHeight: 44 }}
+              >
+                <X className="h-6 w-6 text-white" />
+              </button>
             </div>
 
             {/* Center Controls */}
