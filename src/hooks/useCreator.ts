@@ -99,7 +99,7 @@ export const useSubmitCreatorApplication = () => {
   });
 };
 
-// Get creator's paid content
+// Get creator's content (content table entries created by this creator)
 export const useCreatorContent = () => {
   const { data: creatorProfile } = useCreatorProfile();
   
@@ -109,15 +109,98 @@ export const useCreatorContent = () => {
       if (!creatorProfile) return [];
       
       const { data, error } = await supabase
-        .from('paid_content')
-        .select('*, content(*)')
-        .eq('creator_id', creatorProfile.id)
+        .from('content')
+        .select('*')
+        .eq('created_by', creatorProfile.user_id)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data;
     },
     enabled: !!creatorProfile,
+  });
+};
+
+// Get creator's paid content entries
+export const useCreatorPaidContent = () => {
+  const { data: creatorProfile } = useCreatorProfile();
+  
+  return useQuery({
+    queryKey: ["creator-paid-content", creatorProfile?.id],
+    queryFn: async () => {
+      if (!creatorProfile) return [];
+      
+      const { data, error } = await supabase
+        .from('paid_content')
+        .select('*')
+        .eq('creator_id', creatorProfile.id);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!creatorProfile,
+  });
+};
+
+// Create paid content
+export const useCreatePaidContent = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: { content_id: string; creator_id: string; price: number; is_active: boolean }) => {
+      const { data: result, error } = await supabase
+        .from('paid_content')
+        .insert(data)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["creator-paid-content"] });
+    },
+  });
+};
+
+// Update paid content
+export const useUpdatePaidContent = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, price, is_active }: { id: string; price: number; is_active: boolean }) => {
+      const { data, error } = await supabase
+        .from('paid_content')
+        .update({ price, is_active })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["creator-paid-content"] });
+    },
+  });
+};
+
+// Delete paid content
+export const useDeletePaidContent = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('paid_content')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["creator-paid-content"] });
+    },
   });
 };
 

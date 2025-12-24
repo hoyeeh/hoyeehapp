@@ -116,24 +116,47 @@ export const useImportYouTubeContent = () => {
   });
 };
 
-export const useCreatorImportedContent = () => {
+export const useCreatorImportedContent = (creatorId?: string) => {
   const { data: creatorProfile } = useCreatorProfile();
+  const id = creatorId || creatorProfile?.id;
   
   return useQuery({
-    queryKey: ["creator-imported-content", creatorProfile?.id],
+    queryKey: ["creator-imported-content", id],
     queryFn: async () => {
-      if (!creatorProfile) return [];
+      if (!id) return [];
       
       const { data, error } = await supabase
         .from("creator_imported_content")
         .select("*")
-        .eq("creator_id", creatorProfile.id)
+        .eq("creator_id", id)
         .order("original_published_at", { ascending: false });
       
       if (error) throw error;
       return data;
     },
-    enabled: !!creatorProfile,
+    enabled: !!id,
+  });
+};
+
+export const useImportFromYouTube = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ creatorId, platform, videos }: { creatorId: string; platform: string; videos: any[] }) => {
+      const { data, error } = await supabase
+        .from("creator_imported_content")
+        .insert(videos.map(v => ({
+          creator_id: creatorId,
+          platform,
+          ...v,
+        })));
+      
+      if (error) throw error;
+      return { success: true, imported: videos.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["creator-imported-content"] });
+    },
   });
 };
 
