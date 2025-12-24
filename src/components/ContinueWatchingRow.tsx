@@ -170,7 +170,8 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
         new Date(b.last_watched).getTime() - new Date(a.last_watched).getTime()
       );
 
-      return combinedHistory.slice(0, 20);
+      // Limit to 10 items for display
+      return combinedHistory.slice(0, 10);
     },
     enabled: !!user,
   });
@@ -185,13 +186,14 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
     }
   };
 
-  // Filter out completed content (>95% watched) and transform
+  // Filter out completed content (>95% watched) and show content watched for at least 60 seconds
   const continueWatching = watchHistory
     .filter((item) => {
       const duration = item.content?.duration || item.episode?.duration || 0;
       if (duration === 0) return false;
       const progressPercent = (item.progress / duration) * 100;
-      return progressPercent < 95 && progressPercent > 1;
+      // Must have watched at least 60 seconds and less than 95% complete
+      return item.progress >= 60 && progressPercent < 95;
     })
     .map((item) => {
       const isEpisode = !!item.episode;

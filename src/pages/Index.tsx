@@ -132,7 +132,7 @@ const Index = () => {
     },
   });
 
-  // Fetch trending content (most viewed)
+  // Fetch trending content (most viewed) - Top 20 for "What to Watch"
   const { data: trendingContent = [] } = useQuery({
     queryKey: ["trending-content"],
     queryFn: async () => {
@@ -140,7 +140,7 @@ const Index = () => {
         .from("content")
         .select("*")
         .order("view_count", { ascending: false })
-        .limit(15);
+        .limit(20);
       if (error) throw error;
       return data || [];
     },

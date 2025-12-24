@@ -36,6 +36,9 @@ export const useWatchProgress = ({ contentId, onProgressLoaded }: UseWatchProgre
   const saveProgress = useCallback(async (currentTime: number, duration: number) => {
     if (!user || !contentId || duration === 0) return;
 
+    // Only save if user has watched at least 60 seconds
+    if (currentTime < 60) return;
+
     const progressPercent = Math.floor((currentTime / duration) * 100);
     
     // Only save if progress changed by at least 1%
