@@ -9,9 +9,9 @@ import { useProfileContext } from "@/contexts/ProfileContext";
 import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Skeleton } from "@/components/ui/skeleton";
 import { KidsYouTubeRow } from "./kids/KidsYouTubeRow";
 import { KidsYouTubePlayer } from "./kids/KidsYouTubePlayer";
+import { KidsLoadingAnimation } from "./kids/KidsLoadingAnimation";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
@@ -294,21 +294,8 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-6 space-y-10">
-        <Skeleton className="w-full aspect-[21/9] rounded-3xl bg-white/[0.04]" />
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-6">
-            <div className="flex items-center gap-3">
-              <Skeleton className="w-10 h-10 rounded-2xl bg-white/[0.04]" />
-              <Skeleton className="w-32 h-6 bg-white/[0.04]" />
-            </div>
-            <div className="grid grid-cols-6 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((j) => (
-                <Skeleton key={j} className="aspect-[2/3] rounded-2xl bg-white/[0.04]" />
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="max-w-7xl mx-auto px-6">
+        <KidsLoadingAnimation message="Loading fun stuff..." />
       </div>
     );
   }
