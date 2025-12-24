@@ -517,6 +517,90 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_content_submissions: {
+        Row: {
+          age_group: string | null
+          content_id: string | null
+          content_type: string | null
+          cover_image_url: string | null
+          created_at: string | null
+          creator_id: string
+          description: string | null
+          duration: number | null
+          genre: string | null
+          id: string
+          poster_image_url: string | null
+          price_per_view: number | null
+          rejection_reason: string | null
+          release_date: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          age_group?: string | null
+          content_id?: string | null
+          content_type?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          creator_id: string
+          description?: string | null
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          poster_image_url?: string | null
+          price_per_view?: number | null
+          rejection_reason?: string | null
+          release_date?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          age_group?: string | null
+          content_id?: string | null
+          content_type?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          creator_id?: string
+          description?: string | null
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          poster_image_url?: string | null
+          price_per_view?: number | null
+          rejection_reason?: string | null
+          release_date?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_content_submissions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_content_submissions_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_followers: {
         Row: {
           creator_id: string
@@ -628,6 +712,83 @@ export type Database = {
           },
         ]
       }
+      creator_kyc: {
+        Row: {
+          address_city: string | null
+          address_country: string | null
+          address_line1: string | null
+          created_at: string | null
+          creator_id: string
+          date_of_birth: string | null
+          email: string
+          full_name: string
+          id: string
+          id_document_url: string
+          id_expiry_date: string | null
+          id_number: string
+          id_type: string
+          nationality: string | null
+          phone_number: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address_city?: string | null
+          address_country?: string | null
+          address_line1?: string | null
+          created_at?: string | null
+          creator_id: string
+          date_of_birth?: string | null
+          email: string
+          full_name: string
+          id?: string
+          id_document_url: string
+          id_expiry_date?: string | null
+          id_number: string
+          id_type: string
+          nationality?: string | null
+          phone_number: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address_city?: string | null
+          address_country?: string | null
+          address_line1?: string | null
+          created_at?: string | null
+          creator_id?: string
+          date_of_birth?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          id_document_url?: string
+          id_expiry_date?: string | null
+          id_number?: string
+          id_type?: string
+          nationality?: string | null
+          phone_number?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_kyc_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: true
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_payouts: {
         Row: {
           amount: number
@@ -688,6 +849,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          can_request_payout: boolean | null
           cover_url: string | null
           created_at: string
           display_name: string
@@ -695,6 +857,8 @@ export type Database = {
           id: string
           is_active: boolean
           is_verified: boolean
+          kyc_status: string | null
+          kyc_verified_at: string | null
           payout_details: Json | null
           payout_method: string | null
           pending_balance: number
@@ -707,6 +871,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          can_request_payout?: boolean | null
           cover_url?: string | null
           created_at?: string
           display_name: string
@@ -714,6 +879,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_verified?: boolean
+          kyc_status?: string | null
+          kyc_verified_at?: string | null
           payout_details?: Json | null
           payout_method?: string | null
           pending_balance?: number
@@ -726,6 +893,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          can_request_payout?: boolean | null
           cover_url?: string | null
           created_at?: string
           display_name?: string
@@ -733,6 +901,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_verified?: boolean
+          kyc_status?: string | null
+          kyc_verified_at?: string | null
           payout_details?: Json | null
           payout_method?: string | null
           pending_balance?: number
