@@ -6,7 +6,7 @@ import { Clock, Moon, Film, Tv, TrendingUp, Play, ChevronLeft, ChevronRight, Spa
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { KIDS_RATINGS } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT } from "@/constants/kidsRatings";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -185,22 +185,27 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
         .from("content")
         .select("*")
         .in("content_rating", KIDS_RATINGS)
+        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return (data || []).map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description || "",
-        thumbnailUrl: item.thumbnail_url || "",
-        videoUrl: item.video_url || "",
-        genre: item.genre || "",
-        contentType: item.content_type as "movie" | "series",
-        isPremium: item.is_premium || false,
-        duration: item.duration || 0,
-        year: item.year,
-        contentRating: item.content_rating,
-      })) as Content[];
+      
+      // Additional client-side filter to ensure strict age compliance
+      return (data || [])
+        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
+        .map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || "",
+          thumbnailUrl: item.thumbnail_url || "",
+          videoUrl: item.video_url || "",
+          genre: item.genre || "",
+          contentType: item.content_type as "movie" | "series",
+          isPremium: item.is_premium || false,
+          duration: item.duration || 0,
+          year: item.year,
+          contentRating: item.content_rating,
+        })) as Content[];
     },
   });
 

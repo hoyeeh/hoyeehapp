@@ -6,7 +6,7 @@ import { KidsMobileContentCard } from "./KidsMobileContentCard";
 import { Search, X, Film, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { KIDS_RATINGS } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT } from "@/constants/kidsRatings";
 
 interface KidsMobileSearchProps {
   onPlay: (content: Content) => void;
@@ -26,23 +26,28 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
         .select("*")
         .in("content_rating", KIDS_RATINGS)
         .or("genre.ilike.%animation%,genre.ilike.%family%")
+        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
         .ilike("title", `%${searchQuery}%`)
         .limit(20);
       
       if (error) throw error;
-      return (data || []).map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description || "",
-        thumbnailUrl: item.thumbnail_url || "",
-        videoUrl: item.video_url || "",
-        genre: item.genre || "",
-        contentType: item.content_type as "movie" | "series",
-        isPremium: item.is_premium || false,
-        duration: item.duration || 0,
-        year: item.year,
-        contentRating: item.content_rating,
-      })) as Content[];
+      
+      // Strict client-side filter for age compliance
+      return (data || [])
+        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
+        .map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || "",
+          thumbnailUrl: item.thumbnail_url || "",
+          videoUrl: item.video_url || "",
+          genre: item.genre || "",
+          contentType: item.content_type as "movie" | "series",
+          isPremium: item.is_premium || false,
+          duration: item.duration || 0,
+          year: item.year,
+          contentRating: item.content_rating,
+        })) as Content[];
     },
     enabled: searchQuery.length > 0,
   });
@@ -55,23 +60,28 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
         .select("*")
         .in("content_rating", KIDS_RATINGS)
         .or("genre.ilike.%animation%,genre.ilike.%family%")
+        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
         .order("view_count", { ascending: false })
         .limit(12);
       
       if (error) throw error;
-      return (data || []).map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description || "",
-        thumbnailUrl: item.thumbnail_url || "",
-        videoUrl: item.video_url || "",
-        genre: item.genre || "",
-        contentType: item.content_type as "movie" | "series",
-        isPremium: item.is_premium || false,
-        duration: item.duration || 0,
-        year: item.year,
-        contentRating: item.content_rating,
-      })) as Content[];
+      
+      // Strict client-side filter for age compliance
+      return (data || [])
+        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
+        .map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || "",
+          thumbnailUrl: item.thumbnail_url || "",
+          videoUrl: item.video_url || "",
+          genre: item.genre || "",
+          contentType: item.content_type as "movie" | "series",
+          isPremium: item.is_premium || false,
+          duration: item.duration || 0,
+          year: item.year,
+          contentRating: item.content_rating,
+        })) as Content[];
     },
   });
 

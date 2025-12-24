@@ -10,7 +10,7 @@ import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { KIDS_RATINGS } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT } from "@/constants/kidsRatings";
 import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
 import { useState } from "react";
@@ -68,22 +68,27 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
         .from("content")
         .select("*")
         .in("content_rating", KIDS_RATINGS)
+        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return (data || []).map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description || "",
-        thumbnailUrl: item.thumbnail_url || "",
-        videoUrl: item.video_url || "",
-        genre: item.genre || "",
-        contentType: item.content_type as "movie" | "series",
-        isPremium: item.is_premium || false,
-        duration: item.duration || 0,
-        year: item.year,
-        contentRating: item.content_rating,
-      })) as Content[];
+      
+      // Additional client-side filter to ensure strict age compliance
+      return (data || [])
+        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
+        .map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || "",
+          thumbnailUrl: item.thumbnail_url || "",
+          videoUrl: item.video_url || "",
+          genre: item.genre || "",
+          contentType: item.content_type as "movie" | "series",
+          isPremium: item.is_premium || false,
+          duration: item.duration || 0,
+          year: item.year,
+          contentRating: item.content_rating,
+        })) as Content[];
     },
   });
 

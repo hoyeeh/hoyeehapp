@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { KIDS_RATINGS } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT } from "@/constants/kidsRatings";
 import { KidsYouTubeTab } from "./KidsYouTubeTab";
 
 const GRADIENT_OPTIONS = [
@@ -227,11 +227,13 @@ export const KidsZoneManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content")
-        .select("id, title, thumbnail_url, content_rating, content_type, view_count")
+        .select("id, title, thumbnail_url, content_rating, content_type, view_count, age_limit")
         .in("content_rating", KIDS_RATINGS)
+        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
         .order("title");
       if (error) throw error;
-      return data || [];
+      // Additional client-side filter for strict age compliance
+      return (data || []).filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT);
     },
   });
 
