@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
 import { KidsInterface } from "@/components/KidsInterface";
 import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
-import { Youtube, Play, Sparkles, Star, Heart, Music, Gamepad2, BookOpen, Palette, ChevronLeft, ChevronRight, Tv } from "lucide-react";
+import { Youtube, Play, Sparkles, Star, Heart, Music, Gamepad2, BookOpen, Palette, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
@@ -116,9 +116,9 @@ const KidsChannelsRow = ({
     >
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
-          <Tv className="h-5 w-5 text-white" />
+          <Youtube className="h-5 w-5 text-white" />
         </div>
-        <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">📺 Our Channels</h2>
+        <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">Our Channels</h2>
       </div>
 
       <div className="relative group">
@@ -546,7 +546,7 @@ const KidsYouTubeContent = () => {
           transition={{ delay: 0.2 }}
           className="text-white/50 text-[15px] md:text-base mt-2 font-medium"
         >
-          Fun videos just for you! 🎉
+          Fun videos just for you!
         </motion.p>
 
         {/* Free Badge */}
@@ -612,7 +612,7 @@ const KidsYouTubeContent = () => {
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
-                <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">⭐ Just For You</h2>
+                <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">Just For You</h2>
               </div>
               <VideoRow videos={featuredVideos} onPlayVideo={handlePlayVideo} categoryName="featured" channels={kidsChannels} />
             </motion.section>
@@ -649,7 +649,7 @@ const KidsYouTubeContent = () => {
                     <Icon className="h-5 w-5 text-white" />
                   </div>
                   <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">
-                    {category.emoji} {category.name}
+                    {category.name}
                   </h2>
                 </div>
                 <VideoRow videos={categoryVideos} onPlayVideo={handlePlayVideo} categoryName={category.slug} channels={kidsChannels} />

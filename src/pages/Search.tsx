@@ -25,7 +25,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileSearch } from "@/components/mobile/MobileSearch";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, KIDS_ALLOWED_GENRES } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, KIDS_ALLOWED_GENRES, isBlockedTitle } from "@/constants/kidsRatings";
 
 // Parse cast members from content
 const parseCastMembers = (castMembers: any): { name: string }[] => {
@@ -146,7 +146,9 @@ const Search = () => {
         const genreOk = c.genre && KIDS_ALLOWED_GENRES.some(g => 
           c.genre.toLowerCase().includes(g)
         );
-        return ratingOk && ageOk && genreOk;
+        // Check title is not blocked
+        const notBlocked = !isBlockedTitle(c.title || "");
+        return ratingOk && ageOk && genreOk && notBlocked;
       });
     }
 

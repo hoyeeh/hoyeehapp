@@ -6,3 +6,19 @@ export const KIDS_MAX_AGE_LIMIT = 13;
 
 // Genres allowed in Kids Zone search
 export const KIDS_ALLOWED_GENRES = ["animation", "family", "animated", "cartoon"];
+
+// Titles that should NEVER appear in the Kids Zone
+export const KIDS_BLOCKED_TITLES = [
+  "Spermageddon",
+  "Together",
+  "The Wailing"
+];
+
+// Helper function to check if a title is blocked
+export const isBlockedTitle = (title: string): boolean => {
+  const normalizedTitle = title.toLowerCase().trim();
+  return KIDS_BLOCKED_TITLES.some(blocked => 
+    normalizedTitle === blocked.toLowerCase() ||
+    normalizedTitle.includes(blocked.toLowerCase())
+  );
+};
