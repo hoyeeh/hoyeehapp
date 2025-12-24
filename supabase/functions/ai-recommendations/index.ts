@@ -60,20 +60,30 @@ serve(async (req) => {
       );
     }
 
-    const { watchHistory, preferences, isKids } = await req.json();
+    const { watchHistory, watchedTitles, preferredContentType, preferences, isKids } = await req.json();
 
     // Build the prompt based on user data
-    const prompt = `Based on the user's watch history and preferences, suggest 5 movie or TV show recommendations.
+    const prompt = `Based on the user's watch history and preferences, suggest 15 movie or TV show recommendations.
 
 User's Watch History (genres they've watched):
 ${watchHistory?.length > 0 ? watchHistory.join(", ") : "No watch history yet"}
+
+Recently Watched Titles:
+${watchedTitles?.length > 0 ? watchedTitles.join(", ") : "None"}
+
+User's Preferred Content Type: ${preferredContentType || "both movies and TV shows"}
 
 User's Preferred Genres:
 ${preferences?.length > 0 ? preferences.map((p: any) => p.genre).join(", ") : "No specific preferences"}
 
 ${isKids ? "IMPORTANT: This is a KIDS profile. Only suggest family-friendly content rated G or PG. No violence, adult themes, or scary content." : ""}
 
-Return a JSON array with exactly 5 recommendations. Each recommendation should have:
+IMPORTANT: Provide a diverse mix of both movies AND TV shows/series based on what the user watches.
+- If they watch more movies, still include some TV shows
+- If they watch more TV shows, still include some movies
+- Match recommendations to their preferred genres
+
+Return a JSON array with exactly 15 recommendations. Each recommendation should have:
 - title: The movie/show title
 - genre: Primary genre
 - reason: Brief explanation why this would be good (1 sentence)
