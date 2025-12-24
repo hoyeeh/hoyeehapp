@@ -104,7 +104,7 @@ export function MobileHome() {
     },
   });
 
-  // Fetch trending
+  // Fetch trending - Top 20 for "What to Watch"
   const { data: trendingData = [], isLoading: isLoadingTrending } = useQuery({
     queryKey: ["mobile-trending"],
     queryFn: async () => {
@@ -112,7 +112,7 @@ export function MobileHome() {
         .from("content")
         .select("*")
         .order("view_count", { ascending: false })
-        .limit(15);
+        .limit(20);
       if (error) throw error;
       return data || [];
     },

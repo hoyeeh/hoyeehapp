@@ -169,7 +169,7 @@ export default function CreatorDashboard() {
       </div>
 
       {/* KYC Status Banner */}
-      <KYCStatusBanner />
+      <KYCStatusBanner onOpenKYC={() => setActiveTab("kyc")} />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
