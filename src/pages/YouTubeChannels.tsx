@@ -15,6 +15,7 @@ import { useProfile } from "@/hooks/useDatabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useYouTubeWatchlist, useToggleWatchlist, useIsInWatchlist } from "@/hooks/useYouTubeWatchlist";
 import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
+import { ChannelStorySelector } from "@/components/ChannelStorySelector";
 
 // Hook to fetch admin fallback banners
 function useYouTubeBanners() {
@@ -102,35 +103,13 @@ export default function YouTubeChannels() {
         onPlayVideo={handlePlayVideo}
       />
 
-      {/* Channel Filter Pills */}
-      <div className="px-4 md:px-8 py-6">
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-          <Button
-            variant={selectedChannel === null ? "default" : "secondary"}
-            onClick={() => setSelectedChannel(null)}
-            className="shrink-0 rounded-full"
-          >
-            All Channels
-          </Button>
-          {channels?.map(channel => (
-            <Button
-              key={channel.id}
-              variant={selectedChannel === channel.id ? "default" : "secondary"}
-              onClick={() => setSelectedChannel(channel.id)}
-              className="shrink-0 gap-2 rounded-full"
-            >
-              {channel.thumbnail_url && (
-                <img
-                  src={channel.thumbnail_url}
-                  alt={channel.name}
-                  className="w-5 h-5 rounded-full object-cover"
-                />
-              )}
-              {channel.name}
-            </Button>
-          ))}
-        </div>
-      </div>
+      {/* Channel Stories Selector */}
+      <ChannelStorySelector
+        channels={channels || []}
+        selectedChannel={selectedChannel}
+        onSelectChannel={setSelectedChannel}
+        allLabel="All Channels"
+      />
 
       {/* Playlists / Recommended Sections */}
       <div className="px-4 md:px-8 pb-8 space-y-10">
