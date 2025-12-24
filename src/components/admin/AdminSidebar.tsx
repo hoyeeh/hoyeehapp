@@ -32,6 +32,8 @@ const menuItems = [
   { id: "kids", label: "Kids Zone", icon: Baby },
   { id: "youtube", label: "YouTube", icon: Youtube },
   { id: "creators", label: "Creators", icon: Palette },
+  { id: "kyc-review", label: "KYC Review", icon: Shield },
+  { id: "content-review", label: "Content Review", icon: Film },
   { id: "users", label: "Users", icon: Users },
   { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "roles", label: "Roles", icon: Shield },

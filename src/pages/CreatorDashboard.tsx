@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { 
   DollarSign, TrendingUp, Film, Users, ArrowLeft, 
   Wallet, CheckCircle, Clock, XCircle,
-  BarChart3, Heart
+  BarChart3, Heart, Upload, Shield
 } from "lucide-react";
 import { format } from "date-fns";
 import { CreatorApplicationForm } from "@/components/creator/CreatorApplicationForm";
@@ -24,6 +24,9 @@ import { CreatorPayoutForm } from "@/components/creator/CreatorPayoutForm";
 import { AnalyticsDashboard } from "@/components/creator/AnalyticsDashboard";
 import { FollowersList } from "@/components/creator/FollowersList";
 import { TipsHistory } from "@/components/creator/TipsHistory";
+import { CreatorContentUploadForm } from "@/components/creator/CreatorContentUploadForm";
+import { KYCVerificationForm } from "@/components/creator/KYCVerificationForm";
+import { KYCStatusBanner } from "@/components/creator/KYCStatusBanner";
 
 export default function CreatorDashboard() {
   const navigate = useNavigate();
@@ -165,16 +168,21 @@ export default function CreatorDashboard() {
         </Card>
       </div>
 
+      {/* KYC Status Banner */}
+      <KYCStatusBanner />
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-9">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="upload">Upload</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="sales">Sales</TabsTrigger>
           <TabsTrigger value="followers">Followers</TabsTrigger>
           <TabsTrigger value="tips">Tips</TabsTrigger>
           <TabsTrigger value="payouts">Payouts</TabsTrigger>
+          <TabsTrigger value="kyc">KYC</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -289,6 +297,11 @@ export default function CreatorDashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Upload Tab */}
+        <TabsContent value="upload">
+          <CreatorContentUploadForm />
         </TabsContent>
 
         {/* Content Tab */}
@@ -419,6 +432,11 @@ export default function CreatorDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* KYC Tab */}
+        <TabsContent value="kyc">
+          <KYCVerificationForm />
         </TabsContent>
       </Tabs>
     </div>
