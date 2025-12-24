@@ -5,48 +5,51 @@ import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
 export type AnalyticsPeriod = "7d" | "30d" | "90d" | "month";
 
-export const useCreatorAnalytics = (period: AnalyticsPeriod = "30d") => {
+export const useCreatorAnalytics = (creatorId?: string, period: 'week' | 'month' = "week") => {
   const { data: creatorProfile } = useCreatorProfile();
+  const id = creatorId || creatorProfile?.id;
   
   return useQuery({
-    queryKey: ["creator-analytics", creatorProfile?.id, period],
+    queryKey: ["creator-analytics", id, period],
     queryFn: async () => {
-      if (!creatorProfile) return null;
+      if (!id) return [];
       
-      let startDate: string;
-      let endDate: string = format(new Date(), "yyyy-MM-dd");
+      const days = period === 'week' ? 7 : 30;
+      const startDate = format(subDays(new Date(), days), "yyyy-MM-dd");
       
-      switch (period) {
-        case "7d":
-          startDate = format(subDays(new Date(), 7), "yyyy-MM-dd");
-          break;
-        case "30d":
-          startDate = format(subDays(new Date(), 30), "yyyy-MM-dd");
-          break;
-        case "90d":
-          startDate = format(subDays(new Date(), 90), "yyyy-MM-dd");
-          break;
-        case "month":
-          startDate = format(startOfMonth(new Date()), "yyyy-MM-dd");
-          endDate = format(endOfMonth(new Date()), "yyyy-MM-dd");
-          break;
-        default:
-          startDate = format(subDays(new Date(), 30), "yyyy-MM-dd");
-      }
-      
-      const { data, error } = await supabase.functions.invoke("creator-analytics", {
-        body: {
-          action: "get-analytics",
-          creatorId: creatorProfile.id,
-          startDate,
-          endDate,
-        },
-      });
+      const { data, error } = await supabase
+        .from("creator_analytics")
+        .select("*")
+        .eq("creator_id", id)
+        .gte("date", startDate)
+        .order("date", { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
-    enabled: !!creatorProfile,
+    enabled: !!id,
+  });
+};
+
+export const useCreatorReports = (creatorId?: string) => {
+  const { data: creatorProfile } = useCreatorProfile();
+  const id = creatorId || creatorProfile?.id;
+  
+  return useQuery({
+    queryKey: ["creator-reports", id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from("creator_reports")
+        .select("*")
+        .eq("creator_id", id)
+        .order("generated_at", { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id,
   });
 };
 
@@ -58,37 +61,15 @@ export const useTopContent = () => {
     queryFn: async () => {
       if (!creatorProfile) return [];
       
-      const { data, error } = await supabase.functions.invoke("creator-analytics", {
-        body: {
-          action: "get-top-content",
-          creatorId: creatorProfile.id,
-        },
-      });
+      const { data, error } = await supabase
+        .from("content")
+        .select("*")
+        .eq("created_by", creatorProfile.user_id)
+        .order("view_count", { ascending: false })
+        .limit(10);
       
       if (error) throw error;
-      return data.content || [];
-    },
-    enabled: !!creatorProfile,
-  });
-};
-
-export const useCreatorReports = () => {
-  const { data: creatorProfile } = useCreatorProfile();
-  
-  return useQuery({
-    queryKey: ["creator-reports", creatorProfile?.id],
-    queryFn: async () => {
-      if (!creatorProfile) return [];
-      
-      const { data, error } = await supabase.functions.invoke("creator-report", {
-        body: {
-          action: "get-reports",
-          creatorId: creatorProfile.id,
-        },
-      });
-      
-      if (error) throw error;
-      return data.reports || [];
+      return data || [];
     },
     enabled: !!creatorProfile,
   });
