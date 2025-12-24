@@ -1,19 +1,47 @@
 import { useState } from "react";
-import { useRequestPayout } from "@/hooks/useCreator";
+import { useRequestPayout, useCreatorProfile } from "@/hooks/useCreator";
+import { useCreatorKYC } from "@/hooks/useCreatorKYC";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Wallet } from "lucide-react";
+import { Loader2, Wallet, Shield } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { KYCStatusBanner } from "./KYCStatusBanner";
 
 interface CreatorPayoutFormProps {
   availableBalance: number;
   creatorProfile: any;
+  onOpenKYC?: () => void;
 }
 
-export function CreatorPayoutForm({ availableBalance, creatorProfile }: CreatorPayoutFormProps) {
+export function CreatorPayoutForm({ availableBalance, creatorProfile, onOpenKYC }: CreatorPayoutFormProps) {
   const requestPayout = useRequestPayout();
+  const { data: kyc } = useCreatorKYC();
+  
+  const kycApproved = creatorProfile?.can_request_payout || kyc?.status === 'approved';
+
+  // If KYC not approved, show the banner
+  if (!kycApproved) {
+    return (
+      <div className="space-y-4">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Request Payout
+          </DialogTitle>
+        </DialogHeader>
+        <Alert>
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Complete identity verification (KYC) to enable payouts. This is a one-time process required for security.
+          </AlertDescription>
+        </Alert>
+        <KYCStatusBanner onOpenKYC={onOpenKYC} />
+      </div>
+    );
+  }
   
   const [amount, setAmount] = useState(availableBalance.toString());
   const [payoutMethod, setPayoutMethod] = useState(creatorProfile?.payout_method || "mobile_money");
