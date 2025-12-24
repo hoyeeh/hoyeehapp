@@ -47,6 +47,8 @@ import { EmailDeliveryStats } from "@/components/admin/EmailDeliveryStats";
 import { ContentHealthDashboard } from "@/components/admin/ContentHealthDashboard";
 import { YouTubeChannelManagement } from "@/components/admin/YouTubeChannelManagement";
 import { CreatorManagement } from "@/components/admin/CreatorManagement";
+import { KYCReviewPanel } from "@/components/admin/KYCReviewPanel";
+import { ContentSubmissionReview } from "@/components/admin/ContentSubmissionReview";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -661,6 +663,22 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Creator Management</h2>
             <CreatorManagement />
+          </div>
+        );
+      
+      case "kyc-review":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">KYC Verification Review</h2>
+            <KYCReviewPanel />
+          </div>
+        );
+      
+      case "content-review":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Creator Content Review</h2>
+            <ContentSubmissionReview />
           </div>
         );
       
