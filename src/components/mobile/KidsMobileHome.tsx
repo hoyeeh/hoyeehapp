@@ -224,7 +224,13 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
       {/* Animation Section - Featured First */}
       {animationContent.length > 0 && (
-        <section className="bg-fuchsia-500/5 rounded-xl mx-3 py-4">
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-30px" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="bg-gradient-to-br from-fuchsia-500/10 via-fuchsia-500/5 to-purple-500/10 rounded-xl mx-3 py-4 border border-fuchsia-500/10"
+        >
           <SectionHeader 
             icon={Sparkles} 
             title="Animation" 
@@ -243,12 +249,18 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
               />
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* Trending Now */}
       {kidsContent.length > 0 && (
-        <section className="bg-rose-500/5 rounded-xl mx-3 py-4">
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-30px" }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
+          className="bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-pink-500/10 rounded-xl mx-3 py-4 border border-rose-500/10"
+        >
           <SectionHeader 
             icon={TrendingUp} 
             title="Trending Now" 
@@ -267,7 +279,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
               />
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* YouTube Videos */}
@@ -275,7 +287,13 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
       {/* Movies */}
       {movies.length > 0 && (
-        <section className="bg-blue-500/5 rounded-xl mx-3 py-4">
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-30px" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-cyan-500/10 rounded-xl mx-3 py-4 border border-blue-500/10"
+        >
           <SectionHeader 
             icon={Film} 
             title="Movies" 
@@ -293,12 +311,18 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
               />
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* TV Shows */}
       {shows.length > 0 && (
-        <section className="bg-emerald-500/5 rounded-xl mx-3 py-4">
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-30px" }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
+          className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-green-500/10 rounded-xl mx-3 py-4 border border-emerald-500/10"
+        >
           <SectionHeader 
             icon={Tv} 
             title="TV Shows" 
@@ -316,7 +340,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
               />
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* Empty State */}

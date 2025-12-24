@@ -309,7 +309,13 @@ const KidsYouTubeContent = () => {
 
       {/* Featured Section */}
       {featuredVideos.length > 0 && (
-        <section className="space-y-4 bg-amber-500/5 rounded-2xl p-4 md:p-6">
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="space-y-4 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 rounded-2xl p-4 md:p-6 border border-amber-500/10"
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
               <Sparkles className="h-5 w-5 text-white" />
@@ -317,7 +323,7 @@ const KidsYouTubeContent = () => {
             <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">Just For You</h2>
           </div>
           <VideoRow videos={featuredVideos} onPlayVideo={handlePlayVideo} categoryName="featured" />
-        </section>
+        </motion.section>
       )}
 
       {/* Category Sections */}
@@ -329,17 +335,24 @@ const KidsYouTubeContent = () => {
         const gradient = getCategoryGradient(category.color);
 
         // Get light background color based on gradient
-        const bgColor = gradient.includes("red") ? "bg-red-500/5" :
-                        gradient.includes("teal") ? "bg-teal-500/5" :
-                        gradient.includes("sky") ? "bg-sky-500/5" :
-                        gradient.includes("emerald") ? "bg-emerald-500/5" :
-                        gradient.includes("amber") ? "bg-amber-500/5" :
-                        gradient.includes("purple") ? "bg-purple-500/5" :
-                        gradient.includes("yellow") ? "bg-yellow-500/5" :
-                        "bg-violet-500/5";
+        const bgGradient = gradient.includes("red") ? "from-red-500/10 via-red-500/5 to-rose-500/10 border-red-500/10" :
+                          gradient.includes("teal") ? "from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-teal-500/10" :
+                          gradient.includes("sky") ? "from-sky-500/10 via-sky-500/5 to-blue-500/10 border-sky-500/10" :
+                          gradient.includes("emerald") ? "from-emerald-500/10 via-emerald-500/5 to-green-500/10 border-emerald-500/10" :
+                          gradient.includes("amber") ? "from-amber-500/10 via-amber-500/5 to-yellow-500/10 border-amber-500/10" :
+                          gradient.includes("purple") ? "from-purple-500/10 via-purple-500/5 to-fuchsia-500/10 border-purple-500/10" :
+                          gradient.includes("yellow") ? "from-yellow-500/10 via-yellow-500/5 to-amber-500/10 border-yellow-500/10" :
+                          "from-violet-500/10 via-violet-500/5 to-purple-500/10 border-violet-500/10";
 
         return (
-          <section key={category.id} className={`space-y-4 ${bgColor} rounded-2xl p-4 md:p-6`}>
+          <motion.section 
+            key={category.id} 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className={`space-y-4 bg-gradient-to-br ${bgGradient} rounded-2xl p-4 md:p-6 border`}
+          >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
                 <Icon className="h-5 w-5 text-white" />
@@ -349,7 +362,7 @@ const KidsYouTubeContent = () => {
               </h2>
             </div>
             <VideoRow videos={categoryVideos} onPlayVideo={handlePlayVideo} categoryName={category.slug} />
-          </section>
+          </motion.section>
         );
       })}
 

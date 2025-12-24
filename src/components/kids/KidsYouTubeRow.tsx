@@ -105,7 +105,13 @@ export const KidsYouTubeRow = ({ onPlayVideo }: KidsYouTubeRowProps) => {
   if (videos.length === 0) return null;
 
   return (
-    <section className="space-y-4 relative bg-red-500/5 rounded-2xl p-4 md:p-6 mx-6">
+    <motion.section 
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="space-y-4 relative bg-gradient-to-br from-red-500/10 via-red-500/5 to-rose-500/10 rounded-2xl p-4 md:p-6 mx-6 border border-red-500/10"
+    >
       {/* Header */}
       <div className="flex items-center gap-3 px-6">
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
@@ -179,6 +185,6 @@ export const KidsYouTubeRow = ({ onPlayVideo }: KidsYouTubeRowProps) => {
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };
