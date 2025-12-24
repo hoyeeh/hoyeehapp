@@ -339,7 +339,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
 
       {/* Animation Section - Featured First */}
       {animationContent.length > 0 && (
-        <section>
+        <section className="bg-fuchsia-500/5 rounded-2xl p-4 md:p-6">
           <SectionHeader icon={Sparkles} title="Animation" color="bg-gradient-to-br from-fuchsia-500 to-purple-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {animationContent.slice(0, 12).map((item, index) => (
@@ -357,7 +357,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
 
       {/* Trending Now */}
       {kidsContent.length > 0 && (
-        <section>
+        <section className="bg-rose-500/5 rounded-2xl p-4 md:p-6">
           <SectionHeader icon={TrendingUp} title="Trending Now" color="bg-gradient-to-br from-rose-500 to-pink-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {sortedContent.slice(0, 12).map((item, index) => (
@@ -378,7 +378,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
 
       {/* Movies */}
       {movies.length > 0 && (
-        <section>
+        <section className="bg-blue-500/5 rounded-2xl p-4 md:p-6">
           <SectionHeader icon={Film} title="Movies" color="bg-gradient-to-br from-blue-500 to-cyan-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {movies.slice(0, 12).map((item, index) => (
@@ -396,7 +396,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
 
       {/* TV Shows */}
       {shows.length > 0 && (
-        <section>
+        <section className="bg-emerald-500/5 rounded-2xl p-4 md:p-6">
           <SectionHeader icon={Tv} title="TV Shows" color="bg-gradient-to-br from-emerald-500 to-green-600" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {shows.slice(0, 12).map((item, index) => (

@@ -224,7 +224,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
       {/* Animation Section - Featured First */}
       {animationContent.length > 0 && (
-        <section>
+        <section className="bg-fuchsia-500/5 rounded-xl mx-3 py-4">
           <SectionHeader 
             icon={Sparkles} 
             title="Animation" 
@@ -248,7 +248,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
       {/* Trending Now */}
       {kidsContent.length > 0 && (
-        <section>
+        <section className="bg-rose-500/5 rounded-xl mx-3 py-4">
           <SectionHeader 
             icon={TrendingUp} 
             title="Trending Now" 
@@ -275,7 +275,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
       {/* Movies */}
       {movies.length > 0 && (
-        <section>
+        <section className="bg-blue-500/5 rounded-xl mx-3 py-4">
           <SectionHeader 
             icon={Film} 
             title="Movies" 
@@ -298,7 +298,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
       {/* TV Shows */}
       {shows.length > 0 && (
-        <section>
+        <section className="bg-emerald-500/5 rounded-xl mx-3 py-4">
           <SectionHeader 
             icon={Tv} 
             title="TV Shows" 
