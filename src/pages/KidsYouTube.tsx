@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
 import { cn } from "@/lib/utils";
+import { ChannelStorySelector } from "@/components/ChannelStorySelector";
 
 interface YouTubeChannel {
   id: string;
@@ -216,7 +217,7 @@ function PlaylistRow({
   );
 }
 
-// Channel Selector Component
+// Channel Selector Component - Kids themed Stories style
 function ChannelSelector({ 
   channels, 
   selectedChannel,
@@ -226,46 +227,83 @@ function ChannelSelector({
   selectedChannel: string | null;
   onSelectChannel: (channelId: string | null) => void;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   if (channels.length === 0) return null;
 
   return (
     <div className="px-4 md:px-6">
-      <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
-      >
+      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+        {/* All Channels Story */}
         <button
           onClick={() => onSelectChannel(null)}
-          className={cn(
-            "flex-shrink-0 px-4 py-2 rounded-full font-medium text-sm transition-all",
-            selectedChannel === null
-              ? "bg-white text-[#0A0A0F]"
-              : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
-          )}
+          className="flex flex-col items-center gap-2 flex-shrink-0 group"
         >
-          All Channels
+          <div
+            className={cn(
+              "relative w-16 h-16 md:w-20 md:h-20 rounded-full p-[3px] transition-all duration-300",
+              selectedChannel === null
+                ? "bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500"
+                : "bg-gradient-to-br from-white/30 to-white/10 group-hover:from-pink-500/60 group-hover:to-red-500/60"
+            )}
+          >
+            <div className="w-full h-full rounded-full bg-[#0A0A0F] p-[2px]">
+              <div className={cn(
+                "w-full h-full rounded-full flex items-center justify-center font-bold text-xl transition-colors",
+                selectedChannel === null
+                  ? "bg-gradient-to-br from-pink-500 to-red-500 text-white"
+                  : "bg-white/10 text-white/70 group-hover:bg-white/20"
+              )}>
+                ✦
+              </div>
+            </div>
+          </div>
+          <span className={cn(
+            "text-xs md:text-sm font-medium max-w-16 md:max-w-20 truncate transition-colors",
+            selectedChannel === null ? "text-white" : "text-white/60 group-hover:text-white"
+          )}>
+            All
+          </span>
         </button>
+
+        {/* Channel Stories */}
         {channels.map(channel => (
           <button
             key={channel.id}
             onClick={() => onSelectChannel(channel.id)}
-            className={cn(
-              "flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm transition-all",
-              selectedChannel === channel.id
-                ? "bg-red-500 text-white"
-                : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
-            )}
+            className="flex flex-col items-center gap-2 flex-shrink-0 group"
           >
-            {channel.thumbnail_url && (
-              <img
-                src={channel.thumbnail_url}
-                alt={channel.name}
-                className="w-5 h-5 rounded-full object-cover"
-              />
-            )}
-            {channel.name}
+            <div
+              className={cn(
+                "relative w-16 h-16 md:w-20 md:h-20 rounded-full p-[3px] transition-all duration-300",
+                selectedChannel === channel.id
+                  ? "bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500"
+                  : "bg-gradient-to-br from-white/30 to-white/10 group-hover:from-pink-500/60 group-hover:to-red-500/60"
+              )}
+            >
+              <div className="w-full h-full rounded-full bg-[#0A0A0F] p-[2px]">
+                {channel.thumbnail_url ? (
+                  <img
+                    src={channel.thumbnail_url}
+                    alt={channel.name}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-full h-full rounded-full flex items-center justify-center font-bold text-lg uppercase",
+                    selectedChannel === channel.id
+                      ? "bg-gradient-to-br from-pink-500 to-red-500 text-white"
+                      : "bg-white/10 text-white/70"
+                  )}>
+                    {channel.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+            </div>
+            <span className={cn(
+              "text-xs md:text-sm font-medium max-w-16 md:max-w-20 truncate transition-colors text-center",
+              selectedChannel === channel.id ? "text-white" : "text-white/60 group-hover:text-white"
+            )}>
+              {channel.name}
+            </span>
           </button>
         ))}
       </div>
