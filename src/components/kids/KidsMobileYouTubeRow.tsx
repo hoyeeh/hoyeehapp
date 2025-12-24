@@ -89,7 +89,7 @@ export const KidsMobileYouTubeRow = ({ onPlayVideo }: KidsMobileYouTubeRowProps)
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-30px" }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="space-y-4 bg-gradient-to-br from-red-500/10 via-red-500/5 to-rose-500/10 rounded-xl mx-3 py-4 border border-red-500/10"
+      className="space-y-4 bg-gradient-to-br from-red-500/20 via-red-500/10 to-rose-500/20 rounded-xl mx-3 py-4 border border-red-500/20"
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 px-5">
