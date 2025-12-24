@@ -231,6 +231,17 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   const movies = kidsContent.filter((c) => c.contentType === "movie");
   const shows = kidsContent.filter((c) => c.contentType === "series");
 
+  // Trigger confetti when content loads - MUST be before any conditional returns
+  useEffect(() => {
+    if (!isLoading && kidsContent.length > 0 && !hasShownConfetti.current) {
+      hasShownConfetti.current = true;
+      setShowConfetti(true);
+      // Hide confetti after animation
+      const timer = setTimeout(() => setShowConfetti(false), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, kidsContent.length]);
+
   // Bedtime screen
   if (isBedtime) {
     return (
@@ -313,17 +324,6 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
       />
     );
   }
-
-  // Trigger confetti when content loads
-  useEffect(() => {
-    if (!isLoading && kidsContent.length > 0 && !hasShownConfetti.current) {
-      hasShownConfetti.current = true;
-      setShowConfetti(true);
-      // Hide confetti after animation
-      const timer = setTimeout(() => setShowConfetti(false), 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, kidsContent.length]);
 
   return (
     <div className="max-w-7xl mx-auto px-6 space-y-10 pb-12">
