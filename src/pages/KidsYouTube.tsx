@@ -8,10 +8,10 @@ import { KidsInterface } from "@/components/KidsInterface";
 import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
 import { Youtube, Play, Sparkles, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
 import { cn } from "@/lib/utils";
 import { ChannelStorySelector } from "@/components/ChannelStorySelector";
+import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
 
 interface YouTubeChannel {
   id: string;
@@ -144,10 +144,10 @@ function PlaylistRow({
   if (isLoading) {
     return (
       <section className="space-y-4 bg-gradient-to-br from-violet-500/15 via-violet-500/5 to-purple-500/15 rounded-2xl p-4 md:p-6 border border-violet-500/20">
-        <Skeleton className="h-6 w-48 bg-white/[0.06]" />
+        <div className="h-6 w-48 bg-white/[0.06] rounded animate-pulse" />
         <div className="flex gap-4">
           {[1, 2, 3, 4, 5].map(i => (
-            <Skeleton key={i} className="w-[200px] md:w-[280px] aspect-video rounded-xl bg-white/[0.06] flex-shrink-0" />
+            <div key={i} className="w-[200px] md:w-[280px] aspect-video rounded-xl bg-white/[0.06] flex-shrink-0 animate-pulse" />
           ))}
         </div>
       </section>
@@ -516,22 +516,7 @@ const KidsYouTubeContent = () => {
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-6 space-y-8 pt-4">
-        <div className="h-[40vh] rounded-2xl bg-white/[0.04] animate-pulse" />
-        <div className="flex gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="w-32 h-10 rounded-full bg-white/[0.06]" />
-          ))}
-        </div>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-4 bg-white/[0.02] rounded-2xl p-6">
-            <Skeleton className="w-40 h-6 bg-white/[0.04]" />
-            <div className="flex gap-4">
-              {[1, 2, 3, 4, 5].map((j) => (
-                <Skeleton key={j} className="w-[200px] md:w-[280px] aspect-video rounded-2xl bg-white/[0.04] flex-shrink-0" />
-              ))}
-            </div>
-          </div>
-        ))}
+        <KidsLoadingAnimation message="Loading videos..." />
       </div>
     );
   }

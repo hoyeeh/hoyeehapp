@@ -9,10 +9,10 @@ import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { motion } from "framer-motion";
-import { Skeleton } from "@/components/ui/skeleton";
 import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
 import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
+import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
 import { useState } from "react";
 
 interface KidsMobileHomeProps {
@@ -173,23 +173,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 pt-4">
-        <div className="px-5">
-          <Skeleton className="h-48 w-full rounded-3xl bg-white/[0.04]" />
-        </div>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-4">
-            <div className="px-5 flex items-center gap-2">
-              <Skeleton className="w-8 h-8 rounded-xl bg-white/[0.04]" />
-              <Skeleton className="w-24 h-5 bg-white/[0.04]" />
-            </div>
-            <div className="flex gap-3 px-5">
-              {[1, 2, 3].map((j) => (
-                <Skeleton key={j} className="w-[120px] aspect-[2/3] rounded-2xl bg-white/[0.04]" />
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="px-4 pt-4">
+        <KidsLoadingAnimation message="Loading fun stuff..." />
       </div>
     );
   }
