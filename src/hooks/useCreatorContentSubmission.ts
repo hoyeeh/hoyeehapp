@@ -94,7 +94,8 @@ export function useUploadCreatorMedia() {
       if (!creatorProfile?.user_id) throw new Error('Not authenticated');
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `content/${creatorProfile.user_id}/${type}/${Date.now()}.${fileExt}`;
+      // Use user_id as first folder for RLS policy compliance
+      const fileName = `${creatorProfile.user_id}/content/${type}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('creator-uploads')
@@ -102,11 +103,13 @@ export function useUploadCreatorMedia() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      // Use signed URL instead of public URL for security
+      const { data, error } = await supabase.storage
         .from('creator-uploads')
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 86400); // 24 hour expiry
 
-      return publicUrl;
+      if (error) throw error;
+      return data.signedUrl;
     },
   });
 }
