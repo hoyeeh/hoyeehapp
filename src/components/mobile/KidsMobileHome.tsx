@@ -13,7 +13,8 @@ import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/ki
 import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
 import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
-import { useState } from "react";
+import { KidsConfetti } from "@/components/kids/KidsConfetti";
+import { useState, useEffect, useRef } from "react";
 
 interface KidsMobileHomeProps {
   onPlay: (content: Content) => void;
@@ -56,6 +57,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
   const [youtubePlayer, setYoutubePlayer] = useState<{ videoId: string; title: string } | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const hasShownConfetti = useRef(false);
 
   const handlePlayYouTubeVideo = (videoId: string, title: string) => {
     setYoutubePlayer({ videoId, title });
@@ -190,8 +193,21 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
     );
   }
 
+  // Trigger confetti when content loads
+  useEffect(() => {
+    if (!isLoading && kidsContent.length > 0 && !hasShownConfetti.current) {
+      hasShownConfetti.current = true;
+      setShowConfetti(true);
+      const timer = setTimeout(() => setShowConfetti(false), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, kidsContent.length]);
+
   return (
     <div className="space-y-6 pb-8">
+      {/* Confetti celebration */}
+      <KidsConfetti show={showConfetti} />
+
       {/* Hero Carousel - prioritize animation */}
       <KidsHeroCarousel 
         content={sortedContent} 

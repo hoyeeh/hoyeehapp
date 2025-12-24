@@ -7,11 +7,12 @@ import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { KidsYouTubeRow } from "./kids/KidsYouTubeRow";
 import { KidsYouTubePlayer } from "./kids/KidsYouTubePlayer";
 import { KidsLoadingAnimation } from "./kids/KidsLoadingAnimation";
+import { KidsConfetti } from "./kids/KidsConfetti";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
@@ -173,6 +174,8 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
   const [youtubePlayer, setYoutubePlayer] = useState<{ videoId: string; title: string } | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const hasShownConfetti = useRef(false);
 
   const handlePlayYouTubeVideo = (videoId: string, title: string) => {
     setYoutubePlayer({ videoId, title });
@@ -311,8 +314,22 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     );
   }
 
+  // Trigger confetti when content loads
+  useEffect(() => {
+    if (!isLoading && kidsContent.length > 0 && !hasShownConfetti.current) {
+      hasShownConfetti.current = true;
+      setShowConfetti(true);
+      // Hide confetti after animation
+      const timer = setTimeout(() => setShowConfetti(false), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, kidsContent.length]);
+
   return (
     <div className="max-w-7xl mx-auto px-6 space-y-10 pb-12">
+      {/* Confetti celebration when content loads */}
+      <KidsConfetti show={showConfetti} />
+
       {/* Hero Carousel - prioritize animation */}
       <HeroCarousel content={sortedContent} onPlay={onPlay} onDetails={onDetails} />
 

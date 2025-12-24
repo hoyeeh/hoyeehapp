@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { useKidsSounds } from "@/hooks/useKidsSounds";
 
 const funWords = [
   { text: "Hoyeeh!", color: "from-yellow-400 via-orange-400 to-pink-500", size: "text-4xl md:text-5xl", isMain: true },
@@ -49,47 +51,59 @@ const AnimatedWord = ({
   color, 
   size, 
   index, 
-  isMain 
+  isMain,
+  onAppear
 }: { 
   text: string; 
   color: string; 
   size: string; 
   index: number;
   isMain?: boolean;
-}) => (
-  <motion.div
-    className={`font-display font-bold ${size} ${isMain ? `bg-gradient-to-r ${color} bg-clip-text text-transparent drop-shadow-lg` : color}`}
-    initial={{ opacity: 0, y: 50, scale: 0.5, rotate: -10 }}
-    animate={{ 
-      opacity: 1, 
-      y: [0, -15, 0],
-      scale: [1, 1.1, 1],
-      rotate: [-5, 5, -5]
-    }}
-    transition={{
-      opacity: { duration: 0.5, delay: index * 0.15 },
-      y: { duration: 2, delay: index * 0.2, repeat: Infinity, ease: "easeInOut" },
-      scale: { duration: 2.5, delay: index * 0.3, repeat: Infinity, ease: "easeInOut" },
-      rotate: { duration: 3, delay: index * 0.1, repeat: Infinity, ease: "easeInOut" }
-    }}
-    style={{
-      textShadow: isMain 
-        ? "0 0 30px rgba(255, 200, 0, 0.5), 0 0 60px rgba(255, 100, 0, 0.3)" 
-        : "0 4px 8px rgba(0,0,0,0.2)"
-    }}
-  >
-    {text}
-    {isMain && (
-      <motion.span
-        className="absolute -top-2 -right-2 text-lg"
-        animate={{ rotate: [0, 20, 0], scale: [1, 1.2, 1] }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-      >
-        ✨
-      </motion.span>
-    )}
-  </motion.div>
-);
+  onAppear?: () => void;
+}) => {
+  const hasAppeared = useRef(false);
+
+  return (
+    <motion.div
+      className={`font-display font-bold ${size} ${isMain ? `bg-gradient-to-r ${color} bg-clip-text text-transparent drop-shadow-lg` : color}`}
+      initial={{ opacity: 0, y: 50, scale: 0.5, rotate: -10 }}
+      animate={{ 
+        opacity: 1, 
+        y: [0, -15, 0],
+        scale: [1, 1.1, 1],
+        rotate: [-5, 5, -5]
+      }}
+      transition={{
+        opacity: { duration: 0.5, delay: index * 0.15 },
+        y: { duration: 2, delay: index * 0.2, repeat: Infinity, ease: "easeInOut" },
+        scale: { duration: 2.5, delay: index * 0.3, repeat: Infinity, ease: "easeInOut" },
+        rotate: { duration: 3, delay: index * 0.1, repeat: Infinity, ease: "easeInOut" }
+      }}
+      onAnimationStart={() => {
+        if (!hasAppeared.current && onAppear) {
+          hasAppeared.current = true;
+          setTimeout(() => onAppear(), index * 150);
+        }
+      }}
+      style={{
+        textShadow: isMain 
+          ? "0 0 30px rgba(255, 200, 0, 0.5), 0 0 60px rgba(255, 100, 0, 0.3)" 
+          : "0 4px 8px rgba(0,0,0,0.2)"
+      }}
+    >
+      {text}
+      {isMain && (
+        <motion.span
+          className="absolute -top-2 -right-2 text-lg"
+          animate={{ rotate: [0, 20, 0], scale: [1, 1.2, 1] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        >
+          ✨
+        </motion.span>
+      )}
+    </motion.div>
+  );
+};
 
 const Sparkle = ({ delay, x, y }: { delay: number; x: string; y: string }) => (
   <motion.div
@@ -114,9 +128,34 @@ const Sparkle = ({ delay, x, y }: { delay: number; x: string; y: string }) => (
 
 interface KidsLoadingAnimationProps {
   message?: string;
+  enableSounds?: boolean;
 }
 
-export const KidsLoadingAnimation = ({ message = "Loading..." }: KidsLoadingAnimationProps) => {
+export const KidsLoadingAnimation = ({ message = "Loading...", enableSounds = true }: KidsLoadingAnimationProps) => {
+  const { playSparkleSound, playBounceSound, playPopSound } = useKidsSounds();
+  const soundsPlayed = useRef(false);
+
+  // Play initial sounds when loading starts
+  useEffect(() => {
+    if (enableSounds && !soundsPlayed.current) {
+      soundsPlayed.current = true;
+      // Play pop sounds for each word appearing
+      funWords.forEach((_, i) => {
+        if (i === 0) {
+          playBounceSound(i * 150); // Special sound for Hoyeeh
+        } else {
+          playSparkleSound(i * 150);
+        }
+      });
+    }
+  }, [enableSounds, playSparkleSound, playBounceSound]);
+
+  const handleWordAppear = () => {
+    if (enableSounds) {
+      playPopSound();
+    }
+  };
+
   return (
     <div className="relative w-full min-h-[400px] md:min-h-[500px] overflow-hidden rounded-3xl bg-gradient-to-br from-sky-300 via-purple-200 to-pink-200">
       {/* Animated background gradient */}
@@ -159,19 +198,19 @@ export const KidsLoadingAnimation = ({ message = "Loading..." }: KidsLoadingAnim
       <div className="relative z-10 flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] gap-4 px-4">
         {/* Main Hoyeeh word at top */}
         <div className="relative">
-          <AnimatedWord {...funWords[0]} index={0} />
+          <AnimatedWord {...funWords[0]} index={0} onAppear={handleWordAppear} />
         </div>
 
         {/* Other words arranged in rows */}
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-4">
           {funWords.slice(1, 4).map((word, index) => (
-            <AnimatedWord key={word.text} {...word} index={index + 1} />
+            <AnimatedWord key={word.text} {...word} index={index + 1} onAppear={handleWordAppear} />
           ))}
         </div>
 
         <div className="flex flex-wrap justify-center gap-4 md:gap-6">
           {funWords.slice(4).map((word, index) => (
-            <AnimatedWord key={word.text} {...word} index={index + 4} />
+            <AnimatedWord key={word.text} {...word} index={index + 4} onAppear={handleWordAppear} />
           ))}
         </div>
 
@@ -215,4 +254,3 @@ export const KidsLoadingAnimation = ({ message = "Loading..." }: KidsLoadingAnim
 };
 
 export default KidsLoadingAnimation;
-
