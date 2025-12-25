@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, Loader2, AlertCircle, FlashlightOff, Flashlight, Keyboard } from "lucide-react";
+import { X, Camera, Loader2, AlertCircle, FlashlightOff, Flashlight, Keyboard, Check, Settings, RefreshCw } from "lucide-react";
 import jsQR from "jsqr";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,9 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
   const [hasTorch, setHasTorch] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [scannedCode, setScannedCode] = useState("");
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   // Haptic feedback
   const triggerHaptic = useCallback(() => {
@@ -75,6 +78,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
   const startCamera = useCallback(async () => {
     try {
       setIsLoading(true);
+      setPermissionDenied(false);
       
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
@@ -101,10 +105,15 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
       
       // Start scanning
       scanQRCode();
-    } catch (error) {
+    } catch (error: any) {
       console.error("[QRScanner] Camera error:", error);
       setHasCamera(false);
       setIsLoading(false);
+      
+      // Check if permission was denied
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setPermissionDenied(true);
+      }
     }
   }, []);
 
@@ -155,7 +164,15 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     playSuccessSound();
     
     stopCamera();
-    onCodeScanned(code);
+    
+    // Show success animation
+    setScannedCode(code);
+    setShowSuccess(true);
+    
+    // After animation, call onCodeScanned
+    setTimeout(() => {
+      onCodeScanned(code);
+    }, 1200);
   }, [triggerHaptic, playSuccessSound, stopCamera, onCodeScanned]);
 
   const scanQRCode = useCallback(() => {
@@ -214,14 +231,31 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     triggerHaptic();
     playSuccessSound();
     stopCamera();
-    onCodeScanned(code);
+    
+    // Show success animation
+    setScannedCode(code);
+    setShowSuccess(true);
+    setShowManualEntry(false);
+    
+    // After animation, call onCodeScanned
+    setTimeout(() => {
+      onCodeScanned(code);
+    }, 1200);
   }, [manualCode, triggerHaptic, playSuccessSound, stopCamera, onCodeScanned]);
+
+  const retryCamera = useCallback(() => {
+    setHasCamera(true);
+    setPermissionDenied(false);
+    startCamera();
+  }, [startCamera]);
 
   useEffect(() => {
     if (open) {
       startCamera();
       setShowManualEntry(false);
       setManualCode("");
+      setShowSuccess(false);
+      setScannedCode("");
     } else {
       stopCamera();
     }
@@ -263,7 +297,6 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
           {!hasTorch && <div className="w-12" />}
         </div>
 
-
         {/* Camera view */}
         <div className="absolute inset-0 flex items-center justify-center">
           {isLoading && (
@@ -273,14 +306,77 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
             </div>
           )}
 
-          {!hasCamera && !isLoading && (
+          {/* Camera Permission Denied Dialog */}
+          {!hasCamera && !isLoading && permissionDenied && (
+            <div className="flex flex-col items-center gap-4 p-6 text-center max-w-sm">
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="p-5 rounded-full bg-primary/20 border-2 border-primary/30"
+              >
+                <Camera className="h-12 w-12 text-primary" />
+              </motion.div>
+              
+              <h3 className="text-xl font-bold text-white">Camera Access Required</h3>
+              
+              <p className="text-white/70 text-sm">
+                To scan QR codes, please allow camera access in your browser settings.
+              </p>
+              
+              <div className="bg-white/10 rounded-xl p-4 w-full text-left">
+                <p className="text-white/90 text-sm font-medium mb-2">How to enable:</p>
+                <ol className="text-white/70 text-xs space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="bg-primary/30 text-primary rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-xs font-bold">1</span>
+                    <span>Tap the lock/info icon in your browser's address bar</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-primary/30 text-primary rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-xs font-bold">2</span>
+                    <span>Find "Camera" in the permissions list</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-primary/30 text-primary rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-xs font-bold">3</span>
+                    <span>Change from "Block" to "Allow"</span>
+                  </li>
+                </ol>
+              </div>
+              
+              <div className="flex flex-col gap-2 w-full mt-2">
+                <Button
+                  onClick={retryCamera}
+                  className="w-full gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowManualEntry(true)}
+                  className="w-full gap-2"
+                >
+                  <Keyboard className="h-4 w-4" />
+                  Enter Code Manually
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  className="w-full text-white/60"
+                >
+                  Go Back
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Generic Camera Error */}
+          {!hasCamera && !isLoading && !permissionDenied && (
             <div className="flex flex-col items-center gap-4 p-8 text-center">
               <div className="p-4 rounded-full bg-destructive/20">
                 <AlertCircle className="h-12 w-12 text-destructive" />
               </div>
               <h3 className="text-lg font-semibold text-white">Camera not available</h3>
               <p className="text-white/70">
-                Please allow camera access to scan QR codes
+                Unable to access camera. Please check your device settings.
               </p>
               <button
                 onClick={() => setShowManualEntry(true)}
@@ -307,7 +403,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
         </div>
 
         {/* Scanning overlay */}
-        {hasCamera && !isLoading && !showManualEntry && (
+        {hasCamera && !isLoading && !showManualEntry && !showSuccess && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ paddingBottom: '220px' }}>
             {/* Darkened corners */}
             <div className="absolute inset-0 bg-black/50" />
@@ -338,9 +434,83 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
           </div>
         )}
 
+        {/* Success Animation Overlay */}
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-30 flex items-center justify-center bg-black/90"
+            >
+              <div className="flex flex-col items-center gap-6">
+                {/* Animated Checkmark Circle */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ 
+                    type: "spring", 
+                    stiffness: 200, 
+                    damping: 15,
+                    delay: 0.1
+                  }}
+                  className="relative"
+                >
+                  {/* Outer ring pulse */}
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1.5, opacity: 0 }}
+                    transition={{ 
+                      duration: 0.8, 
+                      repeat: 2,
+                      repeatType: "loop"
+                    }}
+                    className="absolute inset-0 rounded-full bg-green-500/30"
+                  />
+                  
+                  {/* Main circle */}
+                  <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center">
+                    <motion.div
+                      initial={{ scale: 0, rotate: -45 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ 
+                        type: "spring", 
+                        stiffness: 300, 
+                        damping: 20,
+                        delay: 0.3
+                      }}
+                    >
+                      <Check className="h-12 w-12 text-white stroke-[3]" />
+                    </motion.div>
+                  </div>
+                </motion.div>
+                
+                {/* Success Text */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="text-center"
+                >
+                  <h3 className="text-2xl font-bold text-white mb-2">QR Code Scanned!</h3>
+                  <p className="text-white/70">Connecting to TV...</p>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.7 }}
+                    className="text-primary font-mono text-xl mt-3 tracking-widest"
+                  >
+                    {scannedCode}
+                  </motion.p>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Manual Entry Modal */}
         <AnimatePresence>
-          {showManualEntry && (
+          {showManualEntry && !showSuccess && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -392,7 +562,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
         </AnimatePresence>
 
         {/* Instructions at bottom */}
-        {!showManualEntry && (
+        {!showManualEntry && !showSuccess && hasCamera && !isLoading && (
           <div className="absolute bottom-0 left-0 right-0 p-4 pb-safe z-10">
             <div className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-border/50 mb-2">
               <div className="flex items-center gap-3">
