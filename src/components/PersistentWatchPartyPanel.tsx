@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
+import { useWatchPartyContextSafe } from "@/contexts/WatchPartyContext";
 import { WatchPartyChat } from "@/components/WatchPartyChat";
 import { WatchPartyReactions } from "@/components/WatchPartyReactions";
 import { Button } from "@/components/ui/button";
@@ -25,26 +25,28 @@ export const PersistentWatchPartyPanel = () => {
   const { canAccessPremium, isLoading: subscriptionLoading } = useSubscriptionAccess();
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    party,
-    members,
-    messages,
-    reactions,
-    isHost,
-    isLoading,
-    createParty,
-    joinParty,
-    leaveParty,
-    setReady,
-    sendReaction,
-    startWatchingTogether
-  } = useWatchPartyContext();
+  const context = useWatchPartyContextSafe();
+  
   const [joinCode, setJoinCode] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
   const [currentContent, setCurrentContent] = useState<ContentInfo | null>(null);
   const [prevAllReady, setPrevAllReady] = useState(false);
   const [isLaunchingContent, setIsLaunchingContent] = useState(false);
+
+  // Destructure context values (with defaults for when context is null)
+  const party = context?.party ?? null;
+  const members = context?.members ?? [];
+  const messages = context?.messages ?? [];
+  const reactions = context?.reactions ?? [];
+  const isHost = context?.isHost ?? false;
+  const isLoading = context?.isLoading ?? false;
+  const createParty = context?.createParty;
+  const joinParty = context?.joinParty;
+  const leaveParty = context?.leaveParty;
+  const setReady = context?.setReady;
+  const sendReaction = context?.sendReaction;
+  const startWatchingTogether = context?.startWatchingTogether;
 
   // Listen for toggle event from video players with content info
   useEffect(() => {
@@ -74,6 +76,11 @@ export const PersistentWatchPartyPanel = () => {
     setPrevAllReady(allReady);
   }, [party, isHost, members, prevAllReady]);
 
+  // If context is not available, don't render
+  if (!context) {
+    return null;
+  }
+
   // Build the content URL for navigation
   const getContentUrl = () => {
     if (!party) return null;
@@ -101,7 +108,7 @@ export const PersistentWatchPartyPanel = () => {
   };
 
   const handleCreate = async () => {
-    if (!currentContent?.contentId) {
+    if (!currentContent?.contentId || !createParty) {
       toast.error("No content selected for watch party");
       return;
     }
@@ -116,6 +123,7 @@ export const PersistentWatchPartyPanel = () => {
       toast.error("Please enter a party code");
       return;
     }
+    if (!joinParty) return;
     const joinedParty = await joinParty(joinCode.trim());
     if (joinedParty) {
       setJoinCode("");
@@ -312,7 +320,7 @@ export const PersistentWatchPartyPanel = () => {
                 </div>
                 
                 {/* Start Watching Together Button (for hosts when all ready) */}
-                {isHost && members.length > 1 && members.every(m => m.is_ready) && (
+                {isHost && members.length > 1 && members.every(m => m.is_ready) && startWatchingTogether && (
                   <Button 
                     onClick={startWatchingTogether}
                     className="w-full bg-green-600 hover:bg-green-700"
@@ -323,7 +331,7 @@ export const PersistentWatchPartyPanel = () => {
                 )}
                 
                 {/* Ready Button (for non-hosts) */}
-                {!isHost && user && (() => {
+                {!isHost && user && setReady && (() => {
                   const currentMember = members.find(m => m.user_id === user.id);
                   const isReady = currentMember?.is_ready ?? false;
                   return (
@@ -409,7 +417,7 @@ export const PersistentWatchPartyPanel = () => {
               <Button 
                 variant="destructive" 
                 onClick={() => {
-                  leaveParty();
+                  leaveParty?.();
                   setIsOpen(false);
                 }}
                 className="w-full"

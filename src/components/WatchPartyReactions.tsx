@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
+import { useWatchPartyContextSafe } from "@/contexts/WatchPartyContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +20,12 @@ interface FloatingReaction {
 }
 
 export const WatchPartyReactions = () => {
-  const { reactions, sendReaction, party } = useWatchPartyContext();
+  const context = useWatchPartyContextSafe();
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
+
+  const reactions = context?.reactions ?? [];
+  const sendReaction = context?.sendReaction;
+  const party = context?.party;
 
   // Convert reactions to floating display
   useEffect(() => {
@@ -78,7 +82,7 @@ export const WatchPartyReactions = () => {
             variant="ghost"
             size="sm"
             className="h-10 w-10 p-0 rounded-full hover:bg-white/20 hover:scale-125 transition-all"
-            onClick={() => sendReaction(emoji)}
+            onClick={() => sendReaction?.(emoji)}
             title={label}
           >
             <span className="text-2xl">{emoji}</span>

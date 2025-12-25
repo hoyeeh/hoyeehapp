@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
+import { useWatchPartyContextSafe } from "@/contexts/WatchPartyContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,16 @@ import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function WatchPartyChat() {
-  const { messages, sendMessage, party } = useWatchPartyContext();
+  const context = useWatchPartyContextSafe();
   const { user } = useAuth();
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const messages = context?.messages ?? [];
+  const sendMessage = context?.sendMessage;
+  const party = context?.party;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -23,7 +27,7 @@ export function WatchPartyChat() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!newMessage.trim() || isSending) return;
+    if (!newMessage.trim() || isSending || !sendMessage) return;
     
     setIsSending(true);
     await sendMessage(newMessage);
