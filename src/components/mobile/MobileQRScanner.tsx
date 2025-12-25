@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 interface MobileQRScannerProps {
   open: boolean;
   onClose: () => void;
-  onCodeScanned: (code: string) => void;
+  onCodeScanned: (code: string) => Promise<boolean>;
 }
 
 export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScannerProps) {
@@ -27,6 +27,8 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
   const [showSuccess, setShowSuccess] = useState(false);
   const [scannedCode, setScannedCode] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // Haptic feedback
   const triggerHaptic = useCallback(() => {
@@ -120,6 +122,22 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
   const extractCodeFromQRData = useCallback((qrData: string): string | null => {
     console.log("[QRScanner] Raw QR data:", qrData);
     
+    // Handle hoyeeh:// protocol format: hoyeeh://pair?code=ABC123
+    if (qrData.startsWith("hoyeeh://")) {
+      try {
+        // Convert custom protocol to http for URL parsing
+        const httpUrl = qrData.replace("hoyeeh://", "http://hoyeeh.app/");
+        const url = new URL(httpUrl);
+        const codeParam = url.searchParams.get("code") || url.searchParams.get("c");
+        if (codeParam) {
+          console.log("[QRScanner] Extracted code from hoyeeh:// protocol:", codeParam);
+          return codeParam.toUpperCase();
+        }
+      } catch (e) {
+        console.log("[QRScanner] Failed to parse hoyeeh:// URL:", e);
+      }
+    }
+    
     // Try URL format: https://hoyeeh.com/tv?code=ABC123 or similar
     try {
       const url = new URL(qrData);
@@ -156,7 +174,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     return null;
   }, []);
 
-  const handleSuccessfulScan = useCallback((code: string) => {
+  const handleSuccessfulScan = useCallback(async (code: string) => {
     console.log("[QRScanner] Valid pairing code found:", code);
     
     // Trigger haptic feedback and sound
@@ -168,12 +186,30 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     // Show success animation
     setScannedCode(code);
     setShowSuccess(true);
+    setIsConnecting(true);
+    setConnectionError(null);
     
-    // After animation, call onCodeScanned
-    setTimeout(() => {
-      onCodeScanned(code);
-    }, 1200);
-  }, [triggerHaptic, playSuccessSound, stopCamera, onCodeScanned]);
+    // Wait for animation, then attempt pairing
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    try {
+      const success = await onCodeScanned(code);
+      if (success) {
+        // Pairing succeeded, close scanner
+        onClose();
+      } else {
+        // Pairing failed
+        setIsConnecting(false);
+        setConnectionError("Failed to connect. Please check the code and try again.");
+        setShowSuccess(false);
+      }
+    } catch (error) {
+      console.error("[QRScanner] Pairing error:", error);
+      setIsConnecting(false);
+      setConnectionError("Connection failed. Please try again.");
+      setShowSuccess(false);
+    }
+  }, [triggerHaptic, playSuccessSound, stopCamera, onCodeScanned, onClose]);
 
   const scanQRCode = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -221,7 +257,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     }
   }, [torchOn]);
 
-  const handleManualSubmit = useCallback(() => {
+  const handleManualSubmit = useCallback(async () => {
     const code = manualCode.trim().toUpperCase();
     if (code.length !== 6 || !/^[A-Z0-9]{6}$/.test(code)) {
       toast.error("Please enter a valid 6-character code");
@@ -236,16 +272,43 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     setScannedCode(code);
     setShowSuccess(true);
     setShowManualEntry(false);
+    setIsConnecting(true);
+    setConnectionError(null);
     
-    // After animation, call onCodeScanned
-    setTimeout(() => {
-      onCodeScanned(code);
-    }, 1200);
-  }, [manualCode, triggerHaptic, playSuccessSound, stopCamera, onCodeScanned]);
+    // Wait for animation, then attempt pairing
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    try {
+      const success = await onCodeScanned(code);
+      if (success) {
+        // Pairing succeeded, close scanner
+        onClose();
+      } else {
+        // Pairing failed
+        setIsConnecting(false);
+        setConnectionError("Failed to connect. Please check the code and try again.");
+        setShowSuccess(false);
+      }
+    } catch (error) {
+      console.error("[QRScanner] Pairing error:", error);
+      setIsConnecting(false);
+      setConnectionError("Connection failed. Please try again.");
+      setShowSuccess(false);
+    }
+  }, [manualCode, triggerHaptic, playSuccessSound, stopCamera, onCodeScanned, onClose]);
 
   const retryCamera = useCallback(() => {
     setHasCamera(true);
     setPermissionDenied(false);
+    startCamera();
+  }, [startCamera]);
+
+  const resetScanner = useCallback(() => {
+    setShowSuccess(false);
+    setIsConnecting(false);
+    setConnectionError(null);
+    setScannedCode("");
+    setManualCode("");
     startCamera();
   }, [startCamera]);
 
@@ -256,6 +319,8 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
       setManualCode("");
       setShowSuccess(false);
       setScannedCode("");
+      setIsConnecting(false);
+      setConnectionError(null);
     } else {
       stopCamera();
     }
@@ -462,7 +527,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
                     animate={{ scale: 1.5, opacity: 0 }}
                     transition={{ 
                       duration: 0.8, 
-                      repeat: 2,
+                      repeat: isConnecting ? Infinity : 0,
                       repeatType: "loop"
                     }}
                     className="absolute inset-0 rounded-full bg-green-500/30"
@@ -470,18 +535,22 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
                   
                   {/* Main circle */}
                   <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center">
-                    <motion.div
-                      initial={{ scale: 0, rotate: -45 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ 
-                        type: "spring", 
-                        stiffness: 300, 
-                        damping: 20,
-                        delay: 0.3
-                      }}
-                    >
-                      <Check className="h-12 w-12 text-white stroke-[3]" />
-                    </motion.div>
+                    {isConnecting ? (
+                      <Loader2 className="h-12 w-12 text-white animate-spin" />
+                    ) : (
+                      <motion.div
+                        initial={{ scale: 0, rotate: -45 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ 
+                          type: "spring", 
+                          stiffness: 300, 
+                          damping: 20,
+                          delay: 0.3
+                        }}
+                      >
+                        <Check className="h-12 w-12 text-white stroke-[3]" />
+                      </motion.div>
+                    )}
                   </div>
                 </motion.div>
                 
@@ -493,7 +562,9 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
                   className="text-center"
                 >
                   <h3 className="text-2xl font-bold text-white mb-2">QR Code Scanned!</h3>
-                  <p className="text-white/70">Connecting to TV...</p>
+                  <p className="text-white/70">
+                    {isConnecting ? "Connecting to TV..." : "Connected!"}
+                  </p>
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -504,6 +575,45 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
                   </motion.p>
                 </motion.div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Connection Error Overlay */}
+        <AnimatePresence>
+          {connectionError && !showSuccess && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-30 flex items-center justify-center bg-black/90 p-6"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-card rounded-2xl p-6 w-full max-w-sm border border-border text-center"
+              >
+                <div className="p-4 rounded-full bg-destructive/20 w-fit mx-auto mb-4">
+                  <AlertCircle className="h-12 w-12 text-destructive" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">Connection Failed</h3>
+                <p className="text-muted-foreground text-sm mb-6">{connectionError}</p>
+                
+                <div className="flex flex-col gap-3">
+                  <Button onClick={resetScanner} className="w-full gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Try Again
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowManualEntry(true)} className="w-full gap-2">
+                    <Keyboard className="h-4 w-4" />
+                    Enter Code Manually
+                  </Button>
+                  <Button variant="ghost" onClick={onClose} className="w-full text-muted-foreground">
+                    Cancel
+                  </Button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
