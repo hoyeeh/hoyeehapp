@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check, Bell, Settings, Crown } from "lucide-react";
+import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check, Bell, Settings, Crown, Users, Play, MessageSquare, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -461,6 +461,56 @@ const Profile = () => {
               </span>
               <ArrowLeft className="h-4 w-4 rotate-180" />
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Watch Party Section */}
+        <Card className="bg-card mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Watch Party
+            </CardTitle>
+            <CardDescription>Watch together with friends in real-time</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+              <h4 className="font-medium text-sm">How to use Watch Party</h4>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-brand/20 flex items-center justify-center flex-shrink-0">
+                    <Play className="h-3 w-3 text-brand" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Start a Party</p>
+                    <p>Open any video and click the "Watch Party" button to create a party and get a unique code.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-brand/20 flex items-center justify-center flex-shrink-0">
+                    <Share2 className="h-3 w-3 text-brand" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Invite Friends</p>
+                    <p>Share the party code with friends. They can join by entering the code on the same video page.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-brand/20 flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="h-3 w-3 text-brand" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Chat & Sync</p>
+                    <p>Everyone's video stays in sync automatically. Use the chat to discuss what you're watching!</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground">Tip:</strong> The party host controls playback. When they play, pause, or seek, everyone's video syncs automatically within 2 seconds.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

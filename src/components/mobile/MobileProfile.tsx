@@ -117,6 +117,7 @@ export function MobileProfile() {
   const [showAppearanceSettings, setShowAppearanceSettings] = useState(false);
   const [showWatchHistory, setShowWatchHistory] = useState(false);
   const [showAccountSecurity, setShowAccountSecurity] = useState(false);
+  const [showWatchPartyGuide, setShowWatchPartyGuide] = useState(false);
   
   // Settings toggles
   const [wifiOnly, setWifiOnly] = useState(() => {
@@ -243,6 +244,12 @@ export function MobileProfile() {
       ],
     },
     {
+      title: "Watch Together",
+      items: [
+        { icon: Users, label: "Watch Party Guide", modalKey: "watchParty" },
+      ],
+    },
+    {
       title: "Notifications",
       items: [
         { icon: BellRing, label: "Push Notifications", toggleKey: "push" },
@@ -332,6 +339,7 @@ export function MobileProfile() {
       else if (item.modalKey === "appearance") setShowAppearanceSettings(true);
       else if (item.modalKey === "watchHistory") setShowWatchHistory(true);
       else if (item.modalKey === "security") setShowAccountSecurity(true);
+      else if (item.modalKey === "watchParty") setShowWatchPartyGuide(true);
       else if (item.action) item.action();
       else if (item.path) navigate(item.path);
     };
@@ -655,6 +663,112 @@ export function MobileProfile() {
         open={showAccountSecurity} 
         onClose={() => setShowAccountSecurity(false)} 
       />
+
+      {/* Watch Party Guide Modal */}
+      <AnimatePresence>
+        {showWatchPartyGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-background"
+          >
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <header className="flex items-center justify-between px-4 py-3 border-b border-border/10">
+                <button
+                  onClick={() => {
+                    lightTap();
+                    setShowWatchPartyGuide(false);
+                  }}
+                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-muted/50"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h1 className="text-lg font-semibold">Watch Party Guide</h1>
+                <div className="w-10" />
+              </header>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-primary/20 flex items-center justify-center mb-4">
+                    <Users className="w-8 h-8 text-primary" />
+                  </div>
+                  <h2 className="text-xl font-bold">Watch Together</h2>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Enjoy videos with friends in real-time
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-muted/20 rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary font-bold">1</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Start a Party</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Open any video and tap the "Watch Party" button to create a party. You'll get a unique code to share.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/20 rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary font-bold">2</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Invite Friends</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Share the party code with friends. They can join by entering the code on the same video page.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/20 rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary font-bold">3</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Watch in Sync</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Everyone's video stays synchronized automatically. When the host plays, pauses, or seeks, everyone follows.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/20 rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <MessageCircle className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Chat Together</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Use the built-in chat to discuss what you're watching with your friends in real-time!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mt-6">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Pro Tip:</strong> The party host controls playback. Sync happens automatically within 2 seconds for the best viewing experience.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Nav */}
       <MobileBottomNav />
