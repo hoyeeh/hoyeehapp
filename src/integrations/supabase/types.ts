@@ -2206,6 +2206,35 @@ export type Database = {
           },
         ]
       }
+      series_subscriptions: {
+        Row: {
+          content_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "series_subscriptions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_credits: {
         Row: {
           created_at: string
@@ -2681,6 +2710,92 @@ export type Database = {
           },
         ]
       }
+      watch_parties: {
+        Row: {
+          content_id: string
+          created_at: string | null
+          episode_id: string | null
+          host_user_id: string
+          id: string
+          is_active: boolean | null
+          is_playing: boolean | null
+          party_code: string
+          playback_time: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_id: string
+          created_at?: string | null
+          episode_id?: string | null
+          host_user_id: string
+          id?: string
+          is_active?: boolean | null
+          is_playing?: boolean | null
+          party_code: string
+          playback_time?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_id?: string
+          created_at?: string | null
+          episode_id?: string | null
+          host_user_id?: string
+          id?: string
+          is_active?: boolean | null
+          is_playing?: boolean | null
+          party_code?: string
+          playback_time?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_parties_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watch_parties_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watch_party_members: {
+        Row: {
+          id: string
+          is_ready: boolean | null
+          joined_at: string | null
+          party_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_ready?: boolean | null
+          joined_at?: string | null
+          party_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_ready?: boolean | null
+          joined_at?: string | null
+          party_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_party_members_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "watch_parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       watchlist: {
         Row: {
           content_id: string
@@ -3050,6 +3165,7 @@ export type Database = {
         }[]
       }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
+      generate_party_code: { Args: never; Returns: string }
       get_creator_profile: {
         Args: { _user_id: string }
         Returns: {
