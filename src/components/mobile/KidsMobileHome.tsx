@@ -11,7 +11,7 @@ import { useProfileContext } from "@/contexts/ProfileContext";
 import { motion } from "framer-motion";
 import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
 import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
-import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
+import { KidsEnhancedYouTubePlayer } from "@/components/kids/KidsEnhancedYouTubePlayer";
 import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
 import { KidsConfetti } from "@/components/kids/KidsConfetti";
 import { KidsMobileContinueWatching } from "@/components/kids/KidsMobileContinueWatching";
@@ -213,7 +213,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   // YouTube player modal
   if (youtubePlayer) {
     return (
-      <KidsYouTubePlayer
+      <KidsEnhancedYouTubePlayer
         videoId={youtubePlayer.videoId}
         title={youtubePlayer.title}
         onClose={() => setYoutubePlayer(null)}

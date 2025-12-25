@@ -10,7 +10,7 @@ import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { KidsYouTubeRow } from "./kids/KidsYouTubeRow";
-import { KidsYouTubePlayer } from "./kids/KidsYouTubePlayer";
+import { KidsEnhancedYouTubePlayer } from "./kids/KidsEnhancedYouTubePlayer";
 import { KidsLoadingAnimation } from "./kids/KidsLoadingAnimation";
 import { KidsConfetti } from "./kids/KidsConfetti";
 import { KidsContinueWatching } from "./kids/KidsContinueWatching";
@@ -336,7 +336,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   // YouTube player modal
   if (youtubePlayer) {
     return (
-      <KidsYouTubePlayer
+      <KidsEnhancedYouTubePlayer
         videoId={youtubePlayer.videoId}
         title={youtubePlayer.title}
         onClose={() => setYoutubePlayer(null)}

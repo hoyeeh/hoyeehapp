@@ -5,7 +5,7 @@ import { useProfileContext } from "@/contexts/ProfileContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
 import { KidsInterface } from "@/components/KidsInterface";
-import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
+import { KidsEnhancedYouTubePlayer } from "@/components/kids/KidsEnhancedYouTubePlayer";
 import { Youtube, Play, Sparkles, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
@@ -523,7 +523,7 @@ const KidsYouTubeContent = () => {
 
   if (youtubePlayer) {
     return (
-      <KidsYouTubePlayer
+      <KidsEnhancedYouTubePlayer
         videoId={youtubePlayer.videoId}
         title={youtubePlayer.title}
         onClose={() => setYoutubePlayer(null)}
