@@ -1095,12 +1095,16 @@ export const VideoPlayer = ({
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/90 to-transparent" />
 
         {/* Top Bar */}
-        <div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4">
+        <div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4 safe-area-inset-top">
           <button
-            onClick={onBack}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand/80 flex items-center justify-center hover:bg-brand transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBack();
+            }}
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-brand/80 flex items-center justify-center hover:bg-brand active:bg-brand/90 transition-colors touch-manipulation cursor-pointer"
+            style={{ minWidth: 48, minHeight: 48 }}
           >
-            <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
+            <ArrowLeft className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
           </button>
           <h2 className="font-display text-sm sm:text-xl truncate max-w-[60vw]">{title}</h2>
         </div>

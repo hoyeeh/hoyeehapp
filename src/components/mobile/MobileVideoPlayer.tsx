@@ -1677,14 +1677,16 @@ export function MobileVideoPlayer({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Bar - Only back button and title */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 safe-area-inset-top">
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-safe">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   handleBack();
                 }}
-                className="p-3 rounded-full bg-black/30 backdrop-blur-sm active:bg-black/50 touch-manipulation"
-                style={{ minWidth: 44, minHeight: 44 }}
+                className="p-3 rounded-full bg-black/50 backdrop-blur-sm active:bg-black/70 touch-manipulation cursor-pointer"
+                style={{ minWidth: 48, minHeight: 48, WebkitTapHighlightColor: 'transparent' }}
+                type="button"
               >
                 <ChevronLeft className="h-6 w-6 text-white" />
               </button>
@@ -1700,10 +1702,12 @@ export function MobileVideoPlayer({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   handleBack();
                 }}
-                className="p-3 rounded-full bg-black/30 backdrop-blur-sm active:bg-black/50 touch-manipulation"
-                style={{ minWidth: 44, minHeight: 44 }}
+                className="p-3 rounded-full bg-black/50 backdrop-blur-sm active:bg-black/70 touch-manipulation cursor-pointer"
+                style={{ minWidth: 48, minHeight: 48, WebkitTapHighlightColor: 'transparent' }}
+                type="button"
               >
                 <X className="h-6 w-6 text-white" />
               </button>

@@ -788,8 +788,13 @@ const ContentDetail = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}
-          className="absolute top-4 left-4 z-10 bg-background/50 hover:bg-background/80"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.history.length > 1 ? navigate(-1) : navigate('/');
+          }}
+          className="absolute top-4 left-4 z-10 bg-background/50 hover:bg-background/80 active:bg-background/90 h-12 w-12 touch-manipulation cursor-pointer"
+          style={{ minWidth: 48, minHeight: 48 }}
+          type="button"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>

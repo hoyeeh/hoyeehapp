@@ -62,11 +62,15 @@ export const KidsYouTubePlayer = ({ videoId, title, onClose }: KidsYouTubePlayer
         className="fixed inset-0 z-50 bg-[#0A0A0F]"
       >
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/80 to-transparent">
+        <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <button
-              onClick={onClose}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
+              style={{ minHeight: 48 }}
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="hidden sm:inline">Back</span>
@@ -78,14 +82,22 @@ export const KidsYouTubePlayer = ({ videoId, title, onClose }: KidsYouTubePlayer
 
             <div className="flex items-center gap-2">
               <button
-                onClick={handleFullscreen}
-                className="p-2 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFullscreen();
+                }}
+                className="p-3 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
+                style={{ minWidth: 48, minHeight: 48 }}
               >
                 <Maximize className="h-5 w-5" />
               </button>
               <button
-                onClick={onClose}
-                className="p-2 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="p-3 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
+                style={{ minWidth: 48, minHeight: 48 }}
               >
                 <X className="h-5 w-5" />
               </button>

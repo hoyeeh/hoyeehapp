@@ -408,8 +408,13 @@ export const PersistentMobileYouTubePlayer = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={handleClose}
-                    className="text-white hover:bg-white/20 h-10 w-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClose();
+                    }}
+                    className="text-white hover:bg-white/20 active:bg-white/30 h-12 w-12 touch-manipulation cursor-pointer"
+                    style={{ minWidth: 48, minHeight: 48 }}
+                    type="button"
                   >
                     <X className="h-6 w-6" />
                   </Button>
