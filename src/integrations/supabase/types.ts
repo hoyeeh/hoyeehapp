@@ -3242,6 +3242,18 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      join_watch_party_by_code: {
+        Args: { party_code: string }
+        Returns: {
+          content_id: string
+          episode_id: string
+          host_user_id: string
+          is_playing: boolean
+          party_code_out: string
+          party_id: string
+          playback_time: number
+        }[]
+      }
       reset_pin_secure: {
         Args: { input_secret: string; new_pin: string; user_mobile: string }
         Returns: {
