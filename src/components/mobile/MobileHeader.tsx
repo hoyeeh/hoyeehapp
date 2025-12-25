@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Cast, Search, Bell, Grid3X3 } from "lucide-react";
+import { Cast, Search, Bell, Grid3X3, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useProfile } from "@/hooks/useDatabase";
@@ -75,6 +75,14 @@ export function MobileHeader({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-0.5">
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('toggleWatchParty'))}
+              className="p-2.5 rounded-xl hover:bg-secondary/80 active:scale-95 transition-all touch-manipulation"
+              style={{ minWidth: 44, minHeight: 44 }}
+              aria-label="Watch Party"
+            >
+              <Users className="h-5 w-5" />
+            </button>
             <button 
               onClick={() => setShowCastSheet(true)}
               className={cn(

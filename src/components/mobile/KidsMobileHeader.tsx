@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, ChevronLeft } from "lucide-react";
+import { Settings, ChevronLeft, Users } from "lucide-react";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -102,14 +102,24 @@ export const KidsMobileHeader = () => {
               </div>
             </motion.div>
 
-            <motion.button
-              onClick={() => handleAction("exit")}
-              whileTap={{ scale: 0.96 }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.08] text-white/90 text-[13px] font-semibold tracking-[-0.01em] transition-all hover:bg-white/[0.12] active:bg-white/[0.06]"
-            >
-              <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
-              Exit
-            </motion.button>
+            <div className="flex items-center gap-2">
+              <motion.button
+                onClick={() => window.dispatchEvent(new CustomEvent('toggleWatchParty'))}
+                whileTap={{ scale: 0.96 }}
+                className="p-2.5 rounded-full bg-white/[0.08] text-white/90 transition-all hover:bg-white/[0.12] active:bg-white/[0.06]"
+                aria-label="Watch Party"
+              >
+                <Users className="h-5 w-5" />
+              </motion.button>
+              <motion.button
+                onClick={() => handleAction("exit")}
+                whileTap={{ scale: 0.96 }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.08] text-white/90 text-[13px] font-semibold tracking-[-0.01em] transition-all hover:bg-white/[0.12] active:bg-white/[0.06]"
+              >
+                <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
+                Exit
+              </motion.button>
+            </div>
           </div>
         </div>
       </header>
