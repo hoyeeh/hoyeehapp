@@ -1,6 +1,6 @@
 import { ReactNode, useMemo, useCallback } from "react";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { Home, Search, Heart, LogOut, Youtube } from "lucide-react";
+import { Home, Search, Heart, LogOut, Youtube, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -126,6 +126,12 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
               label="Favorites" 
               onClick={() => navigate("/my-list")}
               active={activeTab === "list"}
+            />
+            <NavButton 
+              icon={Users} 
+              label="Party" 
+              onClick={() => window.dispatchEvent(new CustomEvent('toggleWatchParty'))}
+              active={false}
             />
           </nav>
 
