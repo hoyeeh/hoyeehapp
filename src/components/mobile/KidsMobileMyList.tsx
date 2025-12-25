@@ -33,13 +33,11 @@ export const KidsMobileMyList = ({ onPlay, onDetails }: KidsMobileMyListProps) =
         .from("content")
         .select("*")
         .in("id", contentIds)
-        .in("content_rating", KIDS_RATINGS)
-        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
-        .or("genre.ilike.%animation%,genre.ilike.%family%,genre.ilike.%animated%,genre.ilike.%cartoon%");
+        .in("content_rating", KIDS_RATINGS);
 
       if (contentError) throw contentError;
 
-      // Strict client-side filter for age compliance, blocked titles, and genre
+      // Strict client-side filter for kids compliance
       return (contentData || [])
         .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
         .filter((item: any) => !isBlockedTitle(item.title || ""))
