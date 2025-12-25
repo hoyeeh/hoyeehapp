@@ -21,6 +21,15 @@ interface PartyMember {
   user_id: string;
   joined_at: string;
   is_ready: boolean;
+  display_name?: string;
+}
+
+interface PartyReaction {
+  id: string;
+  user_id: string;
+  user_name: string;
+  emoji: string;
+  timestamp: number;
 }
 
 interface PartyMessage {
@@ -36,6 +45,7 @@ interface WatchPartyContextType {
   party: WatchParty | null;
   members: PartyMember[];
   messages: PartyMessage[];
+  reactions: PartyReaction[];
   isHost: boolean;
   isLoading: boolean;
   createParty: (contentId: string, episodeId?: string) => Promise<WatchParty | null>;
@@ -44,6 +54,8 @@ interface WatchPartyContextType {
   updatePlayback: (time: number, playing: boolean) => void;
   setReady: (ready: boolean) => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
+  sendReaction: (emoji: string) => void;
+  startWatchingTogether: () => Promise<void>;
   syncToParty: (videoElement: HTMLVideoElement | null) => void;
 }
 
@@ -66,9 +78,11 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
   const [party, setParty] = useState<WatchParty | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [messages, setMessages] = useState<PartyMessage[]>([]);
+  const [reactions, setReactions] = useState<PartyReaction[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const lastSyncTimeRef = useRef<number>(0);
+  const reactionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Generate unique party code
   const generateCode = useCallback(async (): Promise<string> => {
@@ -297,6 +311,55 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
     }
   }, [party, isHost]);
 
+  // Send a reaction (broadcast to all party members)
+  const sendReaction = useCallback((emoji: string) => {
+    if (!party || !user || !reactionChannelRef.current) return;
+
+    const reaction: PartyReaction = {
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      user_name: members.find(m => m.user_id === user.id)?.display_name || 'Guest',
+      emoji,
+      timestamp: Date.now()
+    };
+
+    reactionChannelRef.current.send({
+      type: 'broadcast',
+      event: 'reaction',
+      payload: reaction
+    });
+
+    // Also add to local state
+    setReactions(prev => [...prev, reaction]);
+    
+    // Remove reaction after 3 seconds
+    setTimeout(() => {
+      setReactions(prev => prev.filter(r => r.id !== reaction.id));
+    }, 3000);
+  }, [party, user, members]);
+
+  // Start watching together (host only) - resets everyone to start and begins playback
+  const startWatchingTogether = useCallback(async () => {
+    if (!party || !isHost) return;
+
+    try {
+      // Reset playback to beginning and start playing
+      await supabase
+        .from('watch_parties')
+        .update({ 
+          playback_time: 0, 
+          is_playing: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', party.id);
+
+      toast.success("Starting playback for everyone!");
+    } catch (error) {
+      console.error("Failed to start watching together:", error);
+      toast.error("Failed to start playback");
+    }
+  }, [party, isHost]);
+
   // Subscribe to real-time updates
   useEffect(() => {
     if (!party) return;
@@ -322,6 +385,7 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
               setParty(null);
               setMembers([]);
               setMessages([]);
+              setReactions([]);
               setIsHost(false);
             }
           }
@@ -336,12 +400,26 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           filter: `party_id=eq.${party.id}`
         },
         async () => {
+          // Fetch members with profile display names
           const { data } = await supabase
             .from('watch_party_members')
             .select('*')
             .eq('party_id', party.id);
           
-          if (data) setMembers(data);
+          if (data) {
+            const userIds = data.map(m => m.user_id);
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, display_name')
+              .in('id', userIds);
+
+            const profileMap = new Map(profiles?.map(p => [p.id, p.display_name]) || []);
+            
+            setMembers(data.map(m => ({
+              ...m,
+              display_name: profileMap.get(m.user_id) || undefined
+            })));
+          }
         }
       )
       .on(
@@ -370,14 +448,48 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
       )
       .subscribe();
 
-    // Fetch initial members
-    supabase
-      .from('watch_party_members')
-      .select('*')
-      .eq('party_id', party.id)
-      .then(({ data }) => {
-        if (data) setMembers(data);
-      });
+    // Reaction channel for broadcast
+    const reactionChannel = supabase
+      .channel(`watch-party-reactions-${party.id}`)
+      .on('broadcast', { event: 'reaction' }, (payload) => {
+        const reaction = payload.payload as PartyReaction;
+        // Don't add our own reactions (already added locally)
+        if (reaction.user_id === user?.id) return;
+        
+        setReactions(prev => [...prev, reaction]);
+        
+        // Remove reaction after 3 seconds
+        setTimeout(() => {
+          setReactions(prev => prev.filter(r => r.id !== reaction.id));
+        }, 3000);
+      })
+      .subscribe();
+
+    reactionChannelRef.current = reactionChannel;
+
+    // Fetch initial members with display names
+    const fetchMembers = async () => {
+      const { data } = await supabase
+        .from('watch_party_members')
+        .select('*')
+        .eq('party_id', party.id);
+      
+      if (data) {
+        const userIds = data.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds);
+
+        const profileMap = new Map(profiles?.map(p => [p.id, p.display_name]) || []);
+        
+        setMembers(data.map(m => ({
+          ...m,
+          display_name: profileMap.get(m.user_id) || undefined
+        })));
+      }
+    };
+    fetchMembers();
 
     // Fetch initial messages with user names
     const fetchMessages = async () => {
@@ -406,14 +518,17 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
 
     return () => {
       supabase.removeChannel(partyChannel);
+      supabase.removeChannel(reactionChannel);
+      reactionChannelRef.current = null;
     };
-  }, [party?.id]);
+  }, [party?.id, user?.id]);
 
   return (
     <WatchPartyContext.Provider value={{
       party,
       members,
       messages,
+      reactions,
       isHost,
       isLoading,
       createParty,
@@ -422,6 +537,8 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
       updatePlayback,
       setReady,
       sendMessage,
+      sendReaction,
+      startWatchingTogether,
       syncToParty
     }}>
       {children}
