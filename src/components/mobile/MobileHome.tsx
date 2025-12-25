@@ -27,6 +27,8 @@ import { FadeIn } from "./PageTransition";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MobileCastStatusIndicator } from "./MobileCastStatusIndicator";
 import { MobileHomeYouTubeRow } from "./MobileHomeYouTubeRow";
+import { MobileRecentlyWatched } from "./MobileRecentlyWatched";
+import { MobileAIRecommendations } from "./MobileAIRecommendations";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -365,10 +367,23 @@ export function MobileHome() {
             />
           </FadeIn>
 
+          {/* Recently Watched - Completed content for rewatching */}
+          <FadeIn delay={75}>
+            <MobileRecentlyWatched
+              onPlay={handlePlay}
+              onDetails={handleDetails}
+            />
+          </FadeIn>
+
+          {/* AI Recommendations - Smart picks based on watch history */}
+          <FadeIn delay={100}>
+            <MobileAIRecommendations onDetails={handleDetails} />
+          </FadeIn>
+
           {/* Dynamic sections from database - filtered by activeFilter */}
           {activeFilter !== "all" ? (
             // When filter is active, show filtered content
-            <FadeIn delay={100}>
+            <FadeIn delay={150}>
               <MobileContentRow
                 title={activeFilter === "series" ? "TV Shows" : "Movies"}
                 content={filteredContent}
@@ -383,7 +398,7 @@ export function MobileHome() {
               // Top 10 section
               if (section.section_type === "top10") {
                 return top10Content.length > 0 ? (
-                  <FadeIn key={section.id} delay={100 + index * 50}>
+                  <FadeIn key={section.id} delay={150 + index * 50}>
                     <MobileContentRow
                       title={section.title}
                       content={top10Content}
@@ -400,7 +415,7 @@ export function MobileHome() {
               if (section.section_type === "my_list") {
                 const myListContent = content.filter((c) => watchlistIds.includes(c.id));
                 return myListContent.length > 0 ? (
-                  <FadeIn key={section.id} delay={100 + index * 50}>
+                  <FadeIn key={section.id} delay={150 + index * 50}>
                     <MobileContentRow
                       title={section.title}
                       content={myListContent}
@@ -415,7 +430,7 @@ export function MobileHome() {
               // Recently added section
               if (section.section_type === "recently_added") {
                 return newContent.length > 0 ? (
-                  <FadeIn key={section.id} delay={100 + index * 50}>
+                  <FadeIn key={section.id} delay={150 + index * 50}>
                     <MobileContentRow
                       title={section.title}
                       content={newContent.slice(0, section.max_items || 15)}
@@ -431,7 +446,7 @@ export function MobileHome() {
               // YouTube section
               if (section.section_type === "youtube") {
                 return (
-                  <FadeIn key={section.id} delay={100 + index * 50}>
+                  <FadeIn key={section.id} delay={150 + index * 50}>
                     <MobileHomeYouTubeRow
                       title={section.title}
                       maxItems={section.max_items || 15}
@@ -446,7 +461,7 @@ export function MobileHome() {
               if (sectionContent.length === 0) return null;
 
               return (
-                <FadeIn key={section.id} delay={100 + index * 50}>
+                <FadeIn key={section.id} delay={150 + index * 50}>
                   <MobileContentRow
                     title={section.title}
                     content={sectionContent}
