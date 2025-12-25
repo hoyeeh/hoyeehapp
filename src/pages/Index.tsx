@@ -332,8 +332,8 @@ const Index = () => {
     rating: item.rating,
   });
 
-  // Get section content based on type
-  const getSectionContent = (section: any): Content[] => {
+  // Get raw section content based on type (before deduplication)
+  const getRawSectionContent = (section: any): Content[] => {
     switch (section.section_type) {
       case "recently_added":
         return recentlyAddedContent;
@@ -342,13 +342,16 @@ const Index = () => {
       case "genre":
         const genreName = section.genre?.name;
         if (!genreName) return [];
-        return content.filter((c) => c.genre.toLowerCase().includes(genreName.toLowerCase())).slice(0, section.max_items || 15);
+        return content
+          .filter((c) => c.genre.toLowerCase().includes(genreName.toLowerCase()))
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
       case "curated":
-        // Get curated content from section_content table, sorted by year (newest first)
+        // Get curated content from section_content table
         const curatedItems = sectionContentData
           .filter((sc: any) => sc.section_id === section.id && sc.content)
           .map((sc: any) => transformRawContent(sc.content))
-          .sort((a: any, b: any) => (b.year || 0) - (a.year || 0));
+          .sort((a: Content, b: Content) => (b.year || 0) - (a.year || 0));
         return curatedItems.slice(0, section.max_items || 15);
       case "by_year":
         // Extract year from section title (e.g., "Movies 2024", "2023 Films")
@@ -366,28 +369,59 @@ const Index = () => {
           .sort((a, b) => (b.year || 0) - (a.year || 0))
           .slice(0, section.max_items || 15);
       case "custom":
-        // Filter by content type if specified
+        // Filter by content type if specified and sort by year
+        let filtered: Content[] = [];
         if (section.content_type_filter === "movie") {
-          return movies.slice(0, section.max_items || 15);
+          filtered = movies;
         } else if (section.content_type_filter === "series") {
-          return shows.slice(0, section.max_items || 15);
-        }
-        if (section.title.toLowerCase().includes("movie")) {
-          return movies.slice(0, section.max_items || 15);
+          filtered = shows;
+        } else if (section.title.toLowerCase().includes("movie")) {
+          filtered = movies;
         } else if (section.title.toLowerCase().includes("show") || section.title.toLowerCase().includes("series")) {
-          return shows.slice(0, section.max_items || 15);
+          filtered = shows;
+        } else {
+          filtered = content;
         }
-        return content.slice(0, section.max_items || 15);
+        return filtered
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
       default:
         return [];
     }
   };
 
+  // Process all sections with deduplication (exempt: curated, top10, trending)
+  const processedHomeSections = useMemo(() => {
+    const displayedContentIds = new Set<string>();
+    const exemptTypes = ['curated', 'top10', 'trending'];
+    
+    return homeSections.map((section: any) => {
+      let sectionContent = getRawSectionContent(section);
+      
+      // Apply deduplication unless exempt
+      if (!exemptTypes.includes(section.section_type)) {
+        sectionContent = sectionContent.filter((item) => {
+          if (displayedContentIds.has(item.id)) {
+            return false;
+          }
+          displayedContentIds.add(item.id);
+          return true;
+        });
+      } else {
+        // Still track exempt content for later deduplication
+        sectionContent.forEach((item) => displayedContentIds.add(item.id));
+      }
+      
+      return { section, content: sectionContent };
+    });
+  }, [homeSections, content, recentlyAddedContent, trendingContentItems, sectionContentData, movies, shows]);
+
   // Get content by genre (fallback)
   const getContentByGenre = (genreName: string) => {
-    return content.filter((c) => 
-      c.genre.toLowerCase().includes(genreName.toLowerCase())
-    ).slice(0, 15);
+    return content
+      .filter((c) => c.genre.toLowerCase().includes(genreName.toLowerCase()))
+      .sort((a, b) => (b.year || 0) - (a.year || 0))
+      .slice(0, 15);
   };
 
   // Loading state
@@ -595,7 +629,7 @@ const Index = () => {
 
                   {/* Coming Soon Row - Above Top 10 */}
                   <ComingSoonRow />
-                  {homeSections.map((section: any) => {
+                  {processedHomeSections.map(({ section, content: sectionContent }) => {
                     if (section.section_type === "top10") {
                       return top10Content.length > 0 ? (
                         <div key={section.id}>
@@ -644,7 +678,6 @@ const Index = () => {
                       );
                     }
 
-                    const sectionContent = getSectionContent(section);
                     if (sectionContent.length === 0) return null;
 
                     return (

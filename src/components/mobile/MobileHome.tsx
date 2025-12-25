@@ -169,23 +169,25 @@ export function MobileHome() {
   const movies = content.filter((c) => c.contentType === "movie");
   const series = content.filter((c) => c.contentType === "series");
 
-  // Get section content helper - same logic as desktop
-  const getSectionContent = (section: any): Content[] => {
+  // Get raw section content helper (before deduplication)
+  const getRawSectionContent = (section: any): Content[] => {
     if (section.section_type === "recently_added") {
+      // Sort by created_at (already sorted from query), then by year
       return newContent.slice(0, section.max_items || 15);
     }
     
     if (section.section_type === "genre" && section.genre) {
-      return content.filter((c) =>
-        c.genre?.toLowerCase().includes(section.genre.name.toLowerCase())
-      ).slice(0, section.max_items || 15);
+      return content
+        .filter((c) => c.genre?.toLowerCase().includes(section.genre.name.toLowerCase()))
+        .sort((a, b) => (b.year || 0) - (a.year || 0))
+        .slice(0, section.max_items || 15);
     }
     
     if (section.section_type === "curated") {
       const sectionItems = sectionContentData
         .filter((sc: any) => sc.section_id === section.id && sc.content)
-        .sort((a: any, b: any) => a.display_order - b.display_order)
-        .map((sc: any) => transformContent([sc.content])[0]);
+        .map((sc: any) => transformContent([sc.content])[0])
+        .sort((a: Content, b: Content) => (b.year || 0) - (a.year || 0));
       return sectionItems.slice(0, section.max_items || 15);
     }
     
@@ -206,7 +208,7 @@ export function MobileHome() {
         .slice(0, section.max_items || 15);
     }
     
-    // Filter by content type if specified
+    // Filter by content type if specified and sort by year
     let filtered = [...content];
     if (section.content_type_filter === "movie") {
       filtered = movies;
@@ -214,8 +216,36 @@ export function MobileHome() {
       filtered = series;
     }
     
-    return filtered.slice(0, section.max_items || 15);
+    return filtered
+      .sort((a, b) => (b.year || 0) - (a.year || 0))
+      .slice(0, section.max_items || 15);
   };
+
+  // Process all sections with deduplication (exempt: curated, top10, trending)
+  const processedHomeSections = useMemo(() => {
+    const displayedContentIds = new Set<string>();
+    const exemptTypes = ['curated', 'top10', 'trending'];
+    
+    return homeSections.map((section: any) => {
+      let sectionContent = getRawSectionContent(section);
+      
+      // Apply deduplication unless exempt
+      if (!exemptTypes.includes(section.section_type)) {
+        sectionContent = sectionContent.filter((item) => {
+          if (displayedContentIds.has(item.id)) {
+            return false;
+          }
+          displayedContentIds.add(item.id);
+          return true;
+        });
+      } else {
+        // Still track exempt content for later deduplication
+        sectionContent.forEach((item) => displayedContentIds.add(item.id));
+      }
+      
+      return { section, content: sectionContent };
+    });
+  }, [homeSections, content, newContent, sectionContentData, movies, series]);
 
   // Random persistent featured content for hero
   const featuredContent = useMemo(() => {
@@ -393,8 +423,8 @@ export function MobileHome() {
               />
             </FadeIn>
           ) : (
-            // When "All" is selected, show all sections
-            homeSections.map((section: any, index: number) => {
+            // When "All" is selected, show all sections with deduplication
+            processedHomeSections.map(({ section, content: sectionContent }, index) => {
               // Top 10 section
               if (section.section_type === "top10") {
                 return top10Content.length > 0 ? (
@@ -427,13 +457,13 @@ export function MobileHome() {
                 ) : null;
               }
 
-              // Recently added section
+              // Recently added section - use processed content (sorted by created_at)
               if (section.section_type === "recently_added") {
-                return newContent.length > 0 ? (
+                return sectionContent.length > 0 ? (
                   <FadeIn key={section.id} delay={150 + index * 50}>
                     <MobileContentRow
                       title={section.title}
-                      content={newContent.slice(0, section.max_items || 15)}
+                      content={sectionContent}
                       onDetails={handleDetails}
                       showSeeAll
                       onSeeAll={() => navigate("/genres")}
@@ -456,8 +486,7 @@ export function MobileHome() {
                 );
               }
 
-              // Genre and other sections
-              const sectionContent = getSectionContent(section);
+              // Genre and other sections - use processed deduplicated content
               if (sectionContent.length === 0) return null;
 
               return (
