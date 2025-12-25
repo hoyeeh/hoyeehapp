@@ -549,6 +549,11 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Safe hook that returns null if context is not available (for use outside provider)
+export function useWatchPartyContextSafe() {
+  return useContext(WatchPartyContext);
+}
+
 export function useWatchPartyContext() {
   const context = useContext(WatchPartyContext);
   if (!context) {

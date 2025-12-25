@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
+import { useWatchPartyContextSafe } from "@/contexts/WatchPartyContext";
 import { WatchPartyChat } from "@/components/WatchPartyChat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,17 @@ export const WatchPartyPanel = ({
   contentTitle,
   onSyncPlayback 
 }: WatchPartyPanelProps) => {
+  const context = useWatchPartyContextSafe();
+  
+  const [joinCode, setJoinCode] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
+
+  // If context is not available, don't render the component
+  if (!context) {
+    return null;
+  }
+
   const {
     party,
     members,
@@ -32,11 +43,7 @@ export const WatchPartyPanel = ({
     joinParty,
     leaveParty,
     setReady
-  } = useWatchPartyContext();
-  
-  const [joinCode, setJoinCode] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
+  } = context;
 
   const handleCreate = async () => {
     const newParty = await createParty(contentId, episodeId);
