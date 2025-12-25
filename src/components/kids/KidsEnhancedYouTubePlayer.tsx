@@ -508,12 +508,16 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
           initial={{ opacity: 0 }}
           animate={{ opacity: showControls ? 1 : 0 }}
           transition={{ duration: 0.2 }}
-          className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-black/80 to-transparent"
+          className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top"
         >
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <button
-              onClick={handleClose}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+              }}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
+              style={{ minHeight: 48 }}
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="hidden sm:inline">Back</span>
@@ -524,8 +528,12 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
             </h1>
 
             <button
-              onClick={handleClose}
-              className="p-2.5 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+              }}
+              className="p-3 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
+              style={{ minWidth: 48, minHeight: 48 }}
             >
               <X className="h-5 w-5" />
             </button>
