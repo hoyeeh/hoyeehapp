@@ -191,6 +191,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script>
     const SUPABASE_URL = 'https://astugmzoxhxcyipxsojl.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdHVnbXpveGh4Y3lpcHhzb2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzIzNDIsImV4cCI6MjA4MDY0ODM0Mn0.gYQzgVqNwvHe2dO5tfk0S2sy4EPVybh9C8alpi7LhCE';
@@ -500,269 +501,28 @@
       }, 3000);
     });
 
-    // QR Code generator using qrcode-generator library pattern
-    // This generates a proper, scannable QR code
+    // QR code (scannable)
     function generateQRCode(code) {
       const qrData = `hoyeeh://pair?code=${code}`;
       const container = document.getElementById('qrContainer');
-      const size = 200;
-      
-      // Generate actual QR code matrix
-      const matrix = generateQRMatrix(qrData);
-      const moduleCount = matrix.length;
-      const cellSize = size / moduleCount;
-      
-      let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
-      svg += `<rect width="${size}" height="${size}" fill="white"/>`;
-      
-      for (let row = 0; row < moduleCount; row++) {
-        for (let col = 0; col < moduleCount; col++) {
-          if (matrix[row][col]) {
-            svg += `<rect x="${col * cellSize}" y="${row * cellSize}" width="${cellSize + 0.5}" height="${cellSize + 0.5}" fill="black"/>`;
-          }
-        }
-      }
-      
-      svg += '</svg>';
-      container.innerHTML = svg;
-    }
+      container.innerHTML = '';
 
-    // Generate QR code matrix using Reed-Solomon error correction
-    function generateQRMatrix(data) {
-      const version = 2; // Version 2: 25x25 modules
-      const moduleCount = version * 4 + 17;
-      const matrix = Array(moduleCount).fill(null).map(() => Array(moduleCount).fill(null));
-      const reserved = Array(moduleCount).fill(null).map(() => Array(moduleCount).fill(false));
-      
-      // Add finder patterns
-      addFinderPattern(matrix, reserved, 0, 0);
-      addFinderPattern(matrix, reserved, moduleCount - 7, 0);
-      addFinderPattern(matrix, reserved, 0, moduleCount - 7);
-      
-      // Add separators
-      addSeparators(matrix, reserved, moduleCount);
-      
-      // Add timing patterns
-      addTimingPatterns(matrix, reserved, moduleCount);
-      
-      // Add alignment pattern for version 2+
-      if (version >= 2) {
-        addAlignmentPattern(matrix, reserved, moduleCount - 7);
-      }
-      
-      // Reserve format info areas
-      reserveFormatInfo(reserved, moduleCount);
-      
-      // Add dark module
-      matrix[moduleCount - 8][8] = true;
-      reserved[moduleCount - 8][8] = true;
-      
-      // Encode data
-      const dataBytes = encodeData(data);
-      const ecBytes = generateErrorCorrection(dataBytes);
-      const allBytes = [...dataBytes, ...ecBytes];
-      
-      // Place data
-      placeData(matrix, reserved, allBytes, moduleCount);
-      
-      // Apply mask pattern 0
-      applyMask(matrix, reserved, moduleCount, 0);
-      
-      // Add format info
-      addFormatInfo(matrix, moduleCount, 0);
-      
-      return matrix;
-    }
-
-    function addFinderPattern(matrix, reserved, row, col) {
-      for (let r = 0; r < 7; r++) {
-        for (let c = 0; c < 7; c++) {
-          const isBlack = (r === 0 || r === 6 || c === 0 || c === 6) || 
-                         (r >= 2 && r <= 4 && c >= 2 && c <= 4);
-          matrix[row + r][col + c] = isBlack;
-          reserved[row + r][col + c] = true;
-        }
+      try {
+        // Provided by qrcodejs
+        new QRCode(container, {
+          text: qrData,
+          width: 220,
+          height: 220,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      } catch (e) {
+        console.error('QR generation failed:', e);
+        container.textContent = 'QR unavailable';
       }
     }
 
-    function addSeparators(matrix, reserved, moduleCount) {
-      // Top-left
-      for (let i = 0; i < 8; i++) {
-        if (matrix[7]) { matrix[7][i] = false; reserved[7][i] = true; }
-        if (matrix[i]) { matrix[i][7] = false; reserved[i][7] = true; }
-      }
-      // Top-right
-      for (let i = 0; i < 8; i++) {
-        if (matrix[7]) { matrix[7][moduleCount - 8 + i] = false; reserved[7][moduleCount - 8 + i] = true; }
-        if (matrix[i]) { matrix[i][moduleCount - 8] = false; reserved[i][moduleCount - 8] = true; }
-      }
-      // Bottom-left
-      for (let i = 0; i < 8; i++) {
-        if (matrix[moduleCount - 8]) { matrix[moduleCount - 8][i] = false; reserved[moduleCount - 8][i] = true; }
-        if (matrix[moduleCount - 8 + i]) { matrix[moduleCount - 8 + i][7] = false; reserved[moduleCount - 8 + i][7] = true; }
-      }
-    }
-
-    function addTimingPatterns(matrix, reserved, moduleCount) {
-      for (let i = 8; i < moduleCount - 8; i++) {
-        const isBlack = i % 2 === 0;
-        matrix[6][i] = isBlack;
-        reserved[6][i] = true;
-        matrix[i][6] = isBlack;
-        reserved[i][6] = true;
-      }
-    }
-
-    function addAlignmentPattern(matrix, reserved, center) {
-      for (let r = -2; r <= 2; r++) {
-        for (let c = -2; c <= 2; c++) {
-          const isBlack = Math.abs(r) === 2 || Math.abs(c) === 2 || (r === 0 && c === 0);
-          matrix[center + r][center + c] = isBlack;
-          reserved[center + r][center + c] = true;
-        }
-      }
-    }
-
-    function reserveFormatInfo(reserved, moduleCount) {
-      // Around top-left finder
-      for (let i = 0; i < 9; i++) {
-        reserved[8][i] = true;
-        reserved[i][8] = true;
-      }
-      // Below top-right finder
-      for (let i = 0; i < 8; i++) {
-        reserved[8][moduleCount - 8 + i] = true;
-      }
-      // Right of bottom-left finder
-      for (let i = 0; i < 7; i++) {
-        reserved[moduleCount - 7 + i][8] = true;
-      }
-    }
-
-    function encodeData(data) {
-      const bytes = [];
-      // Mode indicator: Byte mode (0100)
-      // Character count: 8 bits for version 1-9
-      bytes.push(0x40 | (data.length >> 4));
-      bytes.push(((data.length & 0x0F) << 4) | (data.charCodeAt(0) >> 4));
-      
-      for (let i = 0; i < data.length; i++) {
-        const c = data.charCodeAt(i);
-        if (i === 0) {
-          bytes.push(((c & 0x0F) << 4) | (data.charCodeAt(i + 1) >> 4 || 0));
-        } else if (i < data.length - 1) {
-          bytes.push(((data.charCodeAt(i) & 0x0F) << 4) | (data.charCodeAt(i + 1) >> 4));
-        }
-      }
-      
-      // Add terminator and padding
-      const lastChar = data.charCodeAt(data.length - 1);
-      bytes.push((lastChar & 0x0F) << 4);
-      
-      // Pad to 22 bytes (version 2, L error correction)
-      while (bytes.length < 22) {
-        bytes.push(bytes.length % 2 === 0 ? 0xEC : 0x11);
-      }
-      
-      return bytes.slice(0, 22);
-    }
-
-    function generateErrorCorrection(data) {
-      // Simplified RS error correction for version 2-L
-      const generator = [1, 216, 194, 159, 111, 199, 94, 95, 113, 157, 193];
-      const ecBytes = 10;
-      const result = new Array(ecBytes).fill(0);
-      
-      for (let i = 0; i < data.length; i++) {
-        const coef = data[i] ^ result[0];
-        result.shift();
-        result.push(0);
-        if (coef !== 0) {
-          for (let j = 0; j < ecBytes; j++) {
-            result[j] ^= gfMultiply(generator[j + 1], coef);
-          }
-        }
-      }
-      
-      return result;
-    }
-
-    function gfMultiply(a, b) {
-      if (a === 0 || b === 0) return 0;
-      const logTable = [0,0,1,25,2,50,26,198,3,223,51,238,27,104,199,75,4,100,224,14,52,141,239,129,28,193,105,248,200,8,76,113,5,138,101,47,225,36,15,33,53,147,142,218,240,18,130,69,29,181,194,125,106,39,249,185,201,154,9,120,77,228,114,166,6,191,139,98,102,221,48,253,226,152,37,179,16,145,34,136,54,208,148,206,143,150,219,189,241,210,19,92,131,56,70,64,30,66,182,163,195,72,126,110,107,58,40,84,250,133,186,61,202,94,155,159,10,21,121,43,78,212,229,172,115,243,167,87,7,112,192,247,140,128,99,13,103,74,222,237,49,197,254,24,227,165,153,119,38,184,180,124,17,68,146,217,35,32,137,46,55,63,209,91,149,188,207,205,144,135,151,178,220,252,190,97,242,86,211,171,20,42,93,158,132,60,57,83,71,109,65,162,31,45,67,216,183,123,164,118,196,23,73,236,127,12,111,246,108,161,59,82,41,157,85,170,251,96,134,177,187,204,62,90,203,89,95,176,156,169,160,81,11,245,22,235,122,117,44,215,79,174,213,233,230,231,173,232,116,214,244,234,168,80,88,175];
-      const expTable = [1,2,4,8,16,32,64,128,29,58,116,232,205,135,19,38,76,152,45,90,180,117,234,201,143,3,6,12,24,48,96,192,157,39,78,156,37,74,148,53,106,212,181,119,238,193,159,35,70,140,5,10,20,40,80,160,93,186,105,210,185,111,222,161,95,190,97,194,153,47,94,188,101,202,137,15,30,60,120,240,253,231,163,91,182,113,226,217,175,67,134,17,34,68,136,13,26,52,104,208,189,103,206,129,31,62,124,248,237,199,147,59,118,236,197,151,51,102,204,133,23,46,92,184,109,218,169,79,158,33,66,132,21,42,84,168,77,154,41,82,164,85,170,73,146,57,114,228,213,183,115,230,209,191,99,198,145,63,126,252,229,215,179,123,246,241,255,227,219,171,75,150,49,98,196,149,55,110,220,165,87,174,65,130,25,50,100,200,141,7,14,28,56,112,224,221,167,83,166,81,162,89,178,121,242,249,239,195,155,43,86,172,69,138,9,18,36,72,144,61,122,244,245,247,243,251,235,203,139,11,22,44,88,176,125,250,233,207,131,27,54,108,216,173,71,142,1];
-      return expTable[(logTable[a] + logTable[b]) % 255];
-    }
-
-    function placeData(matrix, reserved, bytes, moduleCount) {
-      let bitIndex = 0;
-      let direction = -1;
-      let col = moduleCount - 1;
-      let row = moduleCount - 1;
-      
-      const bits = [];
-      for (const byte of bytes) {
-        for (let i = 7; i >= 0; i--) {
-          bits.push((byte >> i) & 1);
-        }
-      }
-      
-      while (col > 0) {
-        if (col === 6) col--;
-        
-        for (let r = direction === -1 ? moduleCount - 1 : 0; 
-             direction === -1 ? r >= 0 : r < moduleCount; 
-             r += direction) {
-          for (let c = 0; c < 2; c++) {
-            const actualCol = col - c;
-            if (!reserved[r][actualCol] && bitIndex < bits.length) {
-              matrix[r][actualCol] = bits[bitIndex] === 1;
-              bitIndex++;
-            }
-          }
-        }
-        
-        col -= 2;
-        direction = -direction;
-      }
-    }
-
-    function applyMask(matrix, reserved, moduleCount, pattern) {
-      for (let row = 0; row < moduleCount; row++) {
-        for (let col = 0; col < moduleCount; col++) {
-          if (!reserved[row][col]) {
-            // Mask pattern 0: (row + col) % 2 === 0
-            if ((row + col) % 2 === 0) {
-              matrix[row][col] = !matrix[row][col];
-            }
-          }
-        }
-      }
-    }
-
-    function addFormatInfo(matrix, moduleCount, mask) {
-      // Format string for L error correction, mask 0
-      const formatBits = [1,0,1,0,1,0,0,0,0,0,1,0,0,1,0];
-      
-      // Place around top-left
-      for (let i = 0; i < 6; i++) {
-        matrix[8][i] = formatBits[i] === 1;
-      }
-      matrix[8][7] = formatBits[6] === 1;
-      matrix[8][8] = formatBits[7] === 1;
-      matrix[7][8] = formatBits[8] === 1;
-      for (let i = 0; i < 6; i++) {
-        matrix[5 - i][8] = formatBits[9 + i] === 1;
-      }
-      
-      // Place around other finders
-      for (let i = 0; i < 8; i++) {
-        matrix[8][moduleCount - 8 + i] = formatBits[i] === 1;
-      }
-      for (let i = 0; i < 7; i++) {
-        matrix[moduleCount - 7 + i][8] = formatBits[8 + i] === 1;
-      }
-    }
 
     generatePairingCode();
   </script>
