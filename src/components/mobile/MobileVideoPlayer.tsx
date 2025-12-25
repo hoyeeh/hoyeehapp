@@ -6,7 +6,7 @@ import {
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
   RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
   PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown,
-  Clock, Save, X
+  Clock, Save, X, Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
 import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 
 interface MobileVideoPlayerProps {
   content: Content;
@@ -206,6 +207,10 @@ export function MobileVideoPlayer({
   const skipPrefs = useSkipPreferences();
   const autoSkippedIntroRef = useRef(false);
   const autoSkippedRecapRef = useRef(false);
+  
+  // Watch Party sync
+  const { party, isHost, updatePlayback, syncToParty } = useWatchPartyContext();
+  const lastPartySyncRef = useRef<number>(0);
 
   // Save intro times to database (for admins)
   const handleSaveIntroTimes = useCallback(async () => {
@@ -478,6 +483,35 @@ export function MobileVideoPlayer({
 
     return () => clearInterval(interval);
   }, [isPlaying, duration, saveProgressImmediately, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl, isKidsMode, onTimeUpdate, currentTime]);
+
+  // Watch Party sync - sync video to party state for non-hosts
+  useEffect(() => {
+    if (!party || isHost) return;
+    const video = videoRef.current;
+    if (!video) return;
+    syncToParty(video);
+  }, [party?.playback_time, party?.is_playing, isHost, syncToParty]);
+
+  // Watch Party - host sends playback updates
+  useEffect(() => {
+    if (!party || !isHost) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleHostPlayPause = () => {
+      updatePlayback(video.currentTime, !video.paused);
+    };
+
+    video.addEventListener('play', handleHostPlayPause);
+    video.addEventListener('pause', handleHostPlayPause);
+    video.addEventListener('seeked', handleHostPlayPause);
+
+    return () => {
+      video.removeEventListener('play', handleHostPlayPause);
+      video.removeEventListener('pause', handleHostPlayPause);
+      video.removeEventListener('seeked', handleHostPlayPause);
+    };
+  }, [party, isHost, updatePlayback]);
 
   // Video event handlers
   const handleLoadedMetadata = () => {
