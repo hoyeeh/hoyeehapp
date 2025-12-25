@@ -12,6 +12,9 @@ import { CastQueuePanel } from "@/components/CastQueuePanel";
 import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
 import { TVShowSeasons } from "@/components/TVShowSeasons";
 import { DownloadButton } from "@/components/DownloadButton";
+import { MoreLikeThisSection } from "@/components/MoreLikeThisSection";
+import { WatchPartyPanel } from "@/components/WatchPartyPanel";
+import { SeriesNotificationButton } from "@/components/SeriesNotificationButton";
 import { useCastQueue, QueueItem } from "@/hooks/useCastQueue";
 import { Episode } from "@/hooks/useSeasons";
 import { useEpisodeWatchProgress } from "@/hooks/useEpisodeWatchProgress";
@@ -883,6 +886,16 @@ const ContentDetail = () => {
               />
               {/* Download button for movies */}
               {!isTVShow && <DownloadButton content={content} />}
+              {/* Series notification button */}
+              <SeriesNotificationButton 
+                contentId={content.id} 
+                contentType={content.contentType} 
+              />
+              {/* Watch party */}
+              <WatchPartyPanel
+                contentId={content.id}
+                contentTitle={content.title}
+              />
             </div>
           </div>
         </div>
@@ -947,7 +960,7 @@ const ContentDetail = () => {
             </div>
           )}
 
-          {/* Recommendations */}
+          {/* TMDB Recommendations */}
           {recommendations.length > 0 && (
             <RecommendationsSection
               recommendations={recommendations}
@@ -956,6 +969,28 @@ const ContentDetail = () => {
               onAddToQueue={handleAddRecommendationToQueue}
             />
           )}
+
+          {/* More Like This - Local content based on genre */}
+          <MoreLikeThisSection
+            currentContent={{
+              id: content.id,
+              title: content.title,
+              thumbnailUrl: content.thumbnailUrl,
+              year: content.year,
+              rating: content.rating,
+              genre: content.genre,
+              contentType: content.contentType
+            }}
+            allContent={allContent.map(c => ({
+              id: c.id,
+              title: c.title,
+              thumbnailUrl: c.thumbnailUrl,
+              year: c.year,
+              rating: c.rating,
+              genre: c.genre,
+              contentType: c.contentType
+            }))}
+          />
         </div>
       </div>
 
