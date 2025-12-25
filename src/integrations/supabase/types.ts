@@ -2002,6 +2002,27 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          action: string
+          count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          action: string
+          count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          action?: string
+          count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           content_id: string
@@ -2454,6 +2475,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_devices: {
+        Row: {
+          device_id: string
+          device_name: string | null
+          id: string
+          is_active: boolean
+          last_active: string
+          registered_at: string
+          user_id: string
+        }
+        Insert: {
+          device_id: string
+          device_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_active?: string
+          registered_at?: string
+          user_id: string
+        }
+        Update: {
+          device_id?: string
+          device_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_active?: string
+          registered_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_drip_enrollments: {
         Row: {

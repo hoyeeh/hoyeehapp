@@ -13,6 +13,11 @@ interface DownloadRequest {
   preferredQuality?: string;
 }
 
+// Constants for download limits
+const MAX_DOWNLOADS_PER_DEVICE = 25;
+const MAX_DOWNLOADS_PER_USER = 50;
+const MAX_DEVICES_PER_USER = 5;
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -71,6 +76,61 @@ serve(async (req) => {
         JSON.stringify({ error: 'Active subscription required for downloads', code: 'NO_SUBSCRIPTION' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check and register device (limit to MAX_DEVICES_PER_USER devices per user)
+    const { count: deviceCount } = await supabase
+      .from('user_devices')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+
+    // Check if this device is already registered
+    const { data: existingDevice } = await supabase
+      .from('user_devices')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('device_id', deviceId)
+      .maybeSingle();
+
+    if (!existingDevice) {
+      // New device - check if user has hit device limit
+      if ((deviceCount || 0) >= MAX_DEVICES_PER_USER) {
+        console.warn(`[download-start] User ${user.id} has reached device limit: ${deviceCount}/${MAX_DEVICES_PER_USER}`);
+        return new Response(
+          JSON.stringify({ 
+            error: `Maximum devices reached (${MAX_DEVICES_PER_USER}). Please remove a device before adding a new one.`, 
+            code: 'DEVICE_LIMIT_REACHED',
+            currentDevices: deviceCount,
+            maxDevices: MAX_DEVICES_PER_USER
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Register new device
+      const { error: deviceError } = await supabase
+        .from('user_devices')
+        .insert({
+          user_id: user.id,
+          device_id: deviceId,
+          registered_at: new Date().toISOString(),
+          last_active: new Date().toISOString(),
+          is_active: true,
+        });
+
+      if (deviceError) {
+        console.error('[download-start] Failed to register device:', deviceError);
+        // Continue anyway - device tracking is secondary
+      } else {
+        console.log(`[download-start] Registered new device ${deviceId} for user ${user.id}`);
+      }
+    } else {
+      // Update last active timestamp for existing device
+      await supabase
+        .from('user_devices')
+        .update({ last_active: new Date().toISOString() })
+        .eq('id', existingDevice.id);
     }
 
     // Get content details
@@ -136,17 +196,43 @@ serve(async (req) => {
       );
     }
 
-    // Check existing download licenses for this user/device (limit to 25 downloads)
-    const { count: existingLicenses } = await supabase
+    // Check global per-user download limit (across all devices)
+    const { count: totalLicenses } = await supabase
+      .from('download_licenses')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'active');
+
+    if ((totalLicenses || 0) >= MAX_DOWNLOADS_PER_USER) {
+      console.warn(`[download-start] User ${user.id} has reached global download limit: ${totalLicenses}/${MAX_DOWNLOADS_PER_USER}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Total download limit reached (${MAX_DOWNLOADS_PER_USER} items across all devices)`, 
+          code: 'GLOBAL_LIMIT_REACHED',
+          currentDownloads: totalLicenses,
+          maxDownloads: MAX_DOWNLOADS_PER_USER
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check per-device download limit
+    const { count: deviceLicenses } = await supabase
       .from('download_licenses')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('device_id', deviceId)
       .eq('status', 'active');
 
-    if ((existingLicenses || 0) >= 25) {
+    if ((deviceLicenses || 0) >= MAX_DOWNLOADS_PER_DEVICE) {
+      console.warn(`[download-start] User ${user.id} has reached device download limit: ${deviceLicenses}/${MAX_DOWNLOADS_PER_DEVICE}`);
       return new Response(
-        JSON.stringify({ error: 'Download limit reached (25 items)', code: 'LIMIT_REACHED' }),
+        JSON.stringify({ 
+          error: `Device download limit reached (${MAX_DOWNLOADS_PER_DEVICE} items per device)`, 
+          code: 'DEVICE_DOWNLOAD_LIMIT_REACHED',
+          currentDownloads: deviceLicenses,
+          maxDownloads: MAX_DOWNLOADS_PER_DEVICE
+        }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -217,9 +303,15 @@ serve(async (req) => {
         encryptedContentKey: contentKeyBase64,
       },
       createdAt: Date.now(),
+      limits: {
+        deviceDownloads: (deviceLicenses || 0) + 1,
+        maxDeviceDownloads: MAX_DOWNLOADS_PER_DEVICE,
+        totalDownloads: (totalLicenses || 0) + 1,
+        maxTotalDownloads: MAX_DOWNLOADS_PER_USER,
+      },
     };
 
-    console.log(`[download-start] Created manifest for ${downloadId}, size estimate: ${estimatedSize} bytes`);
+    console.log(`[download-start] Created manifest for ${downloadId}, size estimate: ${estimatedSize} bytes, device downloads: ${(deviceLicenses || 0) + 1}/${MAX_DOWNLOADS_PER_DEVICE}, total downloads: ${(totalLicenses || 0) + 1}/${MAX_DOWNLOADS_PER_USER}`);
 
     return new Response(
       JSON.stringify({ manifest }),
