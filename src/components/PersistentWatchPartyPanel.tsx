@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles } from "lucide-react";
+import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles, Crown, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 
 interface ContentInfo {
   contentId: string;
@@ -20,6 +21,7 @@ interface ContentInfo {
 
 export const PersistentWatchPartyPanel = () => {
   const { user } = useAuth();
+  const { canAccessPremium, isLoading: subscriptionLoading } = useSubscriptionAccess();
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -143,59 +145,92 @@ export const PersistentWatchPartyPanel = () => {
         </SheetHeader>
 
         {!party ? (
-          // Not in a party - show create/join options
+          // Not in a party - show create/join options or subscription gate
           <div className="p-4 space-y-6 flex-1">
-            <div>
-              <h3 className="font-medium mb-2">Create a Party</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Start watching "{contentTitle}" with friends
-              </p>
-              <Button 
-                onClick={handleCreate} 
-                disabled={isLoading || !currentContent?.contentId}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <UserPlus className="h-4 w-4 mr-2" />
-                )}
-                Create Watch Party
-              </Button>
-              {!currentContent?.contentId && (
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Start playing content first to create a party
-                </p>
-              )}
-            </div>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+            {!canAccessPremium && !subscriptionLoading ? (
+              // Subscription gate
+              <div className="flex flex-col items-center justify-center h-full text-center space-y-4 py-8">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                  <Crown className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Premium Feature</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Watch Party is available exclusively for subscribers. Upgrade to watch content together with friends in real-time.
+                  </p>
+                </div>
+                <div className="space-y-3 w-full">
+                  <Button 
+                    onClick={() => {
+                      navigate('/subscription');
+                      setIsOpen(false);
+                    }}
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade to Premium
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Get access to Watch Party, exclusive content, and more
+                  </p>
+                </div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="font-medium mb-2">Join a Party</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Enter a party code to join friends
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter code (e.g., ABC123)"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  maxLength={6}
-                  className="font-mono tracking-widest"
-                />
-                <Button onClick={handleJoin} disabled={isLoading}>
-                  Join
-                </Button>
-              </div>
-            </div>
+            ) : (
+              // Create/Join UI for subscribers
+              <>
+                <div>
+                  <h3 className="font-medium mb-2">Create a Party</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Start watching "{contentTitle}" with friends
+                  </p>
+                  <Button 
+                    onClick={handleCreate} 
+                    disabled={isLoading || !currentContent?.contentId}
+                    className="w-full"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <UserPlus className="h-4 w-4 mr-2" />
+                    )}
+                    Create Watch Party
+                  </Button>
+                  {!currentContent?.contentId && (
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Start playing content first to create a party
+                    </p>
+                  )}
+                </div>
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-medium mb-2">Join a Party</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Enter a party code to join friends
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter code (e.g., ABC123)"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      maxLength={6}
+                      className="font-mono tracking-widest"
+                    />
+                    <Button onClick={handleJoin} disabled={isLoading}>
+                      Join
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           // In a party - show party info with tabs
