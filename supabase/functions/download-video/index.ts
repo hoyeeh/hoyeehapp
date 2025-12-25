@@ -6,35 +6,77 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple in-memory rate limiter (resets on cold start)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+// Rate limit configuration
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 10; // 10 downloads per minute per user
 
-function checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetIn: number } {
+interface RateLimitData {
+  count: number;
+  window_start: string;
+}
+
+// Persistent rate limiting using database
+async function checkPersistentRateLimit(
+  supabase: any,
+  userId: string,
+  action: string
+): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
   const now = Date.now();
-  const userLimit = rateLimitMap.get(userId);
   
-  if (!userLimit || now > userLimit.resetTime) {
-    // Reset or create new window
-    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+  try {
+    // Get current rate limit record
+    const { data, error: rateError } = await supabase
+      .from('rate_limits')
+      .select('count, window_start')
+      .eq('user_id', userId)
+      .eq('action', action)
+      .maybeSingle();
+
+    const rateData = data as RateLimitData | null;
+
+    if (rateError) {
+      console.error('[rate-limit] Database error:', rateError);
+      // Fail open but log - don't block legitimate users due to DB issues
+      return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+    }
+
+    const windowStart = rateData?.window_start ? new Date(rateData.window_start).getTime() : 0;
+    const elapsed = now - windowStart;
+
+    // Check if within rate limit window and exceeded
+    if (rateData && elapsed < RATE_LIMIT_WINDOW_MS && rateData.count >= MAX_REQUESTS_PER_WINDOW) {
+      const resetIn = RATE_LIMIT_WINDOW_MS - elapsed;
+      console.warn(`[rate-limit] User ${userId} exceeded limit for ${action}: ${rateData.count}/${MAX_REQUESTS_PER_WINDOW}`);
+      return { allowed: false, remaining: 0, resetIn };
+    }
+
+    // Update or create rate limit record
+    const newCount = (rateData && elapsed < RATE_LIMIT_WINDOW_MS) ? rateData.count + 1 : 1;
+    const newWindowStart = (rateData && elapsed < RATE_LIMIT_WINDOW_MS) 
+      ? rateData.window_start 
+      : new Date().toISOString();
+
+    await supabase
+      .from('rate_limits')
+      .upsert({
+        user_id: userId,
+        action: action,
+        count: newCount,
+        window_start: newWindowStart,
+      }, {
+        onConflict: 'user_id,action'
+      });
+
+    const remaining = MAX_REQUESTS_PER_WINDOW - newCount;
+    const resetIn = RATE_LIMIT_WINDOW_MS - (now - new Date(newWindowStart).getTime());
+
+    console.log(`[rate-limit] User ${userId} ${action}: ${newCount}/${MAX_REQUESTS_PER_WINDOW}, remaining: ${remaining}`);
+    return { allowed: true, remaining: Math.max(0, remaining), resetIn };
+  } catch (error) {
+    console.error('[rate-limit] Unexpected error:', error);
+    // Fail open
     return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1, resetIn: RATE_LIMIT_WINDOW_MS };
   }
-  
-  if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
-    return { 
-      allowed: false, 
-      remaining: 0, 
-      resetIn: userLimit.resetTime - now 
-    };
-  }
-  
-  userLimit.count++;
-  return { 
-    allowed: true, 
-    remaining: MAX_REQUESTS_PER_WINDOW - userLimit.count, 
-    resetIn: userLimit.resetTime - now 
-  };
 }
 
 serve(async (req) => {
@@ -54,15 +96,21 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role for rate limit management
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    
+    // Use anon key for user auth verification
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
+    
+    // Use service role for rate limits and admin queries
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify the user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
       console.error('Authentication failed:', authError?.message);
       return new Response(
@@ -73,8 +121,8 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id);
 
-    // Check rate limit
-    const rateLimit = checkRateLimit(user.id);
+    // Check persistent rate limit
+    const rateLimit = await checkPersistentRateLimit(supabaseAdmin, user.id, 'download_video');
     if (!rateLimit.allowed) {
       console.warn('Rate limit exceeded for user:', user.id);
       return new Response(
@@ -96,13 +144,13 @@ serve(async (req) => {
     }
 
     // Check if user has an active subscription or is an admin
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('subscription_expiry')
       .eq('id', user.id)
       .single();
 
-    const { data: roles } = await supabase
+    const { data: roles } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id);

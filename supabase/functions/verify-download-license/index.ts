@@ -6,36 +6,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple in-memory rate limiter
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+// Rate limit configuration
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 30; // 30 requests per minute per user
 
-function isRateLimited(userId: string): { limited: boolean; retryAfter?: number } {
+interface RateLimitData {
+  count: number;
+  window_start: string;
+}
+
+// Persistent rate limiting using database
+async function checkPersistentRateLimit(
+  supabase: any,
+  userId: string,
+  action: string
+): Promise<{ limited: boolean; retryAfter?: number }> {
   const now = Date.now();
-  const userLimit = rateLimitMap.get(userId);
+  
+  try {
+    // Get current rate limit record
+    const { data, error: rateError } = await supabase
+      .from('rate_limits')
+      .select('count, window_start')
+      .eq('user_id', userId)
+      .eq('action', action)
+      .maybeSingle();
 
-  // Clean up expired entries periodically
-  if (rateLimitMap.size > 10000) {
-    for (const [key, value] of rateLimitMap.entries()) {
-      if (now > value.resetTime) {
-        rateLimitMap.delete(key);
-      }
+    const rateData = data as RateLimitData | null;
+
+    if (rateError) {
+      console.error('[rate-limit] Database error:', rateError);
+      // Fail open but log - don't block legitimate users due to DB issues
+      return { limited: false };
     }
-  }
 
-  if (!userLimit || now > userLimit.resetTime) {
-    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    const windowStart = rateData?.window_start ? new Date(rateData.window_start).getTime() : 0;
+    const elapsed = now - windowStart;
+
+    // Check if within rate limit window and exceeded
+    if (rateData && elapsed < RATE_LIMIT_WINDOW && rateData.count >= MAX_REQUESTS_PER_WINDOW) {
+      const retryAfter = Math.ceil((RATE_LIMIT_WINDOW - elapsed) / 1000);
+      console.warn(`[rate-limit] User ${userId} exceeded limit for ${action}: ${rateData.count}/${MAX_REQUESTS_PER_WINDOW}`);
+      return { limited: true, retryAfter };
+    }
+
+    // Update or create rate limit record
+    const newCount = (rateData && elapsed < RATE_LIMIT_WINDOW) ? rateData.count + 1 : 1;
+    const newWindowStart = (rateData && elapsed < RATE_LIMIT_WINDOW) 
+      ? rateData.window_start 
+      : new Date().toISOString();
+
+    await supabase
+      .from('rate_limits')
+      .upsert({
+        user_id: userId,
+        action: action,
+        count: newCount,
+        window_start: newWindowStart,
+      }, {
+        onConflict: 'user_id,action'
+      });
+
+    console.log(`[rate-limit] User ${userId} ${action}: ${newCount}/${MAX_REQUESTS_PER_WINDOW}`);
+    return { limited: false };
+  } catch (error) {
+    console.error('[rate-limit] Unexpected error:', error);
+    // Fail open
     return { limited: false };
   }
-
-  if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
-    const retryAfter = Math.ceil((userLimit.resetTime - now) / 1000);
-    return { limited: true, retryAfter };
-  }
-
-  userLimit.count++;
-  return { limited: false };
 }
 
 serve(async (req) => {
@@ -68,8 +106,8 @@ serve(async (req) => {
       );
     }
 
-    // Rate limiting check
-    const rateCheck = isRateLimited(user.id);
+    // Persistent rate limiting check
+    const rateCheck = await checkPersistentRateLimit(supabase, user.id, 'verify_license');
     if (rateCheck.limited) {
       console.warn(`[verify-license] Rate limit exceeded for user ${user.id}`);
       return new Response(
