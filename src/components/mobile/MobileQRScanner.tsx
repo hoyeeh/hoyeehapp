@@ -68,6 +68,45 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     }
   }, []);
 
+  const extractCodeFromQRData = useCallback((qrData: string): string | null => {
+    console.log("[QRScanner] Raw QR data:", qrData);
+    
+    // Try URL format: https://hoyeeh.com/tv?code=ABC123 or similar
+    try {
+      const url = new URL(qrData);
+      const codeParam = url.searchParams.get("code") || url.searchParams.get("c");
+      if (codeParam) {
+        console.log("[QRScanner] Extracted code from URL param:", codeParam);
+        return codeParam.toUpperCase();
+      }
+      // Check for code in path: /tv/ABC123
+      const pathMatch = url.pathname.match(/\/tv\/([A-Z0-9]{4,8})$/i);
+      if (pathMatch) {
+        console.log("[QRScanner] Extracted code from URL path:", pathMatch[1]);
+        return pathMatch[1].toUpperCase();
+      }
+    } catch {
+      // Not a URL, continue with other formats
+    }
+
+    // Try prefix format: "HOYEEH:CODE123"
+    if (qrData.startsWith("HOYEEH:")) {
+      const code = qrData.replace("HOYEEH:", "").trim();
+      console.log("[QRScanner] Extracted code from HOYEEH prefix:", code);
+      return code.toUpperCase();
+    }
+
+    // Try plain code format (alphanumeric, 4-8 chars)
+    const trimmed = qrData.trim();
+    if (/^[A-Z0-9]{4,8}$/i.test(trimmed)) {
+      console.log("[QRScanner] Plain code detected:", trimmed);
+      return trimmed.toUpperCase();
+    }
+
+    console.log("[QRScanner] Could not extract valid code from:", qrData);
+    return null;
+  }, []);
+
   const scanQRCode = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
     
@@ -86,27 +125,21 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert",
+      inversionAttempts: "attemptBoth",
     });
 
     if (code && code.data) {
-      // Extract pairing code from QR data
-      // Expected formats: "HOYEEH:CODE123" or just "CODE123"
-      let pairingCode = code.data;
-      if (pairingCode.startsWith("HOYEEH:")) {
-        pairingCode = pairingCode.replace("HOYEEH:", "");
-      }
-      
-      // Validate it looks like a pairing code (alphanumeric, 4-8 chars)
-      if (/^[A-Z0-9]{4,8}$/i.test(pairingCode)) {
+      const pairingCode = extractCodeFromQRData(code.data);
+      if (pairingCode) {
+        console.log("[QRScanner] Valid pairing code found:", pairingCode);
         stopCamera();
-        onCodeScanned(pairingCode.toUpperCase());
+        onCodeScanned(pairingCode);
         return;
       }
     }
 
     animationRef.current = requestAnimationFrame(scanQRCode);
-  }, [onCodeScanned, stopCamera]);
+  }, [onCodeScanned, stopCamera, extractCodeFromQRData]);
 
   const toggleTorch = useCallback(async () => {
     if (!streamRef.current) return;
@@ -166,30 +199,6 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
           {!hasTorch && <div className="w-12" />}
         </div>
 
-        {/* Instructions Banner at Top */}
-        <div className="absolute top-20 left-0 right-0 z-10 px-6">
-          <div className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-border/50">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-primary font-bold text-sm">1</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-2">On your TV browser, go to:</p>
-                <div className="bg-primary/10 border border-primary/30 rounded-xl px-4 py-3 text-center">
-                  <p className="text-xl font-bold text-primary tracking-wide">hoyeeh.com/tv</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 mt-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-primary font-bold text-sm">2</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-foreground">Point your camera at the QR code on your TV</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Camera view */}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -229,7 +238,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
 
         {/* Scanning overlay */}
         {hasCamera && !isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ paddingTop: '120px' }}>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ paddingBottom: '180px' }}>
             {/* Darkened corners */}
             <div className="absolute inset-0 bg-black/50" />
             
@@ -259,9 +268,26 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
           </div>
         )}
 
-        {/* Bottom hint */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 pb-safe text-center">
-          <p className="text-white/60 text-xs">
+        {/* Instructions at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 pb-safe z-10">
+          <div className="bg-card/95 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-border/50 mb-2">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary font-bold text-xs">1</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground">On your TV, go to:</p>
+                <p className="text-sm font-bold text-primary">hoyeeh.com/tv</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary font-bold text-xs">2</span>
+              </div>
+              <p className="text-xs text-foreground">Point camera at the QR code</p>
+            </div>
+          </div>
+          <p className="text-white/60 text-xs text-center">
             Make sure your TV and phone are on the same WiFi network
           </p>
         </div>
