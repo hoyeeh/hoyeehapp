@@ -399,7 +399,26 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
             )}
 
             {/* Tap overlay for play/pause */}
-            <div className="absolute inset-0 z-10 rounded-3xl" onClick={togglePlay} />
+            <div 
+              className="absolute inset-0 z-10 rounded-3xl cursor-pointer" 
+              onClick={togglePlay} 
+            />
+
+            {/* Center Play Button - Always clickable when visible */}
+            {!isPlaying && !isLoading && !showResumePrompt && isReady && (
+              <div className="absolute inset-0 z-30 flex items-center justify-center">
+                <Button
+                  size="lg"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                  className="w-20 h-20 rounded-full bg-white hover:bg-white/90 shadow-2xl cursor-pointer"
+                >
+                  <Play className="h-10 w-10 fill-[#0A0A0F] text-[#0A0A0F] ml-1" />
+                </Button>
+              </div>
+            )}
 
             {/* Controls Overlay */}
             <motion.div
@@ -413,19 +432,6 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
               
               {/* Bottom gradient */}
               <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
-
-              {/* Center Play Button */}
-              {!isPlaying && !isLoading && !showResumePrompt && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-                  <Button
-                    size="lg"
-                    onClick={togglePlay}
-                    className="w-20 h-20 rounded-full bg-white hover:bg-white/90 shadow-2xl"
-                  >
-                    <Play className="h-10 w-10 fill-[#0A0A0F] text-[#0A0A0F] ml-1" />
-                  </Button>
-                </div>
-              )}
 
               {/* Bottom Controls */}
               <div className="absolute bottom-0 left-0 right-0 p-5 pointer-events-auto">
