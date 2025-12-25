@@ -78,7 +78,10 @@ serve(async (req) => {
       .map(([genre]) => genre);
 
     // Kids-appropriate ratings
-    const kidsRatings = ["G", "TV-Y", "TV-Y7", "TV-G", "PG"];
+    const kidsRatings = ["G", "PG"];
+    
+    // Allowed genres for kids zone
+    const allowedGenrePatterns = ["animation", "family", "animated", "cartoon"];
 
     // Fetch recommended content based on viewing patterns
     let recommendedContent: any[] = [];
@@ -89,11 +92,18 @@ serve(async (req) => {
         .from("content")
         .select("id, title, genre, content_rating, content_type, thumbnail_url, description")
         .in("content_rating", kidsRatings)
+        .or("genre.ilike.%animation%,genre.ilike.%family%,genre.ilike.%animated%,genre.ilike.%cartoon%")
         .not("id", "in", `(${watchedContentIds.length > 0 ? watchedContentIds.join(",") : "00000000-0000-0000-0000-000000000000"})`)
         .limit(30);
 
-      // Score content based on genre match
-      const scoredContent = (genreContent || []).map((content: any) => {
+      // Filter for allowed genres and score content based on genre match
+      const scoredContent = (genreContent || [])
+        .filter((content: any) => {
+          if (!content.genre) return false;
+          const genreLower = content.genre.toLowerCase();
+          return allowedGenrePatterns.some(pattern => genreLower.includes(pattern));
+        })
+        .map((content: any) => {
         let score = 0;
         if (content.genre) {
           const contentGenres = content.genre.split(",").map((g: string) => g.trim());
@@ -110,15 +120,23 @@ serve(async (req) => {
         .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 10);
     } else {
-      // No viewing history - get popular kids content
+      // No viewing history - get popular kids content with allowed genres
       const { data: popularContent } = await supabase
         .from("content")
         .select("id, title, genre, content_rating, content_type, thumbnail_url, description, view_count")
         .in("content_rating", kidsRatings)
+        .or("genre.ilike.%animation%,genre.ilike.%family%,genre.ilike.%animated%,genre.ilike.%cartoon%")
         .order("view_count", { ascending: false })
-        .limit(10);
+        .limit(20);
 
-      recommendedContent = popularContent || [];
+      // Filter for allowed genres
+      recommendedContent = (popularContent || [])
+        .filter((content: any) => {
+          if (!content.genre) return false;
+          const genreLower = content.genre.toLowerCase();
+          return allowedGenrePatterns.some(pattern => genreLower.includes(pattern));
+        })
+        .slice(0, 10);
     }
 
     // Use AI to generate personalized recommendations if we have viewing history

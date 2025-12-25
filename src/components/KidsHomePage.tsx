@@ -6,7 +6,7 @@ import { Clock, Moon, Film, Tv, TrendingUp, Play, ChevronLeft, ChevronRight, Spa
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { KidsYouTubeRow } from "./kids/KidsYouTubeRow";
@@ -189,14 +189,16 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
         .select("*")
         .in("content_rating", KIDS_RATINGS)
         .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
+        .or("genre.ilike.%animation%,genre.ilike.%family%,genre.ilike.%animated%,genre.ilike.%cartoon%")
         .order("created_at", { ascending: false });
       
       if (error) throw error;
       
-      // Additional client-side filter to ensure strict age compliance and block specific titles
+      // Additional client-side filter for strict compliance
       return (data || [])
         .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
         .filter((item: any) => !isBlockedTitle(item.title || ""))
+        .filter((item: any) => isKidsAllowedGenre(item.genre))
         .map((item: any) => ({
           id: item.id,
           title: item.title,
