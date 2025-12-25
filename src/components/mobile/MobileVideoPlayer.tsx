@@ -1861,6 +1861,23 @@ export function MobileVideoPlayer({
                     <Settings className="h-5 w-5 text-white" />
                   </button>
                   
+                  {/* Watch Party - hidden in kids mode */}
+                  {!isKidsMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('toggleWatchParty'));
+                      }}
+                      className={cn(
+                        "p-3 rounded-full active:bg-white/20 touch-manipulation",
+                        party && "bg-primary"
+                      )}
+                      style={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <Users className="h-5 w-5 text-white" />
+                    </button>
+                  )}
+                  
                   {/* Lock - hidden in kids mode */}
                   {!isKidsMode && (
                     <button

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw, Cast } from "lucide-react";
+import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw, Cast, Users } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -573,6 +573,18 @@ export function MobileContentDetail({
             >
               <Share2 className="h-6 w-6" />
               <span className="text-xs text-muted-foreground">Share</span>
+            </button>
+            
+            <button 
+              onClick={() => {
+                lightTap();
+                navigate(`/content/${content.id}?watchparty=true`);
+                onClose();
+              }}
+              className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+            >
+              <Users className="h-6 w-6" />
+              <span className="text-xs text-muted-foreground">Party</span>
             </button>
           </div>
 
