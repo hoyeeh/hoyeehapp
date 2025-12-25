@@ -3233,6 +3233,14 @@ export type Database = {
         Returns: boolean
       }
       is_creator: { Args: { _user_id: string }; Returns: boolean }
+      is_party_host: {
+        Args: { _party_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_party_member: {
+        Args: { _party_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       reset_pin_secure: {
         Args: { input_secret: string; new_pin: string; user_mobile: string }
