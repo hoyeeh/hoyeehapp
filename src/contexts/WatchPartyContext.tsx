@@ -134,7 +134,7 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
     }
   }, [user, generateCode]);
 
-  // Join an existing party
+  // Join an existing party using secure backend function
   const joinParty = useCallback(async (code: string) => {
     if (!user) {
       toast.error("Please sign in to join a watch party");
@@ -143,30 +143,42 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      const { data: partyData, error: partyError } = await supabase
-        .from('watch_parties')
-        .select('*')
-        .eq('party_code', code.toUpperCase())
-        .eq('is_active', true)
-        .single();
+      // Use the secure RPC function to join the party
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('join_watch_party_by_code', { party_code: code.toUpperCase() });
 
-      if (partyError || !partyData) {
+      if (rpcError) {
+        console.error("RPC error joining party:", rpcError);
+        if (rpcError.message?.includes('not found') || rpcError.message?.includes('no longer active')) {
+          toast.error("Party not found or has ended");
+        } else if (rpcError.message?.includes('authenticated')) {
+          toast.error("Please sign in to join a watch party");
+        } else {
+          toast.error("Failed to join watch party");
+        }
+        return null;
+      }
+
+      // The RPC returns an array, get the first row
+      const partyResult = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+      
+      if (!partyResult) {
         toast.error("Party not found or has ended");
         return null;
       }
 
-      const { error: joinError } = await supabase
-        .from('watch_party_members')
-        .upsert(
-          {
-            party_id: partyData.id,
-            user_id: user.id,
-            is_ready: false
-          },
-          { onConflict: 'party_id,user_id' }
-        );
-
-      if (joinError) throw joinError;
+      // Map the RPC result to the WatchParty interface
+      const partyData: WatchParty = {
+        id: partyResult.party_id,
+        content_id: partyResult.content_id,
+        episode_id: partyResult.episode_id,
+        host_user_id: partyResult.host_user_id,
+        playback_time: partyResult.playback_time ?? 0,
+        is_playing: partyResult.is_playing ?? false,
+        party_code: partyResult.party_code_out,
+        is_active: true,
+        created_at: new Date().toISOString()
+      };
 
       setParty(partyData);
       setIsHost(partyData.host_user_id === user.id);
