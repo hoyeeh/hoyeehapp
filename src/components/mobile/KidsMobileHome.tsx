@@ -17,6 +17,7 @@ import { KidsConfetti } from "@/components/kids/KidsConfetti";
 import { KidsMobileContinueWatching } from "@/components/kids/KidsMobileContinueWatching";
 import { KidsMobileAgeGroupSections } from "@/components/kids/KidsMobileAgeGroupSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
+import { KidsParentalSetupNotice } from "@/components/kids/KidsParentalSetupNotice";
 import { useState, useEffect, useRef } from "react";
 
 interface KidsMobileHomeProps {
@@ -225,6 +226,9 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
     <div className="space-y-6 pb-8">
       {/* Confetti celebration */}
       <KidsConfetti show={showConfetti} />
+
+      {/* Parental Setup Notice */}
+      <KidsParentalSetupNotice />
 
       {/* Hero Carousel - prioritize animation */}
       <KidsHeroCarousel 
