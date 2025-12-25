@@ -5,7 +5,7 @@ import { KidsMobileContentCard } from "./KidsMobileContentCard";
 import { Heart, Film } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
 
 interface KidsMobileMyListProps {
   onPlay: (content: Content) => void;
@@ -34,14 +34,16 @@ export const KidsMobileMyList = ({ onPlay, onDetails }: KidsMobileMyListProps) =
         .select("*")
         .in("id", contentIds)
         .in("content_rating", KIDS_RATINGS)
-        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`);
+        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
+        .or("genre.ilike.%animation%,genre.ilike.%family%,genre.ilike.%animated%,genre.ilike.%cartoon%");
 
       if (contentError) throw contentError;
 
-      // Strict client-side filter for age compliance and blocked titles
+      // Strict client-side filter for age compliance, blocked titles, and genre
       return (contentData || [])
         .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
         .filter((item: any) => !isBlockedTitle(item.title || ""))
+        .filter((item: any) => isKidsAllowedGenre(item.genre))
         .map((item: any) => ({
           id: item.id,
           title: item.title,
