@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { WatchPartyChat } from "@/components/WatchPartyChat";
+import { WatchPartyReactions } from "@/components/WatchPartyReactions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play } from "lucide-react";
+import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -25,12 +26,15 @@ export const PersistentWatchPartyPanel = () => {
     party,
     members,
     messages,
+    reactions,
     isHost,
     isLoading,
     createParty,
     joinParty,
     leaveParty,
-    setReady
+    setReady,
+    sendReaction,
+    startWatchingTogether
   } = useWatchPartyContext();
   const [joinCode, setJoinCode] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -125,7 +129,11 @@ export const PersistentWatchPartyPanel = () => {
   const contentTitle = currentContent?.contentTitle || "this content";
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <>
+      {/* Render reactions overlay when in party and on content page */}
+      {party && isOnContentPage() && <WatchPartyReactions />}
+      
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetContent className="flex flex-col p-0 z-[200]">
         <SheetHeader className="p-4 pb-0">
           <SheetTitle className="flex items-center gap-2">
@@ -228,30 +236,46 @@ export const PersistentWatchPartyPanel = () => {
               <TabsContent value="members" className="flex-1 px-4 mt-4 space-y-4 overflow-y-auto">
                 {/* Members List */}
                 <div className="space-y-2">
-                  {members.map((member) => (
-                    <div 
-                      key={member.id}
-                      className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-brand/20 flex items-center justify-center">
-                          <Users className="h-4 w-4 text-brand" />
+                  {members.map((member) => {
+                    const isHostMember = member.user_id === party.host_user_id;
+                    const displayName = member.display_name || (isHostMember ? "Host" : "Guest");
+                    return (
+                      <div 
+                        key={member.id}
+                        className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-brand/20 flex items-center justify-center">
+                            <Users className="h-4 w-4 text-brand" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{displayName}</span>
+                            {isHostMember && <span className="text-xs text-muted-foreground">Host</span>}
+                          </div>
                         </div>
-                        <span className="text-sm">
-                          {member.user_id === party.host_user_id ? "Host" : "Guest"}
-                        </span>
+                        {member.is_ready ? (
+                          <Badge variant="default" className="gap-1">
+                            <Check className="h-3 w-3" />
+                            Ready
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Waiting</Badge>
+                        )}
                       </div>
-                      {member.is_ready ? (
-                        <Badge variant="default" className="gap-1">
-                          <Check className="h-3 w-3" />
-                          Ready
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Waiting</Badge>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                
+                {/* Start Watching Together Button (for hosts when all ready) */}
+                {isHost && members.length > 1 && members.every(m => m.is_ready) && (
+                  <Button 
+                    onClick={startWatchingTogether}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Start Watching Together
+                  </Button>
+                )}
                 
                 {/* Ready Button (for non-hosts) */}
                 {!isHost && user && (() => {
@@ -339,5 +363,6 @@ export const PersistentWatchPartyPanel = () => {
         )}
       </SheetContent>
     </Sheet>
+    </>
   );
 };
