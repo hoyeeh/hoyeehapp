@@ -100,12 +100,15 @@ export const KidsParentalSetupNotice = () => {
       >
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-500/30 p-4 md:p-5">
           {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
           
           {/* Dismiss button */}
           <button
-            onClick={handleDismiss}
-            className="absolute top-3 right-3 p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDismiss();
+            }}
+            className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
           >
             <X className="h-4 w-4 text-white/60" />
           </button>
