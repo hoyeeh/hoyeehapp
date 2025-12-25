@@ -29,7 +29,9 @@ import {
   UtensilsCrossed,
   Folder,
   Check,
+  Users,
 } from "lucide-react";
+import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -164,6 +166,9 @@ export const VideoPlayer = ({
     }, []),
   });
 
+  // Watch Party sync
+  const { party, isHost, updatePlayback, syncToParty } = useWatchPartyContext();
+  const lastPartySyncRef = useRef<number>(0);
   // Google Cast hook
   const cast = useGoogleCast({
     mediaUrl: src,
@@ -497,6 +502,54 @@ export const VideoPlayer = ({
     }
     return () => clearTimeout(timeout);
   }, [isPlaying, showControls]);
+
+  // Watch Party sync - sync video to party state for non-hosts
+  useEffect(() => {
+    if (!party || isHost) return;
+    
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Sync video to party state
+    syncToParty(video);
+  }, [party?.playback_time, party?.is_playing, isHost, syncToParty]);
+
+  // Watch Party - host sends playback updates
+  useEffect(() => {
+    if (!party || !isHost) return;
+    
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleHostTimeUpdate = () => {
+      const now = Date.now();
+      // Only send updates every second max
+      if (now - lastPartySyncRef.current >= 1000) {
+        lastPartySyncRef.current = now;
+        updatePlayback(video.currentTime, !video.paused);
+      }
+    };
+
+    const handleHostPlayPause = () => {
+      updatePlayback(video.currentTime, !video.paused);
+    };
+
+    const handleHostSeeked = () => {
+      updatePlayback(video.currentTime, !video.paused);
+    };
+
+    video.addEventListener('timeupdate', handleHostTimeUpdate);
+    video.addEventListener('play', handleHostPlayPause);
+    video.addEventListener('pause', handleHostPlayPause);
+    video.addEventListener('seeked', handleHostSeeked);
+
+    return () => {
+      video.removeEventListener('timeupdate', handleHostTimeUpdate);
+      video.removeEventListener('play', handleHostPlayPause);
+      video.removeEventListener('pause', handleHostPlayPause);
+      video.removeEventListener('seeked', handleHostSeeked);
+    };
+  }, [party, isHost, updatePlayback]);
 
   // Keyboard controls
   useEffect(() => {

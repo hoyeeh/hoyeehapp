@@ -9,6 +9,7 @@ import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
 import { MobileVideoPlayerProvider } from "@/contexts/MobileVideoPlayerContext";
 import { MobileYouTubePlayerProvider } from "@/contexts/MobileYouTubePlayerContext";
+import { WatchPartyProvider } from "@/contexts/WatchPartyContext";
 import { PersistentMobileVideoPlayer } from "@/components/mobile/PersistentMobileVideoPlayer";
 import { PersistentMobileYouTubePlayer } from "@/components/mobile/PersistentMobileYouTubePlayer";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
@@ -173,67 +174,69 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <ProfileProvider>
-        <MobileVideoPlayerProvider>
-          <MobileYouTubePlayerProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <SubscriptionExpiryChecker />
-              <OfflineIndicator />
-              <PWAInstallBanner />
-              <DownloadQueueWrapper />
-              <BrowserRouter>
-                <PWAUpdateHandler />
-                <PWANavigationHandler />
-                <CapacitorBackHandler />
-                <CastProvider>
-                  <PusherNotificationHandler />
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/pin-auth" element={<PinAuth />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/subscription" element={<Subscription />} />
-                    <Route path="/admin" element={<Admin />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/content/:id" element={<ContentDetail />} />
-                    <Route path="/my-list" element={<MyList />} />
-                    <Route path="/downloads" element={<Downloads />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/search" element={<Search />} />
-                    <Route path="/genres" element={<Genres />} />
-                    <Route path="/terms" element={<TermsOfUse />} />
-                    <Route path="/privacy" element={<Privacy />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/help" element={<HelpCenter />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/support" element={<Support />} />
-                    <Route path="/copyright" element={<Copyright />} />
-                    <Route path="/install" element={<Install />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/notification-preferences" element={<NotificationPreferences />} />
-                    <Route path="/parental" element={<Parental />} />
-                    <Route path="/parental" element={<Parental />} />
-                    <Route path="/coming-soon" element={<ComingSoon />} />
-                    <Route path="/youtube" element={<YouTubeChannels />} />
-                    <Route path="/watch-later" element={<WatchLater />} />
-                    <Route path="/creator-store" element={<CreatorStore />} />
-                    <Route path="/creator-dashboard" element={<CreatorDashboard />} />
-                    <Route path="/tv" element={<TV />} />
-                    <Route path="/tv-receiver" element={<TVReceiver />} />
-                    <Route path="/tv-app" element={<TVApp />} />
-                    <Route path="/kids-youtube" element={<KidsYouTube />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  <PersistentMobileVideoPlayer />
-                  <PersistentMobileYouTubePlayer />
-                </CastProvider>
-              </BrowserRouter>
-            </TooltipProvider>
-          </MobileYouTubePlayerProvider>
-        </MobileVideoPlayerProvider>
+        <WatchPartyProvider>
+          <MobileVideoPlayerProvider>
+            <MobileYouTubePlayerProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <SubscriptionExpiryChecker />
+                <OfflineIndicator />
+                <PWAInstallBanner />
+                <DownloadQueueWrapper />
+                <BrowserRouter>
+                  <PWAUpdateHandler />
+                  <PWANavigationHandler />
+                  <CapacitorBackHandler />
+                  <CastProvider>
+                    <PusherNotificationHandler />
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/pin-auth" element={<PinAuth />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
+                      <Route path="/subscription" element={<Subscription />} />
+                      <Route path="/admin" element={<Admin />} />
+                      <Route path="/analytics" element={<Analytics />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/content/:id" element={<ContentDetail />} />
+                      <Route path="/my-list" element={<MyList />} />
+                      <Route path="/downloads" element={<Downloads />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/search" element={<Search />} />
+                      <Route path="/genres" element={<Genres />} />
+                      <Route path="/terms" element={<TermsOfUse />} />
+                      <Route path="/privacy" element={<Privacy />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/help" element={<HelpCenter />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="/support" element={<Support />} />
+                      <Route path="/copyright" element={<Copyright />} />
+                      <Route path="/install" element={<Install />} />
+                      <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/notification-preferences" element={<NotificationPreferences />} />
+                      <Route path="/parental" element={<Parental />} />
+                      <Route path="/parental" element={<Parental />} />
+                      <Route path="/coming-soon" element={<ComingSoon />} />
+                      <Route path="/youtube" element={<YouTubeChannels />} />
+                      <Route path="/watch-later" element={<WatchLater />} />
+                      <Route path="/creator-store" element={<CreatorStore />} />
+                      <Route path="/creator-dashboard" element={<CreatorDashboard />} />
+                      <Route path="/tv" element={<TV />} />
+                      <Route path="/tv-receiver" element={<TVReceiver />} />
+                      <Route path="/tv-app" element={<TVApp />} />
+                      <Route path="/kids-youtube" element={<KidsYouTube />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                    <PersistentMobileVideoPlayer />
+                    <PersistentMobileYouTubePlayer />
+                  </CastProvider>
+                </BrowserRouter>
+              </TooltipProvider>
+            </MobileYouTubePlayerProvider>
+          </MobileVideoPlayerProvider>
+        </WatchPartyProvider>
       </ProfileProvider>
     </AuthProvider>
   </QueryClientProvider>

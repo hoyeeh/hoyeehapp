@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useWatchParty } from "@/hooks/useWatchParty";
+import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
+import { WatchPartyChat } from "@/components/WatchPartyChat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Users, Copy, LogOut, Check, Loader2, UserPlus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio } from "lucide-react";
 import { toast } from "sonner";
 
 interface WatchPartyPanelProps {
@@ -23,16 +25,18 @@ export const WatchPartyPanel = ({
   const {
     party,
     members,
+    messages,
     isHost,
     isLoading,
     createParty,
     joinParty,
     leaveParty,
     setReady
-  } = useWatchParty();
+  } = useWatchPartyContext();
   
   const [joinCode, setJoinCode] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
 
   const handleCreate = async () => {
     const newParty = await createParty(contentId, episodeId);
@@ -127,47 +131,63 @@ export const WatchPartyPanel = ({
     );
   }
 
-  // In a party - show party info
+  // In a party - show party info with tabs
+  const unreadCount = 0; // Could implement unread tracking
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2 border-brand text-brand">
           <Users className="h-4 w-4" />
           Party ({members.length})
+          {party.is_playing && (
+            <Radio className="h-3 w-3 text-green-500 animate-pulse" />
+          )}
         </Button>
       </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
+      <SheetContent className="flex flex-col p-0">
+        <SheetHeader className="p-4 pb-0">
           <SheetTitle className="flex items-center gap-2">
             Watch Party
             {isHost && <Badge variant="secondary">Host</Badge>}
           </SheetTitle>
         </SheetHeader>
         
-        <div className="mt-6 space-y-6">
-          {/* Party Code */}
-          <div className="p-4 bg-secondary rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Party Code</p>
-                <p className="text-2xl font-mono font-bold tracking-widest">
-                  {party.party_code}
-                </p>
-              </div>
-              <Button variant="ghost" size="icon" onClick={copyCode}>
-                <Copy className="h-4 w-4" />
-              </Button>
+        {/* Party Code */}
+        <div className="px-4 py-3">
+          <div className="p-3 bg-secondary rounded-lg flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Party Code</p>
+              <p className="text-xl font-mono font-bold tracking-widest">
+                {party.party_code}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Share this code with friends to invite them
-            </p>
+            <Button variant="ghost" size="icon" onClick={copyCode}>
+              <Copy className="h-4 w-4" />
+            </Button>
           </div>
-          
-          {/* Members */}
-          <div>
-            <h3 className="font-medium mb-3">
+        </div>
+
+        {/* Tabs for Members and Chat */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "members" | "chat")} className="flex-1 flex flex-col">
+          <TabsList className="mx-4 grid grid-cols-2">
+            <TabsTrigger value="members" className="gap-2">
+              <Users className="h-4 w-4" />
               Members ({members.length})
-            </h3>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="gap-2">
+              <MessageCircle className="h-4 w-4" />
+              Chat
+              {messages.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {messages.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="members" className="flex-1 px-4 mt-4 space-y-4">
+            {/* Members List */}
             <div className="space-y-2">
               {members.map((member) => (
                 <div 
@@ -193,30 +213,53 @@ export const WatchPartyPanel = ({
                 </div>
               ))}
             </div>
-          </div>
+            
+            {/* Ready Button (for non-hosts) */}
+            {!isHost && (
+              <Button 
+                onClick={() => setReady(true)}
+                className="w-full"
+                disabled={members.find(m => m.user_id === party.host_user_id)?.is_ready}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                I'm Ready
+              </Button>
+            )}
+            
+            {/* Playback Status */}
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {party.is_playing ? (
+                  <Radio className="h-4 w-4 text-green-500 animate-pulse" />
+                ) : (
+                  <span className="h-4 w-4 rounded-full bg-yellow-500" />
+                )}
+                <span>
+                  {party.is_playing ? "Playing" : "Paused"} at{" "}
+                  {Math.floor(Number(party.playback_time) / 60)}:
+                  {String(Math.floor(Number(party.playback_time) % 60)).padStart(2, '0')}
+                </span>
+              </div>
+              {isHost && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your playback controls the party
+                </p>
+              )}
+              {!isHost && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Video syncs with the host
+                </p>
+              )}
+            </div>
+          </TabsContent>
           
-          {/* Ready Button (for non-hosts) */}
-          {!isHost && (
-            <Button 
-              onClick={() => setReady(true)}
-              className="w-full"
-              disabled={members.find(m => m.user_id === party.host_user_id)?.is_ready}
-            >
-              <Check className="h-4 w-4 mr-2" />
-              I'm Ready
-            </Button>
-          )}
-          
-          {/* Playback Status */}
-          <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              {party.is_playing ? "▶️ Playing" : "⏸️ Paused"} at{" "}
-              {Math.floor(Number(party.playback_time) / 60)}:
-              {String(Math.floor(Number(party.playback_time) % 60)).padStart(2, '0')}
-            </p>
-          </div>
-          
-          {/* Leave Button */}
+          <TabsContent value="chat" className="flex-1 overflow-hidden">
+            <WatchPartyChat />
+          </TabsContent>
+        </Tabs>
+        
+        {/* Leave Button */}
+        <div className="p-4 border-t">
           <Button 
             variant="destructive" 
             onClick={leaveParty}
