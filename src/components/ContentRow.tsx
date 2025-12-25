@@ -1,8 +1,9 @@
 import { Content } from "@/types";
 import { ContentCardWithPreview } from "./ContentCardWithPreview";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Shuffle } from "lucide-react";
+import { useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface ContentRowProps {
   title: string;
@@ -15,6 +16,7 @@ interface ContentRowProps {
   showRank?: boolean;
   showSeeAll?: boolean;
   onSeeAll?: () => void;
+  showShuffle?: boolean;
 }
 
 export const ContentRow = ({
@@ -28,10 +30,13 @@ export const ContentRow = ({
   showRank = false,
   showSeeAll = false,
   onSeeAll,
+  showShuffle = true,
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const [isShuffled, setIsShuffled] = useState(false);
+  const [shuffleKey, setShuffleKey] = useState(0);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -51,23 +56,67 @@ export const ContentRow = ({
     }
   };
 
+  // Fisher-Yates shuffle algorithm
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const displayContent = useMemo(() => {
+    if (isShuffled) {
+      return shuffleArray(content);
+    }
+    // Default: sorted by year (newest first)
+    return [...content].sort((a, b) => (b.year || 0) - (a.year || 0));
+  }, [content, isShuffled, shuffleKey]);
+
+  const handleShuffle = () => {
+    if (isShuffled) {
+      setIsShuffled(false);
+    } else {
+      setIsShuffled(true);
+      setShuffleKey((k) => k + 1); // Force re-shuffle
+    }
+  };
+
   if (!content.length) return null;
 
   return (
     <section className="group/section relative py-4 transition-all duration-300 hover:z-10">
       {/* Section Title - Netflix Style */}
-      <div className="px-4 md:px-12 mb-3 flex items-baseline gap-3">
+      <div className="px-4 md:px-12 mb-3 flex items-center gap-3">
         <h2 className="font-display text-lg md:text-xl lg:text-2xl text-foreground tracking-wide">
           {title}
         </h2>
-        {(showSeeAll || onSeeAll) && (
-          <button 
-            onClick={onSeeAll}
-            className="text-brand text-sm font-medium opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer hover:underline"
-          >
-            Explore All →
-          </button>
-        )}
+        <div className="flex items-center gap-2 opacity-0 group-hover/section:opacity-100 transition-opacity">
+          {showShuffle && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleShuffle}
+              className={cn(
+                "h-7 px-2 text-xs gap-1",
+                isShuffled && "text-brand"
+              )}
+              title={isShuffled ? "Reset to default order" : "Shuffle content"}
+            >
+              <Shuffle className="h-3.5 w-3.5" />
+              {isShuffled ? "Reset" : "Shuffle"}
+            </Button>
+          )}
+          {(showSeeAll || onSeeAll) && (
+            <button 
+              onClick={onSeeAll}
+              className="text-brand text-sm font-medium cursor-pointer hover:underline"
+            >
+              Explore All →
+            </button>
+          )}
+        </div>
       </div>
       
       <div className="relative">
@@ -108,7 +157,7 @@ export const ContentRow = ({
           className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide px-4 md:px-12 pb-2 scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {content.map((item, index) => (
+          {displayContent.map((item, index) => (
             <div key={item.id} className="relative flex-shrink-0">
               {/* Rank Number for Top 10 style */}
               {showRank && (

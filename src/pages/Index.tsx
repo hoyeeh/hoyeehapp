@@ -17,6 +17,7 @@ import { RecommendationsRow } from "@/components/RecommendationsRow";
 import { NewReleasesRow } from "@/components/NewReleasesRow";
 import { AIRecommendationsRow } from "@/components/AIRecommendationsRow";
 import { RecentlyWatchedRow } from "@/components/RecentlyWatchedRow";
+import { BecauseYouWatchedRow } from "@/components/BecauseYouWatchedRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
@@ -104,6 +105,22 @@ const Index = () => {
       return data || [];
     },
   });
+
+  // Fetch global deduplication setting
+  const { data: deduplicationSetting } = useQuery({
+    queryKey: ["home-deduplication-setting"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platform_settings")
+        .select("setting_value")
+        .eq("setting_key", "home_enable_deduplication")
+        .single();
+      if (error) return { setting_value: "true" };
+      return data;
+    },
+  });
+
+  const enableDeduplication = deduplicationSetting?.setting_value !== "false";
 
   // Fetch section content for curated sections
   const { data: sectionContentData = [] } = useQuery({
@@ -390,16 +407,17 @@ const Index = () => {
     }
   };
 
-  // Process all sections with deduplication (exempt: curated, top10, trending)
+  // Process all sections with deduplication (respects per-section allow_duplicates setting)
   const processedHomeSections = useMemo(() => {
     const displayedContentIds = new Set<string>();
-    const exemptTypes = ['curated', 'top10', 'trending'];
     
     return homeSections.map((section: any) => {
       let sectionContent = getRawSectionContent(section);
       
-      // Apply deduplication unless exempt
-      if (!exemptTypes.includes(section.section_type)) {
+      // Check per-section allow_duplicates setting, only apply deduplication if global setting is enabled
+      const shouldDeduplicate = enableDeduplication && !section.allow_duplicates;
+      
+      if (shouldDeduplicate) {
         sectionContent = sectionContent.filter((item) => {
           if (displayedContentIds.has(item.id)) {
             return false;
@@ -408,13 +426,13 @@ const Index = () => {
           return true;
         });
       } else {
-        // Still track exempt content for later deduplication
+        // Still track content for later deduplication
         sectionContent.forEach((item) => displayedContentIds.add(item.id));
       }
       
       return { section, content: sectionContent };
     });
-  }, [homeSections, content, recentlyAddedContent, trendingContentItems, sectionContentData, movies, shows]);
+  }, [homeSections, content, recentlyAddedContent, trendingContentItems, sectionContentData, movies, shows, enableDeduplication]);
 
   // Get content by genre (fallback)
   const getContentByGenre = (genreName: string) => {
@@ -621,6 +639,14 @@ const Index = () => {
 
                   {/* AI Recommendations Row */}
                   <RecommendationsRow
+                    onPlay={handlePlay}
+                    onToggleList={handleToggleList}
+                    onDetails={handleDetails}
+                    userList={watchlistIds}
+                  />
+
+                  {/* Because You Watched Row */}
+                  <BecauseYouWatchedRow
                     onPlay={handlePlay}
                     onToggleList={handleToggleList}
                     onDetails={handleDetails}
