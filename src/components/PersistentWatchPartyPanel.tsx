@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { WatchPartyChat } from "@/components/WatchPartyChat";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio } from "lucide-react";
+import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -18,6 +19,8 @@ interface ContentInfo {
 
 export const PersistentWatchPartyPanel = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     party,
     members,
@@ -33,6 +36,7 @@ export const PersistentWatchPartyPanel = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
   const [currentContent, setCurrentContent] = useState<ContentInfo | null>(null);
+  const [prevAllReady, setPrevAllReady] = useState(false);
 
   // Listen for toggle event from video players with content info
   useEffect(() => {
@@ -47,6 +51,42 @@ export const PersistentWatchPartyPanel = () => {
     window.addEventListener('toggleWatchParty', handleToggle);
     return () => window.removeEventListener('toggleWatchParty', handleToggle);
   }, []);
+
+  // Check if all members are ready and notify host
+  useEffect(() => {
+    if (!party || !isHost || members.length < 2) return;
+    
+    const allReady = members.every(m => m.is_ready);
+    if (allReady && !prevAllReady) {
+      toast.success("Everyone is ready! Start playing when you're set.", {
+        duration: 5000,
+        icon: "🎉"
+      });
+    }
+    setPrevAllReady(allReady);
+  }, [party, isHost, members, prevAllReady]);
+
+  // Build the content URL for navigation
+  const getContentUrl = () => {
+    if (!party) return null;
+    const baseUrl = `/content/${party.content_id}`;
+    return party.episode_id ? `${baseUrl}?episode=${party.episode_id}` : baseUrl;
+  };
+
+  // Check if user is on the content page
+  const isOnContentPage = () => {
+    if (!party) return false;
+    const contentUrl = getContentUrl();
+    return contentUrl && location.pathname.includes(`/content/${party.content_id}`);
+  };
+
+  const handleWatchNow = () => {
+    const url = getContentUrl();
+    if (url) {
+      navigate(url);
+      setIsOpen(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!currentContent?.contentId) {
@@ -67,7 +107,11 @@ export const PersistentWatchPartyPanel = () => {
     const joinedParty = await joinParty(joinCode.trim());
     if (joinedParty) {
       setJoinCode("");
-      toast.success("Joined watch party!");
+      // Navigate guest to content page
+      const baseUrl = `/content/${joinedParty.content_id}`;
+      const url = joinedParty.episode_id ? `${baseUrl}?episode=${joinedParty.episode_id}` : baseUrl;
+      navigate(url);
+      toast.success("Joined watch party! Taking you to the content...");
     }
   };
 
@@ -224,6 +268,18 @@ export const PersistentWatchPartyPanel = () => {
                     </Button>
                   );
                 })()}
+
+                {/* Watch Now Button (for guests not on content page) */}
+                {!isHost && !isOnContentPage() && (
+                  <Button 
+                    onClick={handleWatchNow}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Watch Now
+                  </Button>
+                )}
                 
                 {/* Playback Status */}
                 <div className="p-3 bg-muted rounded-lg">
@@ -244,9 +300,17 @@ export const PersistentWatchPartyPanel = () => {
                       Your playback controls the party
                     </p>
                   )}
-                  {!isHost && (
+                  {!isHost && isOnContentPage() && (
                     <p className="text-xs text-muted-foreground mt-1">
+                      <Badge variant="outline" className="text-green-500 border-green-500">
+                        Synced
+                      </Badge>{" "}
                       Video syncs with the host
+                    </p>
+                  )}
+                  {!isHost && !isOnContentPage() && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click "Watch Now" to start watching
                     </p>
                   )}
                 </div>
