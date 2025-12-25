@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ContentInfo {
   contentId: string;
@@ -16,6 +17,7 @@ interface ContentInfo {
 }
 
 export const PersistentWatchPartyPanel = () => {
+  const { user } = useAuth();
   const {
     party,
     members,
@@ -27,7 +29,6 @@ export const PersistentWatchPartyPanel = () => {
     leaveParty,
     setReady
   } = useWatchPartyContext();
-  
   const [joinCode, setJoinCode] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
@@ -209,16 +210,20 @@ export const PersistentWatchPartyPanel = () => {
                 </div>
                 
                 {/* Ready Button (for non-hosts) */}
-                {!isHost && (
-                  <Button 
-                    onClick={() => setReady(true)}
-                    className="w-full"
-                    disabled={members.find(m => m.user_id === party.host_user_id)?.is_ready}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    I'm Ready
-                  </Button>
-                )}
+                {!isHost && user && (() => {
+                  const currentMember = members.find(m => m.user_id === user.id);
+                  const isReady = currentMember?.is_ready ?? false;
+                  return (
+                    <Button 
+                      onClick={() => setReady(!isReady)}
+                      className="w-full"
+                      variant={isReady ? "secondary" : "default"}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      {isReady ? "Ready ✓" : "I'm Ready"}
+                    </Button>
+                  );
+                })()}
                 
                 {/* Playback Status */}
                 <div className="p-3 bg-muted rounded-lg">
