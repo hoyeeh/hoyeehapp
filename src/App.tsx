@@ -12,6 +12,7 @@ import { MobileYouTubePlayerProvider } from "@/contexts/MobileYouTubePlayerConte
 import { WatchPartyProvider } from "@/contexts/WatchPartyContext";
 import { PersistentMobileVideoPlayer } from "@/components/mobile/PersistentMobileVideoPlayer";
 import { PersistentMobileYouTubePlayer } from "@/components/mobile/PersistentMobileYouTubePlayer";
+import { PersistentWatchPartyPanel } from "@/components/PersistentWatchPartyPanel";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
@@ -190,6 +191,7 @@ const App = () => (
                   <CapacitorBackHandler />
                   <CastProvider>
                     <PusherNotificationHandler />
+                    <PersistentWatchPartyPanel />
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />

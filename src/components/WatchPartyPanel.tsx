@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { WatchPartyChat } from "@/components/WatchPartyChat";
 import { Button } from "@/components/ui/button";
@@ -37,13 +37,6 @@ export const WatchPartyPanel = ({
   const [joinCode, setJoinCode] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
-
-  // Listen for toggle event from video players
-  useEffect(() => {
-    const handleToggle = () => setIsOpen(prev => !prev);
-    window.addEventListener('toggleWatchParty', handleToggle);
-    return () => window.removeEventListener('toggleWatchParty', handleToggle);
-  }, []);
 
   const handleCreate = async () => {
     const newParty = await createParty(contentId, episodeId);

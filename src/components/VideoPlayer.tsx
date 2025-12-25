@@ -1356,8 +1356,14 @@ export const VideoPlayer = ({
               {/* Watch Party Button */}
               <button
                 onClick={() => {
-                  // Open watch party panel - dispatch custom event
-                  window.dispatchEvent(new CustomEvent('toggleWatchParty'));
+                  // Open watch party panel - dispatch custom event with content info
+                  window.dispatchEvent(new CustomEvent('toggleWatchParty', {
+                    detail: {
+                      contentId,
+                      episodeId,
+                      contentTitle: title
+                    }
+                  }));
                 }}
                 className={cn(
                   "hidden sm:flex items-center gap-1 hover:text-brand transition-colors text-sm px-2 py-1 rounded",

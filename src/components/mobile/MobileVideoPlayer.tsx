@@ -1866,7 +1866,13 @@ export function MobileVideoPlayer({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('toggleWatchParty'));
+                        window.dispatchEvent(new CustomEvent('toggleWatchParty', {
+                          detail: {
+                            contentId: content.id,
+                            episodeId,
+                            contentTitle: episodeTitle || title
+                          }
+                        }));
                       }}
                       className={cn(
                         "p-3 rounded-full active:bg-white/20 touch-manipulation",
