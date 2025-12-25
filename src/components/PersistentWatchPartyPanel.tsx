@@ -6,6 +6,7 @@ import { WatchPartyReactions } from "@/components/WatchPartyReactions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles, Crown, Lock } from "lucide-react";
@@ -43,6 +44,7 @@ export const PersistentWatchPartyPanel = () => {
   const [activeTab, setActiveTab] = useState<"members" | "chat">("members");
   const [currentContent, setCurrentContent] = useState<ContentInfo | null>(null);
   const [prevAllReady, setPrevAllReady] = useState(false);
+  const [isLaunchingContent, setIsLaunchingContent] = useState(false);
 
   // Listen for toggle event from video players with content info
   useEffect(() => {
@@ -86,11 +88,15 @@ export const PersistentWatchPartyPanel = () => {
     return contentUrl && location.pathname.includes(`/content/${party.content_id}`);
   };
 
-  const handleWatchNow = () => {
+  const handleWatchNow = async () => {
     const url = getContentUrl();
     if (url) {
+      setIsLaunchingContent(true);
+      // Short delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 800));
       navigate(url);
       setIsOpen(false);
+      setIsLaunchingContent(false);
     }
   };
 
@@ -274,15 +280,19 @@ export const PersistentWatchPartyPanel = () => {
                   {members.map((member) => {
                     const isHostMember = member.user_id === party.host_user_id;
                     const displayName = member.display_name || (isHostMember ? "Host" : "Guest");
+                    const initials = displayName.slice(0, 2).toUpperCase();
                     return (
                       <div 
                         key={member.id}
                         className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-brand/20 flex items-center justify-center">
-                            <Users className="h-4 w-4 text-brand" />
-                          </div>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={member.avatar_url} alt={displayName} />
+                            <AvatarFallback className="bg-brand/20 text-brand text-xs">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{displayName}</span>
                             {isHostMember && <span className="text-xs text-muted-foreground">Host</span>}
@@ -328,16 +338,30 @@ export const PersistentWatchPartyPanel = () => {
                   );
                 })()}
 
-                {/* Watch Now Button (for guests not on content page) */}
+                {/* Start Watching CTA (for guests not on content page) */}
                 {!isHost && !isOnContentPage() && (
-                  <Button 
-                    onClick={handleWatchNow}
-                    className="w-full"
-                    variant="default"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Watch Now
-                  </Button>
+                  <div className="p-4 bg-gradient-to-r from-brand/10 to-brand/5 rounded-lg border border-brand/20">
+                    {isLaunchingContent ? (
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-brand" />
+                        <p className="text-sm text-muted-foreground">Launching content...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-3 text-center">
+                          Ready to join the watch party?
+                        </p>
+                        <Button 
+                          onClick={handleWatchNow}
+                          className="w-full bg-brand hover:bg-brand/90"
+                          size="lg"
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Watching
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 )}
                 
                 {/* Playback Status */}
