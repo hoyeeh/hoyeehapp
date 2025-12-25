@@ -50,18 +50,6 @@ export const KidsMobileContentCard = ({
           
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" />
-          
-          {/* Play button */}
-          <motion.button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPlay(content);
-            }}
-            whileTap={{ scale: 0.9 }}
-            className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg shadow-black/20"
-          >
-            <Play className="h-4 w-4 text-[#0A0A0F] ml-0.5" fill="currentColor" />
-          </motion.button>
 
           {/* Rating badge */}
           {content.contentRating && (
