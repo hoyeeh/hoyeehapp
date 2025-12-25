@@ -29,20 +29,6 @@ export const KidsContentCard = ({ content, onPlay, onDetails, index }: KidsConte
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-          {/* Play button on hover */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onPlay(content);
-              }}
-              className="w-14 h-14 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-xl"
-            >
-              <Play className="h-6 w-6 text-[#0A0A0F] ml-1" fill="currentColor" strokeWidth={0} />
-            </motion.button>
-          </div>
-
           {/* Rating badge */}
           {content.contentRating && (
             <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/50 backdrop-blur-sm">
