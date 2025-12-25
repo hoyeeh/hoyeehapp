@@ -5,6 +5,8 @@ export { MobileContentCard } from "./MobileContentCard";
 export { MobileContentRow } from "./MobileContentRow";
 export { SwipeableContentRow } from "./SwipeableContentRow";
 export { MobileContinueWatching } from "./MobileContinueWatching";
+export { MobileRecentlyWatched } from "./MobileRecentlyWatched";
+export { MobileAIRecommendations } from "./MobileAIRecommendations";
 export { MobileHome } from "./MobileHome";
 export { MobileSearchOverlay } from "./MobileSearchOverlay";
 export { MobileSearch } from "./MobileSearch";

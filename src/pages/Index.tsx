@@ -16,6 +16,7 @@ import { ComingSoonRow } from "@/components/ComingSoonRow";
 import { RecommendationsRow } from "@/components/RecommendationsRow";
 import { NewReleasesRow } from "@/components/NewReleasesRow";
 import { AIRecommendationsRow } from "@/components/AIRecommendationsRow";
+import { RecentlyWatchedRow } from "@/components/RecentlyWatchedRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
@@ -553,6 +554,12 @@ const Index = () => {
                   {/* Continue Watching Row - Always first */}
                   <ContinueWatchingRow
                     onPlay={(c, progress) => setPlayingContent({ content: c, progress })}
+                    onDetails={handleDetails}
+                  />
+
+                  {/* Recently Watched Row - Completed content for rewatching */}
+                  <RecentlyWatchedRow
+                    onPlay={handlePlay}
                     onDetails={handleDetails}
                   />
 
