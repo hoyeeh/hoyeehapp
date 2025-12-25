@@ -157,11 +157,14 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
 
       const { error: joinError } = await supabase
         .from('watch_party_members')
-        .upsert({
-          party_id: partyData.id,
-          user_id: user.id,
-          is_ready: false
-        });
+        .upsert(
+          {
+            party_id: partyData.id,
+            user_id: user.id,
+            is_ready: false
+          },
+          { onConflict: 'party_id,user_id' }
+        );
 
       if (joinError) throw joinError;
 
