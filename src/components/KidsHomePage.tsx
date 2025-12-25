@@ -16,6 +16,7 @@ import { KidsConfetti } from "./kids/KidsConfetti";
 import { KidsContinueWatching } from "./kids/KidsContinueWatching";
 import { KidsAgeGroupSections } from "./kids/KidsAgeGroupSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
+import { KidsParentalSetupNotice } from "./kids/KidsParentalSetupNotice";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
@@ -348,6 +349,9 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     <div className="max-w-7xl mx-auto px-6 space-y-10 pb-12">
       {/* Confetti celebration when content loads */}
       <KidsConfetti show={showConfetti} />
+
+      {/* Parental Setup Notice */}
+      <KidsParentalSetupNotice />
 
       {/* Hero Carousel - prioritize animation */}
       <HeroCarousel content={sortedContent} onPlay={onPlay} onDetails={onDetails} />
