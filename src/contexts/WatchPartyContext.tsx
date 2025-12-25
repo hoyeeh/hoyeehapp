@@ -22,6 +22,7 @@ interface PartyMember {
   joined_at: string;
   is_ready: boolean;
   display_name?: string;
+  avatar_url?: string;
 }
 
 interface PartyReaction {
@@ -410,14 +411,15 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
             const userIds = data.map(m => m.user_id);
             const { data: profiles } = await supabase
               .from('profiles')
-              .select('id, display_name')
+              .select('id, display_name, avatar_url')
               .in('id', userIds);
 
-            const profileMap = new Map(profiles?.map(p => [p.id, p.display_name]) || []);
+            const profileMap = new Map(profiles?.map(p => [p.id, { display_name: p.display_name, avatar_url: p.avatar_url }]) || []);
             
             setMembers(data.map(m => ({
               ...m,
-              display_name: profileMap.get(m.user_id) || undefined
+              display_name: profileMap.get(m.user_id)?.display_name || undefined,
+              avatar_url: profileMap.get(m.user_id)?.avatar_url || undefined
             })));
           }
         }
@@ -478,14 +480,15 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
         const userIds = data.map(m => m.user_id);
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, display_name')
+          .select('id, display_name, avatar_url')
           .in('id', userIds);
 
-        const profileMap = new Map(profiles?.map(p => [p.id, p.display_name]) || []);
+        const profileMap = new Map(profiles?.map(p => [p.id, { display_name: p.display_name, avatar_url: p.avatar_url }]) || []);
         
         setMembers(data.map(m => ({
           ...m,
-          display_name: profileMap.get(m.user_id) || undefined
+          display_name: profileMap.get(m.user_id)?.display_name || undefined,
+          avatar_url: profileMap.get(m.user_id)?.avatar_url || undefined
         })));
       }
     };
