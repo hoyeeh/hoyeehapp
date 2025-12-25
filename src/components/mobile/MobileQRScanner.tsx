@@ -193,7 +193,13 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     await new Promise(resolve => setTimeout(resolve, 1200));
     
     try {
-      const success = await onCodeScanned(code);
+      const success = await Promise.race([
+        onCodeScanned(code),
+        new Promise<boolean>((_, reject) =>
+          setTimeout(() => reject(new Error("PAIR_TIMEOUT")), 12000)
+        ),
+      ]);
+
       if (success) {
         // Pairing succeeded, close scanner
         onClose();
@@ -203,10 +209,14 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
         setConnectionError("Failed to connect. Please check the code and try again.");
         setShowSuccess(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[QRScanner] Pairing error:", error);
       setIsConnecting(false);
-      setConnectionError("Connection failed. Please try again.");
+      setConnectionError(
+        error?.message === "PAIR_TIMEOUT"
+          ? "Connection timed out. Please try again."
+          : "Connection failed. Please try again."
+      );
       setShowSuccess(false);
     }
   }, [triggerHaptic, playSuccessSound, stopCamera, onCodeScanned, onClose]);
@@ -279,7 +289,13 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     await new Promise(resolve => setTimeout(resolve, 1200));
     
     try {
-      const success = await onCodeScanned(code);
+      const success = await Promise.race([
+        onCodeScanned(code),
+        new Promise<boolean>((_, reject) =>
+          setTimeout(() => reject(new Error("PAIR_TIMEOUT")), 12000)
+        ),
+      ]);
+
       if (success) {
         // Pairing succeeded, close scanner
         onClose();
@@ -289,10 +305,14 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
         setConnectionError("Failed to connect. Please check the code and try again.");
         setShowSuccess(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[QRScanner] Pairing error:", error);
       setIsConnecting(false);
-      setConnectionError("Connection failed. Please try again.");
+      setConnectionError(
+        error?.message === "PAIR_TIMEOUT"
+          ? "Connection timed out. Please try again."
+          : "Connection failed. Please try again."
+      );
       setShowSuccess(false);
     }
   }, [manualCode, triggerHaptic, playSuccessSound, stopCamera, onCodeScanned, onClose]);

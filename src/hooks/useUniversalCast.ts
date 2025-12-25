@@ -97,38 +97,59 @@ export function useUniversalCast() {
     });
   }, []);
 
-  // Call signaling edge function
-  const callSignaling = useCallback(async (action: string, body: Record<string, unknown> = {}) => {
-    const response = await supabase.functions.invoke('cast-signaling', {
-      body,
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    });
+  // Call signaling backend function
+  const callSignaling = useCallback(
+    async (action: string, body: Record<string, unknown> = {}) => {
+      const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cast-signaling`);
+      url.searchParams.set('action', action);
 
-    // Handle the query param by modifying the request
-    if (action === 'status' && body.sessionId) {
-      const { data, error } = await supabase.functions.invoke('cast-signaling?action=status&sessionId=' + body.sessionId, {
-        method: 'POST',
-        body: {},
-      });
-      return data;
-    }
+      // Status expects sessionId as a query param (receiver uses this too)
+      const sessionId = typeof body.sessionId === 'string' ? (body.sessionId as string) : undefined;
+      if (action === 'status' && sessionId) {
+        url.searchParams.set('sessionId', sessionId);
+      }
 
-    const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cast-signaling`);
-    url.searchParams.set('action', action);
+      // Auth: required for pairing/commands. Include user access token when available.
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
 
-    const fetchResponse = await fetch(url.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify(body),
-    });
+      // If action likely requires auth and user isn't signed in, fail fast.
+      if (!accessToken && (action === 'pair' || action === 'command' || action === 'disconnect')) {
+        return { success: false, error: 'Please sign in to cast to TV.' };
+      }
 
-    return fetchResponse.json();
-  }, []);
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 12000);
+
+      try {
+        const res = await fetch(url.toString(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: Object.keys(body).length ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
+
+        const json = await res.json().catch(() => ({ success: false, error: 'Invalid response from server' }));
+        if (!res.ok && (json as any)?.error == null) {
+          (json as any).error = `Request failed (${res.status})`;
+        }
+        return json;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') {
+          return { success: false, error: 'Connection timed out. Please try again.' };
+        }
+        return { success: false, error: 'Network error. Please try again.' };
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    },
+    []
+  );
+
 
   // Pair with TV using code
   const pairWithCode = useCallback(async (code: string): Promise<boolean> => {
