@@ -42,11 +42,17 @@ interface HomeSection {
   display_order: number;
   is_active: boolean;
   max_items: number | null;
+  allow_duplicates: boolean;
 }
 
 interface Genre {
   id: string;
   name: string;
+}
+
+interface PlatformSetting {
+  setting_key: string;
+  setting_value: string;
 }
 
 const SECTION_TYPES = [
@@ -139,6 +145,7 @@ export const HomeSectionManagement = () => {
     card_style: "poster",
     max_items: 15,
     is_active: true,
+    allow_duplicates: false,
   });
 
   const sensors = useSensors(
@@ -167,6 +174,22 @@ export const HomeSectionManagement = () => {
     },
   });
 
+  // Fetch global deduplication setting
+  const { data: deduplicationSetting } = useQuery({
+    queryKey: ["platform-setting-deduplication"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platform_settings")
+        .select("setting_value")
+        .eq("setting_key", "home_enable_deduplication")
+        .single();
+      if (error) return { setting_value: "true" };
+      return data;
+    },
+  });
+
+  const enableDeduplication = deduplicationSetting?.setting_value !== "false";
+
   const createSection = useMutation({
     mutationFn: async (data: typeof formData) => {
       const maxOrder = sections.length > 0 ? Math.max(...sections.map(s => s.display_order)) : 0;
@@ -178,6 +201,7 @@ export const HomeSectionManagement = () => {
         max_items: data.max_items,
         is_active: data.is_active,
         display_order: maxOrder + 1,
+        allow_duplicates: data.allow_duplicates,
       });
       if (error) throw error;
     },
@@ -198,6 +222,7 @@ export const HomeSectionManagement = () => {
         card_style: data.card_style,
         max_items: data.max_items,
         is_active: data.is_active,
+        allow_duplicates: data.allow_duplicates,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -207,6 +232,25 @@ export const HomeSectionManagement = () => {
       toast.success("Section updated");
     },
     onError: () => toast.error("Failed to update section"),
+  });
+
+  // Toggle global deduplication setting
+  const toggleDeduplication = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await supabase
+        .from("platform_settings")
+        .upsert({
+          setting_key: "home_enable_deduplication",
+          setting_value: enabled ? "true" : "false",
+          description: "Enable content deduplication across home page sections",
+        }, { onConflict: "setting_key" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-setting-deduplication"] });
+      toast.success("Deduplication setting updated");
+    },
+    onError: () => toast.error("Failed to update setting"),
   });
 
   const deleteSection = useMutation({
@@ -269,6 +313,7 @@ export const HomeSectionManagement = () => {
       card_style: "poster",
       max_items: 15,
       is_active: true,
+      allow_duplicates: false,
     });
   };
 
@@ -281,6 +326,7 @@ export const HomeSectionManagement = () => {
       card_style: section.card_style,
       max_items: section.max_items || 15,
       is_active: section.is_active,
+      allow_duplicates: section.allow_duplicates || false,
     });
     setShowForm(true);
   };
@@ -316,6 +362,21 @@ export const HomeSectionManagement = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Global Deduplication Toggle */}
+        <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
+          <div>
+            <h4 className="font-medium">Content Deduplication</h4>
+            <p className="text-sm text-muted-foreground">
+              Prevent the same content from appearing in multiple sections
+            </p>
+          </div>
+          <Switch
+            checked={enableDeduplication}
+            onCheckedChange={(checked) => toggleDeduplication.mutate(checked)}
+            disabled={toggleDeduplication.isPending}
+          />
+        </div>
+
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
           <Plus className="h-4 w-4" />
           Add Section
@@ -390,6 +451,16 @@ export const HomeSectionManagement = () => {
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
                 <Label>Active</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={formData.allow_duplicates}
+                  onCheckedChange={(checked) => setFormData({ ...formData, allow_duplicates: checked })}
+                />
+                <div>
+                  <Label>Allow Duplicates</Label>
+                  <p className="text-xs text-muted-foreground">Content in this section can appear in other sections</p>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>

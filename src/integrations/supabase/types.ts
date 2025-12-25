@@ -1462,6 +1462,7 @@ export type Database = {
       }
       home_sections: {
         Row: {
+          allow_duplicates: boolean
           card_style: string
           content_type_filter: string | null
           created_at: string
@@ -1475,6 +1476,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_duplicates?: boolean
           card_style?: string
           content_type_filter?: string | null
           created_at?: string
@@ -1488,6 +1490,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_duplicates?: boolean
           card_style?: string
           content_type_filter?: string | null
           created_at?: string

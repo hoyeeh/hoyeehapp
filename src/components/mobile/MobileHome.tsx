@@ -29,6 +29,7 @@ import { MobileCastStatusIndicator } from "./MobileCastStatusIndicator";
 import { MobileHomeYouTubeRow } from "./MobileHomeYouTubeRow";
 import { MobileRecentlyWatched } from "./MobileRecentlyWatched";
 import { MobileAIRecommendations } from "./MobileAIRecommendations";
+import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -79,6 +80,22 @@ export function MobileHome() {
       return data || [];
     },
   });
+
+  // Fetch global deduplication setting
+  const { data: deduplicationSetting } = useQuery({
+    queryKey: ["mobile-home-deduplication-setting"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platform_settings")
+        .select("setting_value")
+        .eq("setting_key", "home_enable_deduplication")
+        .single();
+      if (error) return { setting_value: "true" };
+      return data;
+    },
+  });
+
+  const enableDeduplication = deduplicationSetting?.setting_value !== "false";
 
   // Fetch section content for curated sections
   const { data: sectionContentData = [] } = useQuery({
@@ -221,16 +238,17 @@ export function MobileHome() {
       .slice(0, section.max_items || 15);
   };
 
-  // Process all sections with deduplication (exempt: curated, top10, trending)
+  // Process all sections with deduplication (respects per-section allow_duplicates setting)
   const processedHomeSections = useMemo(() => {
     const displayedContentIds = new Set<string>();
-    const exemptTypes = ['curated', 'top10', 'trending'];
     
     return homeSections.map((section: any) => {
       let sectionContent = getRawSectionContent(section);
       
-      // Apply deduplication unless exempt
-      if (!exemptTypes.includes(section.section_type)) {
+      // Check per-section allow_duplicates setting, only apply deduplication if global setting is enabled
+      const shouldDeduplicate = enableDeduplication && !section.allow_duplicates;
+      
+      if (shouldDeduplicate) {
         sectionContent = sectionContent.filter((item) => {
           if (displayedContentIds.has(item.id)) {
             return false;
@@ -239,13 +257,13 @@ export function MobileHome() {
           return true;
         });
       } else {
-        // Still track exempt content for later deduplication
+        // Still track content for later deduplication
         sectionContent.forEach((item) => displayedContentIds.add(item.id));
       }
       
       return { section, content: sectionContent };
     });
-  }, [homeSections, content, newContent, sectionContentData, movies, series]);
+  }, [homeSections, content, newContent, sectionContentData, movies, series, enableDeduplication]);
 
   // Random persistent featured content for hero
   const featuredContent = useMemo(() => {
@@ -408,6 +426,11 @@ export function MobileHome() {
           {/* AI Recommendations - Smart picks based on watch history */}
           <FadeIn delay={100}>
             <MobileAIRecommendations onDetails={handleDetails} />
+          </FadeIn>
+
+          {/* Because You Watched Row */}
+          <FadeIn delay={125}>
+            <MobileBecauseYouWatchedRow onDetails={handleDetails} />
           </FadeIn>
 
           {/* Dynamic sections from database - filtered by activeFilter */}
