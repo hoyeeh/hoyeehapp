@@ -1353,6 +1353,22 @@ export const VideoPlayer = ({
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Watch Party Button */}
+              <button
+                onClick={() => {
+                  // Open watch party panel - dispatch custom event
+                  window.dispatchEvent(new CustomEvent('toggleWatchParty'));
+                }}
+                className={cn(
+                  "hidden sm:flex items-center gap-1 hover:text-brand transition-colors text-sm px-2 py-1 rounded",
+                  party && "bg-brand/20 text-brand"
+                )}
+                title={party ? `In party: ${party.party_code}` : "Start or join a watch party"}
+              >
+                <Users className="h-5 w-5" />
+                {party ? "Party" : "Watch Party"}
+              </button>
+
               {/* Admin Settings Button - only show for admins when episode is selected */}
               {isAdmin && episodeId && (
                 <button
