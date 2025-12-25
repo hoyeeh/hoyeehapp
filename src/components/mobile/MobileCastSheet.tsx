@@ -573,10 +573,7 @@ export function MobileCastSheet({
         open={showQRScanner}
         onClose={() => setShowQRScanner(false)}
         onCodeScanned={async (code) => {
-          const success = await handlePairWithCode(code);
-          if (success) {
-            setShowQRScanner(false);
-          }
+          return await handlePairWithCode(code);
         }}
       />
     </>
