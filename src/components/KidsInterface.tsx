@@ -1,4 +1,4 @@
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo, useCallback } from "react";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { Home, Search, Heart, LogOut, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,31 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   const location = useLocation();
   const isMobile = useIsMobile();
 
+  // All hooks must be called before any conditional returns
+  const getActiveTab = useCallback(() => {
+    if (location.pathname === "/search") return "search";
+    if (location.pathname === "/my-list") return "list";
+    if (location.pathname === "/kids-youtube") return "youtube";
+    return "home";
+  }, [location.pathname]);
+
+  const activeTab = getActiveTab();
+  const currentIndex = tabOrder.indexOf(activeTab);
+
+  const direction = useMemo(() => {
+    const prevPath = sessionStorage.getItem("kids_desktop_prev_tab") || "home";
+    const prevIndex = tabOrder.indexOf(prevPath as typeof activeTab);
+    sessionStorage.setItem("kids_desktop_prev_tab", activeTab);
+    return currentIndex > prevIndex ? 1 : -1;
+  }, [activeTab, currentIndex]);
+
+  const handleExit = useCallback(() => {
+    localStorage.removeItem("hoyeeh_current_profile");
+    setCurrentProfile(null as any);
+    navigate("/");
+  }, [setCurrentProfile, navigate]);
+
+  // Conditional returns AFTER all hooks are called
   if (!currentProfile?.is_kids) {
     return <>{children}</>;
   }
@@ -50,30 +75,6 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   if (isMobile) {
     return <KidsMobileInterface>{children}</KidsMobileInterface>;
   }
-
-  const getActiveTab = () => {
-    if (location.pathname === "/search") return "search";
-    if (location.pathname === "/my-list") return "list";
-    if (location.pathname === "/kids-youtube") return "youtube";
-    return "home";
-  };
-
-  const activeTab = getActiveTab();
-  const currentIndex = tabOrder.indexOf(activeTab);
-  
-  const getPrevIndex = () => {
-    const prevPath = sessionStorage.getItem("kids_desktop_prev_tab") || "home";
-    return tabOrder.indexOf(prevPath as typeof activeTab);
-  };
-  
-  const direction = currentIndex > getPrevIndex() ? 1 : -1;
-  sessionStorage.setItem("kids_desktop_prev_tab", activeTab);
-
-  const handleExit = () => {
-    localStorage.removeItem("hoyeeh_current_profile");
-    setCurrentProfile(null as any);
-    navigate("/");
-  };
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] relative overflow-hidden">
