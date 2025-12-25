@@ -14,6 +14,9 @@ import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 import { KidsYouTubePlayer } from "@/components/kids/KidsYouTubePlayer";
 import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
 import { KidsConfetti } from "@/components/kids/KidsConfetti";
+import { KidsMobileContinueWatching } from "@/components/kids/KidsMobileContinueWatching";
+import { KidsMobileAgeGroupSections } from "@/components/kids/KidsMobileAgeGroupSections";
+import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { useState, useEffect, useRef } from "react";
 
 interface KidsMobileHomeProps {
@@ -60,51 +63,64 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   const [showConfetti, setShowConfetti] = useState(false);
   const hasShownConfetti = useRef(false);
 
+  // Get parental approval settings
+  const { isContentApproved } = useKidsApprovedContent(currentProfile?.id);
+  const { requiresApproval } = useKidsProfileRequiresApproval(currentProfile?.id);
+
   const handlePlayYouTubeVideo = (videoId: string, title: string) => {
     setYoutubePlayer({ videoId, title });
   };
 
   const { data: kidsContent = [], isLoading } = useQuery({
-    queryKey: ["kids-content-mobile"],
+    queryKey: ["kids-content-mobile", currentProfile?.id],
     queryFn: async () => {
+      // Query kids content - filter by rating only at DB level
       const { data, error } = await supabase
         .from("content")
         .select("*")
         .in("content_rating", KIDS_RATINGS)
-        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
-        .or("genre.ilike.%animation%,genre.ilike.%family%,genre.ilike.%animated%,genre.ilike.%cartoon%")
         .order("created_at", { ascending: false });
       
       if (error) throw error;
       
-      // Additional client-side filter for strict compliance
-      return (data || [])
+      // Strict client-side filtering for kids compliance
+      let filtered = (data || [])
+        // Age limit filter
         .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
+        // Block specific titles
         .filter((item: any) => !isBlockedTitle(item.title || ""))
-        .filter((item: any) => isKidsAllowedGenre(item.genre))
-        .map((item: any) => ({
-          id: item.id,
-          title: item.title,
-          description: item.description || "",
-          thumbnailUrl: item.thumbnail_url || "",
-          videoUrl: item.video_url || "",
-          genre: item.genre || "",
-          contentType: item.content_type as "movie" | "series",
-          isPremium: item.is_premium || false,
-          duration: item.duration || 0,
-          year: item.year,
-          contentRating: item.content_rating,
-        })) as Content[];
+        // Genre filter - ONLY Animation and Family
+        .filter((item: any) => isKidsAllowedGenre(item.genre));
+
+      return filtered.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description || "",
+        thumbnailUrl: item.thumbnail_url || "",
+        videoUrl: item.video_url || "",
+        genre: item.genre || "",
+        contentType: item.content_type as "movie" | "series",
+        isPremium: item.is_premium || false,
+        duration: item.duration || 0,
+        year: item.year,
+        contentRating: item.content_rating,
+        age_limit: item.age_limit,
+      })) as Content[];
     },
   });
 
+  // Apply parental approval filter if enabled
+  const displayContent = requiresApproval 
+    ? kidsContent.filter(c => isContentApproved(c.id))
+    : kidsContent;
+
   // Prioritize animation content
-  const animationContent = kidsContent.filter((c) => 
+  const animationContent = displayContent.filter((c) => 
     c.genre?.toLowerCase().includes("animation") || 
     c.genre?.toLowerCase().includes("animated") ||
     c.genre?.toLowerCase().includes("cartoon")
   );
-  const nonAnimationContent = kidsContent.filter((c) => 
+  const nonAnimationContent = displayContent.filter((c) => 
     !c.genre?.toLowerCase().includes("animation") && 
     !c.genre?.toLowerCase().includes("animated") &&
     !c.genre?.toLowerCase().includes("cartoon")
@@ -113,8 +129,18 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   // Sort content with animation first
   const sortedContent = [...animationContent, ...nonAnimationContent];
   
-  const movies = kidsContent.filter((c) => c.contentType === "movie");
-  const shows = kidsContent.filter((c) => c.contentType === "series");
+  const movies = displayContent.filter((c) => c.contentType === "movie");
+  const shows = displayContent.filter((c) => c.contentType === "series");
+
+  // Trigger confetti when content loads
+  useEffect(() => {
+    if (!isLoading && displayContent.length > 0 && !hasShownConfetti.current) {
+      hasShownConfetti.current = true;
+      setShowConfetti(true);
+      const timer = setTimeout(() => setShowConfetti(false), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, displayContent.length]);
 
   // Bedtime screen
   if (isBedtime) {
@@ -195,16 +221,6 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
     );
   }
 
-  // Trigger confetti when content loads
-  useEffect(() => {
-    if (!isLoading && kidsContent.length > 0 && !hasShownConfetti.current) {
-      hasShownConfetti.current = true;
-      setShowConfetti(true);
-      const timer = setTimeout(() => setShowConfetti(false), 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, kidsContent.length]);
-
   return (
     <div className="space-y-6 pb-8">
       {/* Confetti celebration */}
@@ -230,6 +246,9 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
           </span>
         </motion.div>
       )}
+
+      {/* Continue Watching */}
+      <KidsMobileContinueWatching onPlay={onPlay} onDetails={onDetails} />
 
       {/* Animation Section - Featured First */}
       {animationContent.length > 0 && (
@@ -261,8 +280,11 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
         </motion.section>
       )}
 
+      {/* Age Group Sections */}
+      <KidsMobileAgeGroupSections content={displayContent} onPlay={onPlay} onDetails={onDetails} />
+
       {/* Trending Now */}
-      {kidsContent.length > 0 && (
+      {displayContent.length > 0 && (
         <motion.section 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -353,13 +375,17 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       )}
 
       {/* Empty State */}
-      {kidsContent.length === 0 && (
+      {displayContent.length === 0 && (
         <div className="flex flex-col items-center justify-center min-h-[50vh] px-8 text-center">
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center mb-6">
             <Film className="h-10 w-10 text-white" strokeWidth={1.5} />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2 tracking-[-0.02em]">No Shows Yet</h2>
-          <p className="text-[15px] text-white/50 font-medium">Check back soon for fun content!</p>
+          <p className="text-[15px] text-white/50 font-medium">
+            {requiresApproval 
+              ? "Ask a parent to approve some content!" 
+              : "Check back soon for fun content!"}
+          </p>
         </div>
       )}
     </div>

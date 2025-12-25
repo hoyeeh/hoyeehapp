@@ -1510,6 +1510,48 @@ export type Database = {
           },
         ]
       }
+      kids_approved_content: {
+        Row: {
+          approved_at: string
+          content_id: string
+          id: string
+          notes: string | null
+          parent_user_id: string
+          profile_id: string
+        }
+        Insert: {
+          approved_at?: string
+          content_id: string
+          id?: string
+          notes?: string | null
+          parent_user_id: string
+          profile_id: string
+        }
+        Update: {
+          approved_at?: string
+          content_id?: string
+          id?: string
+          notes?: string | null
+          parent_user_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_approved_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kids_approved_content_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kids_categories: {
         Row: {
           color: string
@@ -2464,6 +2506,7 @@ export type Database = {
           is_kids: boolean
           last_time_reset: string | null
           name: string
+          require_parent_approval: boolean | null
           time_watched_today_minutes: number | null
           updated_at: string
           user_id: string
@@ -2477,6 +2520,7 @@ export type Database = {
           is_kids?: boolean
           last_time_reset?: string | null
           name: string
+          require_parent_approval?: boolean | null
           time_watched_today_minutes?: number | null
           updated_at?: string
           user_id: string
@@ -2490,6 +2534,7 @@ export type Database = {
           is_kids?: boolean
           last_time_reset?: string | null
           name?: string
+          require_parent_approval?: boolean | null
           time_watched_today_minutes?: number | null
           updated_at?: string
           user_id?: string
