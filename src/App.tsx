@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { CastProvider } from "@/contexts/CastContext";
@@ -60,6 +61,7 @@ import TVReceiver from "./pages/TVReceiver";
 import TVApp from "./pages/TVApp";
 import KidsYouTube from "./pages/KidsYouTube";
 import Cast from "./pages/Cast";
+import WatchParty from "./pages/WatchParty";
 
 const queryClient = new QueryClient();
 
@@ -173,77 +175,79 @@ function DownloadQueueWrapper() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <ProfileProvider>
-        <WatchPartyProvider>
-          <MobileVideoPlayerProvider>
-            <MobileYouTubePlayerProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <SubscriptionExpiryChecker />
-                <OfflineIndicator />
-                <PWAInstallBanner />
-                <DownloadQueueWrapper />
-                <BrowserRouter>
-                  <PWAUpdateHandler />
-                  <PWANavigationHandler />
-                  <CapacitorBackHandler />
-                  <CastProvider>
-                    <PusherNotificationHandler />
-                    <PersistentWatchPartyPanel />
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/pin-auth" element={<PinAuth />} />
-                      <Route path="/forgot-password" element={<ForgotPassword />} />
-                      <Route path="/reset-password" element={<ResetPassword />} />
-                      <Route path="/subscription" element={<Subscription />} />
-                      <Route path="/admin" element={<Admin />} />
-                      <Route path="/analytics" element={<Analytics />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/content/:id" element={<ContentDetail />} />
-                      <Route path="/my-list" element={<MyList />} />
-                      <Route path="/downloads" element={<Downloads />} />
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/search" element={<Search />} />
-                      <Route path="/genres" element={<Genres />} />
-                      <Route path="/terms" element={<TermsOfUse />} />
-                      <Route path="/privacy" element={<Privacy />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/help" element={<HelpCenter />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/support" element={<Support />} />
-                      <Route path="/copyright" element={<Copyright />} />
-                      <Route path="/install" element={<Install />} />
-                      <Route path="/notifications" element={<Notifications />} />
-                      <Route path="/notification-preferences" element={<NotificationPreferences />} />
-                      <Route path="/parental" element={<Parental />} />
-                      <Route path="/parental" element={<Parental />} />
-                      <Route path="/coming-soon" element={<ComingSoon />} />
-                      <Route path="/youtube" element={<YouTubeChannels />} />
-                      <Route path="/watch-later" element={<WatchLater />} />
-                      <Route path="/creator-store" element={<CreatorStore />} />
-                      <Route path="/creator-dashboard" element={<CreatorDashboard />} />
-                      <Route path="/tv" element={<TV />} />
-                      <Route path="/tv-receiver" element={<TVReceiver />} />
-                      <Route path="/tv-app" element={<TVApp />} />
-                      <Route path="/kids-youtube" element={<KidsYouTube />} />
-                      <Route path="/cast" element={<Cast />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                    <PersistentMobileVideoPlayer />
-                    <PersistentMobileYouTubePlayer />
-                  </CastProvider>
-                </BrowserRouter>
-              </TooltipProvider>
-            </MobileYouTubePlayerProvider>
-          </MobileVideoPlayerProvider>
-        </WatchPartyProvider>
-      </ProfileProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ProfileProvider>
+          <WatchPartyProvider>
+            <MobileVideoPlayerProvider>
+              <MobileYouTubePlayerProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <SubscriptionExpiryChecker />
+                  <OfflineIndicator />
+                  <PWAInstallBanner />
+                  <DownloadQueueWrapper />
+                  <BrowserRouter>
+                    <PWAUpdateHandler />
+                    <PWANavigationHandler />
+                    <CapacitorBackHandler />
+                    <CastProvider>
+                      <PusherNotificationHandler />
+                      <PersistentWatchPartyPanel />
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/pin-auth" element={<PinAuth />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
+                        <Route path="/subscription" element={<Subscription />} />
+                        <Route path="/admin" element={<Admin />} />
+                        <Route path="/analytics" element={<Analytics />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/content/:id" element={<ContentDetail />} />
+                        <Route path="/my-list" element={<MyList />} />
+                        <Route path="/downloads" element={<Downloads />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/search" element={<Search />} />
+                        <Route path="/genres" element={<Genres />} />
+                        <Route path="/terms" element={<TermsOfUse />} />
+                        <Route path="/privacy" element={<Privacy />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/help" element={<HelpCenter />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/support" element={<Support />} />
+                        <Route path="/copyright" element={<Copyright />} />
+                        <Route path="/install" element={<Install />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/notification-preferences" element={<NotificationPreferences />} />
+                        <Route path="/parental" element={<Parental />} />
+                        <Route path="/coming-soon" element={<ComingSoon />} />
+                        <Route path="/youtube" element={<YouTubeChannels />} />
+                        <Route path="/watch-later" element={<WatchLater />} />
+                        <Route path="/watch-party" element={<WatchParty />} />
+                        <Route path="/creator-store" element={<CreatorStore />} />
+                        <Route path="/creator-dashboard" element={<CreatorDashboard />} />
+                        <Route path="/tv" element={<TV />} />
+                        <Route path="/tv-receiver" element={<TVReceiver />} />
+                        <Route path="/tv-app" element={<TVApp />} />
+                        <Route path="/kids-youtube" element={<KidsYouTube />} />
+                        <Route path="/cast" element={<Cast />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                      <PersistentMobileVideoPlayer />
+                      <PersistentMobileYouTubePlayer />
+                    </CastProvider>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </MobileYouTubePlayerProvider>
+            </MobileVideoPlayerProvider>
+          </WatchPartyProvider>
+        </ProfileProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

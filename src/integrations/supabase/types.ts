@@ -2771,6 +2771,7 @@ export type Database = {
           content_id: string
           created_at: string | null
           episode_id: string | null
+          has_started: boolean | null
           host_user_id: string
           id: string
           is_active: boolean | null
@@ -2783,6 +2784,7 @@ export type Database = {
           content_id: string
           created_at?: string | null
           episode_id?: string | null
+          has_started?: boolean | null
           host_user_id: string
           id?: string
           is_active?: boolean | null
@@ -2795,6 +2797,7 @@ export type Database = {
           content_id?: string
           created_at?: string | null
           episode_id?: string | null
+          has_started?: boolean | null
           host_user_id?: string
           id?: string
           is_active?: boolean | null

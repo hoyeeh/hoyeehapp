@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles, Crown, Lock, AlertTriangle } from "lucide-react";
+import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles, Crown, Lock, AlertTriangle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
@@ -154,10 +154,44 @@ export const PersistentWatchPartyPanel = () => {
     }
   };
 
+  const getShareData = () => {
+    if (!party?.party_code) return null;
+    const baseUrl = window.location.origin;
+    const shareLink = `${baseUrl}/watch-party?code=${party.party_code}`;
+    return {
+      code: party.party_code,
+      link: shareLink,
+      text: `🎬 Join my Watch Party on Hoyeeh!\n\nParty Code: ${party.party_code}\n\nJoin here: ${shareLink}`
+    };
+  };
+
   const copyCode = () => {
-    if (party?.party_code) {
-      navigator.clipboard.writeText(party.party_code);
-      toast.success("Party code copied!");
+    const shareData = getShareData();
+    if (shareData) {
+      navigator.clipboard.writeText(shareData.text);
+      toast.success("Party invite copied! Share it with friends.");
+    }
+  };
+
+  const shareParty = async () => {
+    const shareData = getShareData();
+    if (!shareData) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Join my Watch Party on Hoyeeh!",
+          text: `Party Code: ${shareData.code}`,
+          url: shareData.link
+        });
+      } catch (error: any) {
+        // User cancelled or share failed - fallback to copy
+        if (error.name !== "AbortError") {
+          copyCode();
+        }
+      }
+    } else {
+      copyCode();
     }
   };
 
@@ -270,16 +304,26 @@ export const PersistentWatchPartyPanel = () => {
           <>
             {/* Party Code */}
             <div className="px-4 py-3">
-              <div className="p-3 bg-secondary rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Party Code</p>
-                  <p className="text-xl font-mono font-bold tracking-widest">
-                    {party.party_code}
-                  </p>
+              <div className="p-3 bg-secondary rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Party Code</p>
+                    <p className="text-xl font-mono font-bold tracking-widest">
+                      {party.party_code}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={copyCode} title="Copy invite">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={shareParty} title="Share party">
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={copyCode}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Share the code or link with friends to invite them!
+                </p>
               </div>
             </div>
 
