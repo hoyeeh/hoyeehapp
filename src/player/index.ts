@@ -1,5 +1,20 @@
-// Hoyeeh Player Core - Unified Video Player System
-// Re-exports for easy imports
+// Hoyeeh Player - Unified Video Player System
+// 
+// This module provides a unified video player system across all platforms:
+// - Desktop (DesktopPlayer)
+// - Mobile/PWA (MobilePlayer)  
+// - Kids App (KidsPlayer)
+// - TV Receiver (uses core PlayerEngine logic)
+//
+// Key Features:
+// - Shared PlayerEngine with idempotent load/seek
+// - Cast integration via CastController/CastReceiver adapters
+// - Analytics tracking via AnalyticsAdapter
+// - Platform-specific UI skins
+//
+// Usage:
+// import { DesktopPlayer, MobilePlayer, KidsPlayer } from '@/player';
+// import { createPlayer, formatTime } from '@/player';
 
 // Core Engine
 export { createPlayer } from './core/PlayerEngine';
@@ -57,3 +72,11 @@ export * from './adapters/cast';
 // Analytics Adapter
 export { createAnalyticsAdapter } from './adapters/analytics/AnalyticsAdapter';
 export type { AnalyticsAdapterInstance, AnalyticsOptions } from './adapters/analytics/AnalyticsAdapter';
+
+// UI Components (Platform-specific skins using shared PlayerEngine)
+export { DesktopPlayer } from './ui/desktop/DesktopPlayer';
+export { MobilePlayer } from './ui/mobile/MobilePlayer';
+export { KidsPlayer } from './ui/kids/KidsPlayer';
+
+// Migration helpers
+export * from './migration';
