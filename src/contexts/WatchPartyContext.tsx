@@ -12,6 +12,7 @@ interface WatchParty {
   is_active: boolean;
   playback_time: number;
   is_playing: boolean;
+  has_started: boolean;
   created_at: string;
 }
 
@@ -126,7 +127,8 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           party_code: code,
           is_active: true,
           playback_time: 0,
-          is_playing: false
+          is_playing: false,
+          has_started: false
         })
         .select()
         .single();
@@ -142,11 +144,25 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           is_ready: true
         });
 
-      setParty(data);
+      // Map to WatchParty type (cast needed since types file may not have has_started yet)
+      const partyData: WatchParty = {
+        id: data.id,
+        host_user_id: data.host_user_id,
+        content_id: data.content_id,
+        episode_id: data.episode_id,
+        party_code: data.party_code,
+        is_active: data.is_active ?? true,
+        playback_time: data.playback_time ?? 0,
+        is_playing: data.is_playing ?? false,
+        has_started: (data as any).has_started ?? false,
+        created_at: data.created_at
+      };
+
+      setParty(partyData);
       setIsHost(true);
       setMessages([]);
       toast.success(`Watch party created! Code: ${code}`);
-      return data;
+      return partyData;
     } catch (error: any) {
       console.error("Failed to create watch party:", error);
       toast.error("Failed to create watch party");
@@ -175,6 +191,11 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           toast.error("Party not found or has ended");
         } else if (rpcError.message?.includes('authenticated')) {
           toast.error("Please sign in to join a watch party");
+        } else if (rpcError.message?.includes('already started')) {
+          toast.error("This watch party has already started. No new members can join once playback begins.", {
+            duration: 5000,
+            icon: "🔒"
+          });
         } else {
           toast.error("Failed to join watch party");
         }
@@ -197,6 +218,7 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
         host_user_id: partyResult.host_user_id,
         playback_time: partyResult.playback_time ?? 0,
         is_playing: partyResult.is_playing ?? false,
+        has_started: partyResult.has_started ?? false,
         party_code: partyResult.party_code_out,
         is_active: true,
         created_at: new Date().toISOString()
@@ -205,6 +227,15 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
       setParty(partyData);
       setIsHost(partyData.host_user_id === user.id);
       setMessages([]);
+      
+      // Show waiting toast for non-hosts if party hasn't started yet
+      if (partyData.host_user_id !== user.id && !partyData.has_started) {
+        toast.info("Waiting for the host to start the watch party...", {
+          duration: 5000,
+          icon: "⏳"
+        });
+      }
+      
       toast.success("Joined watch party!");
       return partyData;
     } catch (error: any) {
@@ -364,17 +395,27 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
     if (!party || !isHost) return;
 
     try {
-      // Reset playback to beginning and start playing
+      // Set has_started to true, reset playback to beginning and start playing
       await supabase
         .from('watch_parties')
         .update({ 
           playback_time: 0, 
           is_playing: true,
+          has_started: true,
           updated_at: new Date().toISOString()
         })
         .eq('id', party.id);
 
-      toast.success("Starting playback for everyone!");
+      // Broadcast start event to all members via reactions channel
+      if (reactionChannelRef.current) {
+        reactionChannelRef.current.send({
+          type: 'broadcast',
+          event: 'start_playback',
+          payload: { time: 0, startedAt: Date.now() }
+        });
+      }
+
+      toast.success("🎬 Starting playback for everyone!");
     } catch (error) {
       console.error("Failed to start watching together:", error);
       toast.error("Failed to start playback");
@@ -398,7 +439,19 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
         },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as WatchParty;
+            const rawData = payload.new as any;
+            const updated: WatchParty = {
+              id: rawData.id,
+              host_user_id: rawData.host_user_id,
+              content_id: rawData.content_id,
+              episode_id: rawData.episode_id,
+              party_code: rawData.party_code,
+              is_active: rawData.is_active ?? true,
+              playback_time: rawData.playback_time ?? 0,
+              is_playing: rawData.is_playing ?? false,
+              has_started: rawData.has_started ?? false,
+              created_at: rawData.created_at
+            };
             setParty(updated);
             
             if (!updated.is_active) {

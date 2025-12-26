@@ -532,6 +532,29 @@ export const VideoPlayer = ({
     return () => clearInterval(interval);
   }, [party, isHost, syncToParty]);
 
+  // Watch Party - listen for start_playback broadcast from host
+  useEffect(() => {
+    if (!party || isHost) return;
+    
+    const channel = supabase
+      .channel(`watch-party-reactions-${party.id}`)
+      .on('broadcast', { event: 'start_playback' }, (payload) => {
+        console.log('[VideoPlayer] Received start_playback broadcast:', payload);
+        const video = videoRef.current;
+        if (video) {
+          // Force sync to start position and begin playback
+          video.currentTime = 0;
+          video.play().catch(console.error);
+          toast.success("🎬 Playback started!", { duration: 3000 });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [party?.id, isHost]);
+
   // Watch Party - host sends playback updates
   useEffect(() => {
     if (!party || !isHost) return;

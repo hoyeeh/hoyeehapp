@@ -3303,6 +3303,7 @@ export type Database = {
         Returns: {
           content_id: string
           episode_id: string
+          has_started: boolean
           host_user_id: string
           is_playing: boolean
           party_code_out: string
