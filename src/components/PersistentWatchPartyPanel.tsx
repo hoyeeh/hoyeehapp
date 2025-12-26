@@ -95,6 +95,25 @@ export const PersistentWatchPartyPanel = () => {
     prevHasStartedRef.current = hasStarted;
   }, [party, isHost]);
 
+  // Listen for party start broadcast and auto-navigate members to content
+  useEffect(() => {
+    const handlePartyStarted = (event: Event) => {
+      const customEvent = event as CustomEvent<{ contentId: string; episodeId?: string; playbackTime?: number }>;
+      if (!isHost && party) {
+        const { contentId, episodeId } = customEvent.detail;
+        const url = episodeId 
+          ? `/content/${contentId}?episode=${episodeId}` 
+          : `/content/${contentId}`;
+        navigate(url);
+        setIsOpen(false);
+        toast.success("🎬 Let's watch! Taking you to the video...");
+      }
+    };
+
+    window.addEventListener('watchPartyStarted', handlePartyStarted);
+    return () => window.removeEventListener('watchPartyStarted', handlePartyStarted);
+  }, [isHost, party, navigate]);
+
   // If context is not available, don't render
   if (!context) {
     return null;
@@ -534,6 +553,7 @@ export const PersistentWatchPartyPanel = () => {
             onClick={() => {
               startWatchingTogether?.();
               setShowStartConfirmation(false);
+              setIsOpen(false); // Close the panel after starting
             }}
             className="bg-green-600 hover:bg-green-700"
           >
