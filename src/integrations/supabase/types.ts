@@ -100,6 +100,10 @@ export type Database = {
       }
       cast_sessions: {
         Row: {
+          command_payload: Json | null
+          command_seq: number | null
+          command_type: string | null
+          command_updated_at: string | null
           controller_user_id: string | null
           created_at: string | null
           expires_at: string | null
@@ -118,6 +122,10 @@ export type Database = {
           volume_level: number | null
         }
         Insert: {
+          command_payload?: Json | null
+          command_seq?: number | null
+          command_type?: string | null
+          command_updated_at?: string | null
           controller_user_id?: string | null
           created_at?: string | null
           expires_at?: string | null
@@ -136,6 +144,10 @@ export type Database = {
           volume_level?: number | null
         }
         Update: {
+          command_payload?: Json | null
+          command_seq?: number | null
+          command_type?: string | null
+          command_updated_at?: string | null
           controller_user_id?: string | null
           created_at?: string | null
           expires_at?: string | null
