@@ -470,11 +470,19 @@
 
       // State tracking to prevent reload loops
       var loadedVideoUrl = null;
+      var pendingVideoUrl = null;
       var isVideoLoading = false;
+      var isHandlingUpdate = false;
       var lastIsPlaying = null;
       var userHasInteracted = false;
       var playPromisePending = false;
       var useRealtimeUpdates = true;
+      
+      // Command deduplication
+      var lastCommandKey = null;
+      
+      // Abort tracking - don't retry on recent aborts
+      var lastAbortTime = 0;
 
       // Supported video types for preflight check
       var SUPPORTED_VIDEO_TYPES = [
@@ -793,10 +801,18 @@
           duration: session.video_duration || 0,
           isPlaying: session.is_playing || false,
           volume: session.volume_level || 100,
-          queue: session.queue || []
+          queue: session.queue || [],
+          updatedAt: session.updated_at || session.last_heartbeat || ''
         };
 
         handleSessionUpdate(formattedSession);
+      }
+
+      // Generate command key for deduplication
+      function getCommandKey(session) {
+        return (session.videoUrl || '') + '|' + 
+               (session.isPlaying ? '1' : '0') + '|' +
+               (session.updatedAt || '');
       }
 
       function startPolling() {
@@ -808,6 +824,12 @@
         var pollFrequency = useRealtimeUpdates ? 10000 : 2000;
 
         pollInterval = setInterval(function() {
+          // Skip polling if currently handling an update or loading
+          if (isHandlingUpdate || isVideoLoading) {
+            console.log('[TV] Poll skipped (busy)');
+            return;
+          }
+
           checkStatus().then(function(result) {
             if (result.success) {
               // Only use polling updates if realtime is not working
@@ -829,39 +851,65 @@
       }
 
       function handleSessionUpdate(session) {
-        if (session.status === 'paired' || session.status === 'active') {
-          document.getElementById('status').textContent = 'Connected!';
-          document.getElementById('status').classList.add('connected');
-
-          // Update queue
-          if (session.queue && Array.isArray(session.queue)) {
-            currentQueue = session.queue;
-            renderQueue();
-          }
-
-          if (session.videoUrl) {
-            // Only load video if URL changed or not currently loaded
-            if (session.videoUrl !== loadedVideoUrl) {
-              console.log('[TV] New video URL detected, loading:', session.videoUrl);
-              showPlayer(session);
-            } else {
-              // Same video - just sync playback state without reloading
-              console.log('[TV] Same video, syncing state only');
-              syncPlaybackState(session);
-            }
-          } else {
-            loadedVideoUrl = null;
-            showIdleScreen();
-          }
-
-          startHeartbeat();
+        // Guard against overlapping updates
+        if (isHandlingUpdate) {
+          console.log('[TV] Already handling update, skipping');
+          return;
         }
 
-        if (session.status === 'disconnected') {
-          loadedVideoUrl = null;
-          cleanupRealtime();
-          showPairingScreen();
-          generatePairingCode();
+        // Command deduplication - ignore duplicate commands
+        var commandKey = getCommandKey(session);
+        if (commandKey === lastCommandKey) {
+          console.log('[TV] Duplicate command key, ignoring');
+          return;
+        }
+
+        isHandlingUpdate = true;
+        lastCommandKey = commandKey;
+
+        try {
+          if (session.status === 'paired' || session.status === 'active') {
+            document.getElementById('status').textContent = 'Connected!';
+            document.getElementById('status').classList.add('connected');
+
+            // Update queue
+            if (session.queue && Array.isArray(session.queue)) {
+              currentQueue = session.queue;
+              renderQueue();
+            }
+
+            if (session.videoUrl) {
+              // Check if this URL is already loaded, pending, or loading
+              var urlAlreadyActive = session.videoUrl === loadedVideoUrl || 
+                                     session.videoUrl === pendingVideoUrl;
+              
+              if (!urlAlreadyActive && !isVideoLoading) {
+                console.log('[TV] New video URL detected, loading:', session.videoUrl);
+                showPlayer(session);
+              } else {
+                // Same video - just sync playback state without reloading
+                console.log('[TV] Same video (loaded/pending), syncing state only');
+                syncPlaybackState(session);
+              }
+            } else {
+              loadedVideoUrl = null;
+              pendingVideoUrl = null;
+              showIdleScreen();
+            }
+
+            startHeartbeat();
+          }
+
+          if (session.status === 'disconnected') {
+            loadedVideoUrl = null;
+            pendingVideoUrl = null;
+            lastCommandKey = null;
+            cleanupRealtime();
+            showPairingScreen();
+            generatePairingCode();
+          }
+        } finally {
+          isHandlingUpdate = false;
         }
       }
 
@@ -882,14 +930,8 @@
         // Update title if needed
         document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
         
-        // Sync seek position if significantly different (more than 3 seconds)
-        if (session.playbackTime !== undefined && !isNaN(session.playbackTime)) {
-          var timeDiff = Math.abs(video.currentTime - session.playbackTime);
-          if (timeDiff > 3) {
-            console.log('[TV] Seeking to:', session.playbackTime, 'current:', video.currentTime);
-            video.currentTime = session.playbackTime;
-          }
-        }
+        // Safe seek - only if metadata ready and delta > 1.5 seconds
+        safeSeek(session.playbackTime);
 
         // Sync play/pause state
         if (session.isPlaying !== undefined && session.isPlaying !== lastIsPlaying) {
@@ -906,6 +948,27 @@
         // Sync volume
         if (session.volume !== undefined) {
           video.volume = session.volume / 100;
+        }
+      }
+
+      // Safe seek function - only seeks after metadata loaded and if delta significant
+      function safeSeek(targetTime) {
+        if (targetTime === undefined || isNaN(targetTime)) return;
+        
+        // Check if metadata is ready (readyState >= 1 = HAVE_METADATA)
+        if (video.readyState < 1) {
+          console.log('[TV] Cannot seek, metadata not ready');
+          return;
+        }
+        
+        var delta = Math.abs(video.currentTime - targetTime);
+        if (delta > 1.5) {
+          console.log('[TV] Safe seeking to:', targetTime, 'delta:', delta.toFixed(1));
+          if (video.fastSeek && typeof video.fastSeek === 'function') {
+            video.fastSeek(targetTime);
+          } else {
+            video.currentTime = targetTime;
+          }
         }
       }
 
@@ -1034,14 +1097,40 @@
           return;
         }
 
-        // Prevent loading if already loading or same URL
-        if (isVideoLoading && url === loadedVideoUrl) {
-          console.log('[TV] Already loading this video, skipping');
+        // GUARD 1: Check if this URL is already pending (load in progress)
+        if (url === pendingVideoUrl) {
+          console.log('[TV] Video already pending, skipping duplicate call');
           return;
         }
 
+        // GUARD 2: Check if same URL already loaded and playing
+        if (url === loadedVideoUrl && !isVideoLoading) {
+          console.log('[TV] Video already loaded, syncing time only');
+          safeSeek(startTime);
+          safePlay();
+          return;
+        }
+
+        // GUARD 3: Prevent overlapping loads
+        if (isVideoLoading) {
+          console.log('[TV] Load in progress, skipping (URL changed from', pendingVideoUrl, 'to', url, ')');
+          // If URL changed, we need to abort and reload - but let current load finish
+          return;
+        }
+
+        // GUARD 4: Don't retry immediately after an abort
+        var timeSinceAbort = Date.now() - lastAbortTime;
+        if (timeSinceAbort < 500) {
+          console.log('[TV] Recent abort detected, delaying load');
+          setTimeout(function() {
+            loadVideo(url, startTime);
+          }, 500);
+          return;
+        }
+
+        // Set pending IMMEDIATELY before any async work
+        pendingVideoUrl = url;
         isVideoLoading = true;
-        loadedVideoUrl = url;
         retryCount = 0;
         lastIsPlaying = null;
         hideError();
@@ -1050,8 +1139,16 @@
         performPreflightCheck(url).then(function(result) {
           hidePreflight();
 
+          // Check if URL changed during preflight
+          if (pendingVideoUrl !== url) {
+            console.log('[TV] URL changed during preflight, aborting');
+            isVideoLoading = false;
+            return;
+          }
+
           if (!result.success) {
             isVideoLoading = false;
+            pendingVideoUrl = null;
             
             // Show user-friendly error based on error code
             var errorTitle = 'Cannot Play Video';
@@ -1083,6 +1180,16 @@
       }
 
       function actuallyLoadVideo(url, startTime) {
+        // Final safety check - video element already has this URL and is ready
+        if (video.src === url && video.readyState >= 2 && !video.error) {
+          console.log('[TV] Video element already has this URL and is ready, skipping reload');
+          pendingVideoUrl = null;
+          loadedVideoUrl = url;
+          isVideoLoading = false;
+          safeSeek(startTime);
+          safePlay();
+          return;
+        }
         showLoading('Loading video...');
 
         if (hls) {
@@ -1098,6 +1205,8 @@
         var isHLS = url.indexOf('.m3u8') !== -1;
         var hlsSupported = typeof Hls !== 'undefined' && Hls.isSupported();
         
+        var targetUrl = url; // Capture for closure
+
         if (isHLS && hlsSupported) {
           console.log('[TV] Using HLS.js for m3u8 stream');
           hls = new Hls({
@@ -1115,6 +1224,8 @@
           hls.on(Hls.Events.MANIFEST_PARSED, function() {
             console.log('[TV] HLS manifest parsed, starting playback');
             isVideoLoading = false;
+            loadedVideoUrl = targetUrl;
+            pendingVideoUrl = null;
             video.currentTime = startTime;
             attemptPlay();
           });
@@ -1152,6 +1263,8 @@
           video.addEventListener('loadedmetadata', function onMeta() {
             video.removeEventListener('loadedmetadata', onMeta);
             isVideoLoading = false;
+            loadedVideoUrl = targetUrl;
+            pendingVideoUrl = null;
             video.currentTime = startTime;
             attemptPlay();
           });
@@ -1162,6 +1275,8 @@
             video.removeEventListener('loadedmetadata', onMeta);
             console.log('[TV] Video metadata loaded');
             isVideoLoading = false;
+            loadedVideoUrl = targetUrl;
+            pendingVideoUrl = null;
             video.currentTime = startTime;
             attemptPlay();
           });
@@ -1336,6 +1451,8 @@
       video.addEventListener('abort', function() { 
         console.log('[TV] Video abort'); 
         isVideoLoading = false;
+        lastAbortTime = Date.now();
+        // Do NOT auto-retry on abort - wait for new command
       });
 
       function showIdleScreen() {
