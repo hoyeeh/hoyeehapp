@@ -8,18 +8,31 @@
   <link rel="apple-touch-icon" href="/hoyeeh-icon.png">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
+    html, body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      background: -webkit-linear-gradient(315deg, #0a0a0a 0%, #1a1a2e 100%);
       background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
       color: white;
+      height: 100%;
       min-height: 100vh;
       overflow: hidden;
     }
     .container {
+      display: -webkit-box;
+      display: -webkit-flex;
       display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
       flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
       align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
       justify-content: center;
+      height: 100%;
       min-height: 100vh;
       padding: 40px;
     }
@@ -38,6 +51,7 @@
       padding: 20px;
       background: white;
       border-radius: 16px;
+      width: -webkit-fit-content;
       width: fit-content;
     }
     .qr-container canvas,
@@ -53,8 +67,8 @@
     .expires { margin-top: 20px; font-size: 16px; color: #666; }
     .player-container {
       display: none;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       position: fixed;
       top: 0;
       left: 0;
@@ -67,9 +81,11 @@
       bottom: 0;
       left: 0;
       right: 0;
+      background: -webkit-linear-gradient(top, transparent, rgba(0,0,0,0.9));
       background: linear-gradient(transparent, rgba(0,0,0,0.9));
       padding: 40px;
       opacity: 0;
+      -webkit-transition: opacity 0.3s;
       transition: opacity 0.3s;
     }
     .player-container:hover .player-overlay,
@@ -83,8 +99,8 @@
       margin-bottom: 20px;
       cursor: pointer;
     }
-    .progress-fill { height: 100%; background: #ff6300; border-radius: 4px; transition: width 0.1s; }
-    .controls { display: flex; align-items: center; gap: 20px; }
+    .progress-fill { height: 100%; background: #ff6300; border-radius: 4px; -webkit-transition: width 0.1s; transition: width 0.1s; }
+    .controls { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; gap: 20px; }
     .time-display { font-size: 18px; color: #aaa; }
     .now-playing-badge {
       position: absolute;
@@ -102,16 +118,17 @@
       border: 4px solid rgba(255,99,0,0.2);
       border-top-color: #ff6300;
       border-radius: 50%;
+      -webkit-animation: spin 1s linear infinite;
       animation: spin 1s linear infinite;
       margin: 20px auto;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
+    @keyframes spin { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
     .error-message { color: #ef4444; font-size: 18px; margin-top: 20px; }
     .idle-screen { display: none; text-align: center; }
     .idle-screen.active { display: block; }
     .idle-screen h2 { font-size: 36px; margin-bottom: 20px; }
     .idle-screen p { font-size: 20px; color: #aaa; }
-    /* Queue Panel */
     .queue-panel {
       position: absolute;
       top: 20px;
@@ -123,13 +140,18 @@
       max-height: 400px;
       overflow-y: auto;
       opacity: 0;
+      -webkit-transition: opacity 0.3s;
       transition: opacity 0.3s;
     }
     .player-container:hover .queue-panel,
     .queue-panel.visible { opacity: 1; }
     .queue-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #ff6300; }
     .queue-item {
+      display: -webkit-box;
+      display: -webkit-flex;
       display: flex;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
       align-items: center;
       gap: 10px;
       padding: 8px;
@@ -139,12 +161,11 @@
     }
     .queue-item.active { background: rgba(255,99,0,0.2); border: 1px solid #ff6300; }
     .queue-item img { width: 60px; height: 34px; object-fit: cover; border-radius: 4px; }
-    .queue-item-info { flex: 1; overflow: hidden; }
+    .queue-item-info { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; overflow: hidden; }
     .queue-item-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .queue-item-number { font-size: 10px; color: #aaa; }
     .queue-empty { font-size: 14px; color: #666; text-align: center; padding: 20px 0; }
     
-    /* Video Loading & Error States */
     .video-loading-overlay {
       position: absolute;
       top: 0;
@@ -152,9 +173,18 @@
       right: 0;
       bottom: 0;
       background: rgba(0,0,0,0.8);
+      display: -webkit-box;
+      display: -webkit-flex;
       display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
       flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
       align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
       justify-content: center;
       z-index: 10;
     }
@@ -165,6 +195,7 @@
       border: 6px solid rgba(255,99,0,0.2);
       border-top-color: #ff6300;
       border-radius: 50%;
+      -webkit-animation: spin 1s linear infinite;
       animation: spin 1s linear infinite;
     }
     .loading-text { margin-top: 20px; font-size: 18px; color: #aaa; }
@@ -176,9 +207,18 @@
       right: 0;
       bottom: 0;
       background: rgba(0,0,0,0.9);
+      display: -webkit-box;
+      display: -webkit-flex;
       display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
       flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
       align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
       justify-content: center;
       z-index: 11;
     }
@@ -199,29 +239,56 @@
     }
     .retry-button:hover { background: #e65a00; }
     
-    /* Unmute overlay */
     .unmute-overlay {
       position: absolute;
       top: 20px;
       left: 50%;
+      -webkit-transform: translateX(-50%);
       transform: translateX(-50%);
       background: rgba(0,0,0,0.8);
       padding: 16px 32px;
       border-radius: 12px;
       cursor: pointer;
       z-index: 12;
+      display: -webkit-box;
+      display: -webkit-flex;
       display: flex;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
       align-items: center;
       gap: 12px;
+      -webkit-transition: opacity 0.3s;
       transition: opacity 0.3s;
     }
     .unmute-overlay.hidden { display: none; }
     .unmute-overlay:hover { background: rgba(0,0,0,0.95); }
     .unmute-icon { font-size: 24px; }
     .unmute-text { font-size: 18px; font-weight: 500; }
+    
+    .browser-error {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    .browser-error h2 { color: #ef4444; margin-bottom: 20px; }
+    .browser-error p { color: #aaa; font-size: 18px; line-height: 1.6; }
   </style>
 </head>
 <body>
+  <noscript>
+    <div style="text-align: center; padding: 40px; color: white;">
+      <h2 style="color: #ff6300;">HOYEEH</h2>
+      <p style="margin-top: 20px;">JavaScript is required to use this TV receiver.</p>
+    </div>
+  </noscript>
+
+  <div class="browser-error" id="browserError">
+    <div class="logo">HOYEEH</div>
+    <h2>Browser Not Supported</h2>
+    <p>This browser may not support all features required for the TV receiver.</p>
+    <p style="margin-top: 10px;">Please try updating your TV's browser or use a streaming device.</p>
+  </div>
+
   <div class="container" id="pairingScreen">
     <div class="pairing-screen">
       <div class="logo">HOYEEH</div>
@@ -254,13 +321,11 @@
     <video id="videoPlayer" playsinline muted></video>
     <div class="now-playing-badge">Now Playing</div>
     
-    <!-- Loading Overlay -->
     <div class="video-loading-overlay hidden" id="loadingOverlay">
       <div class="loading-spinner"></div>
       <div class="loading-text" id="loadingText">Loading video...</div>
     </div>
     
-    <!-- Error Overlay -->
     <div class="video-error-overlay hidden" id="errorOverlay">
       <div class="error-icon">⚠️</div>
       <div class="error-title" id="errorTitle">Video Error</div>
@@ -268,13 +333,11 @@
       <button class="retry-button" id="retryButton">Retry</button>
     </div>
     
-    <!-- Unmute Overlay -->
     <div class="unmute-overlay" id="unmuteOverlay">
       <span class="unmute-icon">🔇</span>
       <span class="unmute-text">Click anywhere to unmute</span>
     </div>
     
-    <!-- Queue Panel -->
     <div class="queue-panel" id="queuePanel">
       <div class="queue-title">Up Next</div>
       <div id="queueList"></div>
@@ -291,543 +354,627 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Polyfills for older browsers -->
+  <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3/dist/fetch.umd.min.js"></script>
+  
+  <!-- HLS.js and QRCode -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  
   <script>
-    const SUPABASE_URL = 'https://astugmzoxhxcyipxsojl.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdHVnbXpveGh4Y3lpcHhzb2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzIzNDIsImV4cCI6MjA4MDY0ODM0Mn0.gYQzgVqNwvHe2dO5tfk0S2sy4EPVybh9C8alpi7LhCE';
+    // ES5 compatible code for LG TV and older browsers
+    (function() {
+      'use strict';
+      
+      var SUPABASE_URL = 'https://astugmzoxhxcyipxsojl.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdHVnbXpveGh4Y3lpcHhzb2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzIzNDIsImV4cCI6MjA4MDY0ODM0Mn0.gYQzgVqNwvHe2dO5tfk0S2sy4EPVybh9C8alpi7LhCE';
 
-    let sessionId = null;
-    let receiverId = null;
-    let pairingCode = null;
-    let pollInterval = null;
-    let heartbeatInterval = null;
-    let hls = null;
-    let currentQueue = [];
-    let currentQueueIndex = 0;
+      var sessionId = null;
+      var receiverId = null;
+      var pairingCode = null;
+      var pollInterval = null;
+      var heartbeatInterval = null;
+      var expiryInterval = null;
+      var hls = null;
+      var currentQueue = [];
+      var currentQueueIndex = 0;
+      var currentVideoUrl = null;
+      var retryCount = 0;
+      var MAX_RETRIES = 3;
 
-    const video = document.getElementById('videoPlayer');
-    const pairingScreen = document.getElementById('pairingScreen');
-    const idleScreen = document.getElementById('idleScreen');
-    const playerContainer = document.getElementById('playerContainer');
+      var video = document.getElementById('videoPlayer');
+      var pairingScreen = document.getElementById('pairingScreen');
+      var idleScreen = document.getElementById('idleScreen');
+      var playerContainer = document.getElementById('playerContainer');
 
-    function formatTime(seconds) {
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
+      // Check browser compatibility
+      function checkBrowserCompat() {
+        try {
+          // Test basic features
+          if (typeof Promise === 'undefined' || typeof fetch === 'undefined') {
+            return false;
+          }
+          // Test video element
+          if (!video || typeof video.play !== 'function') {
+            return false;
+          }
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
 
-    async function callSignaling(action, body = {}) {
-      const url = `${SUPABASE_URL}/functions/v1/cast-signaling?action=${action}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-        },
-        body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
-      });
-      return response.json();
-    }
+      // Show browser error if incompatible
+      if (!checkBrowserCompat()) {
+        document.getElementById('browserError').style.display = 'block';
+        pairingScreen.style.display = 'none';
+        return;
+      }
 
-    async function checkStatus() {
-      const url = `${SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${sessionId}`;
-      const response = await fetch(url, {
-        headers: { 'apikey': SUPABASE_ANON_KEY },
-      });
-      return response.json();
-    }
+      function formatTime(seconds) {
+        if (isNaN(seconds) || !isFinite(seconds)) {
+          return '0:00';
+        }
+        var mins = Math.floor(seconds / 60);
+        var secs = Math.floor(seconds % 60);
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+      }
 
-    async function generatePairingCode() {
-      try {
+      function callSignaling(action, body) {
+        var url = SUPABASE_URL + '/functions/v1/cast-signaling?action=' + action;
+        var options = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY
+          }
+        };
+        
+        if (body && Object.keys(body).length > 0) {
+          options.body = JSON.stringify(body);
+        }
+        
+        return fetch(url, options).then(function(response) {
+          return response.json();
+        });
+      }
+
+      function checkStatus() {
+        var url = SUPABASE_URL + '/functions/v1/cast-signaling?action=status&sessionId=' + sessionId;
+        return fetch(url, {
+          headers: { 'apikey': SUPABASE_ANON_KEY }
+        }).then(function(response) {
+          return response.json();
+        });
+      }
+
+      function generatePairingCode() {
         document.getElementById('spinner').style.display = 'block';
         document.getElementById('errorMessage').textContent = '';
 
-        const result = await callSignaling('generate-code', {
+        callSignaling('generate-code', {
           deviceName: 'Smart TV',
-          deviceType: 'smart_tv',
+          deviceType: 'smart_tv'
+        }).then(function(result) {
+          if (result.success) {
+            sessionId = result.sessionId;
+            receiverId = result.receiverId;
+            pairingCode = result.pairingCode;
+
+            document.getElementById('pairingCode').textContent = pairingCode;
+            generateQRCode(pairingCode);
+            document.getElementById('status').textContent = 'Waiting for connection...';
+
+            var expiresAt = new Date(result.expiresAt);
+            updateExpiry(expiresAt);
+            startPolling();
+          } else {
+            throw new Error(result.error || 'Failed to generate code');
+          }
+          document.getElementById('spinner').style.display = 'none';
+        }).catch(function(error) {
+          console.error('Error generating code:', error);
+          document.getElementById('errorMessage').textContent = 'Error: ' + (error.message || 'Unknown error');
+          document.getElementById('spinner').style.display = 'none';
         });
-
-        if (result.success) {
-          sessionId = result.sessionId;
-          receiverId = result.receiverId;
-          pairingCode = result.pairingCode;
-
-          document.getElementById('pairingCode').textContent = pairingCode;
-          generateQRCode(pairingCode);
-          document.getElementById('status').textContent = 'Waiting for connection...';
-
-          const expiresAt = new Date(result.expiresAt);
-          updateExpiry(expiresAt);
-          startPolling();
-        } else {
-          throw new Error(result.error || 'Failed to generate code');
-        }
-      } catch (error) {
-        console.error('Error generating code:', error);
-        document.getElementById('errorMessage').textContent = 'Error: ' + error.message;
-      } finally {
-        document.getElementById('spinner').style.display = 'none';
       }
-    }
 
-    function updateExpiry(expiresAt) {
-      const updateCountdown = () => {
-        const now = new Date();
-        const diff = Math.max(0, Math.floor((expiresAt - now) / 1000));
+      function updateExpiry(expiresAt) {
+        if (expiryInterval) {
+          clearInterval(expiryInterval);
+        }
         
-        if (diff <= 0) {
-          document.getElementById('expires').textContent = 'Code expired. Generating new code...';
+        function updateCountdown() {
+          var now = new Date();
+          var diff = Math.max(0, Math.floor((expiresAt - now) / 1000));
+          
+          if (diff <= 0) {
+            document.getElementById('expires').textContent = 'Code expired. Generating new code...';
+            clearInterval(expiryInterval);
+            generatePairingCode();
+            return;
+          }
+
+          var mins = Math.floor(diff / 60);
+          var secs = diff % 60;
+          document.getElementById('expires').textContent = 
+            'Code expires in ' + mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        updateCountdown();
+        expiryInterval = setInterval(updateCountdown, 1000);
+      }
+
+      function startPolling() {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+        }
+
+        pollInterval = setInterval(function() {
+          checkStatus().then(function(result) {
+            if (result.success) {
+              handleSessionUpdate(result.session);
+            }
+          }).catch(function(error) {
+            console.error('Polling error:', error);
+          });
+        }, 1000);
+      }
+
+      function handleSessionUpdate(session) {
+        if (session.status === 'paired' || session.status === 'active') {
+          document.getElementById('status').textContent = 'Connected!';
+          document.getElementById('status').classList.add('connected');
+
+          // Update queue
+          if (session.queue && Array.isArray(session.queue)) {
+            currentQueue = session.queue;
+            renderQueue();
+          }
+
+          if (session.videoUrl) {
+            showPlayer(session);
+          } else {
+            showIdleScreen();
+          }
+
+          startHeartbeat();
+        }
+
+        if (session.status === 'active' && session.videoUrl) {
+          updatePlaybackState(session);
+        }
+
+        if (session.status === 'disconnected') {
+          showPairingScreen();
           generatePairingCode();
+        }
+      }
+
+      function renderQueue() {
+        var queueList = document.getElementById('queueList');
+        
+        if (!currentQueue || currentQueue.length === 0) {
+          queueList.innerHTML = '<div class="queue-empty">No items in queue</div>';
           return;
         }
 
-        const mins = Math.floor(diff / 60);
-        const secs = diff % 60;
-        document.getElementById('expires').textContent = 
-          `Code expires in ${mins}:${secs.toString().padStart(2, '0')}`;
-      };
+        var html = '';
+        for (var i = 0; i < currentQueue.length; i++) {
+          var item = currentQueue[i];
+          var isActive = i === currentQueueIndex;
+          var statusText = isActive ? 'Now Playing' : '#' + (i + 1);
+          
+          html += '<div class="queue-item' + (isActive ? ' active' : '') + '">' +
+            '<img src="' + (item.thumbnail || '') + '" alt="" onerror="this.style.display=\'none\'">' +
+            '<div class="queue-item-info">' +
+            '<div class="queue-item-title">' + (item.title || 'Untitled') + '</div>' +
+            '<div class="queue-item-number">' + statusText + '</div>' +
+            '</div>' +
+            '</div>';
+        }
+        queueList.innerHTML = html;
+      }
 
-      updateCountdown();
-      setInterval(updateCountdown, 1000);
-    }
+      function showPlayer(session) {
+        pairingScreen.style.display = 'none';
+        idleScreen.classList.remove('active');
+        playerContainer.classList.add('active');
 
-    function startPolling() {
-      if (pollInterval) clearInterval(pollInterval);
+        document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
 
-      pollInterval = setInterval(async () => {
-        try {
-          const result = await checkStatus();
-          if (result.success) {
-            handleSessionUpdate(result.session);
+        // Find current index in queue
+        if (currentQueue.length > 0) {
+          for (var i = 0; i < currentQueue.length; i++) {
+            if (currentQueue[i].url === session.videoUrl) {
+              currentQueueIndex = i;
+              break;
+            }
           }
-        } catch (error) {
-          console.error('Polling error:', error);
-        }
-      }, 1000);
-    }
-
-    function handleSessionUpdate(session) {
-      if (session.status === 'paired' || session.status === 'active') {
-        document.getElementById('status').textContent = 'Connected!';
-        document.getElementById('status').classList.add('connected');
-
-        // Update queue
-        if (session.queue && Array.isArray(session.queue)) {
-          currentQueue = session.queue;
-          renderQueue();
         }
 
-        if (session.videoUrl) {
-          showPlayer(session);
-        } else {
-          showIdleScreen();
+        loadVideo(session.videoUrl, session.playbackTime);
+        renderQueue();
+      }
+
+      function showLoading(message) {
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+        document.getElementById('loadingText').textContent = message || 'Loading video...';
+        document.getElementById('errorOverlay').classList.add('hidden');
+      }
+
+      function hideLoading() {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+      }
+
+      function showError(title, details) {
+        document.getElementById('errorOverlay').classList.remove('hidden');
+        document.getElementById('errorTitle').textContent = title;
+        document.getElementById('errorDetails').textContent = details;
+        hideLoading();
+      }
+
+      function hideError() {
+        document.getElementById('errorOverlay').classList.add('hidden');
+      }
+
+      function showUnmuteOverlay() {
+        document.getElementById('unmuteOverlay').classList.remove('hidden');
+      }
+
+      function hideUnmuteOverlay() {
+        document.getElementById('unmuteOverlay').classList.add('hidden');
+      }
+
+      function loadVideo(url, startTime) {
+        startTime = startTime || 0;
+        console.log('[TV] loadVideo called with URL:', url, 'startTime:', startTime);
+        
+        if (!url) {
+          console.error('[TV] No video URL provided');
+          showError('No Video', 'No video URL was provided');
+          return;
         }
 
-        startHeartbeat();
-      }
+        currentVideoUrl = url;
+        retryCount = 0;
+        hideError();
+        showLoading('Loading video...');
 
-      if (session.status === 'active' && session.videoUrl) {
-        updatePlaybackState(session);
-      }
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
 
-      if (session.status === 'disconnected') {
-        showPairingScreen();
-        generatePairingCode();
-      }
-    }
+        // Reset video element
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
 
-    function renderQueue() {
-      const queueList = document.getElementById('queueList');
-      
-      if (!currentQueue || currentQueue.length === 0) {
-        queueList.innerHTML = '<div class="queue-empty">No items in queue</div>';
-        return;
-      }
-
-      queueList.innerHTML = currentQueue.map((item, index) => `
-        <div class="queue-item ${index === currentQueueIndex ? 'active' : ''}">
-          <img src="${item.thumbnail || ''}" alt="" onerror="this.style.display='none'">
-          <div class="queue-item-info">
-            <div class="queue-item-title">${item.title}</div>
-            <div class="queue-item-number">${index === currentQueueIndex ? 'Now Playing' : `#${index + 1}`}</div>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function showPlayer(session) {
-      pairingScreen.style.display = 'none';
-      idleScreen.classList.remove('active');
-      playerContainer.classList.add('active');
-
-      document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
-
-      // Find current index in queue
-      if (currentQueue.length > 0) {
-        const idx = currentQueue.findIndex(item => item.url === session.videoUrl);
-        if (idx !== -1) currentQueueIndex = idx;
-      }
-
-      loadVideo(session.videoUrl, session.playbackTime);
-      renderQueue();
-    }
-
-    let currentVideoUrl = null;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
-
-    function showLoading(message = 'Loading video...') {
-      document.getElementById('loadingOverlay').classList.remove('hidden');
-      document.getElementById('loadingText').textContent = message;
-      document.getElementById('errorOverlay').classList.add('hidden');
-    }
-
-    function hideLoading() {
-      document.getElementById('loadingOverlay').classList.add('hidden');
-    }
-
-    function showError(title, details) {
-      document.getElementById('errorOverlay').classList.remove('hidden');
-      document.getElementById('errorTitle').textContent = title;
-      document.getElementById('errorDetails').textContent = details;
-      hideLoading();
-    }
-
-    function hideError() {
-      document.getElementById('errorOverlay').classList.add('hidden');
-    }
-
-    function showUnmuteOverlay() {
-      document.getElementById('unmuteOverlay').classList.remove('hidden');
-    }
-
-    function hideUnmuteOverlay() {
-      document.getElementById('unmuteOverlay').classList.add('hidden');
-    }
-
-    function loadVideo(url, startTime = 0) {
-      console.log('[TV] loadVideo called with URL:', url, 'startTime:', startTime);
-      
-      if (!url) {
-        console.error('[TV] No video URL provided');
-        showError('No Video', 'No video URL was provided');
-        return;
-      }
-
-      currentVideoUrl = url;
-      retryCount = 0;
-      hideError();
-      showLoading('Loading video...');
-
-      if (hls) {
-        hls.destroy();
-        hls = null;
-      }
-
-      // Reset video element
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-
-      if (url.includes('.m3u8') && Hls.isSupported()) {
-        console.log('[TV] Using HLS.js for m3u8 stream');
-        hls = new Hls({
-          debug: false,
-          enableWorker: true,
-          lowLatencyMode: false,
-          xhrSetup: function(xhr, url) {
-            // Add CORS mode
-            xhr.withCredentials = false;
-          }
-        });
+        var isHLS = url.indexOf('.m3u8') !== -1;
+        var hlsSupported = typeof Hls !== 'undefined' && Hls.isSupported();
         
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log('[TV] HLS manifest parsed, starting playback');
-          video.currentTime = startTime;
-          attemptPlay();
-        });
-        
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          console.error('[TV] HLS error:', data.type, data.details, data);
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
+        if (isHLS && hlsSupported) {
+          console.log('[TV] Using HLS.js for m3u8 stream');
+          hls = new Hls({
+            debug: false,
+            enableWorker: true,
+            lowLatencyMode: false,
+            xhrSetup: function(xhr) {
+              xhr.withCredentials = false;
+            }
+          });
+          
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          
+          hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            console.log('[TV] HLS manifest parsed, starting playback');
+            video.currentTime = startTime;
+            attemptPlay();
+          });
+          
+          hls.on(Hls.Events.ERROR, function(event, data) {
+            console.error('[TV] HLS error:', data.type, data.details);
+            if (data.fatal) {
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                 console.log('[TV] Fatal network error, trying to recover');
                 if (retryCount < MAX_RETRIES) {
                   retryCount++;
-                  showLoading(`Network error, retrying (${retryCount}/${MAX_RETRIES})...`);
-                  setTimeout(() => hls.startLoad(), 2000);
+                  showLoading('Network error, retrying (' + retryCount + '/' + MAX_RETRIES + ')...');
+                  setTimeout(function() { hls.startLoad(); }, 2000);
                 } else {
                   showError('Network Error', 'Failed to load video. Please check your connection.');
                 }
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
+              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                 console.log('[TV] Fatal media error, trying to recover');
                 hls.recoverMediaError();
-                break;
-              default:
+              } else {
                 showError('Playback Error', 'Unable to play this video format');
                 hls.destroy();
-                break;
+              }
             }
-          }
-        });
-        
-        hls.on(Hls.Events.FRAG_LOADED, () => {
-          console.log('[TV] HLS fragment loaded');
-        });
-        
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        console.log('[TV] Using native HLS (Safari)');
-        video.src = url;
-        video.addEventListener('loadedmetadata', () => {
-          video.currentTime = startTime;
-          attemptPlay();
-        }, { once: true });
-      } else {
-        console.log('[TV] Using native video element');
-        video.src = url;
-        video.addEventListener('loadedmetadata', () => {
-          console.log('[TV] Video metadata loaded');
-          video.currentTime = startTime;
-          attemptPlay();
-        }, { once: true });
+          });
+          
+          hls.on(Hls.Events.FRAG_LOADED, function() {
+            console.log('[TV] HLS fragment loaded');
+          });
+          
+        } else if (video.canPlayType && video.canPlayType('application/vnd.apple.mpegurl')) {
+          console.log('[TV] Using native HLS (Safari)');
+          video.src = url;
+          video.addEventListener('loadedmetadata', function onMeta() {
+            video.removeEventListener('loadedmetadata', onMeta);
+            video.currentTime = startTime;
+            attemptPlay();
+          });
+        } else {
+          console.log('[TV] Using native video element');
+          video.src = url;
+          video.addEventListener('loadedmetadata', function onMeta() {
+            video.removeEventListener('loadedmetadata', onMeta);
+            console.log('[TV] Video metadata loaded');
+            video.currentTime = startTime;
+            attemptPlay();
+          });
+        }
       }
-    }
 
-    async function attemptPlay() {
-      console.log('[TV] Attempting to play video, muted:', video.muted);
-      hideLoading();
-      
-      try {
+      function attemptPlay() {
+        console.log('[TV] Attempting to play video, muted:', video.muted);
+        hideLoading();
+        
         // First try muted (should always work)
         video.muted = true;
-        await video.play();
-        console.log('[TV] Playback started (muted)');
-        showUnmuteOverlay();
         
-        // Try to unmute after a short delay
-        setTimeout(async () => {
-          try {
-            video.muted = false;
-            hideUnmuteOverlay();
-            console.log('[TV] Unmuted successfully');
-          } catch (e) {
-            console.log('[TV] Could not auto-unmute, user interaction required');
+        var playPromise = video.play();
+        
+        if (playPromise && typeof playPromise.then === 'function') {
+          playPromise.then(function() {
+            console.log('[TV] Playback started (muted)');
             showUnmuteOverlay();
-          }
-        }, 1000);
-        
-      } catch (playError) {
-        console.error('[TV] Autoplay failed even muted:', playError);
-        showError('Playback Blocked', 'Click the screen to start playing');
-      }
-    }
-
-    // Retry button handler
-    document.getElementById('retryButton').addEventListener('click', () => {
-      if (currentVideoUrl) {
-        retryCount = 0;
-        loadVideo(currentVideoUrl, video.currentTime || 0);
-      }
-    });
-
-    // Click anywhere to unmute or start playback
-    playerContainer.addEventListener('click', async (e) => {
-      // Don't trigger on control elements
-      if (e.target.closest('.player-overlay') || e.target.closest('.queue-panel')) return;
-      
-      if (video.muted) {
-        video.muted = false;
-        hideUnmuteOverlay();
-        console.log('[TV] Unmuted via click');
-      }
-      
-      if (video.paused && currentVideoUrl) {
-        try {
-          await video.play();
-          hideError();
-        } catch (e) {
-          console.error('[TV] Play failed on click:', e);
-        }
-      }
-    });
-
-    // Video event listeners for debugging
-    video.addEventListener('loadstart', () => console.log('[TV] Video loadstart'));
-    video.addEventListener('loadeddata', () => console.log('[TV] Video loadeddata'));
-    video.addEventListener('canplay', () => {
-      console.log('[TV] Video canplay');
-      hideLoading();
-    });
-    video.addEventListener('canplaythrough', () => console.log('[TV] Video canplaythrough'));
-    video.addEventListener('playing', () => {
-      console.log('[TV] Video playing');
-      hideLoading();
-      hideError();
-    });
-    video.addEventListener('waiting', () => {
-      console.log('[TV] Video waiting/buffering');
-      showLoading('Buffering...');
-    });
-    video.addEventListener('stalled', () => {
-      console.log('[TV] Video stalled');
-      showLoading('Connection slow...');
-    });
-    video.addEventListener('error', (e) => {
-      const error = video.error;
-      console.error('[TV] Video error:', error?.code, error?.message);
-      let errorMsg = 'Unknown error occurred';
-      if (error) {
-        switch (error.code) {
-          case 1: errorMsg = 'Video loading was aborted'; break;
-          case 2: errorMsg = 'Network error while loading video'; break;
-          case 3: errorMsg = 'Video decoding failed'; break;
-          case 4: errorMsg = 'Video format not supported'; break;
-        }
-      }
-      showError('Video Error', errorMsg);
-    });
-    video.addEventListener('abort', () => console.log('[TV] Video abort'));
-
-    function updatePlaybackState(session) {
-      if (Math.abs(video.currentTime - session.playbackTime) > 3) {
-        video.currentTime = session.playbackTime;
-      }
-
-      if (session.isPlaying && video.paused) {
-        video.play();
-      } else if (!session.isPlaying && !video.paused) {
-        video.pause();
-      }
-
-      if (session.volume !== undefined) {
-        video.volume = session.volume / 100;
-      }
-    }
-
-    function showIdleScreen() {
-      pairingScreen.style.display = 'none';
-      playerContainer.classList.remove('active');
-      idleScreen.classList.add('active');
-      renderIdleQueue();
-    }
-
-    function renderIdleQueue() {
-      const container = document.getElementById('idleQueue');
-      if (!currentQueue || currentQueue.length === 0) {
-        container.innerHTML = '';
-        return;
-      }
-
-      container.innerHTML = `
-        <div style="color: #ff6300; font-size: 18px; margin-bottom: 16px;">Queue (${currentQueue.length} items)</div>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-          ${currentQueue.slice(0, 5).map(item => `
-            <div style="text-align: center; width: 120px;">
-              <img src="${item.thumbnail || ''}" alt="" style="width: 100%; height: 68px; object-fit: cover; border-radius: 8px;" onerror="this.style.display='none'">
-              <div style="font-size: 12px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</div>
-            </div>
-          `).join('')}
-          ${currentQueue.length > 5 ? `<div style="display: flex; align-items: center; color: #aaa;">+${currentQueue.length - 5} more</div>` : ''}
-        </div>
-      `;
-    }
-
-    function showPairingScreen() {
-      playerContainer.classList.remove('active');
-      idleScreen.classList.remove('active');
-      pairingScreen.style.display = 'flex';
-    }
-
-    function startHeartbeat() {
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
-
-      heartbeatInterval = setInterval(async () => {
-        try {
-          await callSignaling('heartbeat', {
-            sessionId,
-            playbackTime: video.currentTime,
-            isPlaying: !video.paused,
+            
+            // Try to unmute after a short delay
+            setTimeout(function() {
+              try {
+                video.muted = false;
+                hideUnmuteOverlay();
+                console.log('[TV] Unmuted successfully');
+              } catch (e) {
+                console.log('[TV] Could not auto-unmute, user interaction required');
+                showUnmuteOverlay();
+              }
+            }, 1000);
+          }).catch(function(playError) {
+            console.error('[TV] Autoplay failed even muted:', playError);
+            showError('Playback Blocked', 'Click the screen to start playing');
           });
-        } catch (error) {
-          console.error('Heartbeat error:', error);
+        } else {
+          // Fallback for older browsers without Promise support
+          console.log('[TV] Playback started (no promise)');
+          showUnmuteOverlay();
         }
-      }, 2000);
-    }
+      }
 
-    // Play next in queue when video ends
-    video.addEventListener('ended', async () => {
-      if (currentQueue.length > 0 && currentQueueIndex < currentQueue.length - 1) {
-        currentQueueIndex++;
-        const nextItem = currentQueue[currentQueueIndex];
-        
-        // Notify server about queue progression
-        await callSignaling('command', {
-          sessionId,
-          command: 'LOAD',
-          payload: {
-            videoUrl: nextItem.url,
-            title: nextItem.title,
-            thumbnail: nextItem.thumbnail,
-            startTime: 0,
+      // Retry button handler
+      document.getElementById('retryButton').addEventListener('click', function() {
+        if (currentVideoUrl) {
+          retryCount = 0;
+          loadVideo(currentVideoUrl, video.currentTime || 0);
+        }
+      });
+
+      // Click anywhere to unmute or start playback
+      playerContainer.addEventListener('click', function(e) {
+        // Don't trigger on control elements
+        var target = e.target;
+        while (target && target !== playerContainer) {
+          if (target.classList && (target.classList.contains('player-overlay') || target.classList.contains('queue-panel'))) {
+            return;
           }
-        });
+          target = target.parentElement;
+        }
+        
+        if (video.muted) {
+          video.muted = false;
+          hideUnmuteOverlay();
+          console.log('[TV] Unmuted via click');
+        }
+        
+        if (video.paused && currentVideoUrl) {
+          var playPromise = video.play();
+          if (playPromise && typeof playPromise.then === 'function') {
+            playPromise.then(function() {
+              hideError();
+            }).catch(function(e) {
+              console.error('[TV] Play failed on click:', e);
+            });
+          }
+        }
+      });
+
+      // Video event listeners for debugging
+      video.addEventListener('loadstart', function() { console.log('[TV] Video loadstart'); });
+      video.addEventListener('loadeddata', function() { console.log('[TV] Video loadeddata'); });
+      video.addEventListener('canplay', function() {
+        console.log('[TV] Video canplay');
+        hideLoading();
+      });
+      video.addEventListener('canplaythrough', function() { console.log('[TV] Video canplaythrough'); });
+      video.addEventListener('playing', function() {
+        console.log('[TV] Video playing');
+        hideLoading();
+        hideError();
+      });
+      video.addEventListener('waiting', function() {
+        console.log('[TV] Video waiting/buffering');
+        showLoading('Buffering...');
+      });
+      video.addEventListener('stalled', function() {
+        console.log('[TV] Video stalled');
+        showLoading('Connection slow...');
+      });
+      video.addEventListener('error', function() {
+        var error = video.error;
+        console.error('[TV] Video error:', error ? error.code : 'unknown', error ? error.message : '');
+        var errorMsg = 'Unknown error occurred';
+        if (error) {
+          switch (error.code) {
+            case 1: errorMsg = 'Video loading was aborted'; break;
+            case 2: errorMsg = 'Network error while loading video'; break;
+            case 3: errorMsg = 'Video decoding failed'; break;
+            case 4: errorMsg = 'Video format not supported'; break;
+          }
+        }
+        showError('Video Error', errorMsg);
+      });
+      video.addEventListener('abort', function() { console.log('[TV] Video abort'); });
+
+      function updatePlaybackState(session) {
+        if (Math.abs(video.currentTime - session.playbackTime) > 3) {
+          video.currentTime = session.playbackTime;
+        }
+
+        if (session.isPlaying && video.paused) {
+          video.play();
+        } else if (!session.isPlaying && !video.paused) {
+          video.pause();
+        }
+
+        if (session.volume !== undefined) {
+          video.volume = session.volume / 100;
+        }
       }
-    });
 
-    video.addEventListener('timeupdate', () => {
-      const progress = (video.currentTime / video.duration) * 100;
-      document.getElementById('progressFill').style.width = `${progress}%`;
-      document.getElementById('timeDisplay').textContent = 
-        `${formatTime(video.currentTime)} / ${formatTime(video.duration || 0)}`;
-    });
-
-    let overlayTimeout;
-    playerContainer.addEventListener('mousemove', () => {
-      document.getElementById('playerOverlay').classList.add('visible');
-      document.getElementById('queuePanel').classList.add('visible');
-      clearTimeout(overlayTimeout);
-      overlayTimeout = setTimeout(() => {
-        document.getElementById('playerOverlay').classList.remove('visible');
-        document.getElementById('queuePanel').classList.remove('visible');
-      }, 3000);
-    });
-
-    // QR code (scannable)
-    function generateQRCode(code) {
-      const qrData = `hoyeeh://pair?code=${code}`;
-      const container = document.getElementById('qrContainer');
-      container.innerHTML = '';
-
-      // Make the QR big enough to scan from a couch on large TVs
-      const size = Math.min(
-        420,
-        Math.max(260, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.32))
-      );
-
-      try {
-        // Provided by qrcodejs
-        new QRCode(container, {
-          text: qrData,
-          width: size,
-          height: size,
-          colorDark: '#000000',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.H,
-        });
-      } catch (e) {
-        console.error('QR generation failed:', e);
-        container.textContent = 'QR unavailable';
+      function showIdleScreen() {
+        pairingScreen.style.display = 'none';
+        playerContainer.classList.remove('active');
+        idleScreen.classList.add('active');
+        renderIdleQueue();
       }
-    }
 
+      function renderIdleQueue() {
+        var container = document.getElementById('idleQueue');
+        if (!currentQueue || currentQueue.length === 0) {
+          container.innerHTML = '';
+          return;
+        }
 
-    generatePairingCode();
+        var itemsToShow = currentQueue.slice(0, 5);
+        var html = '<div style="color: #ff6300; font-size: 18px; margin-bottom: 16px;">Queue (' + currentQueue.length + ' items)</div>' +
+          '<div style="display: -webkit-box; display: -webkit-flex; display: flex; gap: 12px; -webkit-flex-wrap: wrap; flex-wrap: wrap; -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;">';
+        
+        for (var i = 0; i < itemsToShow.length; i++) {
+          var item = itemsToShow[i];
+          html += '<div style="text-align: center; width: 120px;">' +
+            '<img src="' + (item.thumbnail || '') + '" alt="" style="width: 100%; height: 68px; object-fit: cover; border-radius: 8px;" onerror="this.style.display=\'none\'">' +
+            '<div style="font-size: 12px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + (item.title || 'Untitled') + '</div>' +
+            '</div>';
+        }
+        
+        if (currentQueue.length > 5) {
+          html += '<div style="display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; color: #aaa;">+' + (currentQueue.length - 5) + ' more</div>';
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      function showPairingScreen() {
+        playerContainer.classList.remove('active');
+        idleScreen.classList.remove('active');
+        pairingScreen.style.display = '-webkit-box';
+        pairingScreen.style.display = 'flex';
+      }
+
+      function startHeartbeat() {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+
+        heartbeatInterval = setInterval(function() {
+          callSignaling('heartbeat', {
+            sessionId: sessionId,
+            playbackTime: video.currentTime,
+            isPlaying: !video.paused
+          }).catch(function(error) {
+            console.error('Heartbeat error:', error);
+          });
+        }, 2000);
+      }
+
+      // Play next in queue when video ends
+      video.addEventListener('ended', function() {
+        if (currentQueue.length > 0 && currentQueueIndex < currentQueue.length - 1) {
+          currentQueueIndex++;
+          var nextItem = currentQueue[currentQueueIndex];
+          
+          callSignaling('command', {
+            sessionId: sessionId,
+            command: 'LOAD',
+            payload: {
+              videoUrl: nextItem.url,
+              title: nextItem.title,
+              thumbnail: nextItem.thumbnail,
+              startTime: 0
+            }
+          });
+        }
+      });
+
+      video.addEventListener('timeupdate', function() {
+        var duration = video.duration || 0;
+        var currentTime = video.currentTime || 0;
+        var progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+        document.getElementById('progressFill').style.width = progress + '%';
+        document.getElementById('timeDisplay').textContent = 
+          formatTime(currentTime) + ' / ' + formatTime(duration);
+      });
+
+      var overlayTimeout;
+      playerContainer.addEventListener('mousemove', function() {
+        document.getElementById('playerOverlay').classList.add('visible');
+        document.getElementById('queuePanel').classList.add('visible');
+        clearTimeout(overlayTimeout);
+        overlayTimeout = setTimeout(function() {
+          document.getElementById('playerOverlay').classList.remove('visible');
+          document.getElementById('queuePanel').classList.remove('visible');
+        }, 3000);
+      });
+
+      function generateQRCode(code) {
+        var qrData = 'hoyeeh://pair?code=' + code;
+        var container = document.getElementById('qrContainer');
+        container.innerHTML = '';
+
+        var windowWidth = window.innerWidth || document.documentElement.clientWidth || 800;
+        var windowHeight = window.innerHeight || document.documentElement.clientHeight || 600;
+        var minDim = Math.min(windowWidth, windowHeight);
+        var size = Math.min(420, Math.max(260, Math.floor(minDim * 0.32)));
+
+        try {
+          if (typeof QRCode !== 'undefined') {
+            new QRCode(container, {
+              text: qrData,
+              width: size,
+              height: size,
+              colorDark: '#000000',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.H
+            });
+          } else {
+            container.textContent = 'QR unavailable';
+          }
+        } catch (e) {
+          console.error('QR generation failed:', e);
+          container.textContent = 'QR unavailable';
+        }
+      }
+
+      // Initialize
+      generatePairingCode();
+    })();
   </script>
 </body>
 </html>
