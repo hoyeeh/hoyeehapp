@@ -26,10 +26,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { 
   AVATAR_RINGS,
-  getRandomAvatar, 
   getRandomRing,
   getAvatarsForProfile,
-  getRingById 
+  getRingById,
+  resolveAvatarSrc,
+  getAvatarUrlPath
 } from "@/lib/avatars";
 
 interface MobileManageProfilesProps {
@@ -45,7 +46,8 @@ const parseAvatarData = (avatarUrl: string | null) => {
     const ringMatch = params.match(/ring=([^&]+)/);
     ring = ringMatch ? ringMatch[1] : "none";
   }
-  return { src: baseSrc, ring };
+  // Resolve URL path to displayable src
+  return { src: resolveAvatarSrc(baseSrc), ring };
 };
 
 export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
@@ -63,7 +65,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   // Form state
   const [name, setName] = useState("");
   const [isKids, setIsKids] = useState(false);
-  const [selectedAvatarSrc, setSelectedAvatarSrc] = useState(getRandomAvatar());
+  const avatars = getAvatarsForProfile(false);
+  const [selectedAvatarSrc, setSelectedAvatarSrc] = useState(avatars[Math.floor(Math.random() * avatars.length)].src);
   const [selectedRing, setSelectedRing] = useState(getRandomRing());
   const [isSaving, setIsSaving] = useState(false);
 
@@ -81,7 +84,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   const resetForm = () => {
     setName("");
     setIsKids(false);
-    setSelectedAvatarSrc(getRandomAvatar());
+    const avatars = getAvatarsForProfile(false);
+    setSelectedAvatarSrc(avatars[Math.floor(Math.random() * avatars.length)].src);
     setSelectedRing(getRandomRing());
   };
 
@@ -97,7 +101,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
       setName("");
     }
     setIsKids(false);
-    setSelectedAvatarSrc(getRandomAvatar());
+    const avatars = getAvatarsForProfile(false);
+    setSelectedAvatarSrc(avatars[Math.floor(Math.random() * avatars.length)].src);
     setSelectedRing(getRandomRing());
     setIsCreating(true);
   };
@@ -109,7 +114,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
     setIsKids(profile.is_kids);
     
     const { src, ring } = parseAvatarData(profile.avatar_url);
-    setSelectedAvatarSrc(src || getRandomAvatar(profile.is_kids));
+    const avatars = getAvatarsForProfile(profile.is_kids);
+    setSelectedAvatarSrc(src || avatars[0].src);
     setSelectedRing(ring);
   };
 
@@ -123,9 +129,11 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
     lightTap();
 
     try {
+      // Convert display src to URL path for database storage
+      const avatarUrlPath = getAvatarUrlPath(selectedAvatarSrc);
       const avatarData = selectedRing !== "none" 
-        ? `${selectedAvatarSrc}?ring=${selectedRing}` 
-        : selectedAvatarSrc;
+        ? `${avatarUrlPath}?ring=${selectedRing}` 
+        : avatarUrlPath;
 
       if (isCreating) {
         await createProfile(name.trim(), isKids, avatarData);
@@ -374,7 +382,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
               checked={isKids} 
               onCheckedChange={(checked) => {
                 setIsKids(checked);
-                setSelectedAvatarSrc(getRandomAvatar(checked));
+                const avatars = getAvatarsForProfile(checked);
+                setSelectedAvatarSrc(avatars[Math.floor(Math.random() * avatars.length)].src);
               }} 
             />
           </div>
