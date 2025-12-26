@@ -143,6 +143,82 @@
     .queue-item-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .queue-item-number { font-size: 10px; color: #aaa; }
     .queue-empty { font-size: 14px; color: #666; text-align: center; padding: 20px 0; }
+    
+    /* Video Loading & Error States */
+    .video-loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .video-loading-overlay.hidden { display: none; }
+    .loading-spinner {
+      width: 80px;
+      height: 80px;
+      border: 6px solid rgba(255,99,0,0.2);
+      border-top-color: #ff6300;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    .loading-text { margin-top: 20px; font-size: 18px; color: #aaa; }
+    
+    .video-error-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 11;
+    }
+    .video-error-overlay.hidden { display: none; }
+    .error-icon { font-size: 64px; margin-bottom: 20px; }
+    .error-title { font-size: 24px; font-weight: bold; color: #ef4444; margin-bottom: 10px; }
+    .error-details { font-size: 16px; color: #aaa; text-align: center; max-width: 400px; }
+    .retry-button {
+      margin-top: 30px;
+      padding: 16px 40px;
+      font-size: 18px;
+      background: #ff6300;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .retry-button:hover { background: #e65a00; }
+    
+    /* Unmute overlay */
+    .unmute-overlay {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      padding: 16px 32px;
+      border-radius: 12px;
+      cursor: pointer;
+      z-index: 12;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: opacity 0.3s;
+    }
+    .unmute-overlay.hidden { display: none; }
+    .unmute-overlay:hover { background: rgba(0,0,0,0.95); }
+    .unmute-icon { font-size: 24px; }
+    .unmute-text { font-size: 18px; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -175,8 +251,28 @@
   </div>
 
   <div class="player-container" id="playerContainer">
-    <video id="videoPlayer" playsinline></video>
+    <video id="videoPlayer" playsinline muted></video>
     <div class="now-playing-badge">Now Playing</div>
+    
+    <!-- Loading Overlay -->
+    <div class="video-loading-overlay hidden" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loadingText">Loading video...</div>
+    </div>
+    
+    <!-- Error Overlay -->
+    <div class="video-error-overlay hidden" id="errorOverlay">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title" id="errorTitle">Video Error</div>
+      <div class="error-details" id="errorDetails">Unable to play this video</div>
+      <button class="retry-button" id="retryButton">Retry</button>
+    </div>
+    
+    <!-- Unmute Overlay -->
+    <div class="unmute-overlay" id="unmuteOverlay">
+      <span class="unmute-icon">🔇</span>
+      <span class="unmute-text">Click anywhere to unmute</span>
+    </div>
     
     <!-- Queue Panel -->
     <div class="queue-panel" id="queuePanel">
@@ -377,30 +473,226 @@
       renderQueue();
     }
 
+    let currentVideoUrl = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    function showLoading(message = 'Loading video...') {
+      document.getElementById('loadingOverlay').classList.remove('hidden');
+      document.getElementById('loadingText').textContent = message;
+      document.getElementById('errorOverlay').classList.add('hidden');
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    }
+
+    function showError(title, details) {
+      document.getElementById('errorOverlay').classList.remove('hidden');
+      document.getElementById('errorTitle').textContent = title;
+      document.getElementById('errorDetails').textContent = details;
+      hideLoading();
+    }
+
+    function hideError() {
+      document.getElementById('errorOverlay').classList.add('hidden');
+    }
+
+    function showUnmuteOverlay() {
+      document.getElementById('unmuteOverlay').classList.remove('hidden');
+    }
+
+    function hideUnmuteOverlay() {
+      document.getElementById('unmuteOverlay').classList.add('hidden');
+    }
+
     function loadVideo(url, startTime = 0) {
+      console.log('[TV] loadVideo called with URL:', url, 'startTime:', startTime);
+      
+      if (!url) {
+        console.error('[TV] No video URL provided');
+        showError('No Video', 'No video URL was provided');
+        return;
+      }
+
+      currentVideoUrl = url;
+      retryCount = 0;
+      hideError();
+      showLoading('Loading video...');
+
       if (hls) {
         hls.destroy();
         hls = null;
       }
 
+      // Reset video element
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+
       if (url.includes('.m3u8') && Hls.isSupported()) {
-        hls = new Hls();
+        console.log('[TV] Using HLS.js for m3u8 stream');
+        hls = new Hls({
+          debug: false,
+          enableWorker: true,
+          lowLatencyMode: false,
+          xhrSetup: function(xhr, url) {
+            // Add CORS mode
+            xhr.withCredentials = false;
+          }
+        });
+        
         hls.loadSource(url);
         hls.attachMedia(video);
+        
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('[TV] HLS manifest parsed, starting playback');
           video.currentTime = startTime;
-          video.play();
+          attemptPlay();
         });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('[TV] HLS error:', data.type, data.details, data);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log('[TV] Fatal network error, trying to recover');
+                if (retryCount < MAX_RETRIES) {
+                  retryCount++;
+                  showLoading(`Network error, retrying (${retryCount}/${MAX_RETRIES})...`);
+                  setTimeout(() => hls.startLoad(), 2000);
+                } else {
+                  showError('Network Error', 'Failed to load video. Please check your connection.');
+                }
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log('[TV] Fatal media error, trying to recover');
+                hls.recoverMediaError();
+                break;
+              default:
+                showError('Playback Error', 'Unable to play this video format');
+                hls.destroy();
+                break;
+            }
+          }
+        });
+        
+        hls.on(Hls.Events.FRAG_LOADED, () => {
+          console.log('[TV] HLS fragment loaded');
+        });
+        
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        console.log('[TV] Using native HLS (Safari)');
         video.src = url;
-        video.currentTime = startTime;
-        video.play();
+        video.addEventListener('loadedmetadata', () => {
+          video.currentTime = startTime;
+          attemptPlay();
+        }, { once: true });
       } else {
+        console.log('[TV] Using native video element');
         video.src = url;
-        video.currentTime = startTime;
-        video.play();
+        video.addEventListener('loadedmetadata', () => {
+          console.log('[TV] Video metadata loaded');
+          video.currentTime = startTime;
+          attemptPlay();
+        }, { once: true });
       }
     }
+
+    async function attemptPlay() {
+      console.log('[TV] Attempting to play video, muted:', video.muted);
+      hideLoading();
+      
+      try {
+        // First try muted (should always work)
+        video.muted = true;
+        await video.play();
+        console.log('[TV] Playback started (muted)');
+        showUnmuteOverlay();
+        
+        // Try to unmute after a short delay
+        setTimeout(async () => {
+          try {
+            video.muted = false;
+            hideUnmuteOverlay();
+            console.log('[TV] Unmuted successfully');
+          } catch (e) {
+            console.log('[TV] Could not auto-unmute, user interaction required');
+            showUnmuteOverlay();
+          }
+        }, 1000);
+        
+      } catch (playError) {
+        console.error('[TV] Autoplay failed even muted:', playError);
+        showError('Playback Blocked', 'Click the screen to start playing');
+      }
+    }
+
+    // Retry button handler
+    document.getElementById('retryButton').addEventListener('click', () => {
+      if (currentVideoUrl) {
+        retryCount = 0;
+        loadVideo(currentVideoUrl, video.currentTime || 0);
+      }
+    });
+
+    // Click anywhere to unmute or start playback
+    playerContainer.addEventListener('click', async (e) => {
+      // Don't trigger on control elements
+      if (e.target.closest('.player-overlay') || e.target.closest('.queue-panel')) return;
+      
+      if (video.muted) {
+        video.muted = false;
+        hideUnmuteOverlay();
+        console.log('[TV] Unmuted via click');
+      }
+      
+      if (video.paused && currentVideoUrl) {
+        try {
+          await video.play();
+          hideError();
+        } catch (e) {
+          console.error('[TV] Play failed on click:', e);
+        }
+      }
+    });
+
+    // Video event listeners for debugging
+    video.addEventListener('loadstart', () => console.log('[TV] Video loadstart'));
+    video.addEventListener('loadeddata', () => console.log('[TV] Video loadeddata'));
+    video.addEventListener('canplay', () => {
+      console.log('[TV] Video canplay');
+      hideLoading();
+    });
+    video.addEventListener('canplaythrough', () => console.log('[TV] Video canplaythrough'));
+    video.addEventListener('playing', () => {
+      console.log('[TV] Video playing');
+      hideLoading();
+      hideError();
+    });
+    video.addEventListener('waiting', () => {
+      console.log('[TV] Video waiting/buffering');
+      showLoading('Buffering...');
+    });
+    video.addEventListener('stalled', () => {
+      console.log('[TV] Video stalled');
+      showLoading('Connection slow...');
+    });
+    video.addEventListener('error', (e) => {
+      const error = video.error;
+      console.error('[TV] Video error:', error?.code, error?.message);
+      let errorMsg = 'Unknown error occurred';
+      if (error) {
+        switch (error.code) {
+          case 1: errorMsg = 'Video loading was aborted'; break;
+          case 2: errorMsg = 'Network error while loading video'; break;
+          case 3: errorMsg = 'Video decoding failed'; break;
+          case 4: errorMsg = 'Video format not supported'; break;
+        }
+      }
+      showError('Video Error', errorMsg);
+    });
+    video.addEventListener('abort', () => console.log('[TV] Video abort'));
 
     function updatePlaybackState(session) {
       if (Math.abs(video.currentTime - session.playbackTime) > 3) {

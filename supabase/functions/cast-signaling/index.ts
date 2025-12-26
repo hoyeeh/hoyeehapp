@@ -215,20 +215,67 @@ serve(async (req) => {
 
       let updateData: Record<string, unknown> = { last_heartbeat: new Date().toISOString() };
 
+      console.log(`[cast-signaling] Processing command: ${command} for session: ${sessionId}`);
+      console.log(`[cast-signaling] Payload:`, JSON.stringify(payload));
+
       switch (command) {
         case 'LOAD':
-          updateData = { ...updateData, video_url: payload.videoUrl, video_title: payload.title, video_thumbnail: payload.thumbnail, playback_time: payload.startTime || 0, video_duration: payload.duration || 0, is_playing: true, status: 'active' };
+          console.log(`[cast-signaling] LOAD command - videoUrl: ${payload?.videoUrl}, title: ${payload?.title}`);
+          updateData = { 
+            ...updateData, 
+            video_url: payload.videoUrl, 
+            video_title: payload.title, 
+            video_thumbnail: payload.thumbnail, 
+            playback_time: payload.startTime || 0, 
+            video_duration: payload.duration || 0, 
+            is_playing: true, 
+            status: 'active' 
+          };
+          console.log(`[cast-signaling] LOAD updateData:`, JSON.stringify(updateData));
           break;
-        case 'PLAY': updateData.is_playing = true; break;
-        case 'PAUSE': updateData.is_playing = false; break;
-        case 'SEEK': updateData.playback_time = payload.time; break;
-        case 'VOLUME': updateData.volume_level = payload.volume; break;
-        case 'STOP': updateData = { ...updateData, is_playing: false, video_url: null, video_title: null, playback_time: 0 }; break;
-        case 'UPDATE_TIME': updateData.playback_time = payload.time; if (payload.duration) updateData.video_duration = payload.duration; break;
-        case 'UPDATE_QUEUE': updateData.queue = payload.queue; break;
+        case 'PLAY': 
+          console.log(`[cast-signaling] PLAY command`);
+          updateData.is_playing = true; 
+          break;
+        case 'PAUSE': 
+          console.log(`[cast-signaling] PAUSE command`);
+          updateData.is_playing = false; 
+          break;
+        case 'SEEK': 
+          console.log(`[cast-signaling] SEEK command to time: ${payload?.time}`);
+          updateData.playback_time = payload.time; 
+          break;
+        case 'VOLUME': 
+          console.log(`[cast-signaling] VOLUME command: ${payload?.volume}`);
+          updateData.volume_level = payload.volume; 
+          break;
+        case 'STOP': 
+          console.log(`[cast-signaling] STOP command`);
+          updateData = { ...updateData, is_playing: false, video_url: null, video_title: null, playback_time: 0 }; 
+          break;
+        case 'UPDATE_TIME': 
+          updateData.playback_time = payload.time; 
+          if (payload.duration) updateData.video_duration = payload.duration; 
+          break;
+        case 'UPDATE_QUEUE': 
+          console.log(`[cast-signaling] UPDATE_QUEUE command with ${payload?.queue?.length || 0} items`);
+          updateData.queue = payload.queue; 
+          break;
+        default:
+          console.log(`[cast-signaling] Unknown command: ${command}`);
       }
 
-      await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
+      const { error: updateError } = await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
+      
+      if (updateError) {
+        console.error(`[cast-signaling] Failed to update session:`, updateError);
+        return new Response(JSON.stringify({ success: false, error: 'Failed to update session', details: updateError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log(`[cast-signaling] Command ${command} executed successfully for session ${sessionId}`);
       return new Response(JSON.stringify({ success: true, command, sessionId }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
