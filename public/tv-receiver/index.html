@@ -40,7 +40,12 @@
       border-radius: 16px;
       width: fit-content;
     }
-    .qr-container svg { display: block; }
+    .qr-container canvas,
+    .qr-container img,
+    .qr-container svg {
+      display: block;
+      image-rendering: pixelated;
+    }
     .qr-label { font-size: 16px; color: #666; margin-top: 20px; text-align: center; }
     .instructions { font-size: 24px; color: #aaa; max-width: 600px; line-height: 1.6; }
     .status { margin-top: 30px; font-size: 18px; color: #666; }
@@ -507,15 +512,21 @@
       const container = document.getElementById('qrContainer');
       container.innerHTML = '';
 
+      // Make the QR big enough to scan from a couch on large TVs
+      const size = Math.min(
+        420,
+        Math.max(260, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.32))
+      );
+
       try {
         // Provided by qrcodejs
         new QRCode(container, {
           text: qrData,
-          width: 220,
-          height: 220,
+          width: size,
+          height: size,
           colorDark: '#000000',
           colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M,
+          correctLevel: QRCode.CorrectLevel.H,
         });
       } catch (e) {
         console.error('QR generation failed:', e);

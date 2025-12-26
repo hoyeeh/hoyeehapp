@@ -17,7 +17,13 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
-  
+
+  const didScanRef = useRef(false);
+  const lastScanAtRef = useRef(0);
+  const barcodeDetectorRef = useRef<any>(null);
+  const barcodeDetectInFlightRef = useRef(false);
+  const lastBarcodeDetectAtRef = useRef(0);
+
   const [isLoading, setIsLoading] = useState(true);
   const [hasCamera, setHasCamera] = useState(true);
   const [torchOn, setTorchOn] = useState(false);
@@ -81,17 +87,18 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     try {
       setIsLoading(true);
       setPermissionDenied(false);
-      
+      didScanRef.current = false;
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: "environment",
           width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          height: { ideal: 720 },
+        },
       });
-      
+
       streamRef.current = stream;
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -101,23 +108,32 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
       const track = stream.getVideoTracks()[0];
       const capabilities = track.getCapabilities?.() as any;
       setHasTorch(capabilities?.torch === true);
-      
+
+      // Init BarcodeDetector once (if supported)
+      if (!barcodeDetectorRef.current && 'BarcodeDetector' in window) {
+        try {
+          barcodeDetectorRef.current = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+        } catch {
+          barcodeDetectorRef.current = null;
+        }
+      }
+
       setIsLoading(false);
       setHasCamera(true);
-      
+
       // Start scanning
       scanQRCode();
     } catch (error: any) {
       console.error("[QRScanner] Camera error:", error);
       setHasCamera(false);
       setIsLoading(false);
-      
+
       // Check if permission was denied
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         setPermissionDenied(true);
       }
     }
-  }, []);
+  }, [scanQRCode]);
 
   const extractCodeFromQRData = useCallback((qrData: string): string | null => {
     console.log("[QRScanner] Raw QR data:", qrData);
@@ -175,23 +191,26 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
   }, []);
 
   const handleSuccessfulScan = useCallback(async (code: string) => {
+    if (didScanRef.current) return;
+    didScanRef.current = true;
+
     console.log("[QRScanner] Valid pairing code found:", code);
-    
+
     // Trigger haptic feedback and sound
     triggerHaptic();
     playSuccessSound();
-    
+
     stopCamera();
-    
+
     // Show success animation
     setScannedCode(code);
     setShowSuccess(true);
     setIsConnecting(true);
     setConnectionError(null);
-    
+
     // Wait for animation, then attempt pairing
     await new Promise(resolve => setTimeout(resolve, 1200));
-    
+
     try {
       const success = await Promise.race([
         onCodeScanned(code),
@@ -223,21 +242,61 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
 
   const scanQRCode = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
-    
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    
-    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+
+    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA || video.videoWidth === 0 || video.videoHeight === 0) {
       animationRef.current = requestAnimationFrame(scanQRCode);
       return;
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    // Throttle scanning a bit to keep detection reliable on slower devices
+    const now = performance.now();
+    if (now - lastScanAtRef.current < 90) {
+      animationRef.current = requestAnimationFrame(scanQRCode);
+      return;
+    }
+    lastScanAtRef.current = now;
+
+    // Downscale the frame to speed up QR detection
+    const targetWidth = 720;
+    const scale = Math.min(1, targetWidth / video.videoWidth);
+    const w = Math.max(1, Math.floor(video.videoWidth * scale));
+    const h = Math.max(1, Math.floor(video.videoHeight * scale));
+
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(video, 0, 0, w, h);
+
+    // Fast path: BarcodeDetector (if available)
+    if (
+      barcodeDetectorRef.current &&
+      !barcodeDetectInFlightRef.current &&
+      now - lastBarcodeDetectAtRef.current > 250
+    ) {
+      barcodeDetectInFlightRef.current = true;
+      lastBarcodeDetectAtRef.current = now;
+
+      Promise.resolve(barcodeDetectorRef.current.detect(canvas))
+        .then((barcodes: any[]) => {
+          const raw = barcodes?.[0]?.rawValue;
+          if (!raw) return;
+          const pairingCode = extractCodeFromQRData(String(raw));
+          if (pairingCode) {
+            handleSuccessfulScan(pairingCode);
+          }
+        })
+        .catch(() => {
+          // ignore
+        })
+        .finally(() => {
+          barcodeDetectInFlightRef.current = false;
+        });
+    }
+
+    const imageData = ctx.getImageData(0, 0, w, h);
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: "attemptBoth",
     });
