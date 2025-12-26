@@ -771,15 +771,7 @@ export function MobileVideoPlayer({
     
     const rect = container.getBoundingClientRect();
     const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
     const relativeX = x / rect.width;
-    const relativeY = y / rect.height;
-    
-    // Exclude top 15% (header controls) and bottom 20% (bottom controls) from gesture zones
-    if (relativeY < 0.15 || relativeY > 0.80) {
-      gestureStartRef.current = null;
-      return;
-    }
     
     // Only start gesture if touch is on the sides (left 30% or right 30%)
     if (relativeX < 0.3) {
@@ -809,31 +801,32 @@ export function MobileVideoPlayer({
     const container = containerRef.current;
     if (!container) return;
     
+    const rect = container.getBoundingClientRect();
     const sensitivity = 200; // pixels for full range
     const deltaPercent = (deltaY / sensitivity) * 100;
     
-    // Only mark as gesturing if moved more than 20px vertically (increased threshold)
-    if (Math.abs(deltaY) > 20) {
+    // Only mark as gesturing if moved more than 10px
+    if (Math.abs(deltaY) > 10) {
       isGesturingRef.current = true;
+    }
+    
+    if (gestureStartRef.current.side === 'left') {
+      // Brightness control (left side)
+      const newBrightness = Math.max(10, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
+      setBrightness(Math.round(newBrightness));
+      setShowBrightnessIndicator(true);
+    } else if (gestureStartRef.current.side === 'right') {
+      // Volume control (right side)
+      const newVolume = Math.max(0, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
+      setVolumeLevel(Math.round(newVolume));
       
-      if (gestureStartRef.current.side === 'left') {
-        // Brightness control (left side)
-        const newBrightness = Math.max(10, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
-        setBrightness(Math.round(newBrightness));
-        setShowBrightnessIndicator(true);
-      } else if (gestureStartRef.current.side === 'right') {
-        // Volume control (right side)
-        const newVolume = Math.max(0, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
-        setVolumeLevel(Math.round(newVolume));
-        
-        const video = videoRef.current;
-        if (video) {
-          video.volume = newVolume / 100;
-          video.muted = newVolume === 0;
-          setIsMuted(newVolume === 0);
-        }
-        setShowGestureVolumeIndicator(true);
+      const video = videoRef.current;
+      if (video) {
+        video.volume = newVolume / 100;
+        video.muted = newVolume === 0;
+        setIsMuted(newVolume === 0);
       }
+      setShowGestureVolumeIndicator(true);
     }
   }, [isLocked]);
 
@@ -1682,20 +1675,13 @@ export function MobileVideoPlayer({
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60"
             onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchMove={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
           >
             {/* Top Bar - Only back button and title */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-safe z-10">
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-safe">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  handleBack();
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
                   handleBack();
                 }}
                 className="p-3 rounded-full bg-black/50 backdrop-blur-sm active:bg-black/70 touch-manipulation cursor-pointer"
@@ -1719,10 +1705,6 @@ export function MobileVideoPlayer({
                   e.preventDefault();
                   handleBack();
                 }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  handleBack();
-                }}
                 className="p-3 rounded-full bg-black/50 backdrop-blur-sm active:bg-black/70 touch-manipulation cursor-pointer"
                 style={{ minWidth: 48, minHeight: 48, WebkitTapHighlightColor: 'transparent' }}
                 type="button"
@@ -1732,18 +1714,13 @@ export function MobileVideoPlayer({
             </div>
 
             {/* Center Controls */}
-            <div className="absolute inset-0 flex items-center justify-center gap-8 z-10">
+            <div className="absolute inset-0 flex items-center justify-center gap-8">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   skip(-10);
                 }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  skip(-10);
-                }}
-                className="p-3 rounded-full bg-black/30 backdrop-blur-sm touch-manipulation"
-                style={{ minWidth: 48, minHeight: 48 }}
+                className="p-3 rounded-full bg-black/30 backdrop-blur-sm"
               >
                 <SkipBack className="h-8 w-8 text-white" />
               </button>
@@ -1753,12 +1730,7 @@ export function MobileVideoPlayer({
                   e.stopPropagation();
                   togglePlay();
                 }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  togglePlay();
-                }}
-                className="p-5 rounded-full bg-white/20 backdrop-blur-md touch-manipulation"
-                style={{ minWidth: 64, minHeight: 64 }}
+                className="p-5 rounded-full bg-white/20 backdrop-blur-md"
               >
                 {isPlaying ? (
                   <Pause className="h-10 w-10 text-white" fill="white" />
@@ -1772,12 +1744,7 @@ export function MobileVideoPlayer({
                   e.stopPropagation();
                   skip(10);
                 }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  skip(10);
-                }}
-                className="p-3 rounded-full bg-black/30 backdrop-blur-sm touch-manipulation"
-                style={{ minWidth: 48, minHeight: 48 }}
+                className="p-3 rounded-full bg-black/30 backdrop-blur-sm"
               >
                 <SkipForward className="h-8 w-8 text-white" />
               </button>
