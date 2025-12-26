@@ -71,6 +71,41 @@ export type Database = {
         }
         Relationships: []
       }
+      cast_events: {
+        Row: {
+          actor: string
+          created_at: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          session_id: string | null
+        }
+        Insert: {
+          actor: string
+          created_at?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          session_id?: string | null
+        }
+        Update: {
+          actor?: string
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cast_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cast_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cast_receivers: {
         Row: {
           created_at: string | null
@@ -104,6 +139,7 @@ export type Database = {
           command_seq: number | null
           command_type: string | null
           command_updated_at: string | null
+          controller_last_heartbeat: string | null
           controller_user_id: string | null
           created_at: string | null
           expires_at: string | null
@@ -114,6 +150,8 @@ export type Database = {
           playback_time: number | null
           queue: Json | null
           receiver_id: string | null
+          receiver_is_playing: boolean | null
+          receiver_playback_time: number | null
           status: string | null
           video_duration: number | null
           video_thumbnail: string | null
@@ -126,6 +164,7 @@ export type Database = {
           command_seq?: number | null
           command_type?: string | null
           command_updated_at?: string | null
+          controller_last_heartbeat?: string | null
           controller_user_id?: string | null
           created_at?: string | null
           expires_at?: string | null
@@ -136,6 +175,8 @@ export type Database = {
           playback_time?: number | null
           queue?: Json | null
           receiver_id?: string | null
+          receiver_is_playing?: boolean | null
+          receiver_playback_time?: number | null
           status?: string | null
           video_duration?: number | null
           video_thumbnail?: string | null
@@ -148,6 +189,7 @@ export type Database = {
           command_seq?: number | null
           command_type?: string | null
           command_updated_at?: string | null
+          controller_last_heartbeat?: string | null
           controller_user_id?: string | null
           created_at?: string | null
           expires_at?: string | null
@@ -158,6 +200,8 @@ export type Database = {
           playback_time?: number | null
           queue?: Json | null
           receiver_id?: string | null
+          receiver_is_playing?: boolean | null
+          receiver_playback_time?: number | null
           status?: string | null
           video_duration?: number | null
           video_thumbnail?: string | null
