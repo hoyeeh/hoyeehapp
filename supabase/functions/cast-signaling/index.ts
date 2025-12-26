@@ -118,6 +118,14 @@ serve(async (req) => {
 
       if (sessionError) throw sessionError;
 
+      // Log event
+      await supabase.from('cast_events').insert({
+        session_id: session.id,
+        actor: 'system',
+        event_type: 'GENERATE_CODE',
+        payload: { deviceName: deviceName || 'Smart TV' }
+      });
+
       console.log('Generated pairing code:', pairingCode);
       return new Response(JSON.stringify({
         success: true,
@@ -168,6 +176,14 @@ serve(async (req) => {
         .from('cast_sessions')
         .update({ status: 'paired', controller_user_id: user.id, last_heartbeat: new Date().toISOString() })
         .eq('id', session.id);
+
+      // Log event
+      await supabase.from('cast_events').insert({
+        session_id: session.id,
+        actor: 'controller',
+        event_type: 'PAIR',
+        payload: { userId: user.id }
+      });
 
       console.log('Paired session:', session.id, 'with user:', user.id);
       return new Response(JSON.stringify({
