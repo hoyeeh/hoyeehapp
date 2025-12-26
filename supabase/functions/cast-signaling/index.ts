@@ -213,7 +213,16 @@ serve(async (req) => {
         });
       }
 
+      // Get current command_seq to increment for actual commands
+      const { data: currentSession } = await supabase
+        .from('cast_sessions')
+        .select('command_seq')
+        .eq('id', sessionId)
+        .single();
+      
+      const currentCommandSeq = currentSession?.command_seq || 0;
       let updateData: Record<string, unknown> = { last_heartbeat: new Date().toISOString() };
+      let isActualCommand = false; // Track if this is a real command that should increment command_seq
 
       console.log(`[cast-signaling] Processing command: ${command} for session: ${sessionId}`);
       console.log(`[cast-signaling] Payload:`, JSON.stringify(payload));
@@ -221,6 +230,7 @@ serve(async (req) => {
       switch (command) {
         case 'LOAD':
           console.log(`[cast-signaling] LOAD command - videoUrl: ${payload?.videoUrl}, title: ${payload?.title}`);
+          isActualCommand = true;
           updateData = { 
             ...updateData, 
             video_url: payload.videoUrl, 
@@ -229,37 +239,100 @@ serve(async (req) => {
             playback_time: payload.startTime || 0, 
             video_duration: payload.duration || 0, 
             is_playing: true, 
-            status: 'active' 
+            status: 'active',
+            // Command tracking fields
+            command_seq: currentCommandSeq + 1,
+            command_type: 'LOAD',
+            command_payload: { 
+              videoUrl: payload.videoUrl, 
+              title: payload.title,
+              startTime: payload.startTime || 0
+            },
+            command_updated_at: new Date().toISOString()
           };
-          console.log(`[cast-signaling] LOAD updateData:`, JSON.stringify(updateData));
+          console.log(`[cast-signaling] LOAD updateData with command_seq:`, currentCommandSeq + 1);
           break;
         case 'PLAY': 
           console.log(`[cast-signaling] PLAY command`);
-          updateData.is_playing = true; 
+          isActualCommand = true;
+          updateData = {
+            ...updateData,
+            is_playing: true,
+            command_seq: currentCommandSeq + 1,
+            command_type: 'PLAY',
+            command_payload: {},
+            command_updated_at: new Date().toISOString()
+          };
           break;
         case 'PAUSE': 
           console.log(`[cast-signaling] PAUSE command`);
-          updateData.is_playing = false; 
+          isActualCommand = true;
+          updateData = {
+            ...updateData,
+            is_playing: false,
+            command_seq: currentCommandSeq + 1,
+            command_type: 'PAUSE',
+            command_payload: {},
+            command_updated_at: new Date().toISOString()
+          };
           break;
         case 'SEEK': 
           console.log(`[cast-signaling] SEEK command to time: ${payload?.time}`);
-          updateData.playback_time = payload.time; 
+          isActualCommand = true;
+          updateData = {
+            ...updateData,
+            playback_time: payload.time,
+            command_seq: currentCommandSeq + 1,
+            command_type: 'SEEK',
+            command_payload: { time: payload.time },
+            command_updated_at: new Date().toISOString()
+          };
           break;
         case 'VOLUME': 
           console.log(`[cast-signaling] VOLUME command: ${payload?.volume}`);
-          updateData.volume_level = payload.volume; 
+          isActualCommand = true;
+          updateData = {
+            ...updateData,
+            volume_level: payload.volume,
+            command_seq: currentCommandSeq + 1,
+            command_type: 'VOLUME',
+            command_payload: { volume: payload.volume },
+            command_updated_at: new Date().toISOString()
+          };
           break;
         case 'STOP': 
           console.log(`[cast-signaling] STOP command`);
-          updateData = { ...updateData, is_playing: false, video_url: null, video_title: null, playback_time: 0 }; 
+          isActualCommand = true;
+          updateData = { 
+            ...updateData, 
+            is_playing: false, 
+            video_url: null, 
+            video_title: null, 
+            playback_time: 0,
+            command_seq: currentCommandSeq + 1,
+            command_type: 'STOP',
+            command_payload: {},
+            command_updated_at: new Date().toISOString()
+          };
           break;
         case 'UPDATE_TIME': 
+          // UPDATE_TIME is NOT a command - it's just syncing receiver state
+          // Do NOT increment command_seq - this prevents reload loops
+          console.log(`[cast-signaling] UPDATE_TIME (receiver sync, not incrementing command_seq)`);
           updateData.playback_time = payload.time; 
           if (payload.duration) updateData.video_duration = payload.duration; 
           break;
         case 'UPDATE_QUEUE': 
           console.log(`[cast-signaling] UPDATE_QUEUE command with ${payload?.queue?.length || 0} items`);
-          updateData.queue = payload.queue; 
+          isActualCommand = true;
+          updateData = {
+            ...updateData,
+            queue: payload.queue,
+            command_seq: currentCommandSeq + 1,
+            command_type: 'UPDATE_QUEUE',
+            command_payload: { queueLength: payload?.queue?.length || 0 },
+            command_updated_at: new Date().toISOString()
+          };
           break;
         default:
           console.log(`[cast-signaling] Unknown command: ${command}`);
@@ -275,7 +348,7 @@ serve(async (req) => {
         });
       }
       
-      console.log(`[cast-signaling] Command ${command} executed successfully for session ${sessionId}`);
+      console.log(`[cast-signaling] Command ${command} executed successfully for session ${sessionId}${isActualCommand ? ' (command_seq incremented)' : ' (no command_seq change)'}`);
       return new Response(JSON.stringify({ success: true, command, sessionId }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -316,16 +389,30 @@ serve(async (req) => {
           playbackTime: session.playback_time, duration: session.video_duration,
           isPlaying: session.is_playing, volume: session.volume_level, queue: session.queue,
           deviceName: session.cast_receivers?.device_name, lastHeartbeat: session.last_heartbeat,
+          // NEW: Include command tracking for receiver deduplication
+          commandSeq: session.command_seq,
+          commandType: session.command_type,
+          commandUpdatedAt: session.command_updated_at
         },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Heartbeat (receiver only, no auth needed)
+    // CRITICAL: Heartbeats ONLY update heartbeat-specific fields
+    // They do NOT increment command_seq to prevent reload loops on TV receiver
     if (action === 'heartbeat') {
       const { sessionId, playbackTime, isPlaying } = await req.json();
-      const updateData: Record<string, unknown> = { last_heartbeat: new Date().toISOString() };
+      
+      // ONLY update heartbeat fields - NOT command fields!
+      const updateData: Record<string, unknown> = { 
+        last_heartbeat: new Date().toISOString() 
+      };
+      
+      // These are "receiver state" updates, not commands
       if (playbackTime !== undefined) updateData.playback_time = playbackTime;
       if (isPlaying !== undefined) updateData.is_playing = isPlaying;
+      
+      // DO NOT update: command_seq, command_type, command_payload, command_updated_at
 
       await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
       return new Response(JSON.stringify({ success: true }), {

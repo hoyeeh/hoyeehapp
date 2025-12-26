@@ -484,6 +484,18 @@
       // Abort tracking - don't retry on recent aborts
       var lastAbortTime = 0;
 
+      // === NEW: Single source of truth for active media ===
+      var activeVideoUrl = null;
+
+      // === NEW: Cooldown protection against repeated loads ===
+      var lastLoadAttemptUrl = null;
+      var lastLoadAttemptTs = 0;
+      var LOAD_COOLDOWN_MS = 4000;  // 4 second cooldown for same URL
+
+      // === NEW: Seek rate limiting ===
+      var lastSeekTime = 0;
+      var SEEK_RATE_LIMIT_MS = 800;  // Don't seek more than once per 800ms
+
       // Supported video types for preflight check
       var SUPPORTED_VIDEO_TYPES = [
         'video/mp4',
@@ -792,6 +804,7 @@
         if (!session) return;
 
         // Build session object matching expected format
+        // IMPORTANT: DO NOT include heartbeat timestamps - they cause duplicate detection to fail
         var formattedSession = {
           status: session.status,
           videoUrl: session.video_url,
@@ -802,17 +815,29 @@
           isPlaying: session.is_playing || false,
           volume: session.volume_level || 100,
           queue: session.queue || [],
-          updatedAt: session.updated_at || session.last_heartbeat || ''
+          // NEW: Use command_seq for proper deduplication (ignores heartbeats)
+          commandSeq: session.command_seq,
+          commandType: session.command_type
+          // REMOVED: updatedAt - this was causing duplicate detection to fail
         };
 
         handleSessionUpdate(formattedSession);
       }
 
-      // Generate command key for deduplication
+      // Generate stable command key for deduplication
+      // CRITICAL: Does NOT use updatedAt/last_heartbeat - they change on every heartbeat!
       function getCommandKey(session) {
-        return (session.videoUrl || '') + '|' + 
-               (session.isPlaying ? '1' : '0') + '|' +
-               (session.updatedAt || '');
+        var url = session.videoUrl || '';
+        var playing = session.isPlaying ? '1' : '0';
+        var time = Math.floor(session.playbackTime || 0);
+        
+        // Use command_seq if available (new backend) - most reliable deduplication
+        if (session.commandSeq !== undefined && session.commandSeq !== null) {
+          return session.commandSeq + '|' + url;
+        }
+        
+        // Fallback: url + playing state + rounded time (NOT timestamps!)
+        return url + '|' + playing + '|' + time;
       }
 
       function startPolling() {
@@ -853,14 +878,14 @@
       function handleSessionUpdate(session) {
         // Guard against overlapping updates
         if (isHandlingUpdate) {
-          console.log('[TV] Already handling update, skipping');
+          console.log('[TV] ACTION=IGNORE already handling update');
           return;
         }
 
-        // Command deduplication - ignore duplicate commands
+        // Command deduplication - uses stable getCommandKey (no timestamps!)
         var commandKey = getCommandKey(session);
         if (commandKey === lastCommandKey) {
-          console.log('[TV] Duplicate command key, ignoring');
+          console.log('[TV] ACTION=IGNORE duplicate command key:', commandKey);
           return;
         }
 
@@ -879,19 +904,21 @@
             }
 
             if (session.videoUrl) {
-              // Check if this URL is already loaded, pending, or loading
-              var urlAlreadyActive = session.videoUrl === loadedVideoUrl || 
-                                     session.videoUrl === pendingVideoUrl;
-              
-              if (!urlAlreadyActive && !isVideoLoading) {
-                console.log('[TV] New video URL detected, loading:', session.videoUrl);
+              // === KEY CHANGE: Use activeVideoUrl as sole source of truth ===
+              if (session.videoUrl !== activeVideoUrl) {
+                // NEW VIDEO: Set active URL and trigger load
+                console.log('[TV] ACTION=LOAD new URL detected:', session.videoUrl);
+                activeVideoUrl = session.videoUrl;
                 showPlayer(session);
               } else {
-                // Same video - just sync playback state without reloading
-                console.log('[TV] Same video (loaded/pending), syncing state only');
+                // SAME VIDEO: Sync state only (seek, play/pause, volume) - DO NOT load
+                console.log('[TV] ACTION=SYNC same URL, syncing state only');
                 syncPlaybackState(session);
               }
             } else {
+              // No video URL - go to idle
+              console.log('[TV] ACTION=IDLE no video URL');
+              activeVideoUrl = null;
               loadedVideoUrl = null;
               pendingVideoUrl = null;
               showIdleScreen();
@@ -901,6 +928,8 @@
           }
 
           if (session.status === 'disconnected') {
+            console.log('[TV] ACTION=DISCONNECT session ended');
+            activeVideoUrl = null;
             loadedVideoUrl = null;
             pendingVideoUrl = null;
             lastCommandKey = null;
@@ -930,6 +959,10 @@
         // Update title if needed
         document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
         
+        // Calculate drift for logging
+        var drift = Math.abs((video.currentTime || 0) - (session.playbackTime || 0));
+        console.log('[TV] ACTION=SYNC url=' + (session.videoUrl || '').substring(0, 50) + '... drift=' + drift.toFixed(1) + 's');
+        
         // Safe seek - only if metadata ready and delta > 1.5 seconds
         safeSeek(session.playbackTime);
 
@@ -952,8 +985,16 @@
       }
 
       // Safe seek function - only seeks after metadata loaded and if delta significant
+      // Includes rate limiting to prevent excessive seeking
       function safeSeek(targetTime) {
         if (targetTime === undefined || isNaN(targetTime)) return;
+        
+        // Rate limit: don't seek more than once every 800ms
+        var now = Date.now();
+        if ((now - lastSeekTime) < SEEK_RATE_LIMIT_MS) {
+          console.log('[TV] Seek rate limited, skipping');
+          return;
+        }
         
         // Check if metadata is ready (readyState >= 1 = HAVE_METADATA)
         if (video.readyState < 1) {
@@ -963,7 +1004,9 @@
         
         var delta = Math.abs(video.currentTime - targetTime);
         if (delta > 1.5) {
-          console.log('[TV] Safe seeking to:', targetTime, 'delta:', delta.toFixed(1));
+          console.log('[TV] ACTION=SEEK to:', targetTime, 'drift:', delta.toFixed(1) + 's');
+          lastSeekTime = now;
+          
           if (video.fastSeek && typeof video.fastSeek === 'function') {
             video.fastSeek(targetTime);
           } else {
@@ -1097,15 +1140,24 @@
           return;
         }
 
+        // === NEW: Cooldown guard - block repeated loads of same URL within 4 seconds ===
+        var now = Date.now();
+        if (url === lastLoadAttemptUrl && (now - lastLoadAttemptTs) < LOAD_COOLDOWN_MS) {
+          console.log('[TV] ACTION=IGNORE cooldown hit, same URL within', LOAD_COOLDOWN_MS, 'ms');
+          return;
+        }
+        lastLoadAttemptUrl = url;
+        lastLoadAttemptTs = now;
+
         // GUARD 1: Check if this URL is already pending (load in progress)
         if (url === pendingVideoUrl) {
-          console.log('[TV] Video already pending, skipping duplicate call');
+          console.log('[TV] ACTION=IGNORE video already pending');
           return;
         }
 
         // GUARD 2: Check if same URL already loaded and playing
         if (url === loadedVideoUrl && !isVideoLoading) {
-          console.log('[TV] Video already loaded, syncing time only');
+          console.log('[TV] ACTION=SYNC video already loaded, seeking to:', startTime);
           safeSeek(startTime);
           safePlay();
           return;
@@ -1113,13 +1165,12 @@
 
         // GUARD 3: Prevent overlapping loads
         if (isVideoLoading) {
-          console.log('[TV] Load in progress, skipping (URL changed from', pendingVideoUrl, 'to', url, ')');
-          // If URL changed, we need to abort and reload - but let current load finish
+          console.log('[TV] ACTION=IGNORE load in progress');
           return;
         }
 
         // GUARD 4: Don't retry immediately after an abort
-        var timeSinceAbort = Date.now() - lastAbortTime;
+        var timeSinceAbort = now - lastAbortTime;
         if (timeSinceAbort < 500) {
           console.log('[TV] Recent abort detected, delaying load');
           setTimeout(function() {
@@ -1127,6 +1178,8 @@
           }, 500);
           return;
         }
+
+        console.log('[TV] ACTION=LOAD starting video load:', url.substring(0, 60) + '...');
 
         // Set pending IMMEDIATELY before any async work
         pendingVideoUrl = url;
