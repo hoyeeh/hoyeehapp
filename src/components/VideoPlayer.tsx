@@ -167,8 +167,9 @@ export const VideoPlayer = ({
   });
 
   // Watch Party sync
-  const { party, isHost, updatePlayback, syncToParty } = useWatchPartyContext();
+  const { party, isHost, isWatchPartyGuest, isSyncing, updatePlayback, syncToParty } = useWatchPartyContext();
   const lastPartySyncRef = useRef<number>(0);
+  const initialPartySyncDoneRef = useRef<boolean>(false);
   // Google Cast hook
   const cast = useGoogleCast({
     mediaUrl: src,
@@ -504,15 +505,32 @@ export const VideoPlayer = ({
   }, [isPlaying, showControls]);
 
   // Watch Party sync - sync video to party state for non-hosts
+  // Force sync on initial join, then use tighter threshold
   useEffect(() => {
     if (!party || isHost) return;
     
     const video = videoRef.current;
     if (!video) return;
 
-    // Sync video to party state
-    syncToParty(video);
+    // Force sync on first update (initial join)
+    const forceSync = !initialPartySyncDoneRef.current;
+    syncToParty(video, forceSync);
+    initialPartySyncDoneRef.current = true;
   }, [party?.playback_time, party?.is_playing, isHost, syncToParty]);
+
+  // Watch Party - periodic sync for guests to catch drift
+  useEffect(() => {
+    if (!party || isHost) return;
+    
+    const interval = setInterval(() => {
+      const video = videoRef.current;
+      if (video) {
+        syncToParty(video, false);
+      }
+    }, 5000); // Sync every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [party, isHost, syncToParty]);
 
   // Watch Party - host sends playback updates
   useEffect(() => {
@@ -524,7 +542,7 @@ export const VideoPlayer = ({
     const handleHostTimeUpdate = () => {
       const now = Date.now();
       // Only send updates every second max
-      if (now - lastPartySyncRef.current >= 1000) {
+      if (now - lastPartySyncRef.current >= 2000) {
         lastPartySyncRef.current = now;
         updatePlayback(video.currentTime, !video.paused);
       }
@@ -1109,18 +1127,41 @@ export const VideoPlayer = ({
           <h2 className="font-display text-sm sm:text-xl truncate max-w-[60vw]">{title}</h2>
         </div>
 
+        {/* Watch Party Guest Indicator */}
+        {isWatchPartyGuest && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30">
+            <div className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm transition-colors",
+              isSyncing ? "bg-amber-500/80" : "bg-primary/80"
+            )}>
+              <Users className="h-4 w-4 text-white" />
+              <span className="text-white text-sm font-medium">
+                {isSyncing ? "Syncing..." : "Host controls playback"}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Center Controls */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 sm:gap-8">
           <button
-            onClick={() => skip(-10)}
-            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
+            onClick={() => !isWatchPartyGuest && skip(-10)}
+            disabled={isWatchPartyGuest}
+            className={cn(
+              "w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors",
+              isWatchPartyGuest && "opacity-40 cursor-not-allowed hover:bg-background/50"
+            )}
           >
             <SkipBack className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
           
           <button
-            onClick={togglePlay}
-            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30"
+            onClick={() => !isWatchPartyGuest && togglePlay()}
+            disabled={isWatchPartyGuest}
+            className={cn(
+              "w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30",
+              isWatchPartyGuest && "opacity-40 cursor-not-allowed hover:bg-brand"
+            )}
           >
             {isPlaying ? (
               <Pause className="h-7 w-7 sm:h-10 sm:w-10 text-primary-foreground" fill="currentColor" />
@@ -1130,8 +1171,12 @@ export const VideoPlayer = ({
           </button>
           
           <button
-            onClick={() => skip(10)}
-            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors"
+            onClick={() => !isWatchPartyGuest && skip(10)}
+            disabled={isWatchPartyGuest}
+            className={cn(
+              "w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-background/50 flex items-center justify-center hover:bg-background/70 transition-colors",
+              isWatchPartyGuest && "opacity-40 cursor-not-allowed hover:bg-background/50"
+            )}
           >
             <SkipForward className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
@@ -1142,8 +1187,11 @@ export const VideoPlayer = ({
           {/* Progress Bar with Markers */}
           <div
             ref={progressRef}
-            className="h-1.5 bg-muted rounded-full cursor-pointer group relative"
-            onClick={handleProgressClick}
+            className={cn(
+              "h-1.5 bg-muted rounded-full group relative",
+              isWatchPartyGuest ? "cursor-not-allowed" : "cursor-pointer"
+            )}
+            onClick={isWatchPartyGuest ? undefined : handleProgressClick}
           >
             {/* Intro marker */}
             {duration > 0 && introEndTime > introStartTime && (

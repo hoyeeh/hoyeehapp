@@ -209,8 +209,9 @@ export function MobileVideoPlayer({
   const autoSkippedRecapRef = useRef(false);
   
   // Watch Party sync
-  const { party, isHost, updatePlayback, syncToParty } = useWatchPartyContext();
+  const { party, isHost, isWatchPartyGuest, isSyncing, updatePlayback, syncToParty } = useWatchPartyContext();
   const lastPartySyncRef = useRef<number>(0);
+  const initialPartySyncDoneRef = useRef<boolean>(false);
 
   // Save intro times to database (for admins)
   const handleSaveIntroTimes = useCallback(async () => {
@@ -485,12 +486,31 @@ export function MobileVideoPlayer({
   }, [isPlaying, duration, saveProgressImmediately, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl, isKidsMode, onTimeUpdate, currentTime]);
 
   // Watch Party sync - sync video to party state for non-hosts
+  // Force sync on initial join, then use tighter threshold
   useEffect(() => {
     if (!party || isHost) return;
     const video = videoRef.current;
     if (!video) return;
-    syncToParty(video);
+    
+    // Force sync on first update (initial join)
+    const forceSync = !initialPartySyncDoneRef.current;
+    syncToParty(video, forceSync);
+    initialPartySyncDoneRef.current = true;
   }, [party?.playback_time, party?.is_playing, isHost, syncToParty]);
+
+  // Watch Party - periodic sync for guests to catch drift
+  useEffect(() => {
+    if (!party || isHost) return;
+    
+    const interval = setInterval(() => {
+      const video = videoRef.current;
+      if (video) {
+        syncToParty(video, false);
+      }
+    }, 5000); // Sync every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [party, isHost, syncToParty]);
 
   // Watch Party - host sends playback updates
   useEffect(() => {
@@ -501,15 +521,26 @@ export function MobileVideoPlayer({
     const handleHostPlayPause = () => {
       updatePlayback(video.currentTime, !video.paused);
     };
+    
+    // Send periodic updates during playback for better sync
+    const handleHostTimeUpdate = () => {
+      const now = Date.now();
+      if (now - lastPartySyncRef.current >= 2000) { // Every 2 seconds
+        lastPartySyncRef.current = now;
+        updatePlayback(video.currentTime, !video.paused);
+      }
+    };
 
     video.addEventListener('play', handleHostPlayPause);
     video.addEventListener('pause', handleHostPlayPause);
     video.addEventListener('seeked', handleHostPlayPause);
+    video.addEventListener('timeupdate', handleHostTimeUpdate);
 
     return () => {
       video.removeEventListener('play', handleHostPlayPause);
       video.removeEventListener('pause', handleHostPlayPause);
       video.removeEventListener('seeked', handleHostPlayPause);
+      video.removeEventListener('timeupdate', handleHostTimeUpdate);
     };
   }, [party, isHost, updatePlayback]);
 
@@ -1716,14 +1747,33 @@ export function MobileVideoPlayer({
               </button>
             </div>
 
+            {/* Watch Party Guest Indicator */}
+            {isWatchPartyGuest && (
+              <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30">
+                <div className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm transition-colors",
+                  isSyncing ? "bg-amber-500/80" : "bg-primary/80"
+                )}>
+                  <Users className="h-4 w-4 text-white" />
+                  <span className="text-white text-sm font-medium">
+                    {isSyncing ? "Syncing..." : "Host controls playback"}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Center Controls */}
             <div className="absolute inset-0 flex items-center justify-center gap-8">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  skip(-10);
+                  if (!isWatchPartyGuest) skip(-10);
                 }}
-                className="p-3 rounded-full bg-black/30 backdrop-blur-sm"
+                disabled={isWatchPartyGuest}
+                className={cn(
+                  "p-3 rounded-full bg-black/30 backdrop-blur-sm",
+                  isWatchPartyGuest && "opacity-40 cursor-not-allowed"
+                )}
               >
                 <SkipBack className="h-8 w-8 text-white" />
               </button>
@@ -1731,9 +1781,13 @@ export function MobileVideoPlayer({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  togglePlay();
+                  if (!isWatchPartyGuest) togglePlay();
                 }}
-                className="p-5 rounded-full bg-white/20 backdrop-blur-md"
+                disabled={isWatchPartyGuest}
+                className={cn(
+                  "p-5 rounded-full bg-white/20 backdrop-blur-md",
+                  isWatchPartyGuest && "opacity-40 cursor-not-allowed"
+                )}
               >
                 {isPlaying ? (
                   <Pause className="h-10 w-10 text-white" fill="white" />
@@ -1745,9 +1799,13 @@ export function MobileVideoPlayer({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  skip(10);
+                  if (!isWatchPartyGuest) skip(10);
                 }}
-                className="p-3 rounded-full bg-black/30 backdrop-blur-sm"
+                disabled={isWatchPartyGuest}
+                className={cn(
+                  "p-3 rounded-full bg-black/30 backdrop-blur-sm",
+                  isWatchPartyGuest && "opacity-40 cursor-not-allowed"
+                )}
               >
                 <SkipForward className="h-8 w-8 text-white" />
               </button>
@@ -1787,14 +1845,18 @@ export function MobileVideoPlayer({
                   className="absolute h-full bg-primary rounded-full"
                   style={{ width: `${progress}%` }}
                 />
-                {/* Scrubber */}
+                {/* Scrubber - disabled for watch party guests */}
                 <input
                   type="range"
                   min={0}
                   max={duration || 100}
                   value={currentTime}
-                  onChange={handleSeek}
-                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                  onChange={isWatchPartyGuest ? undefined : handleSeek}
+                  disabled={isWatchPartyGuest}
+                  className={cn(
+                    "absolute inset-0 w-full opacity-0",
+                    isWatchPartyGuest ? "cursor-not-allowed" : "cursor-pointer"
+                  )}
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
