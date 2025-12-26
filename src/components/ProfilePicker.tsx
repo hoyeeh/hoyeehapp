@@ -18,13 +18,14 @@ import { Logo } from "./Logo";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   AVATARS, 
-  KIDS_AVATARS, 
   AVATAR_RINGS,
   getRandomAvatar, 
   getRandomRing,
   isPresetAvatar,
   getAvatarsForProfile,
-  getRingById
+  getRingById,
+  resolveAvatarSrc,
+  getAvatarUrlPath
 } from "@/lib/avatars";
 
 interface ProfilePickerProps {
@@ -61,10 +62,11 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
     }
 
     try {
-      // Combine avatar with ring info
+      // Convert display src to URL path for database storage
+      const avatarUrlPath = getAvatarUrlPath(selectedAvatarSrc);
       const avatarData = selectedRing !== "none" 
-        ? `${selectedAvatarSrc}?ring=${selectedRing}` 
-        : selectedAvatarSrc;
+        ? `${avatarUrlPath}?ring=${selectedRing}` 
+        : avatarUrlPath;
 
       if (editingProfile) {
         await updateProfile(editingProfile.id, {
@@ -103,10 +105,15 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
     setName(profile.name);
     setIsKids(profile.is_kids);
     
-    // Parse avatar URL and ring
+    // Parse avatar URL and ring, resolve to display src
     const avatarUrl = profile.avatar_url || "";
     const [baseSrc, params] = avatarUrl.split("?");
-    setSelectedAvatarSrc(baseSrc || getRandomAvatar(profile.is_kids));
+    const displaySrc = resolveAvatarSrc(baseSrc);
+    
+    // Find matching avatar in our list or use the resolved src
+    const avatars = getAvatarsForProfile(profile.is_kids);
+    const matchingAvatar = avatars.find(a => a.src === displaySrc || a.urlPath === baseSrc);
+    setSelectedAvatarSrc(matchingAvatar ? matchingAvatar.src : displaySrc || avatars[0].src);
     
     if (params) {
       const ringMatch = params.match(/ring=([^&]+)/);
@@ -127,7 +134,10 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
     setEditingProfile(null);
     setName("");
     setIsKids(false);
-    setSelectedAvatarSrc(getRandomAvatar(false));
+    // Use ES6 import src for display, not URL path
+    const avatars = getAvatarsForProfile(false);
+    const randomIndex = Math.floor(Math.random() * avatars.length);
+    setSelectedAvatarSrc(avatars[randomIndex].src);
     setSelectedRing(getRandomRing());
   };
 
@@ -140,7 +150,8 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
       const ringMatch = params.match(/ring=([^&]+)/);
       ring = ringMatch ? ringMatch[1] : "none";
     }
-    return { src: baseSrc, ring };
+    // Resolve URL path to displayable src
+    return { src: resolveAvatarSrc(baseSrc), ring };
   };
 
   // Get avatar for display

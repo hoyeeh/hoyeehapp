@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
-import { getRingById } from "@/lib/avatars";
+import { getRingById, resolveAvatarSrc } from "@/lib/avatars";
 
 interface ProfileSwitcherProps {
   onManageProfiles?: () => void;
@@ -26,7 +26,8 @@ const parseAvatarData = (avatarUrl: string | null) => {
     const ringMatch = params.match(/ring=([^&]+)/);
     ring = ringMatch ? ringMatch[1] : "none";
   }
-  return { src: baseSrc, ring };
+  // Resolve the URL path to an actual displayable src
+  return { src: resolveAvatarSrc(baseSrc), ring };
 };
 
 export const ProfileSwitcher = ({ onManageProfiles }: ProfileSwitcherProps) => {
