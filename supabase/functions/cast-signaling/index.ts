@@ -8,6 +8,8 @@ const corsHeaders = {
 
 // Rate limiting for pairing attempts (in-memory, resets on function restart)
 const pairingAttempts = new Map<string, { count: number; resetAt: number }>();
+// Rate limiting for commands (max 10/sec per session)
+const commandAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function checkRateLimit(identifier: string, maxAttempts = 10, windowMs = 60000): boolean {
   const now = Date.now();
@@ -15,6 +17,23 @@ function checkRateLimit(identifier: string, maxAttempts = 10, windowMs = 60000):
   
   if (!record || now > record.resetAt) {
     pairingAttempts.set(identifier, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxAttempts) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
+
+function checkCommandRateLimit(sessionId: string, maxAttempts = 10, windowMs = 1000): boolean {
+  const now = Date.now();
+  const record = commandAttempts.get(sessionId);
+  
+  if (!record || now > record.resetAt) {
+    commandAttempts.set(sessionId, { count: 1, resetAt: now + windowMs });
     return true;
   }
   
@@ -207,6 +226,15 @@ serve(async (req) => {
 
       const { sessionId, command, payload } = await req.json();
 
+      // Command rate limiting (max 10/sec per session)
+      if (!checkCommandRateLimit(sessionId, 10, 1000)) {
+        console.warn(`Command rate limit exceeded for session: ${sessionId}`);
+        return new Response(JSON.stringify({ success: false, error: 'Too many commands. Please slow down.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // Verify session ownership
       const { data: session, error: sessionError } = await supabase
         .from('cast_sessions')
@@ -361,6 +389,16 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: false, error: 'Failed to update session', details: updateError.message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Log command event (skip UPDATE_TIME to reduce noise)
+      if (isActualCommand) {
+        await supabase.from('cast_events').insert({
+          session_id: sessionId,
+          actor: 'controller',
+          event_type: 'COMMAND',
+          payload: { command, ...payload }
         });
       }
       
