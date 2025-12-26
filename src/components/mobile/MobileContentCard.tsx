@@ -10,7 +10,7 @@ interface MobileContentCardProps {
   content: Content;
   onPlay?: (content: Content) => void;
   onDetails: (content: Content) => void;
-  variant?: "poster" | "landscape" | "continue";
+  variant?: "poster" | "landscape" | "continue" | "grid";
   rank?: number;
   progress?: number;
   showBadges?: boolean;
@@ -206,6 +206,62 @@ export function MobileContentCard({
 
         {/* Title */}
         <h4 className="mt-1.5 text-xs font-medium line-clamp-2 px-0.5 text-foreground/90 ml-8">
+          {content.title}
+        </h4>
+      </div>
+    );
+  }
+
+  // Grid variant - responsive for 3-column layouts
+  if (variant === "grid") {
+    return (
+      <div 
+        className="relative w-full active:scale-95 transition-transform"
+        onClick={() => onDetails(content)}
+      >
+        <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-secondary shadow-md ring-1 ring-border/10">
+          <img
+            src={thumbnailSrc}
+            alt={content.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={handleImageError}
+          />
+          
+          {/* Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+          
+          {/* Badge */}
+          {!badgeError && (
+            <div className="absolute top-1 left-1">
+              <img 
+                src={badge} 
+                alt="Hoyeeh" 
+                className="h-2.5 w-auto opacity-80"
+                onError={() => setBadgeError(true)}
+              />
+            </div>
+          )}
+          
+          {/* Offline Available Badge */}
+          {showOfflineBadge && (
+            <div className="absolute top-1 right-1 bg-green-600 rounded-full p-0.5">
+              <CloudOff className="h-2.5 w-2.5 text-white" />
+            </div>
+          )}
+
+          {/* New Badge */}
+          {showBadges && isNewlyAdded && (
+            <div className="absolute bottom-0 left-0 right-0 bg-primary py-0.5">
+              <span className="block text-center text-[8px] font-bold text-primary-foreground">
+                NEW
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Title */}
+        <h4 className="mt-1 text-[11px] font-medium line-clamp-2 text-foreground/90">
           {content.title}
         </h4>
       </div>

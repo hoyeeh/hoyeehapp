@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useHaptics } from "@/hooks/useHaptics";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileContentDetail } from "./MobileContentDetail";
+import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 
 interface SwipeableItemProps {
   content: Content;
@@ -176,7 +177,8 @@ export function MobileMyList() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <MobileSwipeWrapper>
+      <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 bg-background/95 backdrop-blur-xl border-b border-border/30 pt-safe z-50">
         <div className="flex items-center gap-3 px-4 h-14">
@@ -270,5 +272,6 @@ export function MobileMyList() {
         />
       )}
     </div>
+    </MobileSwipeWrapper>
   );
 }

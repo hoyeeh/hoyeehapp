@@ -891,7 +891,10 @@ export function MobileVideoPlayer({
     
     // Call onClose to update parent state
     onClose();
-  }, [duration, saveProgressImmediately, onClose, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl]);
+    
+    // Navigate back to previous page
+    goBack();
+  }, [duration, saveProgressImmediately, onClose, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl, goBack]);
 
   // Swipe gesture handlers (down to minimize, right to go back)
   const handleSwipePan = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
