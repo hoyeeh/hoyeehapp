@@ -340,6 +340,166 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
     }
+    
+    /* Debug Panel */
+    .debug-panel {
+      position: fixed;
+      bottom: 60px;
+      left: 20px;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: #aaa;
+      z-index: 100;
+      max-width: 400px;
+      display: none;
+    }
+    .debug-panel.visible { display: block; }
+    .debug-title { 
+      font-weight: bold; 
+      color: #ff6300; 
+      margin-bottom: 8px;
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-pack: justify;
+      -webkit-justify-content: space-between;
+      justify-content: space-between;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+    }
+    .debug-close {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0;
+    }
+    .debug-close:hover { color: #fff; }
+    .debug-row { 
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      margin-bottom: 4px;
+      gap: 8px;
+    }
+    .debug-label { color: #666; min-width: 100px; }
+    .debug-value { color: #4ade80; word-break: break-all; }
+    .debug-value.error { color: #ef4444; }
+    .debug-value.warning { color: #f59e0b; }
+    .debug-value.url { 
+      max-width: 220px; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      white-space: nowrap;
+    }
+    
+    /* Force Refresh Button */
+    .force-refresh-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: #aaa;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 99;
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .force-refresh-btn:hover { background: rgba(255,99,0,0.2); border-color: #ff6300; color: #fff; }
+    
+    /* Debug Toggle Button */
+    .debug-toggle-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 140px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: #aaa;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 99;
+    }
+    .debug-toggle-btn:hover { background: rgba(255,99,0,0.2); border-color: #ff6300; color: #fff; }
+    .debug-toggle-btn.active { border-color: #ff6300; color: #ff6300; }
+    
+    /* Buffering Progress Indicator */
+    .buffering-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -webkit-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      z-index: 8;
+    }
+    .buffering-overlay.hidden { display: none; }
+    .buffering-ring {
+      width: 100px;
+      height: 100px;
+      position: relative;
+    }
+    .buffering-ring svg {
+      width: 100%;
+      height: 100%;
+      -webkit-transform: rotate(-90deg);
+      transform: rotate(-90deg);
+    }
+    .buffering-ring-bg {
+      fill: none;
+      stroke: rgba(255,255,255,0.1);
+      stroke-width: 8;
+    }
+    .buffering-ring-progress {
+      fill: none;
+      stroke: #ff6300;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+      -webkit-transition: stroke-dashoffset 0.3s ease;
+      transition: stroke-dashoffset 0.3s ease;
+    }
+    .buffering-percent {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -webkit-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .buffering-text {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #aaa;
+    }
   </style>
 </head>
 <body>
@@ -433,7 +593,63 @@
       <div class="connection-dot"></div>
       <span>Realtime Connected</span>
     </div>
+    
+    <!-- Buffering Progress Overlay -->
+    <div class="buffering-overlay hidden" id="bufferingOverlay">
+      <div class="buffering-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="buffering-ring-bg" cx="50" cy="50" r="45"></circle>
+          <circle class="buffering-ring-progress" id="bufferingProgress" cx="50" cy="50" r="45"></circle>
+        </svg>
+        <div class="buffering-percent" id="bufferingPercent">0%</div>
+      </div>
+      <div class="buffering-text" id="bufferingText">Buffering...</div>
+    </div>
   </div>
+  
+  <!-- Debug Panel -->
+  <div class="debug-panel" id="debugPanel">
+    <div class="debug-title">
+      <span>🔧 Debug Info</span>
+      <button class="debug-close" id="debugClose">×</button>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">command_seq:</span>
+      <span class="debug-value" id="debugCommandSeq">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">activeVideoUrl:</span>
+      <span class="debug-value url" id="debugActiveUrl">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">loadedVideoUrl:</span>
+      <span class="debug-value url" id="debugLoadedUrl">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Realtime:</span>
+      <span class="debug-value" id="debugRealtime">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Session ID:</span>
+      <span class="debug-value" id="debugSessionId">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">isPlaying:</span>
+      <span class="debug-value" id="debugIsPlaying">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Last Action:</span>
+      <span class="debug-value" id="debugLastAction">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Buffer:</span>
+      <span class="debug-value" id="debugBuffer">-</span>
+    </div>
+  </div>
+  
+  <!-- Control Buttons -->
+  <button class="force-refresh-btn" id="forceRefreshBtn">🔄 Refresh</button>
+  <button class="debug-toggle-btn" id="debugToggleBtn">🔧 Debug</button>
 
   <!-- Polyfills for older browsers -->
   <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
@@ -495,6 +711,17 @@
       // === NEW: Seek rate limiting ===
       var lastSeekTime = 0;
       var SEEK_RATE_LIMIT_MS = 800;  // Don't seek more than once per 800ms
+
+      // === Debug state (initialized early, functions added later) ===
+      var lastDebugAction = '-';
+      var currentCommandSeq = 0;
+      var debugVisible = false;
+      
+      // Placeholder function - gets proper implementation later
+      function setDebugAction(action) {
+        lastDebugAction = action;
+        // Debug panel update happens in the actual implementation
+      }
 
       // Supported video types for preflight check
       var SUPPORTED_VIDEO_TYPES = [
@@ -879,13 +1106,20 @@
         // Guard against overlapping updates
         if (isHandlingUpdate) {
           console.log('[TV] ACTION=IGNORE already handling update');
+          setDebugAction('IGNORE_BUSY');
           return;
+        }
+
+        // Track command_seq for debug panel
+        if (session && session.commandSeq !== undefined) {
+          currentCommandSeq = session.commandSeq;
         }
 
         // Command deduplication - uses stable getCommandKey (no timestamps!)
         var commandKey = getCommandKey(session);
         if (commandKey === lastCommandKey) {
           console.log('[TV] ACTION=IGNORE duplicate command key:', commandKey);
+          setDebugAction('IGNORE_DUP');
           return;
         }
 
@@ -908,16 +1142,19 @@
               if (session.videoUrl !== activeVideoUrl) {
                 // NEW VIDEO: Set active URL and trigger load
                 console.log('[TV] ACTION=LOAD new URL detected:', session.videoUrl);
+                setDebugAction('LOAD');
                 activeVideoUrl = session.videoUrl;
                 showPlayer(session);
               } else {
                 // SAME VIDEO: Sync state only (seek, play/pause, volume) - DO NOT load
                 console.log('[TV] ACTION=SYNC same URL, syncing state only');
+                setDebugAction('SYNC');
                 syncPlaybackState(session);
               }
             } else {
               // No video URL - go to idle
               console.log('[TV] ACTION=IDLE no video URL');
+              setDebugAction('IDLE');
               activeVideoUrl = null;
               loadedVideoUrl = null;
               pendingVideoUrl = null;
@@ -929,6 +1166,7 @@
 
           if (session.status === 'disconnected') {
             console.log('[TV] ACTION=DISCONNECT session ended');
+            setDebugAction('DISCONNECT');
             activeVideoUrl = null;
             loadedVideoUrl = null;
             pendingVideoUrl = null;
@@ -1644,6 +1882,198 @@
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         if (expiryInterval) clearInterval(expiryInterval);
       });
+
+      // ============================================
+      // DEBUG PANEL, FORCE REFRESH & BUFFERING
+      // ============================================
+      
+      var debugPanel = document.getElementById('debugPanel');
+      var debugToggleBtn = document.getElementById('debugToggleBtn');
+      var debugCloseBtn = document.getElementById('debugClose');
+      var forceRefreshBtn = document.getElementById('forceRefreshBtn');
+      var bufferingOverlay = document.getElementById('bufferingOverlay');
+      var bufferingProgress = document.getElementById('bufferingProgress');
+      var bufferingPercent = document.getElementById('bufferingPercent');
+      var bufferingText = document.getElementById('bufferingText');
+      
+      // Debug panel toggle
+      debugToggleBtn.addEventListener('click', function() {
+        debugVisible = !debugVisible;
+        if (debugVisible) {
+          debugPanel.classList.add('visible');
+          debugToggleBtn.classList.add('active');
+          updateDebugPanel();
+        } else {
+          debugPanel.classList.remove('visible');
+          debugToggleBtn.classList.remove('active');
+        }
+      });
+      
+      debugCloseBtn.addEventListener('click', function() {
+        debugVisible = false;
+        debugPanel.classList.remove('visible');
+        debugToggleBtn.classList.remove('active');
+      });
+      
+      // Force refresh button
+      forceRefreshBtn.addEventListener('click', function() {
+        console.log('[TV] Force refresh triggered');
+        lastDebugAction = 'FORCE_REFRESH';
+        updateDebugPanel();
+        
+        // Stop all playback
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        
+        // Reset all state
+        activeVideoUrl = null;
+        loadedVideoUrl = null;
+        pendingVideoUrl = null;
+        isVideoLoading = false;
+        lastCommandKey = null;
+        lastLoadAttemptUrl = null;
+        lastLoadAttemptTs = 0;
+        currentQueue = [];
+        currentQueueIndex = 0;
+        retryCount = 0;
+        currentCommandSeq = 0;
+        
+        // Cleanup realtime
+        cleanupRealtime();
+        
+        // Clear intervals
+        if (pollInterval) clearInterval(pollInterval);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (expiryInterval) clearInterval(expiryInterval);
+        
+        // Reset UI
+        hideLoading();
+        hideError();
+        hidePreflight();
+        hideBuffering();
+        
+        // Show pairing screen and regenerate code
+        showPairingScreen();
+        sessionId = null;
+        receiverId = null;
+        pairingCode = null;
+        
+        // Generate new pairing code
+        setTimeout(function() {
+          generatePairingCode();
+        }, 500);
+      });
+      
+      // Update debug panel
+      function updateDebugPanel() {
+        if (!debugVisible) return;
+        
+        document.getElementById('debugCommandSeq').textContent = currentCommandSeq || '0';
+        document.getElementById('debugActiveUrl').textContent = activeVideoUrl ? activeVideoUrl.split('/').pop() : '-';
+        document.getElementById('debugActiveUrl').title = activeVideoUrl || '';
+        document.getElementById('debugLoadedUrl').textContent = loadedVideoUrl ? loadedVideoUrl.split('/').pop() : '-';
+        document.getElementById('debugLoadedUrl').title = loadedVideoUrl || '';
+        
+        var realtimeStatus = realtimeChannel ? 'Connected' : (useRealtimeUpdates ? 'Connecting...' : 'Polling');
+        document.getElementById('debugRealtime').textContent = realtimeStatus;
+        document.getElementById('debugRealtime').className = 'debug-value' + (realtimeChannel ? '' : ' warning');
+        
+        document.getElementById('debugSessionId').textContent = sessionId ? sessionId.substring(0, 8) + '...' : '-';
+        document.getElementById('debugIsPlaying').textContent = video.paused ? 'No' : 'Yes';
+        document.getElementById('debugLastAction').textContent = lastDebugAction;
+        
+        // Buffer info
+        var buffered = getBufferedPercent();
+        document.getElementById('debugBuffer').textContent = buffered.toFixed(1) + '%';
+      }
+      
+      // Update debug action
+      function setDebugAction(action) {
+        lastDebugAction = action;
+        updateDebugPanel();
+      }
+      
+      // Get buffered percentage
+      function getBufferedPercent() {
+        if (!video.duration || video.duration === 0) return 0;
+        if (!video.buffered || video.buffered.length === 0) return 0;
+        
+        var bufferedEnd = 0;
+        for (var i = 0; i < video.buffered.length; i++) {
+          if (video.buffered.start(i) <= video.currentTime && video.buffered.end(i) >= video.currentTime) {
+            bufferedEnd = video.buffered.end(i);
+            break;
+          }
+        }
+        
+        return (bufferedEnd / video.duration) * 100;
+      }
+      
+      // Show buffering overlay with progress
+      function showBuffering() {
+        bufferingOverlay.classList.remove('hidden');
+        updateBufferingProgress();
+      }
+      
+      function hideBuffering() {
+        bufferingOverlay.classList.add('hidden');
+      }
+      
+      function updateBufferingProgress() {
+        if (bufferingOverlay.classList.contains('hidden')) return;
+        
+        var percent = getBufferedPercent();
+        var circumference = 283; // 2 * PI * 45
+        var offset = circumference - (percent / 100) * circumference;
+        
+        bufferingProgress.style.strokeDashoffset = offset;
+        bufferingPercent.textContent = Math.round(percent) + '%';
+        
+        if (percent < 100 && !video.paused && video.readyState < 4) {
+          bufferingText.textContent = 'Buffering...';
+        } else {
+          bufferingText.textContent = 'Ready';
+        }
+      }
+      
+      // Listen for buffer progress
+      video.addEventListener('progress', function() {
+        updateBufferingProgress();
+        updateDebugPanel();
+      });
+      
+      // Show buffering on waiting
+      video.addEventListener('waiting', function() {
+        // Only show buffering indicator if we're actually buffering, not just starting
+        if (loadedVideoUrl && !isVideoLoading) {
+          showBuffering();
+          setDebugAction('BUFFERING');
+        }
+      });
+      
+      // Hide buffering when can play
+      video.addEventListener('canplay', function() {
+        hideBuffering();
+      });
+      
+      video.addEventListener('playing', function() {
+        hideBuffering();
+        setDebugAction('PLAYING');
+      });
+      
+      video.addEventListener('pause', function() {
+        setDebugAction('PAUSED');
+      });
+      
+      // Update debug panel periodically
+      setInterval(function() {
+        updateDebugPanel();
+      }, 1000);
 
       // Initialize
       generatePairingCode();
