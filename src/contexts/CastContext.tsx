@@ -75,13 +75,13 @@ interface CastContextType {
   pairedDevices: CastDevice[];
 
   // Connection methods
-  pairWithCode: (code: string) => Promise<boolean>;
+  pairWithCode: (code: string) => Promise<string | null>;
   reconnectToDevice: (device: CastDevice) => Promise<boolean>;
   disconnect: () => void;
   removePairedDevice: (deviceId: string) => void;
 
   // Playback methods
-  loadVideo: (videoUrl: string, title: string, thumbnail?: string, duration?: number, startTime?: number) => Promise<void>;
+  loadVideo: (videoUrl: string, title: string, thumbnail?: string, duration?: number, startTime?: number, sessionId?: string) => Promise<void>;
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;

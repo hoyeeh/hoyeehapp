@@ -151,8 +151,11 @@ export function useUniversalCast() {
   );
 
 
-  // Pair with TV using code
-  const pairWithCode = useCallback(async (code: string): Promise<boolean> => {
+  // Session ID ref for immediate access after pairing
+  const sessionIdRef = useRef<string | null>(null);
+
+  // Pair with TV using code - returns sessionId on success for immediate use
+  const pairWithCode = useCallback(async (code: string): Promise<string | null> => {
     setState(prev => ({ ...prev, isConnecting: true }));
 
     try {
@@ -169,6 +172,9 @@ export function useUniversalCast() {
           sessionId: result.sessionId,
         };
 
+        // Store sessionId in ref for immediate access
+        sessionIdRef.current = result.sessionId;
+
         setState(prev => ({
           ...prev,
           isConnecting: false,
@@ -181,17 +187,17 @@ export function useUniversalCast() {
         setupRealtimeSubscription(result.sessionId);
 
         toast.success(`Connected to ${device.name}`);
-        return true;
+        return result.sessionId;
       } else {
         toast.error(result.error || 'Invalid or expired code');
         setState(prev => ({ ...prev, isConnecting: false }));
-        return false;
+        return null;
       }
     } catch (error) {
       console.error('Pairing error:', error);
       toast.error('Failed to connect');
       setState(prev => ({ ...prev, isConnecting: false }));
-      return false;
+      return null;
     }
   }, [user, callSignaling, savePairedDevice]);
 
@@ -332,25 +338,30 @@ export function useUniversalCast() {
       .subscribe();
   }, []);
 
-  // Send command to receiver
+  // Send command to receiver - uses ref for immediate sessionId access
   const sendCommand = useCallback(async (
     command: string,
-    payload: Record<string, unknown> = {}
+    payload: Record<string, unknown> = {},
+    overrideSessionId?: string
   ) => {
-    if (!state.sessionId) {
-      console.error('No active session');
-      return;
+    const activeSessionId = overrideSessionId || sessionIdRef.current || state.sessionId;
+    if (!activeSessionId) {
+      console.error('No active session for command:', command);
+      return { success: false, error: 'No active session' };
     }
 
     try {
-      await callSignaling('command', {
-        sessionId: state.sessionId,
+      const result = await callSignaling('command', {
+        sessionId: activeSessionId,
         command,
         payload,
       });
+      console.log(`[Cast] Command ${command} result:`, result);
+      return result;
     } catch (error) {
       console.error('Command error:', error);
       toast.error('Failed to send command');
+      return { success: false, error: 'Command failed' };
     }
   }, [state.sessionId, callSignaling]);
 
@@ -360,15 +371,18 @@ export function useUniversalCast() {
     title: string,
     thumbnail?: string,
     duration?: number,
-    startTime?: number
+    startTime?: number,
+    overrideSessionId?: string
   ) => {
-    await sendCommand('LOAD', {
+    console.log('[Cast] Loading video:', { videoUrl, title, overrideSessionId });
+    const result = await sendCommand('LOAD', {
       videoUrl,
       title,
       thumbnail,
       duration,
       startTime: startTime || 0,
-    });
+    }, overrideSessionId);
+    return result;
   }, [sendCommand]);
 
   // Playback controls

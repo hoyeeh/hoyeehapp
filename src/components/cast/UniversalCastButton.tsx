@@ -51,18 +51,19 @@ export function UniversalCastButton({
     loadVideo,
   } = useUniversalCast();
 
-  const handlePair = async (code: string) => {
-    const success = await pairWithCode(code);
-    if (success) {
+  const handlePair = async (code: string): Promise<boolean> => {
+    const sessionId = await pairWithCode(code);
+    if (sessionId) {
       onCastStart?.();
-      // Auto-cast if we have a video
+      // Auto-cast if we have a video - use sessionId directly to avoid race condition
       if (videoUrl && videoTitle) {
         setTimeout(() => {
-          loadVideo(videoUrl, videoTitle, thumbnail, duration);
-        }, 500);
+          loadVideo(videoUrl, videoTitle, thumbnail, duration, undefined, sessionId);
+        }, 300);
       }
+      return true;
     }
-    return success;
+    return false;
   };
 
   const handleReconnect = async (device: typeof pairedDevices[0]) => {
