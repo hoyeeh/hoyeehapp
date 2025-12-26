@@ -49,6 +49,8 @@ interface WatchPartyContextType {
   reactions: PartyReaction[];
   isHost: boolean;
   isLoading: boolean;
+  isSyncing: boolean;
+  isWatchPartyGuest: boolean;
   createParty: (contentId: string, episodeId?: string) => Promise<WatchParty | null>;
   joinParty: (code: string) => Promise<WatchParty | null>;
   leaveParty: () => Promise<void>;
@@ -57,7 +59,7 @@ interface WatchPartyContextType {
   sendMessage: (text: string) => Promise<void>;
   sendReaction: (emoji: string) => void;
   startWatchingTogether: () => Promise<void>;
-  syncToParty: (videoElement: HTMLVideoElement | null) => void;
+  syncToParty: (videoElement: HTMLVideoElement | null, forceSync?: boolean) => void;
 }
 
 const WatchPartyContext = createContext<WatchPartyContextType | null>(null);
@@ -82,8 +84,13 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
   const [reactions, setReactions] = useState<PartyReaction[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const lastSyncTimeRef = useRef<number>(0);
+  const initialSyncDoneRef = useRef<boolean>(false);
   const reactionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Computed: is user a guest in a watch party (non-host)
+  const isWatchPartyGuest = Boolean(party && !isHost);
 
   // Generate unique party code
   const generateCode = useCallback(async (): Promise<string> => {
@@ -294,21 +301,34 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
   }, [party, user]);
 
   // Sync video to party state (for non-hosts)
-  const syncToParty = useCallback((videoElement: HTMLVideoElement | null) => {
+  // forceSync=true bypasses the threshold check (used for initial sync on join)
+  const syncToParty = useCallback((videoElement: HTMLVideoElement | null, forceSync: boolean = false) => {
     if (!videoElement || !party || isHost) return;
 
-    const timeDiff = Math.abs(videoElement.currentTime - Number(party.playback_time));
+    const partyTime = Number(party.playback_time);
+    const timeDiff = Math.abs(videoElement.currentTime - partyTime);
     
-    // Only sync if difference > 2 seconds
-    if (timeDiff > 2) {
-      videoElement.currentTime = Number(party.playback_time);
+    // Tighter sync threshold: 0.5 seconds for better synchronization
+    // Force sync on initial join (bypasses threshold)
+    const shouldSync = forceSync || timeDiff > 0.5;
+    
+    if (shouldSync && timeDiff > 0.1) {
+      setIsSyncing(true);
+      videoElement.currentTime = partyTime;
+      // Clear syncing state after a brief delay
+      setTimeout(() => setIsSyncing(false), 500);
     }
     
-    // Sync play/pause
+    // Sync play/pause state
     if (party.is_playing && videoElement.paused) {
       videoElement.play().catch(() => {});
     } else if (!party.is_playing && !videoElement.paused) {
       videoElement.pause();
+    }
+    
+    // Mark initial sync as done
+    if (!initialSyncDoneRef.current) {
+      initialSyncDoneRef.current = true;
     }
   }, [party, isHost]);
 
@@ -534,6 +554,8 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
       reactions,
       isHost,
       isLoading,
+      isSyncing,
+      isWatchPartyGuest,
       createParty,
       joinParty,
       leaveParty,
