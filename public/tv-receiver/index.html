@@ -226,6 +226,7 @@
     .error-icon { font-size: 64px; margin-bottom: 20px; }
     .error-title { font-size: 24px; font-weight: bold; color: #ef4444; margin-bottom: 10px; }
     .error-details { font-size: 16px; color: #aaa; text-align: center; max-width: 400px; }
+    .error-code { font-size: 12px; color: #666; margin-top: 10px; font-family: monospace; }
     .retry-button {
       margin-top: 30px;
       padding: 16px 40px;
@@ -271,6 +272,33 @@
     .unmute-text { font-size: 20px; font-weight: 500; text-align: center; }
     .unmute-hint { font-size: 14px; color: #aaa; }
     
+    .preflight-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
+      justify-content: center;
+      z-index: 13;
+    }
+    .preflight-overlay.hidden { display: none; }
+    .preflight-icon { font-size: 48px; margin-bottom: 16px; }
+    .preflight-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
+    .preflight-details { font-size: 14px; color: #aaa; text-align: center; max-width: 400px; }
+    
     .browser-error {
       display: none;
       text-align: center;
@@ -278,6 +306,40 @@
     }
     .browser-error h2 { color: #ef4444; margin-bottom: 20px; }
     .browser-error p { color: #aaa; font-size: 18px; line-height: 1.6; }
+    
+    .connection-badge {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.8);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #4ade80;
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      -webkit-animation: pulse 2s infinite;
+      animation: pulse 2s infinite;
+    }
+    @-webkit-keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
@@ -332,10 +394,17 @@
       <div class="loading-text" id="loadingText">Loading video...</div>
     </div>
     
+    <div class="preflight-overlay hidden" id="preflightOverlay">
+      <div class="preflight-icon">🔍</div>
+      <div class="preflight-title" id="preflightTitle">Checking video...</div>
+      <div class="preflight-details" id="preflightDetails">Verifying video compatibility</div>
+    </div>
+    
     <div class="video-error-overlay hidden" id="errorOverlay">
       <div class="error-icon">⚠️</div>
       <div class="error-title" id="errorTitle">Video Error</div>
       <div class="error-details" id="errorDetails">Unable to play this video</div>
+      <div class="error-code" id="errorCode"></div>
       <button class="retry-button" id="retryButton">Retry</button>
     </div>
     
@@ -359,6 +428,11 @@
         <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
       </div>
     </div>
+    
+    <div class="connection-badge" id="connectionBadge" style="display: none;">
+      <div class="connection-dot"></div>
+      <span>Realtime Connected</span>
+    </div>
   </div>
 
   <!-- Polyfills for older browsers -->
@@ -368,6 +442,9 @@
   <!-- HLS.js and QRCode -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  
+  <!-- Supabase JS for Realtime -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   
   <script>
     // ES5 compatible code for LG TV and older browsers
@@ -388,6 +465,8 @@
       var currentQueueIndex = 0;
       var retryCount = 0;
       var MAX_RETRIES = 3;
+      var supabaseClient = null;
+      var realtimeChannel = null;
 
       // State tracking to prevent reload loops
       var loadedVideoUrl = null;
@@ -395,21 +474,46 @@
       var lastIsPlaying = null;
       var userHasInteracted = false;
       var playPromisePending = false;
+      var useRealtimeUpdates = true;
+
+      // Supported video types for preflight check
+      var SUPPORTED_VIDEO_TYPES = [
+        'video/mp4',
+        'video/webm',
+        'video/ogg',
+        'video/quicktime',
+        'application/vnd.apple.mpegurl',
+        'application/x-mpegurl',
+        'audio/mpegurl'
+      ];
 
       var video = document.getElementById('videoPlayer');
       var pairingScreen = document.getElementById('pairingScreen');
       var idleScreen = document.getElementById('idleScreen');
       var playerContainer = document.getElementById('playerContainer');
       var unmuteOverlay = document.getElementById('unmuteOverlay');
+      var connectionBadge = document.getElementById('connectionBadge');
+
+      // Initialize Supabase client for realtime
+      function initSupabase() {
+        try {
+          if (typeof supabase !== 'undefined' && supabase.createClient) {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('[TV] Supabase client initialized for realtime');
+            return true;
+          }
+        } catch (e) {
+          console.error('[TV] Failed to initialize Supabase:', e);
+        }
+        return false;
+      }
 
       // Check browser compatibility
       function checkBrowserCompat() {
         try {
-          // Test basic features
           if (typeof Promise === 'undefined' || typeof fetch === 'undefined') {
             return false;
           }
-          // Test video element
           if (!video || typeof video.play !== 'function') {
             return false;
           }
@@ -425,6 +529,9 @@
         pairingScreen.style.display = 'none';
         return;
       }
+
+      // Initialize Supabase
+      var hasRealtime = initSupabase();
 
       function formatTime(seconds) {
         if (isNaN(seconds) || !isFinite(seconds)) {
@@ -461,6 +568,112 @@
         }).then(function(response) {
           return response.json();
         });
+      }
+
+      // Media preflight check
+      function performPreflightCheck(url) {
+        return new Promise(function(resolve) {
+          if (!url) {
+            resolve({ success: false, errorCode: 'NO_URL', errorMessage: 'No video URL provided' });
+            return;
+          }
+
+          showPreflight('Checking video...', 'Verifying video compatibility');
+
+          var controller = null;
+          var timeout = null;
+          
+          try {
+            controller = new AbortController();
+            timeout = setTimeout(function() { controller.abort(); }, 8000);
+          } catch (e) {
+            // AbortController not supported, proceed without it
+          }
+
+          var fetchOptions = {
+            method: 'HEAD',
+            mode: 'cors'
+          };
+          
+          if (controller) {
+            fetchOptions.signal = controller.signal;
+          }
+
+          fetch(url, fetchOptions)
+            .then(function(response) {
+              if (timeout) clearTimeout(timeout);
+              
+              if (!response.ok && response.status !== 206) {
+                resolve({
+                  success: false,
+                  errorCode: 'HTTP_' + response.status,
+                  errorMessage: 'Server returned status ' + response.status
+                });
+                return;
+              }
+
+              var contentType = response.headers.get('content-type') || '';
+              var acceptRanges = response.headers.get('accept-ranges');
+              var baseType = contentType.split(';')[0].trim().toLowerCase();
+
+              var result = {
+                success: true,
+                contentType: contentType,
+                supportsRange: acceptRanges === 'bytes' || response.status === 206,
+                warnings: []
+              };
+
+              // Check if content type is supported
+              var isSupported = false;
+              for (var i = 0; i < SUPPORTED_VIDEO_TYPES.length; i++) {
+                if (baseType === SUPPORTED_VIDEO_TYPES[i] || baseType.indexOf('video/') === 0) {
+                  isSupported = true;
+                  break;
+                }
+              }
+
+              if (!isSupported && contentType) {
+                result.warnings.push('Content-Type may not be supported: ' + contentType);
+              }
+
+              if (!result.supportsRange) {
+                result.warnings.push('Seeking may not work (no Range support)');
+              }
+
+              resolve(result);
+            })
+            .catch(function(error) {
+              if (timeout) clearTimeout(timeout);
+              
+              var errorCode = 'NETWORK_ERROR';
+              var errorMessage = 'Network error while checking video';
+
+              if (error && error.name === 'AbortError') {
+                errorCode = 'TIMEOUT';
+                errorMessage = 'Connection timed out';
+              } else if (error && error.message && error.message.indexOf('CORS') !== -1) {
+                errorCode = 'CORS_ERROR';
+                errorMessage = 'Video server does not allow cross-origin playback';
+              }
+
+              // Don't fail on preflight errors - let the video element try anyway
+              resolve({
+                success: true,
+                warnings: [errorMessage],
+                preflightFailed: true
+              });
+            });
+        });
+      }
+
+      function showPreflight(title, details) {
+        document.getElementById('preflightOverlay').classList.remove('hidden');
+        document.getElementById('preflightTitle').textContent = title;
+        document.getElementById('preflightDetails').textContent = details;
+      }
+
+      function hidePreflight() {
+        document.getElementById('preflightOverlay').classList.add('hidden');
       }
 
       function generatePairingCode() {
@@ -520,20 +733,99 @@
         expiryInterval = setInterval(updateCountdown, 1000);
       }
 
+      // Setup realtime subscription
+      function setupRealtimeSubscription(sid) {
+        if (!supabaseClient || !hasRealtime) {
+          console.log('[TV] Realtime not available, using polling only');
+          return;
+        }
+
+        try {
+          if (realtimeChannel) {
+            supabaseClient.removeChannel(realtimeChannel);
+          }
+
+          realtimeChannel = supabaseClient
+            .channel('cast-session-' + sid)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'cast_sessions',
+                filter: 'id=eq.' + sid
+              },
+              function(payload) {
+                console.log('[TV] Realtime update received:', payload);
+                var session = payload.new;
+                handleRealtimeUpdate(session);
+              }
+            )
+            .subscribe(function(status) {
+              console.log('[TV] Realtime subscription status:', status);
+              if (status === 'SUBSCRIBED') {
+                connectionBadge.style.display = 'flex';
+                useRealtimeUpdates = true;
+              } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                connectionBadge.style.display = 'none';
+                useRealtimeUpdates = false;
+              }
+            });
+
+          console.log('[TV] Realtime subscription setup for session:', sid);
+        } catch (e) {
+          console.error('[TV] Failed to setup realtime:', e);
+          useRealtimeUpdates = false;
+        }
+      }
+
+      // Handle realtime update from Supabase
+      function handleRealtimeUpdate(session) {
+        if (!session) return;
+
+        // Build session object matching expected format
+        var formattedSession = {
+          status: session.status,
+          videoUrl: session.video_url,
+          videoTitle: session.video_title,
+          videoThumbnail: session.video_thumbnail,
+          playbackTime: session.playback_time || 0,
+          duration: session.video_duration || 0,
+          isPlaying: session.is_playing || false,
+          volume: session.volume_level || 100,
+          queue: session.queue || []
+        };
+
+        handleSessionUpdate(formattedSession);
+      }
+
       function startPolling() {
         if (pollInterval) {
           clearInterval(pollInterval);
         }
 
+        // Reduced polling frequency when realtime is active
+        var pollFrequency = useRealtimeUpdates ? 10000 : 2000;
+
         pollInterval = setInterval(function() {
           checkStatus().then(function(result) {
             if (result.success) {
-              handleSessionUpdate(result.session);
+              // Only use polling updates if realtime is not working
+              if (!useRealtimeUpdates) {
+                handleSessionUpdate(result.session);
+              }
+              
+              // Setup realtime if not already done and session is active
+              if (result.session.status === 'paired' || result.session.status === 'active') {
+                if (!realtimeChannel && sessionId) {
+                  setupRealtimeSubscription(sessionId);
+                }
+              }
             }
           }).catch(function(error) {
             console.error('Polling error:', error);
           });
-        }, 1000);
+        }, pollFrequency);
       }
 
       function handleSessionUpdate(session) {
@@ -567,9 +859,22 @@
 
         if (session.status === 'disconnected') {
           loadedVideoUrl = null;
+          cleanupRealtime();
           showPairingScreen();
           generatePairingCode();
         }
+      }
+
+      function cleanupRealtime() {
+        if (realtimeChannel && supabaseClient) {
+          try {
+            supabaseClient.removeChannel(realtimeChannel);
+          } catch (e) {
+            console.error('[TV] Error removing realtime channel:', e);
+          }
+          realtimeChannel = null;
+        }
+        connectionBadge.style.display = 'none';
       }
 
       // Sync playback state without reloading video
@@ -625,10 +930,8 @@
             var errorName = error.name || '';
             
             if (errorName === 'AbortError') {
-              // Play was interrupted - this is often okay, just log it
               console.log('[TV] SafePlay aborted (likely new load)');
             } else if (errorName === 'NotAllowedError') {
-              // Autoplay policy blocked - need user interaction
               console.log('[TV] SafePlay blocked by policy, showing unmute overlay');
               if (!userHasInteracted) {
                 showUnmuteOverlay();
@@ -692,17 +995,20 @@
         document.getElementById('loadingOverlay').classList.remove('hidden');
         document.getElementById('loadingText').textContent = message || 'Loading video...';
         document.getElementById('errorOverlay').classList.add('hidden');
+        hidePreflight();
       }
 
       function hideLoading() {
         document.getElementById('loadingOverlay').classList.add('hidden');
       }
 
-      function showError(title, details) {
+      function showError(title, details, code) {
         document.getElementById('errorOverlay').classList.remove('hidden');
         document.getElementById('errorTitle').textContent = title;
         document.getElementById('errorDetails').textContent = details;
+        document.getElementById('errorCode').textContent = code ? 'Error: ' + code : '';
         hideLoading();
+        hidePreflight();
       }
 
       function hideError() {
@@ -711,7 +1017,6 @@
 
       function showUnmuteOverlay() {
         unmuteOverlay.classList.remove('hidden');
-        // Focus for TV remote navigation
         unmuteOverlay.focus();
       }
 
@@ -725,7 +1030,7 @@
         
         if (!url) {
           console.error('[TV] No video URL provided');
-          showError('No Video', 'No video URL was provided');
+          showError('No Video', 'No video URL was provided', 'NO_URL');
           return;
         }
 
@@ -740,6 +1045,44 @@
         retryCount = 0;
         lastIsPlaying = null;
         hideError();
+
+        // Perform preflight check
+        performPreflightCheck(url).then(function(result) {
+          hidePreflight();
+
+          if (!result.success) {
+            isVideoLoading = false;
+            
+            // Show user-friendly error based on error code
+            var errorTitle = 'Cannot Play Video';
+            var errorDetails = result.errorMessage || 'The video format is not supported';
+            
+            if (result.errorCode === 'CORS_ERROR') {
+              errorTitle = 'Access Denied';
+              errorDetails = 'This video cannot be played on your TV. The server does not allow it.';
+            } else if (result.errorCode && result.errorCode.indexOf('HTTP_') === 0) {
+              errorTitle = 'Video Unavailable';
+              errorDetails = 'The video could not be found or accessed.';
+            } else if (result.errorCode === 'TIMEOUT') {
+              errorTitle = 'Connection Slow';
+              errorDetails = 'Could not reach the video server. Please check your internet connection.';
+            }
+            
+            showError(errorTitle, errorDetails, result.errorCode);
+            return;
+          }
+
+          // Log warnings
+          if (result.warnings && result.warnings.length > 0) {
+            console.log('[TV] Preflight warnings:', result.warnings);
+          }
+
+          // Proceed with loading
+          actuallyLoadVideo(url, startTime);
+        });
+      }
+
+      function actuallyLoadVideo(url, startTime) {
         showLoading('Loading video...');
 
         if (hls) {
@@ -787,13 +1130,13 @@
                   showLoading('Network error, retrying (' + retryCount + '/' + MAX_RETRIES + ')...');
                   setTimeout(function() { hls.startLoad(); }, 2000);
                 } else {
-                  showError('Network Error', 'Failed to load video. Please check your connection.');
+                  showError('Network Error', 'Failed to load video. Please check your connection.', 'HLS_NETWORK');
                 }
               } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                 console.log('[TV] Fatal media error, trying to recover');
                 hls.recoverMediaError();
               } else {
-                showError('Playback Error', 'Unable to play this video format');
+                showError('Format Not Supported', 'This video format cannot be played on your TV.', 'HLS_FATAL');
                 hls.destroy();
               }
             }
@@ -957,17 +1300,38 @@
       video.addEventListener('error', function() {
         var error = video.error;
         console.error('[TV] Video error:', error ? error.code : 'unknown', error ? error.message : '');
-        var errorMsg = 'Unknown error occurred';
+        
+        var errorTitle = 'Video Error';
+        var errorDetails = 'Unknown error occurred';
+        var errorCode = 'UNKNOWN';
+        
         if (error) {
           switch (error.code) {
-            case 1: errorMsg = 'Video loading was aborted'; break;
-            case 2: errorMsg = 'Network error while loading video'; break;
-            case 3: errorMsg = 'Video decoding failed'; break;
-            case 4: errorMsg = 'Video format not supported'; break;
+            case 1: 
+              errorTitle = 'Playback Aborted';
+              errorDetails = 'Video loading was interrupted';
+              errorCode = 'MEDIA_ABORTED';
+              break;
+            case 2: 
+              errorTitle = 'Network Error';
+              errorDetails = 'Could not load video due to network issues';
+              errorCode = 'MEDIA_NETWORK';
+              break;
+            case 3: 
+              errorTitle = 'Decoding Error';
+              errorDetails = 'This video cannot be decoded by your TV';
+              errorCode = 'MEDIA_DECODE';
+              break;
+            case 4: 
+              errorTitle = 'Format Not Supported';
+              errorDetails = 'This video format is not supported on your TV. Try a different video.';
+              errorCode = 'MEDIA_FORMAT';
+              break;
           }
         }
+        
         isVideoLoading = false;
-        showError('Video Error', errorMsg);
+        showError(errorTitle, errorDetails, errorCode);
       });
       video.addEventListener('abort', function() { 
         console.log('[TV] Video abort'); 
@@ -1102,6 +1466,14 @@
           container.textContent = 'QR unavailable';
         }
       }
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', function() {
+        cleanupRealtime();
+        if (pollInterval) clearInterval(pollInterval);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (expiryInterval) clearInterval(expiryInterval);
+      });
 
       // Initialize
       generatePairingCode();
