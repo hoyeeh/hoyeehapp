@@ -241,29 +241,35 @@
     
     .unmute-overlay {
       position: absolute;
-      top: 20px;
+      top: 50%;
       left: 50%;
-      -webkit-transform: translateX(-50%);
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.8);
-      padding: 16px 32px;
-      border-radius: 12px;
+      -webkit-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9);
+      padding: 32px 48px;
+      border-radius: 16px;
       cursor: pointer;
       z-index: 12;
       display: -webkit-box;
       display: -webkit-flex;
       display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
       -webkit-box-align: center;
       -webkit-align-items: center;
       align-items: center;
-      gap: 12px;
-      -webkit-transition: opacity 0.3s;
-      transition: opacity 0.3s;
+      gap: 16px;
+      -webkit-transition: opacity 0.3s, background 0.2s;
+      transition: opacity 0.3s, background 0.2s;
+      border: 2px solid #ff6300;
     }
     .unmute-overlay.hidden { display: none; }
-    .unmute-overlay:hover { background: rgba(0,0,0,0.95); }
-    .unmute-icon { font-size: 24px; }
-    .unmute-text { font-size: 18px; font-weight: 500; }
+    .unmute-overlay:hover, .unmute-overlay:focus { background: rgba(255,99,0,0.2); outline: none; }
+    .unmute-icon { font-size: 48px; }
+    .unmute-text { font-size: 20px; font-weight: 500; text-align: center; }
+    .unmute-hint { font-size: 14px; color: #aaa; }
     
     .browser-error {
       display: none;
@@ -333,9 +339,10 @@
       <button class="retry-button" id="retryButton">Retry</button>
     </div>
     
-    <div class="unmute-overlay" id="unmuteOverlay">
+    <div class="unmute-overlay hidden" id="unmuteOverlay" tabindex="0">
       <span class="unmute-icon">🔇</span>
-      <span class="unmute-text">Click anywhere to unmute</span>
+      <span class="unmute-text">Press OK or Click to Enable Audio</span>
+      <span class="unmute-hint">Video is playing muted</span>
     </div>
     
     <div class="queue-panel" id="queuePanel">
@@ -379,14 +386,21 @@
       var hls = null;
       var currentQueue = [];
       var currentQueueIndex = 0;
-      var currentVideoUrl = null;
       var retryCount = 0;
       var MAX_RETRIES = 3;
+
+      // State tracking to prevent reload loops
+      var loadedVideoUrl = null;
+      var isVideoLoading = false;
+      var lastIsPlaying = null;
+      var userHasInteracted = false;
+      var playPromisePending = false;
 
       var video = document.getElementById('videoPlayer');
       var pairingScreen = document.getElementById('pairingScreen');
       var idleScreen = document.getElementById('idleScreen');
       var playerContainer = document.getElementById('playerContainer');
+      var unmuteOverlay = document.getElementById('unmuteOverlay');
 
       // Check browser compatibility
       function checkBrowserCompat() {
@@ -534,21 +548,97 @@
           }
 
           if (session.videoUrl) {
-            showPlayer(session);
+            // Only load video if URL changed or not currently loaded
+            if (session.videoUrl !== loadedVideoUrl) {
+              console.log('[TV] New video URL detected, loading:', session.videoUrl);
+              showPlayer(session);
+            } else {
+              // Same video - just sync playback state without reloading
+              console.log('[TV] Same video, syncing state only');
+              syncPlaybackState(session);
+            }
           } else {
+            loadedVideoUrl = null;
             showIdleScreen();
           }
 
           startHeartbeat();
         }
 
-        if (session.status === 'active' && session.videoUrl) {
-          updatePlaybackState(session);
-        }
-
         if (session.status === 'disconnected') {
+          loadedVideoUrl = null;
           showPairingScreen();
           generatePairingCode();
+        }
+      }
+
+      // Sync playback state without reloading video
+      function syncPlaybackState(session) {
+        // Update title if needed
+        document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
+        
+        // Sync seek position if significantly different (more than 3 seconds)
+        if (session.playbackTime !== undefined && !isNaN(session.playbackTime)) {
+          var timeDiff = Math.abs(video.currentTime - session.playbackTime);
+          if (timeDiff > 3) {
+            console.log('[TV] Seeking to:', session.playbackTime, 'current:', video.currentTime);
+            video.currentTime = session.playbackTime;
+          }
+        }
+
+        // Sync play/pause state
+        if (session.isPlaying !== undefined && session.isPlaying !== lastIsPlaying) {
+          console.log('[TV] Play state changed:', session.isPlaying);
+          lastIsPlaying = session.isPlaying;
+          
+          if (session.isPlaying && video.paused) {
+            safePlay();
+          } else if (!session.isPlaying && !video.paused) {
+            video.pause();
+          }
+        }
+
+        // Sync volume
+        if (session.volume !== undefined) {
+          video.volume = session.volume / 100;
+        }
+      }
+
+      // Safe play function that handles promise rejections
+      function safePlay() {
+        if (playPromisePending) {
+          console.log('[TV] Play already pending, skipping');
+          return;
+        }
+
+        playPromisePending = true;
+        
+        var playPromise = video.play();
+        
+        if (playPromise && typeof playPromise.then === 'function') {
+          playPromise.then(function() {
+            playPromisePending = false;
+            console.log('[TV] SafePlay succeeded');
+            hideError();
+          }).catch(function(error) {
+            playPromisePending = false;
+            var errorName = error.name || '';
+            
+            if (errorName === 'AbortError') {
+              // Play was interrupted - this is often okay, just log it
+              console.log('[TV] SafePlay aborted (likely new load)');
+            } else if (errorName === 'NotAllowedError') {
+              // Autoplay policy blocked - need user interaction
+              console.log('[TV] SafePlay blocked by policy, showing unmute overlay');
+              if (!userHasInteracted) {
+                showUnmuteOverlay();
+              }
+            } else {
+              console.error('[TV] SafePlay error:', error);
+            }
+          });
+        } else {
+          playPromisePending = false;
         }
       }
 
@@ -620,11 +710,13 @@
       }
 
       function showUnmuteOverlay() {
-        document.getElementById('unmuteOverlay').classList.remove('hidden');
+        unmuteOverlay.classList.remove('hidden');
+        // Focus for TV remote navigation
+        unmuteOverlay.focus();
       }
 
       function hideUnmuteOverlay() {
-        document.getElementById('unmuteOverlay').classList.add('hidden');
+        unmuteOverlay.classList.add('hidden');
       }
 
       function loadVideo(url, startTime) {
@@ -637,8 +729,16 @@
           return;
         }
 
-        currentVideoUrl = url;
+        // Prevent loading if already loading or same URL
+        if (isVideoLoading && url === loadedVideoUrl) {
+          console.log('[TV] Already loading this video, skipping');
+          return;
+        }
+
+        isVideoLoading = true;
+        loadedVideoUrl = url;
         retryCount = 0;
+        lastIsPlaying = null;
         hideError();
         showLoading('Loading video...');
 
@@ -671,6 +771,7 @@
           
           hls.on(Hls.Events.MANIFEST_PARSED, function() {
             console.log('[TV] HLS manifest parsed, starting playback');
+            isVideoLoading = false;
             video.currentTime = startTime;
             attemptPlay();
           });
@@ -678,6 +779,7 @@
           hls.on(Hls.Events.ERROR, function(event, data) {
             console.error('[TV] HLS error:', data.type, data.details);
             if (data.fatal) {
+              isVideoLoading = false;
               if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                 console.log('[TV] Fatal network error, trying to recover');
                 if (retryCount < MAX_RETRIES) {
@@ -706,6 +808,7 @@
           video.src = url;
           video.addEventListener('loadedmetadata', function onMeta() {
             video.removeEventListener('loadedmetadata', onMeta);
+            isVideoLoading = false;
             video.currentTime = startTime;
             attemptPlay();
           });
@@ -715,6 +818,7 @@
           video.addEventListener('loadedmetadata', function onMeta() {
             video.removeEventListener('loadedmetadata', onMeta);
             console.log('[TV] Video metadata loaded');
+            isVideoLoading = false;
             video.currentTime = startTime;
             attemptPlay();
           });
@@ -725,7 +829,7 @@
         console.log('[TV] Attempting to play video, muted:', video.muted);
         hideLoading();
         
-        // First try muted (should always work)
+        // Always start muted for autoplay policy compliance
         video.muted = true;
         
         var playPromise = video.play();
@@ -733,35 +837,59 @@
         if (playPromise && typeof playPromise.then === 'function') {
           playPromise.then(function() {
             console.log('[TV] Playback started (muted)');
-            showUnmuteOverlay();
+            lastIsPlaying = true;
             
-            // Try to unmute after a short delay
-            setTimeout(function() {
+            // If user has already interacted, try to unmute
+            if (userHasInteracted) {
               try {
                 video.muted = false;
-                hideUnmuteOverlay();
-                console.log('[TV] Unmuted successfully');
+                console.log('[TV] Auto-unmuted (user interacted before)');
               } catch (e) {
-                console.log('[TV] Could not auto-unmute, user interaction required');
+                console.log('[TV] Could not auto-unmute');
                 showUnmuteOverlay();
               }
-            }, 1000);
+            } else {
+              // Show overlay for user to enable audio
+              showUnmuteOverlay();
+            }
           }).catch(function(playError) {
             console.error('[TV] Autoplay failed even muted:', playError);
-            showError('Playback Blocked', 'Click the screen to start playing');
+            // Don't show error - show the unmute overlay instead for user interaction
+            showUnmuteOverlay();
           });
         } else {
           // Fallback for older browsers without Promise support
           console.log('[TV] Playback started (no promise)');
+          lastIsPlaying = true;
           showUnmuteOverlay();
+        }
+      }
+
+      // Handle user interaction to enable audio
+      function handleUserInteraction() {
+        userHasInteracted = true;
+        
+        if (video.muted) {
+          video.muted = false;
+          console.log('[TV] Unmuted via user interaction');
+        }
+        
+        hideUnmuteOverlay();
+        
+        // If video is paused, try to play
+        if (video.paused && loadedVideoUrl) {
+          safePlay();
         }
       }
 
       // Retry button handler
       document.getElementById('retryButton').addEventListener('click', function() {
-        if (currentVideoUrl) {
+        userHasInteracted = true;
+        if (loadedVideoUrl) {
           retryCount = 0;
-          loadVideo(currentVideoUrl, video.currentTime || 0);
+          var currentUrl = loadedVideoUrl;
+          loadedVideoUrl = null; // Force reload
+          loadVideo(currentUrl, video.currentTime || 0);
         }
       });
 
@@ -776,22 +904,25 @@
           target = target.parentElement;
         }
         
-        if (video.muted) {
-          video.muted = false;
-          hideUnmuteOverlay();
-          console.log('[TV] Unmuted via click');
-        }
-        
-        if (video.paused && currentVideoUrl) {
-          var playPromise = video.play();
-          if (playPromise && typeof playPromise.then === 'function') {
-            playPromise.then(function() {
-              hideError();
-            }).catch(function(e) {
-              console.error('[TV] Play failed on click:', e);
-            });
+        handleUserInteraction();
+      });
+
+      // Keyboard handlers for TV remotes (Enter, Space, OK button)
+      document.addEventListener('keydown', function(e) {
+        var keyCode = e.keyCode || e.which;
+        // 13 = Enter, 32 = Space, some TVs use other codes
+        if (keyCode === 13 || keyCode === 32) {
+          if (!unmuteOverlay.classList.contains('hidden')) {
+            e.preventDefault();
+            handleUserInteraction();
           }
         }
+      });
+
+      // Direct click on unmute overlay
+      unmuteOverlay.addEventListener('click', function(e) {
+        e.stopPropagation();
+        handleUserInteraction();
       });
 
       // Video event listeners for debugging
@@ -806,10 +937,18 @@
         console.log('[TV] Video playing');
         hideLoading();
         hideError();
+        lastIsPlaying = true;
+      });
+      video.addEventListener('pause', function() {
+        console.log('[TV] Video paused');
+        lastIsPlaying = false;
       });
       video.addEventListener('waiting', function() {
         console.log('[TV] Video waiting/buffering');
-        showLoading('Buffering...');
+        // Only show loading if actually loading, not during seek
+        if (isVideoLoading) {
+          showLoading('Buffering...');
+        }
       });
       video.addEventListener('stalled', function() {
         console.log('[TV] Video stalled');
@@ -827,25 +966,13 @@
             case 4: errorMsg = 'Video format not supported'; break;
           }
         }
+        isVideoLoading = false;
         showError('Video Error', errorMsg);
       });
-      video.addEventListener('abort', function() { console.log('[TV] Video abort'); });
-
-      function updatePlaybackState(session) {
-        if (Math.abs(video.currentTime - session.playbackTime) > 3) {
-          video.currentTime = session.playbackTime;
-        }
-
-        if (session.isPlaying && video.paused) {
-          video.play();
-        } else if (!session.isPlaying && !video.paused) {
-          video.pause();
-        }
-
-        if (session.volume !== undefined) {
-          video.volume = session.volume / 100;
-        }
-      }
+      video.addEventListener('abort', function() { 
+        console.log('[TV] Video abort'); 
+        isVideoLoading = false;
+      });
 
       function showIdleScreen() {
         pairingScreen.style.display = 'none';
@@ -906,9 +1033,13 @@
 
       // Play next in queue when video ends
       video.addEventListener('ended', function() {
+        console.log('[TV] Video ended');
         if (currentQueue.length > 0 && currentQueueIndex < currentQueue.length - 1) {
           currentQueueIndex++;
           var nextItem = currentQueue[currentQueueIndex];
+          
+          // Reset loaded URL to allow loading next video
+          loadedVideoUrl = null;
           
           callSignaling('command', {
             sessionId: sessionId,
