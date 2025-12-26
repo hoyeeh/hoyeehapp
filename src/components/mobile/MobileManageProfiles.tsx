@@ -12,7 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { motion } from "framer-motion";
+import { Label } from "@/components/ui/label";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,11 +24,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AVATARS, getRandomAvatar } from "@/lib/avatars";
+import { 
+  AVATAR_RINGS,
+  getRandomAvatar, 
+  getRandomRing,
+  getAvatarsForProfile,
+  getRingById 
+} from "@/lib/avatars";
 
 interface MobileManageProfilesProps {
   onClose: () => void;
 }
+
+// Parse avatar data for display
+const parseAvatarData = (avatarUrl: string | null) => {
+  if (!avatarUrl) return { src: "", ring: "none" };
+  const [baseSrc, params] = avatarUrl.split("?");
+  let ring = "none";
+  if (params) {
+    const ringMatch = params.match(/ring=([^&]+)/);
+    ring = ringMatch ? ringMatch[1] : "none";
+  }
+  return { src: baseSrc, ring };
+};
 
 export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   const navigate = useNavigate();
@@ -44,7 +63,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   // Form state
   const [name, setName] = useState("");
   const [isKids, setIsKids] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(getRandomAvatar());
+  const [selectedAvatarSrc, setSelectedAvatarSrc] = useState(getRandomAvatar());
+  const [selectedRing, setSelectedRing] = useState(getRandomRing());
   const [isSaving, setIsSaving] = useState(false);
 
   const handleBack = () => {
@@ -61,7 +81,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   const resetForm = () => {
     setName("");
     setIsKids(false);
-    setSelectedAvatar(getRandomAvatar());
+    setSelectedAvatarSrc(getRandomAvatar());
+    setSelectedRing(getRandomRing());
   };
 
   const handleCreateNew = () => {
@@ -70,14 +91,14 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
       return;
     }
     lightTap();
-    // Auto-populate name from user's profile if this is the first profile
     if (profiles.length === 0 && userProfile?.display_name) {
       setName(userProfile.display_name);
     } else {
       setName("");
     }
     setIsKids(false);
-    setSelectedAvatar(getRandomAvatar());
+    setSelectedAvatarSrc(getRandomAvatar());
+    setSelectedRing(getRandomRing());
     setIsCreating(true);
   };
 
@@ -86,7 +107,10 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
     setEditingProfile(profile);
     setName(profile.name);
     setIsKids(profile.is_kids);
-    setSelectedAvatar(profile.avatar_url || getRandomAvatar());
+    
+    const { src, ring } = parseAvatarData(profile.avatar_url);
+    setSelectedAvatarSrc(src || getRandomAvatar(profile.is_kids));
+    setSelectedRing(ring);
   };
 
   const handleSave = async () => {
@@ -99,15 +123,19 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
     lightTap();
 
     try {
+      const avatarData = selectedRing !== "none" 
+        ? `${selectedAvatarSrc}?ring=${selectedRing}` 
+        : selectedAvatarSrc;
+
       if (isCreating) {
-        await createProfile(name.trim(), isKids, selectedAvatar);
+        await createProfile(name.trim(), isKids, avatarData);
         successFeedback();
         toast.success("Profile created!");
       } else if (editingProfile) {
         await updateProfile(editingProfile.id, {
           name: name.trim(),
           is_kids: isKids,
-          avatar_url: selectedAvatar,
+          avatar_url: avatarData,
         });
         successFeedback();
         toast.success("Profile updated!");
@@ -161,13 +189,15 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
         .from("avatars")
         .getPublicUrl(filePath);
 
-      setSelectedAvatar(publicUrl);
+      setSelectedAvatarSrc(publicUrl);
       successFeedback();
       toast.success("Avatar uploaded!");
     } catch (error) {
       toast.error("Failed to upload avatar");
     }
   };
+
+  const currentAvatars = getAvatarsForProfile(isKids);
 
   // Edit/Create form view
   if (editingProfile || isCreating) {
@@ -193,19 +223,48 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
           </div>
         </header>
 
-        <main className="pt-20 pb-8 px-4">
-          {/* Avatar Selection */}
-          <div className="flex flex-col items-center mb-8">
+        <main className="pt-20 pb-8 px-4 overflow-y-auto max-h-screen">
+          {/* Avatar Selection with Ring */}
+          <div className="flex flex-col items-center mb-6">
             <div className="relative">
-              <Avatar className="w-24 h-24 sm:w-28 sm:h-28 ring-4 ring-primary/20 mb-4">
-                <AvatarImage src={selectedAvatar} className="object-cover" />
-                <AvatarFallback>
-                  <User className="w-10 h-10" />
-                </AvatarFallback>
-              </Avatar>
+              <motion.div
+                key={selectedAvatarSrc + selectedRing}
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                {getRingById(selectedRing).gradient ? (
+                  <div 
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl"
+                    style={{ 
+                      background: getRingById(selectedRing).gradient,
+                      padding: "4px",
+                    }}
+                  >
+                    <div className="w-full h-full bg-background rounded-xl overflow-hidden">
+                      <Avatar className="w-full h-full">
+                        <AvatarImage src={selectedAvatarSrc} className="object-cover" />
+                        <AvatarFallback>
+                          <User className="w-10 h-10" />
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  </div>
+                ) : (
+                  <Avatar className={cn(
+                    "w-24 h-24 sm:w-28 sm:h-28",
+                    getRingById(selectedRing).className
+                  )}>
+                    <AvatarImage src={selectedAvatarSrc} className="object-cover" />
+                    <AvatarFallback>
+                      <User className="w-10 h-10" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </motion.div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-2 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
               >
                 <Camera className="w-4 h-4 text-primary-foreground" />
               </button>
@@ -217,37 +276,81 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
                 onChange={handleImageUpload}
               />
             </div>
-            <p className="text-xs text-muted-foreground">Tap camera to upload custom image</p>
+            <p className="text-xs text-muted-foreground mt-2">Tap camera to upload custom image</p>
           </div>
 
-          <div className="grid grid-cols-4 gap-3 mb-8">
-            {AVATARS.map((avatar) => (
-              <button
-                key={avatar.name}
-                onClick={() => {
-                  selectionTap();
-                  setSelectedAvatar(avatar.src);
-                }}
-                className={cn(
-                  "relative w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden bg-muted/30 active:scale-95 transition-all mx-auto",
-                  selectedAvatar === avatar.src && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                )}
-              >
-                <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover" />
-                {selectedAvatar === avatar.src && (
-                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="w-3 h-3 text-primary-foreground" />
-                    </div>
-                  </div>
-                )}
-              </button>
-            ))}
+          {/* Avatar Grid */}
+          <div className="mb-6">
+            <Label className="text-sm text-muted-foreground mb-3 block">
+              {isKids ? "Kids Avatars" : "Choose Avatar"}
+            </Label>
+            <div className="grid grid-cols-4 gap-3">
+              {currentAvatars.map((avatar, i) => (
+                <motion.button
+                  key={avatar.name}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.03 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    selectionTap();
+                    setSelectedAvatarSrc(avatar.src);
+                  }}
+                  className={cn(
+                    "relative w-16 h-16 rounded-xl overflow-hidden bg-muted/30 transition-all mx-auto",
+                    selectedAvatarSrc === avatar.src && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                  )}
+                >
+                  <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover" />
+                  {selectedAvatarSrc === avatar.src && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute inset-0 bg-primary/20 flex items-center justify-center"
+                    >
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Ring/Frame Selection */}
+          <div className="mb-6">
+            <Label className="text-sm text-muted-foreground mb-3 block">Choose Frame</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {AVATAR_RINGS.map((ring) => (
+                <motion.button
+                  key={ring.id}
+                  whileTap={{ scale: 0.95 }}
+                  className={cn(
+                    "w-12 h-12 rounded-lg transition-all flex items-center justify-center",
+                    selectedRing === ring.id 
+                      ? "ring-2 ring-offset-2 ring-brand" 
+                      : "opacity-70"
+                  )}
+                  style={ring.gradient ? { background: ring.gradient } : undefined}
+                  onClick={() => {
+                    selectionTap();
+                    setSelectedRing(ring.id);
+                  }}
+                >
+                  {ring.id === "none" ? (
+                    <span className="text-xs text-muted-foreground">None</span>
+                  ) : !ring.gradient ? (
+                    <div className={cn("w-10 h-10 rounded-lg bg-muted", ring.className)} />
+                  ) : null}
+                </motion.button>
+              ))}
+            </div>
           </div>
 
           {/* Name Input */}
           <div className="space-y-2 mb-6">
-            <label className="text-sm font-medium text-muted-foreground">Profile Name</label>
+            <Label className="text-sm font-medium text-muted-foreground">Profile Name</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -267,7 +370,13 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
                 <p className="text-xs text-muted-foreground">Only show G and PG content</p>
               </div>
             </div>
-            <Switch checked={isKids} onCheckedChange={setIsKids} />
+            <Switch 
+              checked={isKids} 
+              onCheckedChange={(checked) => {
+                setIsKids(checked);
+                setSelectedAvatarSrc(getRandomAvatar(checked));
+              }} 
+            />
           </div>
 
           {/* Delete Button */}
@@ -310,49 +419,81 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
         </p>
 
         <div className="space-y-3">
-          {profiles.map((profile, index) => (
-            <motion.div
-              key={profile.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={cn(
-                "flex items-center justify-between p-4 rounded-2xl bg-muted/20 active:bg-muted/40 transition-colors",
-                currentProfile?.id === profile.id && "ring-2 ring-primary"
-              )}
-            >
-              <button
-                onClick={() => handleSwitchProfile(profile)}
-                className="flex items-center gap-4 flex-1"
-              >
-                <Avatar className="w-14 h-14 sm:w-16 sm:h-16">
-                  <AvatarImage src={profile.avatar_url || ""} className="object-cover" />
-                  <AvatarFallback className="bg-muted">
-                    {profile.is_kids ? (
-                      <Baby className="w-6 h-6 text-pink-500" />
+          <AnimatePresence mode="popLayout">
+            {profiles.map((profile, index) => {
+              const { src, ring } = parseAvatarData(profile.avatar_url);
+              const ringData = getRingById(ring);
+              
+              return (
+                <motion.div
+                  key={profile.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -100 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-2xl bg-muted/20 active:bg-muted/40 transition-colors",
+                    currentProfile?.id === profile.id && "ring-2 ring-primary"
+                  )}
+                >
+                  <button
+                    onClick={() => handleSwitchProfile(profile)}
+                    className="flex items-center gap-4 flex-1"
+                  >
+                    {ringData.gradient ? (
+                      <div 
+                        className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl"
+                        style={{ 
+                          background: ringData.gradient,
+                          padding: "3px",
+                        }}
+                      >
+                        <div className="w-full h-full bg-background rounded-xl overflow-hidden">
+                          <Avatar className="w-full h-full">
+                            <AvatarImage src={src || ""} className="object-cover" />
+                            <AvatarFallback className="bg-muted">
+                              {profile.is_kids ? (
+                                <Baby className="w-6 h-6 text-pink-500" />
+                              ) : (
+                                <User className="w-6 h-6" />
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                      </div>
                     ) : (
-                      <User className="w-6 h-6" />
+                      <Avatar className={cn("w-14 h-14 sm:w-16 sm:h-16", ringData.className)}>
+                        <AvatarImage src={src || ""} className="object-cover" />
+                        <AvatarFallback className="bg-muted">
+                          {profile.is_kids ? (
+                            <Baby className="w-6 h-6 text-pink-500" />
+                          ) : (
+                            <User className="w-6 h-6" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
                     )}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="text-left">
-                  <p className="font-medium">{profile.name}</p>
-                  {profile.is_kids && (
-                    <span className="text-xs text-pink-500 font-medium">Kids</span>
-                  )}
-                  {currentProfile?.id === profile.id && (
-                    <span className="text-xs text-primary font-medium ml-2">Active</span>
-                  )}
-                </div>
-              </button>
-              <button
-                onClick={() => handleEditProfile(profile)}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-muted/50"
-              >
-                <Edit2 className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </motion.div>
-          ))}
+                    <div className="text-left">
+                      <p className="font-medium">{profile.name}</p>
+                      {profile.is_kids && (
+                        <span className="text-xs text-pink-500 font-medium">Kids</span>
+                      )}
+                      {currentProfile?.id === profile.id && (
+                        <span className="text-xs text-primary font-medium ml-2">Active</span>
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleEditProfile(profile)}
+                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-muted/50"
+                  >
+                    <Edit2 className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
 
         {/* Add Profile Button */}
@@ -361,6 +502,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: profiles.length * 0.05 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleCreateNew}
             className="w-full flex items-center justify-center gap-3 p-4 mt-4 border-2 border-dashed border-border/50 rounded-2xl text-muted-foreground hover:border-primary hover:text-primary transition-colors"
           >
