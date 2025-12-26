@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, Edit2, Trash2, Check, User, Baby } from "lucide-react";
+import { useState, useRef } from "react";
+import { ArrowLeft, Plus, Edit2, Trash2, Check, User, Baby, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProfileContext, UserProfile } from "@/contexts/ProfileContext";
 import { useProfile } from "@/hooks/useDatabase";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,29 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-// Import avatar images
-import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
-import avatarGold from "@/assets/avatars/avatar-gold.png";
-import avatarBlue from "@/assets/avatars/avatar-blue.png";
-import avatarPurple from "@/assets/avatars/avatar-purple.png";
-import avatarGreen from "@/assets/avatars/avatar-green.png";
-import avatarYellow from "@/assets/avatars/avatar-yellow.png";
-import avatarRed from "@/assets/avatars/avatar-red.png";
-import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
-import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
-
-const AVATARS = [
-  { src: avatarBasketball, name: "Basketball" },
-  { src: avatarGold, name: "Gold" },
-  { src: avatarBlue, name: "Blue" },
-  { src: avatarPurple, name: "Purple" },
-  { src: avatarGreen, name: "Green" },
-  { src: avatarYellow, name: "Yellow" },
-  { src: avatarRed, name: "Red" },
-  { src: avatarCowboy, name: "Cowboy" },
-  { src: avatarUnicorn, name: "Unicorn" },
-];
+import { AVATARS, getRandomAvatar } from "@/lib/avatars";
 
 interface MobileManageProfilesProps {
   onClose: () => void;
@@ -51,9 +31,11 @@ interface MobileManageProfilesProps {
 
 export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { profiles, currentProfile, setCurrentProfile, createProfile, updateProfile, deleteProfile } = useProfileContext();
-  const { data: userProfile } = useProfile(); // Get user's main profile for name
+  const { data: userProfile } = useProfile();
   const { lightTap, successFeedback, selectionTap, mediumTap } = useHaptics();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -62,7 +44,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   // Form state
   const [name, setName] = useState("");
   const [isKids, setIsKids] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0].src);
+  const [selectedAvatar, setSelectedAvatar] = useState(getRandomAvatar());
   const [isSaving, setIsSaving] = useState(false);
 
   const handleBack = () => {
@@ -79,7 +61,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   const resetForm = () => {
     setName("");
     setIsKids(false);
-    setSelectedAvatar(AVATARS[0].src);
+    setSelectedAvatar(getRandomAvatar());
   };
 
   const handleCreateNew = () => {
@@ -95,7 +77,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
       setName("");
     }
     setIsKids(false);
-    setSelectedAvatar(AVATARS[0].src);
+    setSelectedAvatar(getRandomAvatar());
     setIsCreating(true);
   };
 
@@ -104,7 +86,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
     setEditingProfile(profile);
     setName(profile.name);
     setIsKids(profile.is_kids);
-    setSelectedAvatar(profile.avatar_url || AVATARS[0].src);
+    setSelectedAvatar(profile.avatar_url || getRandomAvatar());
   };
 
   const handleSave = async () => {
@@ -161,6 +143,32 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
     onClose();
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${user.id}/profile-${Date.now()}.${fileExt}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      setSelectedAvatar(publicUrl);
+      successFeedback();
+      toast.success("Avatar uploaded!");
+    } catch (error) {
+      toast.error("Failed to upload avatar");
+    }
+  };
+
   // Edit/Create form view
   if (editingProfile || isCreating) {
     return (
@@ -188,15 +196,31 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
         <main className="pt-20 pb-8 px-4">
           {/* Avatar Selection */}
           <div className="flex flex-col items-center mb-8">
-            <Avatar className="w-24 h-24 ring-4 ring-primary/20 mb-4">
-              <AvatarImage src={selectedAvatar} />
-              <AvatarFallback>
-                <User className="w-10 h-10" />
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-24 h-24 sm:w-28 sm:h-28 ring-4 ring-primary/20 mb-4">
+                <AvatarImage src={selectedAvatar} className="object-cover" />
+                <AvatarFallback>
+                  <User className="w-10 h-10" />
+                </AvatarFallback>
+              </Avatar>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-2 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+              >
+                <Camera className="w-4 h-4 text-primary-foreground" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Tap camera to upload custom image</p>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mb-8">
+          <div className="grid grid-cols-4 gap-3 mb-8">
             {AVATARS.map((avatar) => (
               <button
                 key={avatar.name}
@@ -205,7 +229,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
                   setSelectedAvatar(avatar.src);
                 }}
                 className={cn(
-                  "relative w-16 h-16 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-muted/30 active:scale-95 transition-all mx-auto",
+                  "relative w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden bg-muted/30 active:scale-95 transition-all mx-auto",
                   selectedAvatar === avatar.src && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                 )}
               >
@@ -301,8 +325,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
                 onClick={() => handleSwitchProfile(profile)}
                 className="flex items-center gap-4 flex-1"
               >
-                <Avatar className="w-14 h-14">
-                  <AvatarImage src={profile.avatar_url || ""} />
+                <Avatar className="w-14 h-14 sm:w-16 sm:h-16">
+                  <AvatarImage src={profile.avatar_url || ""} className="object-cover" />
                   <AvatarFallback className="bg-muted">
                     {profile.is_kids ? (
                       <Baby className="w-6 h-6 text-pink-500" />

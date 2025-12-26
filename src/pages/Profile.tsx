@@ -22,28 +22,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileProfile } from "@/components/mobile/MobileProfile";
 import { CreatorSection } from "@/components/creator/CreatorSection";
 
-// Import avatar images
-import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
-import avatarGold from "@/assets/avatars/avatar-gold.png";
-import avatarBlue from "@/assets/avatars/avatar-blue.png";
-import avatarPurple from "@/assets/avatars/avatar-purple.png";
-import avatarGreen from "@/assets/avatars/avatar-green.png";
-import avatarYellow from "@/assets/avatars/avatar-yellow.png";
-import avatarRed from "@/assets/avatars/avatar-red.png";
-import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
-import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
-
-const PROFILE_AVATARS = [
-  { src: avatarBasketball, name: "Basketball" },
-  { src: avatarGold, name: "Gold" },
-  { src: avatarBlue, name: "Blue" },
-  { src: avatarPurple, name: "Purple" },
-  { src: avatarGreen, name: "Green" },
-  { src: avatarYellow, name: "Yellow" },
-  { src: avatarRed, name: "Red" },
-  { src: avatarCowboy, name: "Cowboy" },
-  { src: avatarUnicorn, name: "Unicorn" },
-];
+// Import centralized avatars
+import { AVATARS, isPresetAvatar } from "@/lib/avatars";
 
 const COUNTRIES = [
   { code: 'CM', name: 'Cameroon' },
@@ -88,7 +68,7 @@ const Profile = () => {
       setAvatarUrl(profile.avatar_url);
       
       // Find matching preset avatar
-      const avatarIndex = PROFILE_AVATARS.findIndex(a => a.src === profile.avatar_url);
+      const avatarIndex = AVATARS.findIndex(a => a.src === profile.avatar_url);
       if (avatarIndex >= 0) {
         setSelectedAvatar(avatarIndex);
       }
@@ -154,12 +134,12 @@ const Profile = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ avatar_url: PROFILE_AVATARS[index].src })
+        .update({ avatar_url: AVATARS[index].src })
         .eq('id', user.id);
 
       if (error) throw error;
 
-      setAvatarUrl(PROFILE_AVATARS[index].src);
+      setAvatarUrl(AVATARS[index].src);
       setSelectedAvatar(index);
       setAvatarDialogOpen(false);
       refetch();
@@ -197,8 +177,7 @@ const Profile = () => {
     }
   };
 
-  // Check if current avatar is a preset
-  const isPresetAvatar = PROFILE_AVATARS.some(a => a.src === avatarUrl);
+  // Check if current avatar is a preset - using imported function
 
   if (authLoading || profileLoading) {
     return (
@@ -284,7 +263,7 @@ const Profile = () => {
               <div className="flex justify-center">
                 <Avatar className="h-24 w-24">
                   <AvatarImage 
-                    src={selectedAvatar !== null ? PROFILE_AVATARS[selectedAvatar].src : avatarUrl || undefined} 
+                    src={selectedAvatar !== null ? AVATARS[selectedAvatar].src : avatarUrl || undefined} 
                     alt="Preview"
                     className="object-cover"
                   />
@@ -298,7 +277,7 @@ const Profile = () => {
               <div>
                 <Label className="text-sm text-muted-foreground mb-3 block">Choose from presets</Label>
                 <div className="grid grid-cols-5 gap-3 justify-items-center">
-                  {PROFILE_AVATARS.map((avatar, i) => (
+                  {AVATARS.map((avatar, i) => (
                     <button
                       key={avatar.name}
                       className={cn(

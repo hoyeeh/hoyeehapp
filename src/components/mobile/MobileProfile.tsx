@@ -55,29 +55,8 @@ import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { useIsCreator } from "@/hooks/useCreator";
 import { useIsAdmin } from "@/hooks/useAdmin";
 
-// Import avatar images
-import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
-import avatarGold from "@/assets/avatars/avatar-gold.png";
-import avatarBlue from "@/assets/avatars/avatar-blue.png";
-import avatarPurple from "@/assets/avatars/avatar-purple.png";
-import avatarGreen from "@/assets/avatars/avatar-green.png";
-import avatarYellow from "@/assets/avatars/avatar-yellow.png";
-import avatarRed from "@/assets/avatars/avatar-red.png";
-import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
-import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
-
-// Avatar options
-const AVATARS = [
-  { src: avatarBasketball, name: "Basketball" },
-  { src: avatarGold, name: "Gold" },
-  { src: avatarBlue, name: "Blue" },
-  { src: avatarPurple, name: "Purple" },
-  { src: avatarGreen, name: "Green" },
-  { src: avatarYellow, name: "Yellow" },
-  { src: avatarRed, name: "Red" },
-  { src: avatarCowboy, name: "Cowboy" },
-  { src: avatarUnicorn, name: "Unicorn" },
-];
+// Import centralized avatars
+import { AVATARS } from "@/lib/avatars";
 
 interface MenuSection {
   title: string;

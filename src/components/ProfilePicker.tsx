@@ -15,29 +15,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
-
-// Import avatar images
-import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
-import avatarGold from "@/assets/avatars/avatar-gold.png";
-import avatarBlue from "@/assets/avatars/avatar-blue.png";
-import avatarPurple from "@/assets/avatars/avatar-purple.png";
-import avatarGreen from "@/assets/avatars/avatar-green.png";
-import avatarYellow from "@/assets/avatars/avatar-yellow.png";
-import avatarRed from "@/assets/avatars/avatar-red.png";
-import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
-import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
-
-const PROFILE_AVATARS = [
-  { src: avatarBasketball, name: "Basketball" },
-  { src: avatarGold, name: "Gold" },
-  { src: avatarBlue, name: "Blue" },
-  { src: avatarPurple, name: "Purple" },
-  { src: avatarGreen, name: "Green" },
-  { src: avatarYellow, name: "Yellow" },
-  { src: avatarRed, name: "Red" },
-  { src: avatarCowboy, name: "Cowboy" },
-  { src: avatarUnicorn, name: "Unicorn" },
-];
+import { AVATARS, getRandomAvatar, isPresetAvatar } from "@/lib/avatars";
 
 interface ProfilePickerProps {
   onProfileSelected: (profile: UserProfile) => void;
@@ -63,11 +41,11 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
         await updateProfile(editingProfile.id, {
           name: name.trim(),
           is_kids: isKids,
-          avatar_url: PROFILE_AVATARS[selectedAvatar].src,
+          avatar_url: AVATARS[selectedAvatar].src,
         });
         toast.success("Profile updated");
       } else {
-        await createProfile(name.trim(), isKids, PROFILE_AVATARS[selectedAvatar].src);
+        await createProfile(name.trim(), isKids, AVATARS[selectedAvatar].src);
         toast.success("Profile created");
       }
       setDialogOpen(false);
@@ -95,9 +73,9 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
     setEditingProfile(profile);
     setName(profile.name);
     setIsKids(profile.is_kids);
-    // Find matching avatar or default to first
-    const avatarIndex = PROFILE_AVATARS.findIndex(a => a.src === profile.avatar_url);
-    setSelectedAvatar(avatarIndex >= 0 ? avatarIndex : 0);
+    // Find matching avatar or default to random
+    const avatarIndex = AVATARS.findIndex(a => a.src === profile.avatar_url);
+    setSelectedAvatar(avatarIndex >= 0 ? avatarIndex : Math.floor(Math.random() * AVATARS.length));
     setDialogOpen(true);
   };
 
@@ -110,19 +88,29 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
     setEditingProfile(null);
     setName("");
     setIsKids(false);
-    setSelectedAvatar(Math.floor(Math.random() * PROFILE_AVATARS.length));
+    setSelectedAvatar(Math.floor(Math.random() * AVATARS.length));
   };
 
   // Get avatar for display - check if it's an old color class or new image URL
   const getAvatarDisplay = (profile: UserProfile) => {
     const avatarUrl = profile.avatar_url;
     
-    // Check if it's one of the new avatar images
-    const matchingAvatar = PROFILE_AVATARS.find(a => a.src === avatarUrl);
-    if (matchingAvatar) {
+    // Check if it's one of the preset avatar images
+    if (isPresetAvatar(avatarUrl)) {
       return (
         <img 
-          src={matchingAvatar.src} 
+          src={avatarUrl!} 
+          alt={profile.name}
+          className="w-full h-full object-cover rounded-lg"
+        />
+      );
+    }
+    
+    // Check if it's a custom uploaded avatar (URL)
+    if (avatarUrl && (avatarUrl.startsWith('http') || avatarUrl.startsWith('/'))) {
+      return (
+        <img 
+          src={avatarUrl} 
           alt={profile.name}
           className="w-full h-full object-cover rounded-lg"
         />
@@ -159,7 +147,7 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
       <h1 className="font-display text-3xl md:text-4xl mb-2">Who's watching?</h1>
       <p className="text-muted-foreground mb-8">Select your profile</p>
 
-      <div className="flex flex-wrap justify-center gap-6 max-w-3xl mb-8">
+      <div className="flex flex-wrap justify-center gap-4 sm:gap-6 max-w-3xl mb-8">
         {profiles.map((profile) => (
           <div
             key={profile.id}
@@ -170,14 +158,14 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
             onClick={() => !isManaging && onProfileSelected(profile)}
           >
             <div className={cn(
-              "w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden shadow-lg",
+              "w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-lg overflow-hidden shadow-lg",
               isManaging && "opacity-50"
             )}>
               {getAvatarDisplay(profile)}
             </div>
             
             <p className={cn(
-              "text-center mt-2 font-medium",
+              "text-center mt-2 font-medium text-sm sm:text-base",
               profile.is_kids && "text-cyan-400"
             )}>
               {profile.name}
@@ -220,10 +208,10 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
 
         {profiles.length < 5 && !isManaging && (
           <div
-            className="w-24 h-24 md:w-32 md:h-32 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+            className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
             onClick={openCreate}
           >
-            <Plus className="w-10 h-10 text-muted-foreground" />
+            <Plus className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground" />
           </div>
         )}
       </div>
@@ -258,9 +246,9 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
           <div className="space-y-6 py-4">
             {/* Selected Avatar Preview */}
             <div className="flex justify-center">
-              <div className="w-24 h-24 rounded-lg overflow-hidden shadow-lg">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shadow-lg">
                 <img 
-                  src={PROFILE_AVATARS[selectedAvatar].src} 
+                  src={AVATARS[selectedAvatar].src} 
                   alt="Selected avatar"
                   className="w-full h-full object-cover"
                 />
@@ -268,12 +256,12 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
             </div>
 
             {/* Avatar Selection Grid */}
-            <div className="grid grid-cols-5 gap-3 justify-items-center">
-              {PROFILE_AVATARS.map((avatar, i) => (
+            <div className="grid grid-cols-4 gap-2 sm:gap-3 justify-items-center">
+              {AVATARS.map((avatar, i) => (
                 <button
                   key={avatar.name}
                   className={cn(
-                    "w-12 h-12 rounded-lg overflow-hidden transition-all",
+                    "w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden transition-all",
                     selectedAvatar === i 
                       ? "ring-2 ring-offset-2 ring-brand scale-110" 
                       : "hover:scale-105 opacity-70 hover:opacity-100"
