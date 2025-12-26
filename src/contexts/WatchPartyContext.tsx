@@ -396,7 +396,7 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
 
     try {
       // Set has_started to true, reset playback to beginning and start playing
-      await supabase
+      const { error } = await supabase
         .from('watch_parties')
         .update({ 
           playback_time: 0, 
@@ -405,6 +405,14 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           updated_at: new Date().toISOString()
         })
         .eq('id', party.id);
+
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
+
+      // Immediately update local state for responsive UI
+      setParty(prev => prev ? { ...prev, playback_time: 0, is_playing: true, has_started: true } : null);
 
       // Broadcast start event to all members via reactions channel
       if (reactionChannelRef.current) {
