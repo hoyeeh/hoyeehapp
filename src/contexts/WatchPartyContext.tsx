@@ -546,6 +546,18 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           setReactions(prev => prev.filter(r => r.id !== reaction.id));
         }, 3000);
       })
+      .on('broadcast', { event: 'start_playback' }, (payload) => {
+        // Dispatch custom event for non-hosts to handle navigation
+        if (party.host_user_id !== user?.id) {
+          window.dispatchEvent(new CustomEvent('watchPartyStarted', {
+            detail: { 
+              contentId: party.content_id, 
+              episodeId: party.episode_id,
+              playbackTime: payload.payload?.time ?? 0
+            }
+          }));
+        }
+      })
       .subscribe();
 
     reactionChannelRef.current = reactionChannel;
