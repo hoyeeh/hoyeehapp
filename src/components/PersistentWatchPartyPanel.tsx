@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useWatchPartyContextSafe } from "@/contexts/WatchPartyContext";
 import { WatchPartyChat } from "@/components/WatchPartyChat";
@@ -9,7 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles, Crown, Lock } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Play, Sparkles, Crown, Lock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
@@ -33,6 +34,8 @@ export const PersistentWatchPartyPanel = () => {
   const [currentContent, setCurrentContent] = useState<ContentInfo | null>(null);
   const [prevAllReady, setPrevAllReady] = useState(false);
   const [isLaunchingContent, setIsLaunchingContent] = useState(false);
+  const [showStartConfirmation, setShowStartConfirmation] = useState(false);
+  const prevHasStartedRef = useRef<boolean | null>(null);
 
   // Destructure context values (with defaults for when context is null)
   const party = context?.party ?? null;
@@ -75,6 +78,22 @@ export const PersistentWatchPartyPanel = () => {
     }
     setPrevAllReady(allReady);
   }, [party, isHost, members, prevAllReady]);
+
+  // Notify non-hosts when party starts
+  useEffect(() => {
+    if (!party || isHost) return;
+    
+    const hasStarted = (party as any).has_started;
+    
+    // Detect transition from not started to started
+    if (hasStarted && prevHasStartedRef.current === false) {
+      toast.success("🎬 The host has started playback! Get ready to watch together!", {
+        duration: 5000,
+      });
+    }
+    
+    prevHasStartedRef.current = hasStarted;
+  }, [party, isHost]);
 
   // If context is not available, don't render
   if (!context) {
@@ -319,15 +338,28 @@ export const PersistentWatchPartyPanel = () => {
                   })}
                 </div>
                 
-                {/* Start Watching Together Button (for hosts when all ready) */}
-                {isHost && members.length > 1 && members.every(m => m.is_ready) && startWatchingTogether && (
+                {/* Start Watching Together Button (for hosts when all ready and not started) */}
+                {isHost && members.length > 1 && members.every(m => m.is_ready) && startWatchingTogether && !(party as any).has_started && (
                   <Button 
-                    onClick={startWatchingTogether}
+                    onClick={() => setShowStartConfirmation(true)}
                     className="w-full bg-green-600 hover:bg-green-700"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     Start Watching Together
                   </Button>
+                )}
+                
+                {/* Show party already started indicator */}
+                {isHost && (party as any).has_started && (
+                  <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-green-500">
+                      <Radio className="h-4 w-4 animate-pulse" />
+                      <span className="text-sm font-medium">Watch Party is Live</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Everyone is watching together. New members cannot join.
+                    </p>
+                  </div>
                 )}
                 
                 {/* Ready Button (for non-hosts) */}
@@ -430,6 +462,43 @@ export const PersistentWatchPartyPanel = () => {
         )}
       </SheetContent>
     </Sheet>
+    
+    {/* Confirmation Dialog for Starting Watch Party */}
+    <AlertDialog open={showStartConfirmation} onOpenChange={setShowStartConfirmation}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Start Watch Party?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-3">
+            <p>
+              Once you start the watch party, <strong>no one else can join</strong>. 
+              Make sure all your friends have joined before starting!
+            </p>
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4" />
+                <span className="font-medium">{members.length} member{members.length !== 1 ? 's' : ''} ready</span>
+              </div>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={() => {
+              startWatchingTogether?.();
+              setShowStartConfirmation(false);
+            }}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Start Watching
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 };
