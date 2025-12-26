@@ -121,8 +121,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
       setIsLoading(false);
       setHasCamera(true);
 
-      // Start scanning
-      scanQRCode();
+      // Scanning will be started via useEffect that watches isLoading/hasCamera
     } catch (error: any) {
       console.error("[QRScanner] Camera error:", error);
       setHasCamera(false);
@@ -133,7 +132,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
         setPermissionDenied(true);
       }
     }
-  }, [scanQRCode]);
+  }, []);
 
   const extractCodeFromQRData = useCallback((qrData: string): string | null => {
     console.log("[QRScanner] Raw QR data:", qrData);
@@ -391,6 +390,13 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     startCamera();
   }, [startCamera]);
 
+  // Start scanning when camera is ready
+  useEffect(() => {
+    if (!isLoading && hasCamera && open && !showSuccess && !showManualEntry) {
+      scanQRCode();
+    }
+  }, [isLoading, hasCamera, open, showSuccess, showManualEntry, scanQRCode]);
+
   useEffect(() => {
     if (open) {
       startCamera();
@@ -403,7 +409,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
     } else {
       stopCamera();
     }
-    
+
     return () => stopCamera();
   }, [open, startCamera, stopCamera]);
 
