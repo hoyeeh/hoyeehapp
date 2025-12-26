@@ -100,14 +100,14 @@ export function MobileCastSheet({
   // Handle TV Code pairing
   const handlePairWithCode = async (code: string): Promise<boolean> => {
     try {
-      const success = await cast.pairWithCode(code);
-      if (success) {
+      const sessionId = await cast.pairWithCode(code);
+      if (sessionId) {
         setShowPairingDialog(false);
         
-        // Only load video if we have a URL
+        // Only load video if we have a URL - use sessionId directly to avoid race condition
         if (videoUrl) {
           onCastStart?.();
-          await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime);
+          await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime, sessionId);
           toast.success(`Connected and casting to TV`);
           onClose();
         } else {

@@ -89,12 +89,12 @@ export function CastToTVButton({
     }
 
     setError('');
-    const success = await cast.pairWithCode(pairingCode.toUpperCase());
+    const sessionId = await cast.pairWithCode(pairingCode.toUpperCase());
     
-    if (success) {
+    if (sessionId) {
       toast.success('Connected to TV!');
-      // Load the video on the TV
-      await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime);
+      // Load the video on the TV - use sessionId directly to avoid race condition
+      await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime, sessionId);
       setShowDialog(false);
       setPairingCode('');
     } else {
