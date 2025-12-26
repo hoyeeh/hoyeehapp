@@ -694,8 +694,9 @@
       var playPromisePending = false;
       var useRealtimeUpdates = true;
       
-      // Command deduplication
+      // Command deduplication - NEW: Use command_seq as primary gate
       var lastCommandKey = null;
+      var lastProcessedCommandSeq = -1;  // Track last processed command_seq
       
       // Abort tracking - don't retry on recent aborts
       var lastAbortTime = 0;
@@ -1027,11 +1028,23 @@
       }
 
       // Handle realtime update from Supabase
+      // CRITICAL: This function gates ALL updates through command_seq
       function handleRealtimeUpdate(session) {
         if (!session) return;
 
+        var newCommandSeq = session.command_seq || 0;
+        
+        // === PRIMARY GATE: Only process if command_seq has changed ===
+        // Heartbeats do NOT change command_seq, so they are filtered out here
+        if (newCommandSeq === lastProcessedCommandSeq) {
+          console.log('[TV] HEARTBEAT IGNORED: command_seq unchanged (' + newCommandSeq + ')');
+          return;
+        }
+
+        console.log('[TV] COMMAND RECEIVED: command_seq ' + lastProcessedCommandSeq + ' -> ' + newCommandSeq);
+        lastProcessedCommandSeq = newCommandSeq;
+
         // Build session object matching expected format
-        // IMPORTANT: DO NOT include heartbeat timestamps - they cause duplicate detection to fail
         var formattedSession = {
           status: session.status,
           videoUrl: session.video_url,
@@ -1042,10 +1055,9 @@
           isPlaying: session.is_playing || false,
           volume: session.volume_level || 100,
           queue: session.queue || [],
-          // NEW: Use command_seq for proper deduplication (ignores heartbeats)
           commandSeq: session.command_seq,
-          commandType: session.command_type
-          // REMOVED: updatedAt - this was causing duplicate detection to fail
+          commandType: session.command_type,
+          commandPayload: session.command_payload
         };
 
         handleSessionUpdate(formattedSession);
@@ -1115,16 +1127,15 @@
           currentCommandSeq = session.commandSeq;
         }
 
-        // Command deduplication - uses stable getCommandKey (no timestamps!)
-        var commandKey = getCommandKey(session);
-        if (commandKey === lastCommandKey) {
-          console.log('[TV] ACTION=IGNORE duplicate command key:', commandKey);
-          setDebugAction('IGNORE_DUP');
-          return;
-        }
+        // === PROCESS COMMAND TYPE DIRECTLY ===
+        // The realtime handler already filtered by command_seq, so we process the command
+        var commandType = session.commandType;
+        var commandPayload = session.commandPayload || {};
+        
+        console.log('[TV] Processing command:', commandType, 'payload:', JSON.stringify(commandPayload));
 
         isHandlingUpdate = true;
-        lastCommandKey = commandKey;
+        lastCommandKey = session.commandSeq + '|' + (session.videoUrl || '');
 
         try {
           if (session.status === 'paired' || session.status === 'active') {
