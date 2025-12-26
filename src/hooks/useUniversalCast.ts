@@ -261,12 +261,14 @@ export function useUniversalCast() {
   // Reference to disconnect function for use in polling
   const disconnectRef = useRef<() => void>(() => {});
 
-  // Start polling for session updates
+  // Start polling for session updates (reduced frequency as realtime is primary)
   const startPolling = useCallback((sessionId: string) => {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
     }
 
+    // Polling is now a fallback - realtime is primary
+    // Poll every 10 seconds instead of 2 to reduce load
     pollIntervalRef.current = setInterval(async () => {
       try {
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${sessionId}`;
@@ -299,7 +301,7 @@ export function useUniversalCast() {
       } catch (error) {
         console.error('Polling error:', error);
       }
-    }, 2000);
+    }, 10000); // Reduced from 2s to 10s - realtime handles immediate updates
   }, []);
 
   // Setup realtime subscription for instant updates

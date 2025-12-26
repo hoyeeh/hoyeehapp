@@ -49,7 +49,7 @@ import { YouTubeChannelManagement } from "@/components/admin/YouTubeChannelManag
 import { CreatorManagement } from "@/components/admin/CreatorManagement";
 import { KYCReviewPanel } from "@/components/admin/KYCReviewPanel";
 import { ContentSubmissionReview } from "@/components/admin/ContentSubmissionReview";
-
+import { CastSessionsManagement } from "@/components/admin/CastSessionsManagement";
 const Admin = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -681,6 +681,9 @@ const Admin = () => {
             <ContentSubmissionReview />
           </div>
         );
+      
+      case "cast-sessions":
+        return <CastSessionsManagement />;
       
       case "analytics":
         navigate("/analytics");
