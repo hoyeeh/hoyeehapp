@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tv, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CastPairing } from '@/components/cast/CastPairing';
 import { CastRemote } from '@/components/cast/CastRemote';
@@ -11,10 +11,20 @@ import { CommandInspector } from '@/components/cast/CommandInspector';
 import { useCastController } from '@/hooks/useCastController';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+interface PendingVideo {
+  url: string;
+  title: string;
+  thumbnail?: string;
+  duration?: number;
+}
 
 export default function Cast() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showDebug, setShowDebug] = useState(false);
+  const [pendingVideo, setPendingVideo] = useState<PendingVideo | null>(null);
   
   const {
     session,
@@ -33,6 +43,30 @@ export default function Cast() {
     updateQueue,
     disconnect,
   } = useCastController();
+
+  // Check for pending video from navigation state
+  useEffect(() => {
+    const state = location.state as { pendingVideo?: PendingVideo } | null;
+    if (state?.pendingVideo) {
+      setPendingVideo(state.pendingVideo);
+      // Clear the state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // Auto-cast pending video when connected
+  useEffect(() => {
+    if (isConnected && pendingVideo) {
+      loadVideo({
+        url: pendingVideo.url,
+        title: pendingVideo.title,
+        thumbnail: pendingVideo.thumbnail,
+        duration: pendingVideo.duration,
+      });
+      toast.success(`Casting "${pendingVideo.title}" to TV`);
+      setPendingVideo(null);
+    }
+  }, [isConnected, pendingVideo, loadVideo]);
 
   return (
     <div className="min-h-screen bg-background">

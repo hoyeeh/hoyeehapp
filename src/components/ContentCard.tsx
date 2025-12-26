@@ -1,7 +1,8 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Info, Lock, PlayCircle, Crown } from "lucide-react";
+import { Play, Plus, Check, Info, Lock, PlayCircle, Crown, Tv } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
+import { CastContentButton } from "./cast/CastContentButton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -240,6 +241,18 @@ export const ContentCard = ({
             >
               {isInList ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </button>
+
+            {/* Cast Button */}
+            {content.videoUrl && (
+              <CastContentButton
+                videoUrl={content.videoUrl}
+                title={content.title}
+                thumbnail={content.thumbnailUrl}
+                duration={content.duration}
+                size="sm"
+                className="border-2 border-muted-foreground/50 hover:border-foreground"
+              />
+            )}
 
             <button
               onClick={(e) => {
