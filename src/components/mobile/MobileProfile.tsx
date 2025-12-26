@@ -48,6 +48,7 @@ import { MobileLanguageSettings } from "./MobileLanguageSettings";
 import { MobileStorageSettings } from "./MobileStorageSettings";
 import { MobilePlaybackSettings } from "./MobilePlaybackSettings";
 import { MobileAppearanceSettings } from "./MobileAppearanceSettings";
+import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 import { MobileWatchHistory } from "./MobileWatchHistory";
 import { MobileAccountSecurity } from "./MobileAccountSecurity";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
@@ -382,7 +383,8 @@ export function MobileProfile() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <MobileSwipeWrapper>
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/10">
         <div className="flex items-center justify-between px-4 h-14 pt-safe">
@@ -773,5 +775,6 @@ export function MobileProfile() {
       {/* Bottom Nav */}
       <MobileBottomNav />
     </div>
+    </MobileSwipeWrapper>
   );
 }

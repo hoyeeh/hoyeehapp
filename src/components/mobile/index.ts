@@ -18,6 +18,7 @@ export { MobileProfile } from "./MobileProfile";
 export { MobileMyList } from "./MobileMyList";
 export { MobileGenres } from "./MobileGenres";
 export { PageTransition, FadeIn, StaggerList, SlideIn, ScaleIn, MobilePageWrapper } from "./PageTransition";
+export { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 export { MobileOnboarding } from "./MobileOnboarding";
 export { MobileErrorBoundary } from "./MobileErrorBoundary";
 export { MobileManageProfiles } from "./MobileManageProfiles";

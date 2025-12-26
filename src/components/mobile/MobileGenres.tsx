@@ -11,6 +11,7 @@ import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeader } from "./MobileHeader";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { PullToRefresh } from "./PullToRefresh";
+import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 import { Loader2, Flame, Film, Tv } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -112,11 +113,12 @@ export function MobileGenres() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <MobileHeader 
-        onSearchClick={() => setShowSearch(true)}
-        transparent={false}
-      />
+    <MobileSwipeWrapper>
+      <div className="min-h-screen bg-background pb-20">
+        <MobileHeader 
+          onSearchClick={() => setShowSearch(true)}
+          transparent={false}
+        />
 
       <PullToRefresh onRefresh={handleRefresh}>
         <main className="pt-16 px-4">
@@ -200,12 +202,13 @@ export function MobileGenres() {
               <p className="text-muted-foreground">No content found matching your filters.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {filteredContent.map((item) => (
                 <MobileContentCard
                   key={item.id}
                   content={item}
                   onDetails={handleDetails}
+                  variant="grid"
                 />
               ))}
             </div>
@@ -234,5 +237,6 @@ export function MobileGenres() {
       {/* Bottom Nav */}
       <MobileBottomNav />
     </div>
+    </MobileSwipeWrapper>
   );
 }
