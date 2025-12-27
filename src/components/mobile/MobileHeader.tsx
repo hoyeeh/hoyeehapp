@@ -103,7 +103,7 @@ export function MobileHeader({
               aria-label="Notifications"
               onClick={() => setShowNotificationSheet(true)}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className={`h-5 w-5 ${typeof unreadCount === 'number' && unreadCount > 0 ? 'animate-pulse' : ''}`} />
               {typeof unreadCount === 'number' && unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                   {unreadCount > 9 ? "9+" : unreadCount}
