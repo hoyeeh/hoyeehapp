@@ -206,7 +206,7 @@ export const EnhancedHeroBanner = ({
   };
 
   return (
-    <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background rounded-t-[2.5rem] md:rounded-t-[3.5rem]">
+    <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background">
       {/* Background with smooth transition */}
       <AnimatePresence mode="wait">
         <motion.div 
@@ -215,7 +215,7 @@ export const EnhancedHeroBanner = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1, ease: "easeOut" }}
-          className="absolute inset-0 rounded-t-[2.5rem] md:rounded-t-[3.5rem] overflow-hidden"
+          className="absolute inset-0"
         >
           {/* Show video only if banner has a dedicated video */}
           {displayVideo ? (
