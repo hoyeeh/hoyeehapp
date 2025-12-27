@@ -78,88 +78,6 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
     };
   }, []);
 
-  // Initialize player
-  useEffect(() => {
-    if (!apiReady || playerRef.current || isInitializing.current) return;
-
-    const playerElement = document.getElementById(playerId);
-    if (!playerElement) return;
-
-    isInitializing.current = true;
-    latestVideoIdRef.current = videoId;
-
-    try {
-      playerRef.current = new window.YT.Player(playerId, {
-        videoId: videoId,
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          iv_load_policy: 3,
-          modestbranding: 1,
-          rel: 0,
-          showinfo: 0,
-          playsinline: 1,
-          cc_load_policy: 0,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: (event: any) => {
-            setIsReady(true);
-            setIsLoading(false);
-            isInitializing.current = false;
-
-            const videoDuration = event.target.getDuration();
-            setDuration(videoDuration);
-            latestDurationRef.current = videoDuration;
-            setVolume(event.target.getVolume());
-
-            const saved = getProgress(videoId);
-            if (saved > 10 && saved < videoDuration - 30) {
-              setSavedProgress(saved);
-              setShowResumePrompt(true);
-              event.target.pauseVideo();
-            } else {
-              event.target.playVideo();
-            }
-          },
-          onStateChange: (event: any) => {
-            if (!window.YT?.PlayerState) return;
-
-            switch (event.data) {
-              case window.YT.PlayerState.PLAYING:
-                setIsPlaying(true);
-                setIsLoading(false);
-                startProgressTracking();
-                break;
-              case window.YT.PlayerState.PAUSED:
-                setIsPlaying(false);
-                if (playerRef.current?.getCurrentTime && duration > 0) {
-                  saveProgress(latestVideoIdRef.current, playerRef.current.getCurrentTime(), duration);
-                }
-                break;
-              case window.YT.PlayerState.ENDED:
-                setIsPlaying(false);
-                break;
-              case window.YT.PlayerState.BUFFERING:
-                setIsLoading(true);
-                break;
-            }
-          },
-          onError: (event: any) => {
-            console.error('YouTube player error:', event.data);
-            setIsLoading(false);
-            isInitializing.current = false;
-          },
-        },
-      });
-    } catch (error) {
-      console.error('Failed to initialize YouTube player:', error);
-      isInitializing.current = false;
-    }
-  }, [apiReady, videoId, playerId, getProgress, duration, saveProgress]);
-
   const startProgressTracking = useCallback(() => {
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
@@ -174,6 +92,96 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
       }
     }, 500);
   }, [saveProgress]);
+
+  // Initialize player - with retry mechanism for DOM element
+  useEffect(() => {
+    if (!apiReady || playerRef.current || isInitializing.current) return;
+
+    const initializePlayer = () => {
+      const playerElement = document.getElementById(playerId);
+      if (!playerElement) {
+        // Retry after a short delay if element isn't ready
+        setTimeout(initializePlayer, 100);
+        return;
+      }
+
+      isInitializing.current = true;
+      latestVideoIdRef.current = videoId;
+
+      try {
+        playerRef.current = new window.YT.Player(playerId, {
+          videoId: videoId,
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            iv_load_policy: 3,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            playsinline: 1,
+            cc_load_policy: 0,
+            origin: window.location.origin,
+          },
+          events: {
+            onReady: (event: any) => {
+              setIsReady(true);
+              setIsLoading(false);
+              isInitializing.current = false;
+
+              const videoDuration = event.target.getDuration();
+              setDuration(videoDuration);
+              latestDurationRef.current = videoDuration;
+              setVolume(event.target.getVolume());
+
+              const saved = getProgress(videoId);
+              if (saved > 10 && saved < videoDuration - 30) {
+                setSavedProgress(saved);
+                setShowResumePrompt(true);
+                event.target.pauseVideo();
+              } else {
+                event.target.playVideo();
+              }
+            },
+            onStateChange: (event: any) => {
+              if (!window.YT?.PlayerState) return;
+
+              switch (event.data) {
+                case window.YT.PlayerState.PLAYING:
+                  setIsPlaying(true);
+                  setIsLoading(false);
+                  startProgressTracking();
+                  break;
+                case window.YT.PlayerState.PAUSED:
+                  setIsPlaying(false);
+                  if (playerRef.current?.getCurrentTime && latestDurationRef.current > 0) {
+                    saveProgress(latestVideoIdRef.current, playerRef.current.getCurrentTime(), latestDurationRef.current);
+                  }
+                  break;
+                case window.YT.PlayerState.ENDED:
+                  setIsPlaying(false);
+                  break;
+                case window.YT.PlayerState.BUFFERING:
+                  setIsLoading(true);
+                  break;
+              }
+            },
+            onError: (event: any) => {
+              console.error('YouTube player error:', event.data);
+              setIsLoading(false);
+              isInitializing.current = false;
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Failed to initialize YouTube player:', error);
+        isInitializing.current = false;
+      }
+    };
+
+    initializePlayer();
+  }, [apiReady, videoId, playerId, getProgress, saveProgress, startProgressTracking]);
 
   // Cleanup on unmount
   useEffect(() => {
