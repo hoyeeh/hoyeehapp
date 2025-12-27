@@ -12,6 +12,7 @@ import { EnhancedHeroBanner } from "@/components/EnhancedHeroBanner";
 import { ContentRow } from "@/components/ContentRow";
 import { Top10Row } from "@/components/Top10Row";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
+import { LeavingSoonRow } from "@/components/LeavingSoonRow";
 import { ComingSoonRow } from "@/components/ComingSoonRow";
 import { RecommendationsRow } from "@/components/RecommendationsRow";
 import { NewReleasesRow } from "@/components/NewReleasesRow";
@@ -353,6 +354,9 @@ const Index = () => {
   // Get raw section content based on type (before deduplication)
   const getRawSectionContent = (section: any): Content[] => {
     switch (section.section_type) {
+      case "leaving_soon":
+        // Return empty - we'll use the dedicated LeavingSoonRow component instead
+        return [];
       case "recently_added":
         return recentlyAddedContent;
       case "trending":
@@ -704,6 +708,19 @@ const Index = () => {
                           title={section.title}
                           maxItems={section.max_items || 15}
                           cardStyle={section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal"}
+                        />
+                      );
+                    }
+
+                    // Leaving Soon section - use dedicated component
+                    if (section.section_type === "leaving_soon") {
+                      return (
+                        <LeavingSoonRow
+                          key={section.id}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          myList={watchlistIds}
                         />
                       );
                     }

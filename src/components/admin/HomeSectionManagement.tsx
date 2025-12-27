@@ -63,6 +63,7 @@ const SECTION_TYPES = [
   { value: "custom", label: "Custom (All content)" },
   { value: "my_list", label: "My List" },
   { value: "continue_watching", label: "Continue Watching" },
+  { value: "leaving_soon", label: "Leaving Soon" },
 ];
 
 const CARD_STYLES = [

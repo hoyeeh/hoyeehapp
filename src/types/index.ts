@@ -32,6 +32,9 @@ export interface Content {
   rating?: string;
   contentRating?: string;
   createdAt?: string;
+  lifecycleStatus?: 'active' | 'leaving_soon' | 'hidden' | 'kept';
+  expiresAt?: string;
+  viewsLast30Days?: number;
 }
 
 export type ViewState = 'home' | 'movies' | 'shows' | 'player' | 'admin' | 'mylist' | 'profile' | 'search';

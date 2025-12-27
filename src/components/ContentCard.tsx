@@ -3,6 +3,7 @@ import { Play, Plus, Check, Info, Lock, PlayCircle, Crown, Tv } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { CastContentButton } from "./cast/CastContentButton";
+import { LeavingSoonBadge } from "./LeavingSoonBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -174,6 +175,9 @@ export const ContentCard = ({
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           <ContentRatingBadge rating={content.contentRating} size="sm" />
+          {content.expiresAt && (
+            <LeavingSoonBadge expiresAt={content.expiresAt} showDays={false} />
+          )}
         </div>
 
         {/* Restricted Overlay */}
