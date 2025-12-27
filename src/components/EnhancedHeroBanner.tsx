@@ -432,7 +432,7 @@ export const EnhancedHeroBanner = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={goToPrevious}
-            className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors z-20"
           >
             <ChevronLeft className="h-6 w-6 text-foreground" />
           </motion.button>
@@ -443,26 +443,65 @@ export const EnhancedHeroBanner = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={goToNext}
-            className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors z-20"
           >
             <ChevronRight className="h-6 w-6 text-foreground" />
           </motion.button>
 
-          {/* Dots Indicator - Apple-style with animated width */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md">
-            {banners.map((_, index) => (
-              <motion.button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className="relative h-1.5 rounded-full bg-white/30 overflow-hidden"
-                animate={{
-                  width: index === currentIndex ? 24 : 8,
-                  backgroundColor: index === currentIndex ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)"
-                }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                whileHover={{ backgroundColor: "rgba(255,255,255,0.5)" }}
-              />
-            ))}
+          {/* Banner Thumbnails Carousel */}
+          <div className="absolute bottom-6 left-6 md:left-16 z-10">
+            <div className="flex items-end gap-2 md:gap-3">
+              {banners.map((banner, index) => {
+                const thumbnailImage = banner.image_url || (banner.content as any)?.thumbnail_url || "/placeholder.svg";
+                const isActive = index === currentIndex;
+                
+                return (
+                  <motion.button
+                    key={banner.id}
+                    onClick={() => setCurrentIndex(index)}
+                    className={cn(
+                      "relative rounded-lg overflow-hidden transition-all duration-300 flex-shrink-0",
+                      isActive 
+                        ? "ring-2 ring-white shadow-xl shadow-black/40" 
+                        : "ring-1 ring-white/20 opacity-70 hover:opacity-100"
+                    )}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    animate={{
+                      width: isActive ? 100 : 72,
+                      height: isActive ? 60 : 44,
+                    }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  >
+                    <img
+                      src={thumbnailImage}
+                      alt={banner.title || "Banner"}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Active indicator gradient overlay */}
+                    {isActive && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent"
+                      />
+                    )}
+                    {/* Play indicator for active */}
+                    {isActive && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute inset-0 flex items-center justify-center"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                          <Play className="h-3 w-3 text-background" fill="currentColor" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         </>
       )}
