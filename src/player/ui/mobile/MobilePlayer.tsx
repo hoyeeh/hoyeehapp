@@ -93,6 +93,9 @@ export const MobilePlayer = ({
             break;
           case 'pause':
             setIsPlaying(false);
+            // Show controls when paused
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+            setShowControls(true);
             break;
           case 'waiting':
             setIsBuffering(true);
@@ -100,9 +103,9 @@ export const MobilePlayer = ({
           case 'playing':
             setIsBuffering(false);
             setIsPlaying(true);
-            // Auto-hide controls when video starts playing
+            // Auto-hide controls after 5 seconds when video starts playing
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 1500);
+            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 5000);
             break;
           case 'ended':
             setIsPlaying(false);
@@ -126,14 +129,16 @@ export const MobilePlayer = ({
     };
   }, [src, contentId]);
 
-  // Controls visibility
+  // Controls visibility - 5 second auto-hide
   const resetControlsTimeout = useCallback(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     setShowControls(true);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying && !isLocked) setShowControls(false);
-    }, 3000);
-  }, [isPlaying, isLocked]);
+      if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended && !isLocked) {
+        setShowControls(false);
+      }
+    }, 5000);
+  }, [isLocked]);
 
   useEffect(() => {
     resetControlsTimeout();
@@ -271,16 +276,6 @@ export const MobilePlayer = ({
         </div>
       )}
 
-      {/* Skip Intro Button */}
-      {showSkipIntro && !isLocked && (
-        <button
-          onClick={(e) => { e.stopPropagation(); skipIntro(); }}
-          className="absolute bottom-28 right-4 px-5 py-2.5 bg-foreground/90 text-background rounded-lg font-semibold z-10"
-        >
-          Skip Intro
-        </button>
-      )}
-
       {/* Lock Controls Button (when locked) */}
       {isLocked && showControls && (
         <button
@@ -302,6 +297,16 @@ export const MobilePlayer = ({
             className="absolute inset-0 pointer-events-none"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Skip Intro Button - inside controls overlay so it hides with controls */}
+            {showSkipIntro && (
+              <button
+                onClick={(e) => { e.stopPropagation(); skipIntro(); }}
+                className="absolute bottom-28 right-4 px-5 py-2.5 bg-foreground/90 text-background rounded-lg font-semibold z-10 pointer-events-auto"
+              >
+                Skip Intro
+              </button>
+            )}
+
             {/* Top Controls */}
             <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto safe-area-inset-top">
               <div className="flex items-center justify-between">
