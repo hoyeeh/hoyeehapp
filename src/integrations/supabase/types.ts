@@ -1948,6 +1948,57 @@ export type Database = {
           },
         ]
       }
+      kyc_access_logs: {
+        Row: {
+          accessed_at: string
+          accessed_by: string
+          action: string
+          creator_id: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          kyc_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          accessed_at?: string
+          accessed_by: string
+          action: string
+          creator_id?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          kyc_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          accessed_at?: string
+          accessed_by?: string
+          action?: string
+          creator_id?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          kyc_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kyc_access_logs_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kyc_access_logs_kyc_id_fkey"
+            columns: ["kyc_id"]
+            isOneToOne: false
+            referencedRelation: "creator_kyc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           coming_soon_alerts: boolean
@@ -3489,6 +3540,35 @@ export type Database = {
         Args: { content_uuid: string }
         Returns: number
       }
+      get_creator_kyc_with_logging: {
+        Args: {
+          p_creator_id: string
+          p_ip_address?: string
+          p_user_agent?: string
+        }
+        Returns: {
+          address_city: string
+          address_country: string
+          address_line1: string
+          created_at: string
+          creator_id: string
+          date_of_birth: string
+          email: string
+          full_name: string
+          id: string
+          id_document_url: string
+          id_expiry_date: string
+          id_number: string
+          id_type: string
+          nationality: string
+          phone_number: string
+          rejection_reason: string
+          reviewed_at: string
+          reviewed_by: string
+          status: string
+          updated_at: string
+        }[]
+      }
       get_creator_profile: {
         Args: { _user_id: string }
         Returns: {
@@ -3502,6 +3582,23 @@ export type Database = {
         }[]
       }
       get_masked_mobile: { Args: { user_uuid: string }; Returns: string }
+      get_safe_profile_for_admin: {
+        Args: { target_user_id: string }
+        Returns: {
+          avatar_url: string
+          country: string
+          created_at: string
+          display_name: string
+          id: string
+          is_subscribed: boolean
+          last_login_at: string
+          mobile_number_masked: string
+          parental_controls_enabled: boolean
+          parental_rating_limit: string
+          subscription_expiry: string
+          updated_at: string
+        }[]
+      }
       get_subscription_summary: {
         Args: { user_uuid: string }
         Returns: {
@@ -3545,6 +3642,17 @@ export type Database = {
           party_id: string
           playback_time: number
         }[]
+      }
+      log_kyc_access: {
+        Args: {
+          p_action: string
+          p_creator_id: string
+          p_details?: Json
+          p_ip_address?: string
+          p_kyc_id: string
+          p_user_agent?: string
+        }
+        Returns: undefined
       }
       reset_pin_secure: {
         Args: { input_secret: string; new_pin: string; user_mobile: string }
