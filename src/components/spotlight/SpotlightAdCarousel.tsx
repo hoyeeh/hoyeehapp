@@ -3,8 +3,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HomepageAd } from '@/hooks/useHomepageAds';
 import { SpotlightAdPlayer } from './SpotlightAdPlayer';
-import { throttle } from '@/player/core/utils/throttle';
-
 interface SpotlightAdCarouselProps {
   ads: HomepageAd[];
   appContext?: 'main' | 'kids' | 'tv';
@@ -23,43 +21,18 @@ export function SpotlightAdCarousel({ ads, appContext = 'main' }: SpotlightAdCar
     const container = containerRef.current;
     if (!container) return;
 
-    // Check if IntersectionObserver is supported
-    if ('IntersectionObserver' in window) {
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          setIsInView(entry.isIntersecting && entry.intersectionRatio >= 0.6);
-        },
-        {
-          threshold: [0, 0.3, 0.6, 1],
-          rootMargin: '0px',
-        }
-      );
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(entry.isIntersecting && entry.intersectionRatio >= 0.6);
+      },
+      {
+        threshold: [0, 0.3, 0.6, 1],
+        rootMargin: '0px',
+      }
+    );
 
-      observer.observe(container);
-      return () => observer.disconnect();
-    } else {
-      // Fallback for browsers without IntersectionObserver
-      const checkVisibility = () => {
-        const rect = container.getBoundingClientRect();
-        const windowHeight = window.innerHeight;
-        const visibleHeight = Math.min(rect.bottom, windowHeight) - Math.max(rect.top, 0);
-        const elementHeight = rect.height;
-        const visibilityRatio = visibleHeight / elementHeight;
-        setIsInView(visibilityRatio >= 0.6);
-      };
-
-      const throttledCheck = throttle(checkVisibility, 100);
-
-      window.addEventListener('scroll', throttledCheck, { passive: true });
-      window.addEventListener('resize', throttledCheck, { passive: true });
-      checkVisibility();
-
-      return () => {
-        throttledCheck.cancel();
-        window.removeEventListener('scroll', throttledCheck);
-        window.removeEventListener('resize', throttledCheck);
-      };
-    }
+    observer.observe(container);
+    return () => observer.disconnect();
   }, []);
 
   // Auto-rotation when in view
