@@ -460,7 +460,7 @@ export const EnhancedHeroBanner = ({
                     key={banner.id}
                     onClick={() => setCurrentIndex(index)}
                     className={cn(
-                      "relative rounded-lg overflow-hidden transition-all duration-300 flex-shrink-0",
+                      "relative rounded-xl overflow-hidden transition-all duration-300 flex-shrink-0",
                       isActive 
                         ? "ring-2 ring-white shadow-xl shadow-black/40" 
                         : "ring-1 ring-white/20 opacity-70 hover:opacity-100"
@@ -468,8 +468,8 @@ export const EnhancedHeroBanner = ({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     animate={{
-                      width: isActive ? 100 : 72,
-                      height: isActive ? 60 : 44,
+                      width: isActive ? 200 : 144,
+                      height: isActive ? 120 : 88,
                     }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
                   >
@@ -485,18 +485,6 @@ export const EnhancedHeroBanner = ({
                         animate={{ opacity: 1 }}
                         className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent"
                       />
-                    )}
-                    {/* Play indicator for active */}
-                    {isActive && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="absolute inset-0 flex items-center justify-center"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                          <Play className="h-3 w-3 text-background" fill="currentColor" />
-                        </div>
-                      </motion.div>
                     )}
                   </motion.button>
                 );
