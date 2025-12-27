@@ -206,7 +206,7 @@ export const EnhancedHeroBanner = ({
   };
 
   return (
-    <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background">
+    <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background md:-mt-16">
       {/* Background with smooth transition */}
       <AnimatePresence mode="wait">
         <motion.div 

@@ -551,8 +551,8 @@ const Index = () => {
 
         {/* Main Content */}
         <main className="ml-16 md:ml-64">
-        {/* Top Bar */}
-        <div className="sticky top-0 z-40 bg-gradient-to-b from-background to-transparent p-4 flex justify-end">
+        {/* Top Bar - Transparent on desktop to blend with hero banner */}
+        <div className="sticky top-0 z-40 p-4 flex justify-end md:bg-transparent md:absolute md:right-0 md:left-auto bg-gradient-to-b from-background to-transparent">
           {showSearch ? (
             <div className="flex items-center gap-2 animate-scale-in">
               <Input
