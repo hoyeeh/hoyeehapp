@@ -321,11 +321,13 @@ export const KidsCategoryManagement = () => {
                     isAssigned ? "border-primary" : "border-transparent hover:border-muted"
                   }`}
                 >
-                  <img
-                    src={content.thumbnail_url || "/placeholder.svg"}
-                    alt={content.title}
-                    className="w-full aspect-video object-cover"
-                  />
+                <div className="aspect-[2/3]">
+                    <img
+                      src={content.thumbnail_url || "/placeholder.svg"}
+                      alt={content.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-2">
                     <span className="text-white text-sm font-medium truncate">{content.title}</span>
                   </div>
