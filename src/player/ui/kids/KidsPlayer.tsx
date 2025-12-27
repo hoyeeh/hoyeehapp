@@ -1,12 +1,14 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
+  Play, Pause, SkipForward, SkipBack, Volume2,
   Maximize, ArrowLeft, Loader2, Home
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toCdnUrl } from "@/utils/cdnUrl";
-import { createPlayer, formatTime, PlayerInstance } from "@/player";
+import { formatTime } from "@/player/core/utils/time";
+import { createShakaAdapter, PlayerAdapter } from "@/player/adapters/playback";
+import { CastButton } from "@/components/player/CastButton";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 
@@ -25,6 +27,8 @@ interface KidsPlayerProps {
   autoplayNextEpisode?: boolean;
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
+  // Cast settings
+  allowCast?: boolean;
 }
 
 export const KidsPlayer = ({
@@ -41,10 +45,11 @@ export const KidsPlayer = ({
   autoplayNextEpisode = true,
   onNextEpisode,
   hasNextEpisode,
+  allowCast = false,
 }: KidsPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<PlayerInstance | null>(null);
+  const adapterRef = useRef<PlayerAdapter | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -59,78 +64,77 @@ export const KidsPlayer = ({
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
 
-  // Initialize player engine
+  // Initialize Shaka adapter
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !src) return;
 
-    const player = createPlayer({
-      videoEl: video,
-      platform: 'kids',
-      debug: localStorage.getItem('HOYEEH_DEBUG') === '1',
-      onEvent: (event, data: any) => {
-        switch (event) {
-          case 'loadstart':
-            setIsBuffering(true);
-            break;
-          case 'loadedmetadata':
-            setDuration(data?.duration || 0);
-            if (initialProgress > 0 && data?.duration && initialProgress < data.duration * 0.95) {
-              player.seek(initialProgress);
-            }
-            break;
-          case 'timeupdate':
-            setCurrentTime(data?.currentTime || 0);
-            if (hasNextEpisode && data?.duration && data.currentTime >= data.duration - 30) {
-              setShowNextEpisode(true);
-            }
-            break;
-          case 'play':
-            setIsPlaying(true);
-            setIsBuffering(false);
-            break;
-          case 'pause':
-            setIsPlaying(false);
-            break;
-          case 'waiting':
-            setIsBuffering(true);
-            break;
-          case 'playing':
-            setIsBuffering(false);
-            setIsPlaying(true);
-            break;
-          case 'ended':
-            setIsPlaying(false);
-            if (autoplayNextEpisode && hasNextEpisode && onNextEpisode) {
-              onNextEpisode();
-            } else {
-              onEnded?.();
-            }
-            break;
-          case 'volumechange':
-            const vol = data?.volume || 0;
-            const maxVol = maxVolume / 100;
-            if (vol > maxVol) {
-              player.setVolume(maxVol);
-            } else {
-              setVolume(vol);
-            }
-            setIsMuted(data?.muted || false);
-            if (!data?.muted) setShowUnmutePrompt(false);
-            break;
-        }
-      },
-    });
+    const adapter = createShakaAdapter({ debug: localStorage.getItem('HOYEEH_DEBUG') === '1' });
+    adapterRef.current = adapter;
 
-    playerRef.current = player;
-    const cdnSrc = toCdnUrl(src);
-    player.load(cdnSrc, 0, { title, contentId, episodeId, thumbnail });
-    // Set initial volume clamped to max
-    player.setVolume(maxVolume / 100);
+    const initAdapter = async () => {
+      await adapter.init(video);
+
+      adapter.on('loadstart', () => setIsBuffering(true));
+      
+      adapter.on('loadedmetadata', (data) => {
+        setDuration(data?.duration || 0);
+        if (initialProgress > 0 && data?.duration && initialProgress < data.duration * 0.95) {
+          adapter.seek(initialProgress);
+        }
+      });
+
+      adapter.on('timeupdate', (data) => {
+        setCurrentTime(data?.currentTime || 0);
+        if (hasNextEpisode && data?.duration && data.currentTime >= data.duration - 30) {
+          setShowNextEpisode(true);
+        }
+      });
+
+      adapter.on('play', () => {
+        setIsPlaying(true);
+        setIsBuffering(false);
+      });
+
+      adapter.on('pause', () => setIsPlaying(false));
+      adapter.on('waiting', () => setIsBuffering(true));
+      
+      adapter.on('playing', () => {
+        setIsBuffering(false);
+        setIsPlaying(true);
+      });
+
+      adapter.on('ended', () => {
+        setIsPlaying(false);
+        if (autoplayNextEpisode && hasNextEpisode && onNextEpisode) {
+          onNextEpisode();
+        } else {
+          onEnded?.();
+        }
+      });
+
+      adapter.on('volumechange', (data) => {
+        const vol = data?.volume || 0;
+        const maxVol = maxVolume / 100;
+        if (vol > maxVol) {
+          adapter.setVolume(maxVol);
+        } else {
+          setVolume(vol);
+        }
+        setIsMuted(data?.muted || false);
+        if (!data?.muted) setShowUnmutePrompt(false);
+      });
+
+      const cdnSrc = toCdnUrl(src);
+      await adapter.load(cdnSrc, 0, { title, contentId, episodeId, thumbnail });
+      adapter.setVolume(maxVolume / 100);
+    };
+
+    initAdapter();
 
     return () => {
-      player.destroy();
-      playerRef.current = null;
+      adapter.destroy();
+      adapterRef.current = null;
     };
   }, [src, contentId, maxVolume]);
 
@@ -175,28 +179,28 @@ export const KidsPlayer = ({
   }, []);
 
   const togglePlay = () => {
-    if (!playerRef.current) return;
+    if (!adapterRef.current) return;
     if (isPlaying) {
-      playerRef.current.pause();
+      adapterRef.current.pause();
     } else {
-      playerRef.current.play();
+      adapterRef.current.play();
     }
   };
 
   const unmute = () => {
-    if (!playerRef.current) return;
-    playerRef.current.setMuted(false);
+    if (!adapterRef.current) return;
+    adapterRef.current.setMuted(false);
     setShowUnmutePrompt(false);
   };
 
   const handleSeek = (value: number[]) => {
-    if (!playerRef.current || !allowSeeking) return;
-    playerRef.current.seek(value[0]);
+    if (!adapterRef.current || !allowSeeking) return;
+    adapterRef.current.seek(value[0]);
   };
 
   const skip = (seconds: number) => {
-    if (!playerRef.current || !allowSeeking) return;
-    playerRef.current.seek(currentTime + seconds);
+    if (!adapterRef.current || !allowSeeking) return;
+    adapterRef.current.seek(currentTime + seconds);
   };
 
   const toggleFullscreen = async () => {
@@ -399,13 +403,25 @@ export const KidsPlayer = ({
             {title}
           </h1>
 
-          <button
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-600 text-white font-medium hover:from-violet-600 hover:to-fuchsia-700 transition-colors"
-          >
-            <Home className="h-5 w-5" />
-            <span className="hidden sm:inline">Kids Home</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {allowCast && (
+              <CastButton
+                videoUrl={src}
+                videoTitle={title}
+                videoThumbnail={thumbnail}
+                onOpenFullscreen={toggleFullscreen}
+                isKidsMode={true}
+                showCastEnabled={true}
+              />
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-600 text-white font-medium hover:from-violet-600 hover:to-fuchsia-700 transition-colors"
+            >
+              <Home className="h-5 w-5" />
+              <span className="hidden sm:inline">Kids Home</span>
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
