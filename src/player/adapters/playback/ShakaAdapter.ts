@@ -32,10 +32,13 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
   let currentUrl: string | null = null;
   let currentMetadata: PlayerMetadata | null = null;
   let useNative = false;
-  
+
   // Event listeners map
   const eventListeners = new Map<PlayerAdapterEventType, Set<Function>>();
-  
+
+  // Track DOM event listeners so we can reliably detach them (prevents leaks/duplication)
+  let domListeners: Array<[string, EventListener]> = [];
+
   // Internal state
   let state: PlaybackState = {
     isPlaying: false,
@@ -58,7 +61,7 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
   ): void => {
     const listeners = eventListeners.get(event);
     if (listeners) {
-      listeners.forEach(callback => {
+      listeners.forEach((callback) => {
         try {
           (callback as any)(data);
         } catch (e) {
@@ -76,7 +79,13 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
   const attachVideoListeners = (): void => {
     if (!videoElement) return;
 
-    const handlers: Record<string, () => void> = {
+    // Detach any previously attached listeners (in case init/load cycles happen)
+    domListeners.forEach(([event, handler]) => {
+      videoElement?.removeEventListener(event, handler);
+    });
+    domListeners = [];
+
+    const handlers: Record<string, EventListener> = {
       play: () => {
         updateState({ isPlaying: true, isPaused: false });
         emit('play');
@@ -154,16 +163,45 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
 
     Object.entries(handlers).forEach(([event, handler]) => {
       videoElement?.addEventListener(event, handler);
+      domListeners.push([event, handler]);
     });
   };
 
+  const getUrlPathname = (url: string): string => {
+    try {
+      return new URL(url, window.location.href).pathname.toLowerCase();
+    } catch {
+      return url.toLowerCase();
+    }
+  };
+
+  const isHlsUrl = (url: string): boolean => {
+    const lower = url.toLowerCase();
+    return lower.includes('.m3u8') || lower.includes('application/vnd.apple.mpegurl');
+  };
+
+  const isDashUrl = (url: string): boolean => {
+    const lower = url.toLowerCase();
+    return lower.includes('.mpd') || lower.includes('application/dash+xml');
+  };
+
+  const isProgressiveUrl = (url: string): boolean => {
+    const lower = url.toLowerCase();
+    if (lower.startsWith('blob:') || lower.startsWith('data:')) return true;
+
+    const pathname = getUrlPathname(url);
+    return ['.mp4', '.m4v', '.mov', '.webm', '.ogg', '.ogv'].some((ext) => pathname.endsWith(ext));
+  };
+
   const shouldUseNative = (url: string): boolean => {
-    // Use native HLS on Safari/iOS for better performance
+    // 1) Always use native for progressive sources (mp4/webm/blob downloads)
+    if (isProgressiveUrl(url)) return true;
+
+    // 2) Use native HLS on Safari/iOS for better performance
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isHLS = url.toLowerCase().includes('.m3u8');
-    
-    return (isSafari || isIOS) && isHLS;
+
+    return (isSafari || isIOS) && isHlsUrl(url);
   };
 
   const adapter: PlayerAdapter = {
@@ -235,23 +273,33 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
     },
 
     destroy(): void {
+      const video = videoElement;
+
+      // Detach DOM listeners to avoid leaks and cross-instance callbacks
+      if (video) {
+        domListeners.forEach(([event, handler]) => {
+          video.removeEventListener(event, handler);
+        });
+        domListeners = [];
+      }
+
       if (player) {
         player.destroy();
         player = null;
       }
-      
-      if (videoElement) {
-        videoElement.pause();
-        videoElement.src = '';
-        videoElement.load();
+
+      if (video) {
+        video.pause();
+        video.src = '';
+        video.load();
       }
-      
+
       eventListeners.clear();
       videoElement = null;
       currentUrl = null;
       currentMetadata = null;
       isInitialized = false;
-      
+
       state = {
         isPlaying: false,
         isPaused: true,
@@ -266,7 +314,7 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
         playbackRate: 1,
         error: null,
       };
-      
+
       debugLog('Destroyed');
     },
 
@@ -281,49 +329,110 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
         return false;
       }
 
+      const video = videoElement; // snapshot for async safety
+
       emit('loadstart', { url });
       updateState({ isBuffering: true, error: null, isEnded: false });
       currentUrl = url;
       currentMetadata = metadata || null;
 
-      try {
-        // Decide whether to use native or Shaka
-        const forceNative = shouldUseNative(url);
-        
-        if (forceNative || useNative) {
-          debugLog('Using native playback for:', url);
-          videoElement.src = url;
-          videoElement.load();
-          
-          if (startTime && startTime > 0) {
-            videoElement.currentTime = startTime;
-          }
-        } else if (player) {
-          debugLog('Using Shaka Player for:', url);
-          await player.load(url, startTime || 0);
-        }
+      const applyStartTime = (t?: number) => {
+        if (!t || t <= 0) return;
 
-        // Attempt autoplay (muted)
+        const seekTo = () => {
+          try {
+            video.currentTime = t;
+          } catch {
+            // ignore
+          }
+        };
+
+        if (video.readyState >= 1) {
+          seekTo();
+        } else {
+          video.addEventListener('loadedmetadata', seekTo, { once: true });
+        }
+      };
+
+      const attemptAutoplay = async () => {
         try {
-          await videoElement.play();
+          await video.play();
         } catch (e) {
           debugLog('Autoplay blocked:', e);
         }
+      };
 
+      try {
+        const streaming = isHlsUrl(url) || isDashUrl(url);
+        const forceNative = shouldUseNative(url);
+        const shouldPlayNative = useNative || forceNative || !streaming;
+
+        if (shouldPlayNative) {
+          debugLog('Using native playback for:', url, { streaming, forceNative });
+
+          // If Shaka was previously active, unload it before switching to native src
+          if (player) {
+            try {
+              await player.unload();
+            } catch {
+              // ignore
+            }
+          }
+
+          video.src = url;
+          video.load();
+          applyStartTime(startTime);
+        } else if (player) {
+          debugLog('Using Shaka Player for:', url);
+          await player.load(url, startTime || 0);
+        } else {
+          debugLog('No Shaka player instance, falling back to native playback for:', url);
+          video.src = url;
+          video.load();
+          applyStartTime(startTime);
+        }
+
+        await attemptAutoplay();
         return true;
       } catch (error: any) {
         debugLog('Load error:', error);
-        
+
+        // One-shot fallback: if Shaka load failed, retry with native playback
+        try {
+          const streaming = isHlsUrl(url) || isDashUrl(url);
+          const forceNative = shouldUseNative(url);
+          const attemptedShaka = !useNative && !forceNative && streaming && !!player;
+
+          if (attemptedShaka) {
+            debugLog('Retrying with native playback after Shaka failure:', url);
+            if (player) {
+              try {
+                await player.unload();
+              } catch {
+                // ignore
+              }
+            }
+
+            video.src = url;
+            video.load();
+            applyStartTime(startTime);
+            await attemptAutoplay();
+            return true;
+          }
+        } catch (fallbackErr) {
+          debugLog('Native fallback also failed:', fallbackErr);
+        }
+
         const adapterError: PlayerAdapterError = {
           code: error.code?.toString() || 'LOAD_ERROR',
           message: error.message || 'Failed to load video',
           severity: 'error',
           recoverable: true,
         };
-        
+
         updateState({ error: adapterError, isBuffering: false });
         emit('error', adapterError);
-        
+
         return false;
       }
     },
@@ -349,21 +458,23 @@ export function createShakaAdapter(options?: Partial<PlayerAdapterOptions>): Pla
     },
 
     async play(): Promise<void> {
-      if (!videoElement) return;
-      
+      const video = videoElement;
+      if (!video) return;
+
       try {
-        await videoElement.play();
+        await video.play();
       } catch (e) {
         debugLog('Play failed:', e);
-        // Try muted autoplay
-        if (!videoElement.muted) {
-          videoElement.muted = true;
-          updateState({ muted: true });
-          try {
-            await videoElement.play();
-          } catch (e2) {
-            debugLog('Muted play also failed:', e2);
+
+        // Try muted autoplay (guards against autoplay restrictions)
+        try {
+          if (!video.muted) {
+            video.muted = true;
+            updateState({ muted: true });
+            await video.play();
           }
+        } catch (e2) {
+          debugLog('Muted play also failed:', e2);
         }
       }
     },
