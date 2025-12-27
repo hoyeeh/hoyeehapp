@@ -113,9 +113,15 @@ export const DesktopPlayer = ({
           case 'playing':
             setIsBuffering(false);
             setIsPlaying(true);
-            // Auto-hide controls when video starts playing
+            // Auto-hide controls after 5 seconds when video starts playing
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 1500);
+            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 5000);
+            break;
+          case 'pause':
+            setIsPlaying(false);
+            // Show controls when paused
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+            setShowControls(true);
             break;
           case 'ended':
             setIsPlaying(false);
@@ -145,14 +151,16 @@ export const DesktopPlayer = ({
     };
   }, [src, contentId]);
 
-  // Controls visibility
+  // Controls visibility - 5 second auto-hide
   const resetControlsTimeout = useCallback(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     setShowControls(true);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
-    }, 3000);
-  }, [isPlaying]);
+      if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
+        setShowControls(false);
+      }
+    }, 5000);
+  }, []);
 
   useEffect(() => {
     resetControlsTimeout();
@@ -295,16 +303,6 @@ export const DesktopPlayer = ({
         </div>
       )}
 
-      {/* Skip Intro Button */}
-      {showSkipIntro && (
-        <button
-          onClick={(e) => { e.stopPropagation(); skipIntro(); }}
-          className="absolute bottom-32 right-8 px-6 py-3 bg-foreground/90 text-background rounded-lg font-semibold hover:bg-foreground transition-colors z-10"
-        >
-          Skip Intro
-        </button>
-      )}
-
       {/* Controls Overlay */}
       <div
         className={cn(
@@ -313,6 +311,16 @@ export const DesktopPlayer = ({
         )}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Skip Intro Button - inside controls overlay so it hides with controls */}
+        {showSkipIntro && (
+          <button
+            onClick={(e) => { e.stopPropagation(); skipIntro(); }}
+            className="absolute bottom-32 right-8 px-6 py-3 bg-foreground/90 text-background rounded-lg font-semibold hover:bg-foreground transition-colors z-10 pointer-events-auto"
+          >
+            Skip Intro
+          </button>
+        )}
+
         {/* Top Gradient & Controls */}
         <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto">
           <div className="flex items-center justify-between p-4">

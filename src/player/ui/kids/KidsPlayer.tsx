@@ -91,6 +91,9 @@ export const KidsPlayer = ({
             break;
           case 'pause':
             setIsPlaying(false);
+            // Show controls when paused
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+            setShowControls(true);
             break;
           case 'waiting':
             setIsBuffering(true);
@@ -98,9 +101,9 @@ export const KidsPlayer = ({
           case 'playing':
             setIsBuffering(false);
             setIsPlaying(true);
-            // Auto-hide controls when video starts playing
+            // Auto-hide controls after 5 seconds when video starts playing
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 1500);
+            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 5000);
             break;
           case 'ended':
             setIsPlaying(false);
@@ -152,14 +155,16 @@ export const KidsPlayer = ({
     return () => clearInterval(timer);
   }, [showNextEpisode, autoplayNextEpisode, onNextEpisode]);
 
-  // Controls visibility
+  // Controls visibility - 5 second auto-hide
   const resetControlsTimeout = useCallback(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     setShowControls(true);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
-    }, 4000);
-  }, [isPlaying]);
+      if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
+        setShowControls(false);
+      }
+    }, 5000);
+  }, []);
 
   useEffect(() => {
     resetControlsTimeout();
