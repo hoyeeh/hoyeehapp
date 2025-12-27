@@ -1569,6 +1569,113 @@ export type Database = {
           },
         ]
       }
+      homepage_ads: {
+        Row: {
+          contexts: Json
+          created_at: string
+          cta_internal_route: string | null
+          cta_label: string | null
+          cta_url: string | null
+          end_at: string | null
+          id: string
+          kids_safe: boolean
+          poster_url: string
+          priority: number
+          start_at: string | null
+          status: string
+          subtitle: string | null
+          targeting: Json | null
+          title: string
+          updated_at: string
+          video_type: string | null
+          video_url: string | null
+          weight: number
+        }
+        Insert: {
+          contexts?: Json
+          created_at?: string
+          cta_internal_route?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          end_at?: string | null
+          id?: string
+          kids_safe?: boolean
+          poster_url: string
+          priority?: number
+          start_at?: string | null
+          status?: string
+          subtitle?: string | null
+          targeting?: Json | null
+          title: string
+          updated_at?: string
+          video_type?: string | null
+          video_url?: string | null
+          weight?: number
+        }
+        Update: {
+          contexts?: Json
+          created_at?: string
+          cta_internal_route?: string | null
+          cta_label?: string | null
+          cta_url?: string | null
+          end_at?: string | null
+          id?: string
+          kids_safe?: boolean
+          poster_url?: string
+          priority?: number
+          start_at?: string | null
+          status?: string
+          subtitle?: string | null
+          targeting?: Json | null
+          title?: string
+          updated_at?: string
+          video_type?: string | null
+          video_url?: string | null
+          weight?: number
+        }
+        Relationships: []
+      }
+      homepage_ads_events: {
+        Row: {
+          ad_id: string
+          app_context: string | null
+          created_at: string
+          device_type: string | null
+          event_type: string
+          id: string
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          ad_id: string
+          app_context?: string | null
+          created_at?: string
+          device_type?: string | null
+          event_type: string
+          id?: string
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          ad_id?: string
+          app_context?: string | null
+          created_at?: string
+          device_type?: string | null
+          event_type?: string
+          id?: string
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_ads_events_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kids_approved_content: {
         Row: {
           approved_at: string
