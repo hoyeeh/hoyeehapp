@@ -547,11 +547,11 @@ export const VideoPlayer = ({
       .channel(`watch-party-reactions-${party.id}`)
       .on('broadcast', { event: 'start_playback' }, (payload) => {
         console.log('[VideoPlayer] Received start_playback broadcast:', payload);
-        const video = videoRef.current;
-        if (video) {
+        const adapter = adapterRef.current;
+        if (adapter) {
           // Force sync to start position and begin playback
-          video.currentTime = 0;
-          video.play().catch(console.error);
+          adapter.seek(0);
+          adapter.play().catch(console.error);
           toast.success("🎬 Playback started!", { duration: 3000 });
         }
       })
