@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Maximize, ChevronLeft, Loader2, Lock, Unlock
+  Maximize, ChevronLeft, Loader2, Lock, Unlock, FastForward
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -10,6 +10,14 @@ import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance } from "@/player";
 import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { Slider } from "@/components/ui/slider";
+
+interface NextEpisodeInfo {
+  id: string;
+  title: string;
+  episodeNumber: number;
+  seasonNumber?: number;
+  thumbnail?: string;
+}
 
 interface MobilePlayerProps {
   src: string;
@@ -22,7 +30,13 @@ interface MobilePlayerProps {
   introStartTime?: number;
   introEndTime?: number;
   thumbnail?: string;
+  // Next Episode props
+  hasNextEpisode?: boolean;
+  nextEpisode?: NextEpisodeInfo;
+  onNextEpisode?: () => void;
 }
+
+const NEXT_EPISODE_COUNTDOWN_SECONDS = 10;
 
 export const MobilePlayer = ({
   src,
@@ -35,11 +49,15 @@ export const MobilePlayer = ({
   introStartTime = 0,
   introEndTime = 90,
   thumbnail,
+  hasNextEpisode = false,
+  nextEpisode,
+  onNextEpisode,
 }: MobilePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerInstance | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const nextEpisodeCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -53,6 +71,8 @@ export const MobilePlayer = ({
   const [isLocked, setIsLocked] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeFromTime, setResumeFromTime] = useState(0);
+  const [showNextEpisode, setShowNextEpisode] = useState(false);
+  const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(NEXT_EPISODE_COUNTDOWN_SECONDS);
 
   // Initialize player engine
   useEffect(() => {
@@ -81,10 +101,20 @@ export const MobilePlayer = ({
           case 'timeupdate':
             setCurrentTime(data?.currentTime || 0);
             const time = data?.currentTime || 0;
+            const videoDuration = data?.duration || duration;
+            
+            // Skip intro button logic
             if (introEndTime > introStartTime && time >= introStartTime && time < introEndTime) {
               setShowSkipIntro(true);
             } else {
               setShowSkipIntro(false);
+            }
+            
+            // Next episode prompt - show when 30 seconds from end
+            if (hasNextEpisode && videoDuration > 0 && time >= videoDuration - 30 && time < videoDuration) {
+              setShowNextEpisode(true);
+            } else if (time < videoDuration - 30) {
+              setShowNextEpisode(false);
             }
             break;
           case 'play':
@@ -155,6 +185,44 @@ export const MobilePlayer = ({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Next episode countdown
+  useEffect(() => {
+    if (showNextEpisode && hasNextEpisode) {
+      setNextEpisodeCountdown(NEXT_EPISODE_COUNTDOWN_SECONDS);
+      nextEpisodeCountdownRef.current = setInterval(() => {
+        setNextEpisodeCountdown(prev => {
+          if (prev <= 1) {
+            if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+            onNextEpisode?.();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (nextEpisodeCountdownRef.current) {
+        clearInterval(nextEpisodeCountdownRef.current);
+        nextEpisodeCountdownRef.current = null;
+      }
+      setNextEpisodeCountdown(NEXT_EPISODE_COUNTDOWN_SECONDS);
+    }
+    
+    return () => {
+      if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+    };
+  }, [showNextEpisode, hasNextEpisode, onNextEpisode]);
+
+  const cancelNextEpisode = () => {
+    if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+    setShowNextEpisode(false);
+  };
+
+  const playNextEpisodeNow = () => {
+    if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+    setShowNextEpisode(false);
+    onNextEpisode?.();
+  };
 
   const togglePlay = () => {
     if (!playerRef.current || isLocked) return;
@@ -298,13 +366,60 @@ export const MobilePlayer = ({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Skip Intro Button - inside controls overlay so it hides with controls */}
-            {showSkipIntro && (
+            {showSkipIntro && !showNextEpisode && (
               <button
                 onClick={(e) => { e.stopPropagation(); skipIntro(); }}
                 className="absolute bottom-28 right-4 px-5 py-2.5 bg-foreground/90 text-background rounded-lg font-semibold z-10 pointer-events-auto"
               >
                 Skip Intro
               </button>
+            )}
+
+            {/* Next Episode Prompt */}
+            {showNextEpisode && hasNextEpisode && nextEpisode && (
+              <div 
+                className="absolute bottom-28 left-4 right-4 bg-card/95 backdrop-blur-sm rounded-xl p-3 shadow-2xl z-10 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex gap-3">
+                  {nextEpisode.thumbnail && (
+                    <div className="relative w-20 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                      <img 
+                        src={nextEpisode.thumbnail} 
+                        alt={nextEpisode.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <Play className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-muted-foreground text-xs">Up Next</p>
+                    <p className="text-foreground font-medium text-sm truncate">
+                      {nextEpisode.seasonNumber ? `S${nextEpisode.seasonNumber} ` : ''}E{nextEpisode.episodeNumber} - {nextEpisode.title}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Playing in {nextEpisodeCountdown}s
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={cancelNextEpisode}
+                    className="flex-1 px-3 py-1.5 bg-muted text-foreground rounded-lg text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={playNextEpisodeNow}
+                    className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center justify-center gap-1"
+                  >
+                    <FastForward className="h-4 w-4" />
+                    Play Now
+                  </button>
+                </div>
+              </div>
             )}
 
             {/* Top Controls */}
