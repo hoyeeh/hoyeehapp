@@ -7,8 +7,9 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
-import { createPlayer, formatTime, PlayerInstance } from "@/player";
-import { CastToTVButton } from "@/components/cast/CastToTVButton";
+import { formatTime } from "@/player/core/utils/time";
+import { createShakaAdapter, PlayerAdapter } from "@/player/adapters/playback";
+import { CastButton } from "@/components/player/CastButton";
 import { Slider } from "@/components/ui/slider";
 
 interface MobilePlayerProps {
@@ -38,7 +39,7 @@ export const MobilePlayer = ({
 }: MobilePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<PlayerInstance | null>(null);
+  const adapterRef = useRef<PlayerAdapter | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -54,72 +55,72 @@ export const MobilePlayer = ({
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeFromTime, setResumeFromTime] = useState(0);
 
-  // Initialize player engine
+  // Initialize Shaka adapter
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !src) return;
 
-    const player = createPlayer({
-      videoEl: video,
-      platform: 'mobile',
-      debug: localStorage.getItem('HOYEEH_DEBUG') === '1',
-      onEvent: (event, data: any) => {
-        switch (event) {
-          case 'loadstart':
-            setIsBuffering(true);
-            break;
-          case 'loadedmetadata':
-            setDuration(data?.duration || 0);
-            if (initialProgress > 30 && data?.duration && initialProgress < data.duration * 0.95) {
-              setResumeFromTime(initialProgress);
-              setShowResumePrompt(true);
-              player.pause();
-            } else if (initialProgress > 0) {
-              player.seek(initialProgress);
-            }
-            break;
-          case 'timeupdate':
-            setCurrentTime(data?.currentTime || 0);
-            const time = data?.currentTime || 0;
-            if (introEndTime > introStartTime && time >= introStartTime && time < introEndTime) {
-              setShowSkipIntro(true);
-            } else {
-              setShowSkipIntro(false);
-            }
-            break;
-          case 'play':
-            setIsPlaying(true);
-            setIsBuffering(false);
-            break;
-          case 'pause':
-            setIsPlaying(false);
-            break;
-          case 'waiting':
-            setIsBuffering(true);
-            break;
-          case 'playing':
-            setIsBuffering(false);
-            setIsPlaying(true);
-            break;
-          case 'ended':
-            setIsPlaying(false);
-            onEnded?.();
-            break;
-          case 'volumechange':
-            setIsMuted(data?.muted || false);
-            if (!data?.muted) setShowUnmutePrompt(false);
-            break;
-        }
-      },
-    });
+    const adapter = createShakaAdapter({ debug: localStorage.getItem('HOYEEH_DEBUG') === '1' });
+    adapterRef.current = adapter;
 
-    playerRef.current = player;
-    const cdnSrc = toCdnUrl(src);
-    player.load(cdnSrc, 0, { title, contentId, episodeId, thumbnail });
+    const initAdapter = async () => {
+      await adapter.init(video);
+
+      adapter.on('loadstart', () => setIsBuffering(true));
+      
+      adapter.on('loadedmetadata', (data) => {
+        setDuration(data?.duration || 0);
+        if (initialProgress > 30 && data?.duration && initialProgress < data.duration * 0.95) {
+          setResumeFromTime(initialProgress);
+          setShowResumePrompt(true);
+          adapter.pause();
+        } else if (initialProgress > 0) {
+          adapter.seek(initialProgress);
+        }
+      });
+
+      adapter.on('timeupdate', (data) => {
+        setCurrentTime(data?.currentTime || 0);
+        const time = data?.currentTime || 0;
+        if (introEndTime > introStartTime && time >= introStartTime && time < introEndTime) {
+          setShowSkipIntro(true);
+        } else {
+          setShowSkipIntro(false);
+        }
+      });
+
+      adapter.on('play', () => {
+        setIsPlaying(true);
+        setIsBuffering(false);
+      });
+
+      adapter.on('pause', () => setIsPlaying(false));
+      adapter.on('waiting', () => setIsBuffering(true));
+      
+      adapter.on('playing', () => {
+        setIsBuffering(false);
+        setIsPlaying(true);
+      });
+
+      adapter.on('ended', () => {
+        setIsPlaying(false);
+        onEnded?.();
+      });
+
+      adapter.on('volumechange', (data) => {
+        setIsMuted(data?.muted || false);
+        if (!data?.muted) setShowUnmutePrompt(false);
+      });
+
+      const cdnSrc = toCdnUrl(src);
+      await adapter.load(cdnSrc, 0, { title, contentId, episodeId, thumbnail });
+    };
+
+    initAdapter();
 
     return () => {
-      player.destroy();
-      playerRef.current = null;
+      adapter.destroy();
+      adapterRef.current = null;
     };
   }, [src, contentId]);
 
@@ -149,53 +150,52 @@ export const MobilePlayer = ({
   }, []);
 
   const togglePlay = () => {
-    if (!playerRef.current || isLocked) return;
+    if (!adapterRef.current || isLocked) return;
     if (isPlaying) {
-      playerRef.current.pause();
+      adapterRef.current.pause();
     } else {
-      playerRef.current.play();
+      adapterRef.current.play();
     }
   };
 
   const unmute = () => {
-    if (!playerRef.current) return;
-    playerRef.current.setMuted(false);
+    if (!adapterRef.current) return;
+    adapterRef.current.setMuted(false);
     setShowUnmutePrompt(false);
   };
 
   const handleSeek = (value: number[]) => {
-    if (!playerRef.current || isLocked) return;
-    playerRef.current.seek(value[0]);
+    if (!adapterRef.current || isLocked) return;
+    adapterRef.current.seek(value[0]);
   };
 
   const skip = (seconds: number) => {
-    if (!playerRef.current || isLocked) return;
-    playerRef.current.seek(currentTime + seconds);
+    if (!adapterRef.current || isLocked) return;
+    adapterRef.current.seek(currentTime + seconds);
   };
 
   const skipIntro = () => {
-    if (!playerRef.current) return;
-    playerRef.current.seek(introEndTime);
+    if (!adapterRef.current) return;
+    adapterRef.current.seek(introEndTime);
     setShowSkipIntro(false);
   };
 
   const handleResume = () => {
     setShowResumePrompt(false);
-    playerRef.current?.seek(resumeFromTime);
-    playerRef.current?.play();
+    adapterRef.current?.seek(resumeFromTime);
+    adapterRef.current?.play();
   };
 
   const handleStartOver = () => {
     setShowResumePrompt(false);
-    playerRef.current?.seek(0);
-    playerRef.current?.play();
+    adapterRef.current?.seek(0);
+    adapterRef.current?.play();
   };
 
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;
     if (!isFullscreen) {
       await containerRef.current.requestFullscreen?.();
-      // Lock to landscape on mobile
       try {
         await (screen.orientation as any)?.lock?.('landscape');
       } catch (e) {}
@@ -307,7 +307,12 @@ export const MobilePlayer = ({
                 </button>
                 <h2 className="text-white font-medium truncate max-w-[60%]">{title}</h2>
                 <div className="flex items-center gap-2">
-                  <CastToTVButton videoUrl={src} videoTitle={title} />
+                  <CastButton 
+                    videoUrl={src} 
+                    videoTitle={title} 
+                    videoThumbnail={thumbnail}
+                    onOpenFullscreen={toggleFullscreen}
+                  />
                   <button onClick={(e) => { e.stopPropagation(); setIsLocked(true); }} className="p-2 text-white">
                     <Unlock className="h-5 w-5" />
                   </button>
