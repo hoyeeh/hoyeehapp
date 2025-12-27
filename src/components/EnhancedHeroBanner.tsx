@@ -413,10 +413,10 @@ export const EnhancedHeroBanner = ({
                   key={banner.id}
                   onClick={() => setCurrentIndex(index)}
                   className={cn(
-                    "relative rounded-xl overflow-hidden transition-all duration-300 flex-shrink-0",
+                    "relative rounded-2xl overflow-hidden transition-all duration-300 flex-shrink-0",
                     isActive 
-                      ? "ring-3 ring-white shadow-2xl shadow-black/50" 
-                      : "ring-2 ring-white/40 opacity-60 hover:opacity-100 hover:ring-white/70"
+                      ? "shadow-2xl shadow-black/50" 
+                      : "opacity-50 hover:opacity-90"
                   )}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -429,14 +429,14 @@ export const EnhancedHeroBanner = ({
                   <img
                     src={thumbnailImage}
                     alt={banner.title || "Banner"}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded-2xl"
                   />
                   {/* Active indicator gradient overlay */}
                   {isActive && (
                     <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent"
+                      className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-2xl"
                     />
                   )}
                 </motion.button>
