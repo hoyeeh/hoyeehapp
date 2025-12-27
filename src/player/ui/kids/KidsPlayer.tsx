@@ -98,6 +98,9 @@ export const KidsPlayer = ({
           case 'playing':
             setIsBuffering(false);
             setIsPlaying(true);
+            // Auto-hide controls when video starts playing
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 1500);
             break;
           case 'ended':
             setIsPlaying(false);
