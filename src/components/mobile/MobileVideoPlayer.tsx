@@ -434,9 +434,9 @@ export function MobileVideoPlayer({
       // Auto-skip if preference is enabled
       if (skipPrefs.autoSkipIntro && isInIntro && !autoSkippedIntroRef.current) {
         autoSkippedIntroRef.current = true;
-        const video = videoRef.current;
-        if (video) {
-          video.currentTime = effectiveIntroEnd;
+        const adapter = adapterRef.current;
+        if (adapter) {
+          adapter.seek(effectiveIntroEnd);
           setCurrentTime(effectiveIntroEnd);
         }
         setShowSkipIntro(false);
@@ -466,9 +466,9 @@ export function MobileVideoPlayer({
       // Auto-skip if preference is enabled
       if (skipPrefs.autoSkipRecap && isInRecap && !autoSkippedRecapRef.current) {
         autoSkippedRecapRef.current = true;
-        const video = videoRef.current;
-        if (video) {
-          video.currentTime = recapEndTime;
+        const adapter = adapterRef.current;
+        if (adapter) {
+          adapter.seek(recapEndTime);
           setCurrentTime(recapEndTime);
         }
         toast.info('Recap skipped automatically', { duration: 2000 });
@@ -593,11 +593,11 @@ export function MobileVideoPlayer({
       .channel(`watch-party-reactions-${party.id}`)
       .on('broadcast', { event: 'start_playback' }, (payload) => {
         console.log('[MobileVideoPlayer] Received start_playback broadcast:', payload);
-        const video = videoRef.current;
-        if (video) {
+        const adapter = adapterRef.current;
+        if (adapter) {
           // Force sync to start position and begin playback
-          video.currentTime = 0;
-          video.play().catch(console.error);
+          adapter.seek(0);
+          adapter.play().catch(console.error);
           toast.success("🎬 Playback started!", { duration: 3000 });
         }
       })
