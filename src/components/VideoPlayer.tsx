@@ -31,6 +31,7 @@ import {
   Check,
   Users,
 } from "lucide-react";
+import { createShakaAdapter, PlayerAdapter } from "@/player/adapters/playback";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { cn } from "@/lib/utils";
 import {
@@ -115,6 +116,7 @@ export const VideoPlayer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const lastSaveTimeRef = useRef<number>(0);
+  const adapterRef = useRef<PlayerAdapter | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(true); // Start as true since video has autoPlay
   const [isMuted, setIsMuted] = useState(true); // Start muted for mobile autoplay support
@@ -327,30 +329,54 @@ export const VideoPlayer = ({
     return cdnSrc;
   };
 
+  // Initialize Shaka adapter and load video
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleLoadedMetadata = () => {
-      setDuration(video.duration);
-      // Use loaded progress from DB if available, otherwise use initialProgress
-      const startTime = loadedProgress !== null ? loadedProgress : initialProgress;
-      // Show resume prompt if there's significant progress (more than 30 seconds and less than 95% watched)
-      if (startTime > 30 && video.duration > 0 && startTime < video.duration * 0.95) {
-        setResumeFromTime(startTime);
-        setShowResumePrompt(true);
-        video.pause();
-        setIsPlaying(false);
-      } else if (startTime > 0) {
-        video.currentTime = startTime;
+    const adapter = createShakaAdapter();
+    adapterRef.current = adapter;
+
+    const initAndLoad = async () => {
+      try {
+        await adapter.init(video);
+        
+        // Determine start time
+        const startTime = loadedProgress !== null ? loadedProgress : initialProgress;
+        const videoSource = getVideoSource();
+        
+        if (videoSource) {
+          const success = await adapter.load(videoSource, startTime > 0 ? startTime : undefined);
+          if (success && startTime > 30 && adapter.getDuration() > 0 && startTime < adapter.getDuration() * 0.95) {
+            setResumeFromTime(startTime);
+            setShowResumePrompt(true);
+            adapter.pause();
+            setIsPlaying(false);
+          }
+        }
+      } catch (error) {
+        console.error('[VideoPlayer] Adapter init error:', error);
       }
     };
 
-    const handleTimeUpdate = () => {
-      const time = video.currentTime;
+    // Set up adapter event listeners
+    adapter.on('loadedmetadata', ({ duration }) => {
+      setDuration(duration);
+      const startTime = loadedProgress !== null ? loadedProgress : initialProgress;
+      if (startTime > 30 && duration > 0 && startTime < duration * 0.95) {
+        setResumeFromTime(startTime);
+        setShowResumePrompt(true);
+        adapter.pause();
+        setIsPlaying(false);
+      } else if (startTime > 0) {
+        adapter.seek(startTime);
+      }
+    });
+
+    adapter.on('timeupdate', ({ currentTime: time, duration: dur }) => {
       setCurrentTime(time);
 
-      // Determine effective intro times (use default if no specific times and default is set)
+      // Determine effective intro times
       const effectiveIntroStart = introStartTime;
       const effectiveIntroEnd = (introEndTime > 0) ? introEndTime : (skipPrefs.defaultIntroDuration > 0 ? skipPrefs.defaultIntroDuration : 0);
       const hasIntroSegment = effectiveIntroEnd > effectiveIntroStart;
@@ -358,7 +384,7 @@ export const VideoPlayer = ({
       // Auto-skip intro if preference is enabled
       if (skipPrefs.autoSkipIntro && hasIntroSegment && time >= effectiveIntroStart && time < effectiveIntroEnd && !autoSkippedIntroRef.current) {
         autoSkippedIntroRef.current = true;
-        video.currentTime = effectiveIntroEnd;
+        adapter.seek(effectiveIntroEnd);
         setShowSkipIntro(false);
         toast.info('Intro skipped automatically', { duration: 2000 });
         return;
@@ -367,7 +393,7 @@ export const VideoPlayer = ({
       // Auto-skip recap if preference is enabled
       if (skipPrefs.autoSkipRecap && recapStartTime && recapEndTime && time >= recapStartTime && time < recapEndTime && !autoSkippedRecapRef.current) {
         autoSkippedRecapRef.current = true;
-        video.currentTime = recapEndTime;
+        adapter.seek(recapEndTime);
         setShowSkipRecap(false);
         toast.info('Recap skipped automatically', { duration: 2000 });
         return;
@@ -396,7 +422,7 @@ export const VideoPlayer = ({
       }
 
       // Show next episode prompt near the end (last 30 seconds)
-      if (nextEpisode && video.duration > 0 && time >= video.duration - 30) {
+      if (nextEpisode && dur > 0 && time >= dur - 30) {
         if (!showNextEpisode) {
           setShowNextEpisode(true);
           setNextEpisodeCountdown(10);
@@ -407,93 +433,74 @@ export const VideoPlayer = ({
       const now = Date.now();
       if (now - lastSaveTimeRef.current >= 10000) {
         lastSaveTimeRef.current = now;
-        saveProgressImmediately(time, video.duration);
+        saveProgressImmediately(time, dur);
       }
-    };
+    });
 
-    const handleWaiting = () => setIsBuffering(true);
-    const handlePlaying = () => {
+    adapter.on('waiting', () => setIsBuffering(true));
+    adapter.on('playing', () => {
       setIsBuffering(false);
       setIsPlaying(true);
-      setIsActivelyPlaying(true); // Mark as actively playing
-      setShowTapToPlay(false); // Hide tap to play overlay
-    };
-    const handleCanPlay = () => setIsBuffering(false);
-    const handleLoadedData = () => setIsBuffering(false);
-    const handlePlay = () => setIsPlaying(true);
-    const handlePauseEvent = () => setIsPlaying(false);
-
-    const handleError = () => {
-      setIsBuffering(false);
-      const videoError = video.error;
-      let errorMessage = "Video failed to load";
-      let errorCode = 0;
-      
-      if (videoError) {
-        errorCode = videoError.code;
-        switch (videoError.code) {
-          case MediaError.MEDIA_ERR_ABORTED:
-            errorMessage = "Video playback was aborted";
-            break;
-          case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage = "Network error - check your connection or video URL";
-            break;
-          case MediaError.MEDIA_ERR_DECODE:
-            errorMessage = "Video format not supported or file corrupted";
-            break;
-          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            errorMessage = "Video source not found (404) or format not supported";
-            break;
-          default:
-            errorMessage = videoError.message || "Unknown video error";
-        }
-      }
-      
-      setMediaError({ code: errorCode, message: errorMessage });
-    };
-
-    const handlePause = () => {
+      setIsActivelyPlaying(true);
+      setShowTapToPlay(false);
+    });
+    adapter.on('canplay', () => setIsBuffering(false));
+    adapter.on('play', () => setIsPlaying(true));
+    adapter.on('pause', () => {
+      setIsPlaying(false);
       // Save progress immediately on pause
-      saveProgressImmediately(video.currentTime, video.duration);
-    };
-
-    const handleEnded = () => {
+      saveProgressImmediately(adapter.getCurrentTime(), adapter.getDuration());
+    });
+    adapter.on('ended', () => {
       // Video ended - trigger next episode if available
       if (nextEpisode && onPlayNextEpisode) {
         onPlayNextEpisode(nextEpisode);
       }
-    };
+    });
+    adapter.on('error', (error) => {
+      setIsBuffering(false);
+      let errorMessage = "Video failed to load";
+      let errorCode = 0;
+      
+      if (error.code.startsWith('MEDIA_')) {
+        errorCode = parseInt(error.code.replace('MEDIA_', '')) || 0;
+      }
+      
+      switch (errorCode) {
+        case 1:
+          errorMessage = "Video playback was aborted";
+          break;
+        case 2:
+          errorMessage = "Network error - check your connection or video URL";
+          break;
+        case 3:
+          errorMessage = "Video format not supported or file corrupted";
+          break;
+        case 4:
+          errorMessage = "Video source not found (404) or format not supported";
+          break;
+        default:
+          errorMessage = error.message || "Unknown video error";
+      }
+      
+      setMediaError({ code: errorCode, message: errorMessage });
+    });
+    adapter.on('volumechange', ({ volume: vol, muted }) => {
+      setVolume(vol);
+      setIsMuted(muted);
+    });
 
-    video.addEventListener("loadedmetadata", handleLoadedMetadata);
-    video.addEventListener("timeupdate", handleTimeUpdate);
-    video.addEventListener("waiting", handleWaiting);
-    video.addEventListener("playing", handlePlaying);
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("loadeddata", handleLoadedData);
-    video.addEventListener("error", handleError);
-    video.addEventListener("pause", handlePause);
-    video.addEventListener("play", handlePlay);
-    video.addEventListener("pause", handlePauseEvent);
-    video.addEventListener("ended", handleEnded);
+    initAndLoad();
 
     return () => {
       // Save progress when unmounting
-      if (video.currentTime > 0 && video.duration > 0) {
-        saveProgressImmediately(video.currentTime, video.duration);
+      if (adapter.getCurrentTime() > 0 && adapter.getDuration() > 0) {
+        saveProgressImmediately(adapter.getCurrentTime(), adapter.getDuration());
       }
-      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      video.removeEventListener("timeupdate", handleTimeUpdate);
-      video.removeEventListener("waiting", handleWaiting);
-      video.removeEventListener("playing", handlePlaying);
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("loadeddata", handleLoadedData);
-      video.removeEventListener("error", handleError);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("play", handlePlay);
-      video.removeEventListener("pause", handlePauseEvent);
-      video.removeEventListener("ended", handleEnded);
+      adapter.destroy();
+      adapterRef.current = null;
     };
-  }, [initialProgress, loadedProgress, saveProgressImmediately, nextEpisode, onPlayNextEpisode, introStartTime, introEndTime, showNextEpisode]);
+  }, [initialProgress, loadedProgress, saveProgressImmediately, nextEpisode, onPlayNextEpisode, introStartTime, introEndTime, showNextEpisode, src, selectedQuality]);
 
   // Auto-hide controls
   useEffect(() => {
@@ -644,7 +651,8 @@ export const VideoPlayer = ({
         case "9":
           e.preventDefault();
           const percent = parseInt(e.key) / 10;
-          video.currentTime = video.duration * percent;
+          const adapter = adapterRef.current;
+          if (adapter) adapter.seek(adapter.getDuration() * percent);
           break;
         case "Escape":
           if (isFullscreen) toggleFullscreen();
@@ -662,10 +670,11 @@ export const VideoPlayer = ({
   }, [isFullscreen]);
 
   const togglePlay = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) {
-      video.play()
+    const adapter = adapterRef.current;
+    if (!adapter) return;
+    
+    if (adapter.getState().isPaused) {
+      adapter.play()
         .then(() => {
           setIsPlaying(true);
           setShowTapToPlay(false);
@@ -676,16 +685,17 @@ export const VideoPlayer = ({
           setIsPlaying(false);
         });
     } else {
-      video.pause();
+      adapter.pause();
       setIsPlaying(false);
     }
   };
 
   const toggleMute = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = !video.muted;
-    setIsMuted(video.muted);
+    const adapter = adapterRef.current;
+    if (!adapter) return;
+    const newMuted = !adapter.isMuted();
+    adapter.setMuted(newMuted);
+    setIsMuted(newMuted);
   };
 
   const toggleFullscreen = async () => {
@@ -700,44 +710,45 @@ export const VideoPlayer = ({
   };
 
   const skip = (seconds: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+    const adapter = adapterRef.current;
+    if (!adapter) return;
+    const newTime = Math.max(0, Math.min(adapter.getDuration(), adapter.getCurrentTime() + seconds));
+    adapter.seek(newTime);
   };
 
   const adjustVolume = (delta: number) => {
-    const video = videoRef.current;
-    if (!video) return;
+    const adapter = adapterRef.current;
+    if (!adapter) return;
     const newVolume = Math.max(0, Math.min(1, volume + delta));
-    video.volume = newVolume;
+    adapter.setVolume(newVolume);
     setVolume(newVolume);
     setIsMuted(newVolume === 0);
   };
 
   const handleVolumeChange = (value: number[]) => {
-    const video = videoRef.current;
-    if (!video) return;
+    const adapter = adapterRef.current;
+    if (!adapter) return;
     const newVolume = value[0];
-    video.volume = newVolume;
+    adapter.setVolume(newVolume);
     setVolume(newVolume);
     setIsMuted(newVolume === 0);
   };
 
   const handlePlaybackRateChange = (rate: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.playbackRate = rate;
+    const adapter = adapterRef.current;
+    if (!adapter) return;
+    adapter.setPlaybackRate(rate);
     setPlaybackRate(rate);
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const video = videoRef.current;
+    const adapter = adapterRef.current;
     const progress = progressRef.current;
-    if (!video || !progress) return;
+    if (!adapter || !progress) return;
     
     const rect = progress.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
-    video.currentTime = percent * video.duration;
+    adapter.seek(percent * adapter.getDuration());
   };
 
   const formatTime = (seconds: number) => {
@@ -752,17 +763,17 @@ export const VideoPlayer = ({
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleSkipIntro = () => {
-    const video = videoRef.current;
-    if (video) {
-      video.currentTime = introEndTime;
+    const adapter = adapterRef.current;
+    if (adapter) {
+      adapter.seek(introEndTime);
       setShowSkipIntro(false);
     }
   };
 
   const handleSkipRecap = () => {
-    const video = videoRef.current;
-    if (video && recapEndTime) {
-      video.currentTime = recapEndTime;
+    const adapter = adapterRef.current;
+    if (adapter && recapEndTime) {
+      adapter.seek(recapEndTime);
       setShowSkipRecap(false);
     }
   };
@@ -865,9 +876,12 @@ export const VideoPlayer = ({
   const handleRetry = () => {
     setMediaError(null);
     setIsBuffering(true);
-    if (videoRef.current) {
-      videoRef.current.load();
-      videoRef.current.play().catch(() => {});
+    const adapter = adapterRef.current;
+    if (adapter) {
+      const videoSource = getVideoSource();
+      adapter.load(videoSource).then(() => {
+        adapter.play().catch(() => {});
+      });
     }
   };
 
@@ -911,26 +925,13 @@ export const VideoPlayer = ({
       onMouseMove={() => setShowControls(true)}
       onClick={togglePlay}
     >
-      {/* Video */}
+      {/* Video - Shaka adapter handles src loading */}
       <video
         ref={videoRef}
-        src={getVideoSource()}
         className="w-full h-full object-contain"
-        autoPlay
         muted={isMuted}
         playsInline
         onContextMenu={(e) => e.preventDefault()}
-        onLoadedData={() => {
-          // Attempt to play with proper error handling for mobile
-          const video = videoRef.current;
-          if (video) {
-            video.play().catch(() => {
-              // Autoplay blocked - show tap to play overlay
-              setShowTapToPlay(true);
-              setIsPlaying(false);
-            });
-          }
-        }}
       />
       
       {/* Tap to Play Overlay (when autoplay blocked) */}
@@ -939,9 +940,9 @@ export const VideoPlayer = ({
           className="absolute inset-0 flex items-center justify-center bg-background/70 z-20"
           onClick={(e) => {
             e.stopPropagation();
-            const video = videoRef.current;
-            if (video) {
-              video.play();
+            const adapter = adapterRef.current;
+            if (adapter) {
+              adapter.play();
               setShowTapToPlay(false);
             }
           }}
@@ -961,9 +962,10 @@ export const VideoPlayer = ({
           className="absolute top-4 right-4 z-20 px-4 py-2 bg-background/80 backdrop-blur-sm rounded-full flex items-center gap-2 text-sm font-medium hover:bg-background transition-all duration-300 animate-fade-in"
           onClick={(e) => {
             e.stopPropagation();
-            setIsMuted(false);
-            if (videoRef.current) {
-              videoRef.current.muted = false;
+            const adapter = adapterRef.current;
+            if (adapter) {
+              adapter.setMuted(false);
+              setIsMuted(false);
               // Show volume indicator animation
               setVolumeIndicatorLevel(Math.round(volume * 100));
               setShowVolumeIndicator(true);
@@ -1019,10 +1021,10 @@ export const VideoPlayer = ({
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    const video = videoRef.current;
-                    if (video) {
-                      video.currentTime = resumeFromTime;
-                      video.play();
+                    const adapter = adapterRef.current;
+                    if (adapter) {
+                      adapter.seek(resumeFromTime);
+                      adapter.play();
                       setShowResumePrompt(false);
                       setIsPlaying(true);
                     }
@@ -1034,10 +1036,10 @@ export const VideoPlayer = ({
                 </button>
                 <button
                   onClick={() => {
-                    const video = videoRef.current;
-                    if (video) {
-                      video.currentTime = 0;
-                      video.play();
+                    const adapter = adapterRef.current;
+                    if (adapter) {
+                      adapter.seek(0);
+                      adapter.play();
                       setShowResumePrompt(false);
                       setIsPlaying(true);
                     }
