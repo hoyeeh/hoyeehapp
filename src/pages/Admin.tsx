@@ -52,6 +52,7 @@ import { ContentSubmissionReview } from "@/components/admin/ContentSubmissionRev
 import { CastSessionsManagement } from "@/components/admin/CastSessionsManagement";
 import { HomepageAdsManager } from "@/components/admin/HomepageAdsManager";
 import { LeavingSoonManagement } from "@/components/admin/LeavingSoonManagement";
+import { EmailTemplateManagement } from "@/components/admin/EmailTemplateManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -663,9 +664,9 @@ const Admin = () => {
       case "email-templates":
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-display">Email Marketing</h2>
+            <EmailTemplateManagement />
+            <h2 className="text-2xl font-display mt-8">Email Campaigns</h2>
             <EmailCampaigns />
-            <EmailPreviewTool />
           </div>
         );
       
