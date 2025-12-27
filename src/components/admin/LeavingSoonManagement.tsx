@@ -107,7 +107,7 @@ export function LeavingSoonManagement() {
     });
   };
 
-  const handleBulkAction = (action: "show" | "hide" | "extend30" | "extend60" | "extend90") => {
+  const handleBulkAction = (action: "show" | "hide" | "extend30" | "extend60" | "extend90" | "overrideOn" | "overrideOff") => {
     if (selectedItems.length === 0) return;
 
     switch (action) {
@@ -125,6 +125,12 @@ export function LeavingSoonManagement() {
         break;
       case "extend90":
         bulkUpdate.mutate({ contentIds: selectedItems, extendDays: 90 });
+        break;
+      case "overrideOn":
+        bulkUpdate.mutate({ contentIds: selectedItems, adminOverride: true });
+        break;
+      case "overrideOff":
+        bulkUpdate.mutate({ contentIds: selectedItems, adminOverride: false });
         break;
     }
     setSelectedItems([]);
@@ -251,6 +257,12 @@ export function LeavingSoonManagement() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleBulkAction("extend90")}>
                   <Calendar className="h-4 w-4 mr-2" /> Extend 90 Days
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkAction("overrideOn")}>
+                  <CheckCircle className="h-4 w-4 mr-2" /> Enable Override
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkAction("overrideOff")}>
+                  <XCircle className="h-4 w-4 mr-2" /> Disable Override
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
