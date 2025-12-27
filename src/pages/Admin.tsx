@@ -51,6 +51,8 @@ import { KYCReviewPanel } from "@/components/admin/KYCReviewPanel";
 import { ContentSubmissionReview } from "@/components/admin/ContentSubmissionReview";
 import { CastSessionsManagement } from "@/components/admin/CastSessionsManagement";
 import { HomepageAdsManager } from "@/components/admin/HomepageAdsManager";
+import { LeavingSoonManagement } from "@/components/admin/LeavingSoonManagement";
+
 const Admin = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -628,6 +630,14 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Coming Soon Management</h2>
             <ComingSoonManagement />
+          </div>
+        );
+      
+      case "leaving-soon":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Leaving Soon Management</h2>
+            <LeavingSoonManagement />
           </div>
         );
       

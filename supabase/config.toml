@@ -152,3 +152,6 @@ verify_jwt = false
 
 [functions.content-lifecycle-ai]
 verify_jwt = true
+
+[functions.notify-leaving-soon]
+verify_jwt = false
