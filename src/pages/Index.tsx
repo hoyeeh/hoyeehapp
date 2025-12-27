@@ -576,7 +576,7 @@ const Index = () => {
           ) : (
             <button
               onClick={() => setShowSearch(true)}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors md:bg-transparent md:hover:bg-transparent hover:bg-secondary"
             >
               <Search className="h-5 w-5" />
             </button>
