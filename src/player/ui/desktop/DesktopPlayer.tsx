@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   ArrowLeft, SkipBack, SkipForward, Loader2, Settings,
-  PictureInPicture2, AlertCircle
+  PictureInPicture2, AlertCircle, FastForward
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
@@ -17,6 +17,14 @@ import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance, loadHlsJs } from "@/player";
 
+export interface NextEpisodeInfo {
+  id: string;
+  title: string;
+  episodeNumber: number;
+  seasonNumber?: number;
+  thumbnail?: string;
+}
+
 interface DesktopPlayerProps {
   src: string;
   title: string;
@@ -30,9 +38,14 @@ interface DesktopPlayerProps {
   recapEndTime?: number;
   onEnded?: () => void;
   thumbnail?: string;
+  // Next Episode props
+  hasNextEpisode?: boolean;
+  nextEpisode?: NextEpisodeInfo;
+  onNextEpisode?: () => void;
 }
 
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const NEXT_EPISODE_COUNTDOWN_SECONDS = 10;
 
 export const DesktopPlayer = ({
   src,
@@ -47,11 +60,15 @@ export const DesktopPlayer = ({
   recapEndTime,
   onEnded,
   thumbnail,
+  hasNextEpisode = false,
+  nextEpisode,
+  onNextEpisode,
 }: DesktopPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerInstance | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const nextEpisodeCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -66,6 +83,8 @@ export const DesktopPlayer = ({
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeFromTime, setResumeFromTime] = useState(0);
+  const [showNextEpisode, setShowNextEpisode] = useState(false);
+  const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(NEXT_EPISODE_COUNTDOWN_SECONDS);
 
   // Initialize player engine
   useEffect(() => {
@@ -94,10 +113,20 @@ export const DesktopPlayer = ({
           case 'timeupdate':
             setCurrentTime(data?.currentTime || 0);
             const time = data?.currentTime || 0;
+            const videoDuration = data?.duration || duration;
+            
+            // Skip intro button logic
             if (introEndTime > introStartTime && time >= introStartTime && time < introEndTime) {
               setShowSkipIntro(true);
             } else {
               setShowSkipIntro(false);
+            }
+            
+            // Next episode prompt - show when 30 seconds from end
+            if (hasNextEpisode && videoDuration > 0 && time >= videoDuration - 30 && time < videoDuration) {
+              setShowNextEpisode(true);
+            } else if (time < videoDuration - 30) {
+              setShowNextEpisode(false);
             }
             break;
           case 'play':
@@ -116,12 +145,6 @@ export const DesktopPlayer = ({
             // Auto-hide controls after 5 seconds when video starts playing
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
             controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 5000);
-            break;
-          case 'pause':
-            setIsPlaying(false);
-            // Show controls when paused
-            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-            setShowControls(true);
             break;
           case 'ended':
             setIsPlaying(false);
@@ -177,6 +200,44 @@ export const DesktopPlayer = ({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Next episode countdown
+  useEffect(() => {
+    if (showNextEpisode && hasNextEpisode) {
+      setNextEpisodeCountdown(NEXT_EPISODE_COUNTDOWN_SECONDS);
+      nextEpisodeCountdownRef.current = setInterval(() => {
+        setNextEpisodeCountdown(prev => {
+          if (prev <= 1) {
+            if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+            onNextEpisode?.();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (nextEpisodeCountdownRef.current) {
+        clearInterval(nextEpisodeCountdownRef.current);
+        nextEpisodeCountdownRef.current = null;
+      }
+      setNextEpisodeCountdown(NEXT_EPISODE_COUNTDOWN_SECONDS);
+    }
+    
+    return () => {
+      if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+    };
+  }, [showNextEpisode, hasNextEpisode, onNextEpisode]);
+
+  const cancelNextEpisode = () => {
+    if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+    setShowNextEpisode(false);
+  };
+
+  const playNextEpisodeNow = () => {
+    if (nextEpisodeCountdownRef.current) clearInterval(nextEpisodeCountdownRef.current);
+    setShowNextEpisode(false);
+    onNextEpisode?.();
+  };
 
   const togglePlay = () => {
     if (!playerRef.current) return;
@@ -312,13 +373,60 @@ export const DesktopPlayer = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Skip Intro Button - inside controls overlay so it hides with controls */}
-        {showSkipIntro && (
+        {showSkipIntro && !showNextEpisode && (
           <button
             onClick={(e) => { e.stopPropagation(); skipIntro(); }}
             className="absolute bottom-32 right-8 px-6 py-3 bg-foreground/90 text-background rounded-lg font-semibold hover:bg-foreground transition-colors z-10 pointer-events-auto"
           >
             Skip Intro
           </button>
+        )}
+
+        {/* Next Episode Prompt */}
+        {showNextEpisode && hasNextEpisode && nextEpisode && (
+          <div 
+            className="absolute bottom-32 right-8 bg-card/95 backdrop-blur-sm rounded-xl p-4 shadow-2xl z-10 pointer-events-auto min-w-[320px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex gap-4">
+              {nextEpisode.thumbnail && (
+                <div className="relative w-28 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                  <img 
+                    src={nextEpisode.thumbnail} 
+                    alt={nextEpisode.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <Play className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-muted-foreground text-xs mb-1">Up Next</p>
+                <p className="text-foreground font-medium text-sm truncate">
+                  {nextEpisode.seasonNumber ? `S${nextEpisode.seasonNumber} ` : ''}E{nextEpisode.episodeNumber} - {nextEpisode.title}
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Playing in {nextEpisodeCountdown}s
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={cancelNextEpisode}
+                className="flex-1 px-3 py-2 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={playNextEpisodeNow}
+                className="flex-1 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+              >
+                <FastForward className="h-4 w-4" />
+                Play Now
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Top Gradient & Controls */}

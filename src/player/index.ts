@@ -78,5 +78,8 @@ export { DesktopPlayer } from './ui/desktop/DesktopPlayer';
 export { MobilePlayer } from './ui/mobile/MobilePlayer';
 export { KidsPlayer } from './ui/kids/KidsPlayer';
 
+// Next Episode types
+export type { NextEpisodeInfo } from './ui/desktop/DesktopPlayer';
+
 // Migration helpers
 export * from './migration';
