@@ -50,6 +50,7 @@ import { CreatorManagement } from "@/components/admin/CreatorManagement";
 import { KYCReviewPanel } from "@/components/admin/KYCReviewPanel";
 import { ContentSubmissionReview } from "@/components/admin/ContentSubmissionReview";
 import { CastSessionsManagement } from "@/components/admin/CastSessionsManagement";
+import { HomepageAdsManager } from "@/components/admin/HomepageAdsManager";
 const Admin = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -610,6 +611,9 @@ const Admin = () => {
             <EnhancedHomeSectionManagement />
           </div>
         );
+      
+      case "spotlight-ads":
+        return <HomepageAdsManager />;
       
       case "push":
         return (

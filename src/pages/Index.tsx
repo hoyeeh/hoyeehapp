@@ -44,6 +44,7 @@ import { MobileLandingPage } from "@/components/mobile/MobileLandingPage";
 import { MiniPlayerProvider } from "@/contexts/MiniPlayerContext";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { HomeYouTubeRow } from "@/components/HomeYouTubeRow";
+import { HomepageSpotlight } from "@/components/spotlight/HomepageSpotlight";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -601,6 +602,9 @@ const Index = () => {
                   onPlay={handlePlay}
                   onDetails={handleDetails}
                 />
+                
+                {/* Spotlight Ads - Below hero, above content rows */}
+                <HomepageSpotlight appContext="main" />
                 
                 <div className="mt-8 space-y-2">
                   {/* Continue Watching Row - Always first */}
