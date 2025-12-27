@@ -350,6 +350,7 @@ export type Database = {
       }
       content: {
         Row: {
+          admin_override: boolean | null
           age_limit: number | null
           cast_members: Json | null
           content_rating: string | null
@@ -359,9 +360,13 @@ export type Database = {
           description: string | null
           director: string | null
           duration: number | null
+          expires_at: string | null
           genre: string | null
           id: string
           is_premium: boolean | null
+          lifecycle_reason: string | null
+          lifecycle_status: string | null
+          lifecycle_updated_at: string | null
           rating: string | null
           thumbnail_url: string | null
           title: string
@@ -369,9 +374,11 @@ export type Database = {
           updated_at: string | null
           video_url: string | null
           view_count: number | null
+          views_last_30_days: number | null
           year: number | null
         }
         Insert: {
+          admin_override?: boolean | null
           age_limit?: number | null
           cast_members?: Json | null
           content_rating?: string | null
@@ -381,9 +388,13 @@ export type Database = {
           description?: string | null
           director?: string | null
           duration?: number | null
+          expires_at?: string | null
           genre?: string | null
           id?: string
           is_premium?: boolean | null
+          lifecycle_reason?: string | null
+          lifecycle_status?: string | null
+          lifecycle_updated_at?: string | null
           rating?: string | null
           thumbnail_url?: string | null
           title: string
@@ -391,9 +402,11 @@ export type Database = {
           updated_at?: string | null
           video_url?: string | null
           view_count?: number | null
+          views_last_30_days?: number | null
           year?: number | null
         }
         Update: {
+          admin_override?: boolean | null
           age_limit?: number | null
           cast_members?: Json | null
           content_rating?: string | null
@@ -403,9 +416,13 @@ export type Database = {
           description?: string | null
           director?: string | null
           duration?: number | null
+          expires_at?: string | null
           genre?: string | null
           id?: string
           is_premium?: boolean | null
+          lifecycle_reason?: string | null
+          lifecycle_status?: string | null
+          lifecycle_updated_at?: string | null
           rating?: string | null
           thumbnail_url?: string | null
           title?: string
@@ -413,9 +430,51 @@ export type Database = {
           updated_at?: string | null
           video_url?: string | null
           view_count?: number | null
+          views_last_30_days?: number | null
           year?: number | null
         }
         Relationships: []
+      }
+      content_lifecycle_logs: {
+        Row: {
+          admin_id: string | null
+          changed_by: string
+          content_id: string
+          created_at: string
+          id: string
+          new_status: string
+          previous_status: string | null
+          reason: string | null
+        }
+        Insert: {
+          admin_id?: string | null
+          changed_by?: string
+          content_id: string
+          created_at?: string
+          id?: string
+          new_status: string
+          previous_status?: string | null
+          reason?: string | null
+        }
+        Update: {
+          admin_id?: string | null
+          changed_by?: string
+          content_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          previous_status?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_lifecycle_logs_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       content_purchases: {
         Row: {
@@ -3379,6 +3438,10 @@ export type Database = {
       }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
       generate_party_code: { Args: never; Returns: string }
+      get_content_views_last_30_days: {
+        Args: { content_uuid: string }
+        Returns: number
+      }
       get_creator_profile: {
         Args: { _user_id: string }
         Returns: {
@@ -3467,6 +3530,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "super_admin" | "creator"
+      lifecycle_status_enum: "active" | "leaving_soon" | "hidden" | "kept"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3595,6 +3659,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "super_admin", "creator"],
+      lifecycle_status_enum: ["active", "leaving_soon", "hidden", "kept"],
     },
   },
 } as const
