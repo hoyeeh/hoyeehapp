@@ -123,6 +123,7 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
             playsinline: 1,
             cc_load_policy: 0,
             origin: window.location.origin,
+            endscreen: 0,
           },
           events: {
             onReady: (event: any) => {
