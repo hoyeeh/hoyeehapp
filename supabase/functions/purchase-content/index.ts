@@ -6,6 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation helpers
+const isValidUUID = (str: unknown): str is string => {
+  if (typeof str !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
+const isValidAction = (action: unknown): action is 'initialize' | 'verify' | 'check' => {
+  return action === 'initialize' || action === 'verify' || action === 'check';
+};
+
+const isValidTxRef = (txRef: unknown): txRef is string => {
+  if (txRef === undefined || txRef === null) return true; // Optional
+  if (typeof txRef !== 'string') return false;
+  return txRef.length > 0 && txRef.length <= 200;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -16,7 +32,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const flutterwaveSecretKey = Deno.env.get('FLUTTERWAVE_SECRET_KEY')!;
 
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Get user from auth header
@@ -26,10 +49,48 @@ serve(async (req) => {
     
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const { action, contentId, txRef } = await req.json();
+    // Parse and validate request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { action, contentId, txRef } = body as Record<string, unknown>;
+
+    // Validate action
+    if (!isValidAction(action)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid action. Must be: initialize, verify, or check' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate contentId for actions that require it
+    if ((action === 'initialize' || action === 'check') && !isValidUUID(contentId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid contentId format. Must be a valid UUID' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate txRef for verify action
+    if (action === 'verify' && !isValidTxRef(txRef)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid txRef format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (action === 'initialize') {
       // Get paid content details

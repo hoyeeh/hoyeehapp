@@ -6,6 +6,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Input validation helpers
+const isValidUUID = (str: unknown): str is string => {
+  if (typeof str !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
+const isValidAction = (action: unknown): action is 'initialize' | 'verify' => {
+  return action === 'initialize' || action === 'verify';
+};
+
+const isValidAmount = (amount: unknown): amount is number => {
+  if (typeof amount !== 'number') return false;
+  return amount > 0 && amount <= 10000000 && Number.isFinite(amount);
+};
+
+const sanitizeMessage = (msg: unknown): string | null => {
+  if (msg === undefined || msg === null) return null;
+  if (typeof msg !== 'string') return null;
+  // Limit length and remove potential XSS characters
+  return msg.slice(0, 500).replace(/[<>]/g, '');
+};
+
+const isValidTxRef = (txRef: unknown): txRef is string => {
+  if (typeof txRef !== 'string') return false;
+  return txRef.length > 0 && txRef.length <= 200;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -37,10 +64,49 @@ serve(async (req) => {
       });
     }
 
-    const { action, creatorId, amount, message } = await req.json();
-    console.log("Creator tip request:", { action, creatorId, amount, userId: user.id });
+    // Parse and validate request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { action, creatorId, amount, message, txRef } = body as Record<string, unknown>;
+
+    // Validate action
+    if (!isValidAction(action)) {
+      return new Response(JSON.stringify({ error: "Invalid action. Must be: initialize or verify" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("Creator tip request:", { action, creatorId, amount: typeof amount === 'number' ? amount : 'invalid', userId: user.id });
 
     if (action === "initialize") {
+      // Validate creatorId
+      if (!isValidUUID(creatorId)) {
+        return new Response(JSON.stringify({ error: "Invalid creatorId format. Must be a valid UUID" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Validate amount
+      if (!isValidAmount(amount)) {
+        return new Response(JSON.stringify({ error: "Invalid amount. Must be a positive number up to 10,000,000" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Sanitize message
+      const sanitizedMessage = sanitizeMessage(message);
+
       // Get creator profile
       const { data: creator, error: creatorError } = await supabaseClient
         .from("creator_profiles")
@@ -60,7 +126,7 @@ serve(async (req) => {
       const userEmail = userAuth?.user?.email || "";
 
       // Create transaction reference
-      const txRef = `TIP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const generatedTxRef = `TIP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // Initialize Flutterwave payment
       const flutterwaveResponse = await fetch("https://api.flutterwave.com/v3/payments", {
@@ -70,8 +136,8 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tx_ref: txRef,
-          amount: amount,
+          tx_ref: generatedTxRef,
+          amount: amount as number,
           currency: "XAF",
           redirect_url: `${req.headers.get("origin")}/creator/${creatorId}?tip=success`,
           customer: {
@@ -80,13 +146,13 @@ serve(async (req) => {
           },
           customizations: {
             title: `Tip for ${creator.display_name}`,
-            description: message || `Support ${creator.display_name}`,
+            description: sanitizedMessage || `Support ${creator.display_name}`,
           },
           meta: {
-            tip_id: txRef,
+            tip_id: generatedTxRef,
             creator_id: creatorId,
             tipper_user_id: user.id,
-            message: message || null,
+            message: sanitizedMessage,
           },
         }),
       });
@@ -100,13 +166,13 @@ serve(async (req) => {
 
       // Create pending tip record
       await supabaseClient.from("creator_tips").insert({
-        creator_id: creatorId,
+        creator_id: creatorId as string,
         tipper_user_id: user.id,
-        amount: amount,
+        amount: amount as number,
         currency: "XAF",
-        message: message || null,
+        message: sanitizedMessage,
         payment_provider: "flutterwave",
-        payment_reference: txRef,
+        payment_reference: generatedTxRef,
         status: "pending",
       });
 
@@ -114,18 +180,24 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           paymentLink: flutterwaveData.data.link,
-          txRef,
+          txRef: generatedTxRef,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "verify") {
-      const { txRef } = await req.json();
+      // Validate txRef
+      if (!isValidTxRef(txRef)) {
+        return new Response(JSON.stringify({ error: "Invalid txRef format" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       // Verify with Flutterwave
       const verifyResponse = await fetch(
-        `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${txRef}`,
+        `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(txRef as string)}`,
         {
           headers: { Authorization: `Bearer ${flutterwaveSecretKey}` },
         }
@@ -139,7 +211,7 @@ serve(async (req) => {
         await supabaseClient
           .from("creator_tips")
           .update({ status: "completed" })
-          .eq("payment_reference", txRef);
+          .eq("payment_reference", txRef as string);
 
         return new Response(
           JSON.stringify({ success: true, message: "Tip sent successfully!" }),
