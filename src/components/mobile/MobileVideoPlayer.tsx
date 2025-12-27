@@ -26,6 +26,13 @@ import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 
+interface NextEpisodeInfo {
+  id: string;
+  title: string;
+  episodeNumber: number;
+  thumbnail?: string;
+}
+
 interface MobileVideoPlayerProps {
   content: Content;
   videoUrl: string;
@@ -35,6 +42,7 @@ interface MobileVideoPlayerProps {
   onClose: () => void;
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
+  nextEpisodeInfo?: NextEpisodeInfo;
   introStartTime?: number;
   introEndTime?: number;
   recapStartTime?: number;
@@ -69,6 +77,7 @@ export function MobileVideoPlayer({
   onClose,
   onNextEpisode,
   hasNextEpisode,
+  nextEpisodeInfo,
   introStartTime,
   introEndTime,
   recapStartTime,
@@ -106,6 +115,7 @@ export function MobileVideoPlayer({
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
+  const [bingeMode, setBingeMode] = useState(() => localStorage.getItem('mobilePlayer_bingeMode') === 'true');
   const [showCastSheet, setShowCastSheet] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -426,12 +436,15 @@ export function MobileVideoPlayer({
     
     const timeLeft = duration - currentTime;
     if (timeLeft <= 30 && timeLeft > 0) {
+      if (!showNextEpisode) {
+        // Reset countdown when first showing
+        setNextEpisodeCountdown(bingeMode ? 5 : 10);
+      }
       setShowNextEpisode(true);
-      setNextEpisodeCountdown(Math.ceil(timeLeft));
     } else {
       setShowNextEpisode(false);
     }
-  }, [currentTime, duration, hasNextEpisode]);
+  }, [currentTime, duration, hasNextEpisode, bingeMode, showNextEpisode]);
 
   // Auto-play next episode countdown
   useEffect(() => {
@@ -449,6 +462,15 @@ export function MobileVideoPlayer({
 
     return () => clearInterval(timer);
   }, [showNextEpisode, onNextEpisode]);
+
+  // Binge mode persistence
+  const toggleBingeMode = useCallback(() => {
+    setBingeMode(prev => {
+      const newValue = !prev;
+      localStorage.setItem('mobilePlayer_bingeMode', String(newValue));
+      return newValue;
+    });
+  }, []);
 
   // Save progress periodically (both to server and IndexedDB)
   // Also track kids viewing time if in kids mode
@@ -1553,31 +1575,79 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
-      {/* Next Episode Prompt */}
+      {/* Next Episode Prompt with Thumbnail Preview */}
       <AnimatePresence>
         {showNextEpisode && hasNextEpisode && (
           <motion.div
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
-            className="absolute bottom-32 right-4 bg-card/95 backdrop-blur-lg rounded-xl p-4 shadow-2xl"
+            className="absolute bottom-32 right-4 left-4 sm:left-auto sm:w-80 bg-card/95 backdrop-blur-lg rounded-xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-foreground text-sm mb-2">Next episode in</p>
-            <p className="text-3xl font-bold text-primary mb-3">{nextEpisodeCountdown}s</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowNextEpisode(false)}
-                className="px-4 py-2 bg-secondary text-foreground rounded-lg text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => onNextEpisode?.()}
-                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium"
-              >
-                Play Now
-              </button>
+            {/* Episode Thumbnail Preview */}
+            {nextEpisodeInfo?.thumbnail && (
+              <div className="relative w-full h-24 bg-muted">
+                <img 
+                  src={nextEpisodeInfo.thumbnail} 
+                  alt={nextEpisodeInfo.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+              </div>
+            )}
+            
+            <div className="p-4">
+              {/* Episode Info */}
+              {nextEpisodeInfo && (
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground">Up Next</p>
+                  <p className="text-foreground font-medium truncate">
+                    E{nextEpisodeInfo.episodeNumber} • {nextEpisodeInfo.title}
+                  </p>
+                </div>
+              )}
+              
+              {/* Countdown */}
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-foreground text-sm">Playing in</p>
+                <p className="text-2xl font-bold text-primary">{nextEpisodeCountdown}s</p>
+              </div>
+              
+              {/* Binge Mode Toggle */}
+              <div className="flex items-center justify-between mb-3 py-2 border-t border-border">
+                <span className="text-sm text-muted-foreground">Binge Mode (5s)</span>
+                <button
+                  onClick={() => toggleBingeMode()}
+                  className={cn(
+                    "w-10 h-6 rounded-full transition-colors relative",
+                    bingeMode ? "bg-primary" : "bg-muted"
+                  )}
+                >
+                  <span 
+                    className={cn(
+                      "absolute top-1 w-4 h-4 rounded-full bg-white transition-all",
+                      bingeMode ? "left-5" : "left-1"
+                    )}
+                  />
+                </button>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowNextEpisode(false)}
+                  className="flex-1 px-4 py-2 bg-secondary text-foreground rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => onNextEpisode?.()}
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium"
+                >
+                  Play Now
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

@@ -10,6 +10,13 @@ import { createPlayer, formatTime, PlayerInstance } from "@/player";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 
+interface NextEpisodeInfo {
+  id: string;
+  title: string;
+  episodeNumber: number;
+  thumbnail?: string;
+}
+
 interface KidsPlayerProps {
   src: string;
   title: string;
@@ -25,6 +32,10 @@ interface KidsPlayerProps {
   autoplayNextEpisode?: boolean;
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
+  nextEpisodeInfo?: NextEpisodeInfo;
+  // Skip recap
+  recapStartTime?: number;
+  recapEndTime?: number;
 }
 
 export const KidsPlayer = ({
@@ -41,6 +52,9 @@ export const KidsPlayer = ({
   autoplayNextEpisode = true,
   onNextEpisode,
   hasNextEpisode,
+  nextEpisodeInfo,
+  recapStartTime,
+  recapEndTime,
 }: KidsPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,6 +72,8 @@ export const KidsPlayer = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
+  const [bingeMode, setBingeMode] = useState(() => localStorage.getItem('kidsPlayer_bingeMode') === 'true');
+  const [showSkipRecap, setShowSkipRecap] = useState(false);
 
   // Initialize player engine
   useEffect(() => {
@@ -81,6 +97,12 @@ export const KidsPlayer = ({
             break;
           case 'timeupdate':
             setCurrentTime(data?.currentTime || 0);
+            // Show skip recap button
+            if (recapStartTime && recapEndTime) {
+              const inRecap = data?.currentTime >= recapStartTime && data?.currentTime < recapEndTime;
+              setShowSkipRecap(inRecap);
+            }
+            // Show next episode prompt
             if (hasNextEpisode && data?.duration && data.currentTime >= data.duration - 30) {
               setShowNextEpisode(true);
             }
@@ -140,7 +162,13 @@ export const KidsPlayer = ({
     };
   }, [src, contentId, maxVolume]);
 
-  // Next episode countdown
+  // Next episode countdown - uses binge mode for faster countdown
+  useEffect(() => {
+    if (!showNextEpisode) return;
+    // Set initial countdown based on binge mode
+    setNextEpisodeCountdown(bingeMode ? 5 : 10);
+  }, [showNextEpisode, bingeMode]);
+
   useEffect(() => {
     if (!showNextEpisode || nextEpisodeCountdown <= 0) return;
     const timer = setInterval(() => {
@@ -153,7 +181,23 @@ export const KidsPlayer = ({
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [showNextEpisode, autoplayNextEpisode, onNextEpisode]);
+  }, [showNextEpisode, autoplayNextEpisode, onNextEpisode, nextEpisodeCountdown]);
+
+  // Binge mode persistence
+  const toggleBingeMode = useCallback(() => {
+    setBingeMode(prev => {
+      const newValue = !prev;
+      localStorage.setItem('kidsPlayer_bingeMode', String(newValue));
+      return newValue;
+    });
+  }, []);
+
+  // Skip recap function
+  const skipRecap = useCallback(() => {
+    if (!playerRef.current || !recapEndTime) return;
+    playerRef.current.seek(recapEndTime);
+    setShowSkipRecap(false);
+  }, [recapEndTime]);
 
   // Controls visibility - 5 second auto-hide
   const resetControlsTimeout = useCallback(() => {
@@ -285,26 +329,88 @@ export const KidsPlayer = ({
             </div>
           )}
 
-          {/* Next Episode Prompt */}
+          {/* Skip Recap Button */}
+          {showSkipRecap && (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              onClick={(e) => { e.stopPropagation(); skipRecap(); }}
+              className="absolute bottom-24 left-6 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-2xl font-bold shadow-lg z-20"
+            >
+              Skip Recap ⏭️
+            </motion.button>
+          )}
+
+          {/* Next Episode Prompt with Thumbnail Preview */}
           {showNextEpisode && hasNextEpisode && (
-            <div className="absolute bottom-24 right-6 bg-gradient-to-br from-violet-500/90 to-fuchsia-600/90 p-4 rounded-2xl z-20">
-              <p className="text-white font-bold mb-2">Next episode in {nextEpisodeCountdown}s</p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); setShowNextEpisode(false); }}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onNextEpisode?.(); }}
-                  className="bg-white text-violet-600 hover:bg-white/90"
-                >
-                  Play Now
-                </Button>
+            <div className="absolute bottom-24 right-6 left-6 sm:left-auto sm:w-72 bg-gradient-to-br from-violet-500/95 to-fuchsia-600/95 rounded-2xl overflow-hidden z-20 shadow-xl">
+              {/* Episode Thumbnail Preview */}
+              {nextEpisodeInfo?.thumbnail && (
+                <div className="relative w-full h-20 bg-black/20">
+                  <img 
+                    src={nextEpisodeInfo.thumbnail} 
+                    alt={nextEpisodeInfo.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-violet-500/90 to-transparent" />
+                </div>
+              )}
+              
+              <div className="p-4">
+                {/* Episode Info */}
+                {nextEpisodeInfo && (
+                  <div className="mb-2">
+                    <p className="text-white/70 text-xs">Up Next</p>
+                    <p className="text-white font-bold truncate">
+                      Episode {nextEpisodeInfo.episodeNumber} • {nextEpisodeInfo.title}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Countdown */}
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-white/90">Playing in</p>
+                  <p className="text-2xl font-bold text-white">{nextEpisodeCountdown}s</p>
+                </div>
+                
+                {/* Binge Mode Toggle */}
+                <div className="flex items-center justify-between mb-3 py-2 border-t border-white/20">
+                  <span className="text-sm text-white/80">Fast Mode 🚀</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleBingeMode(); }}
+                    className={cn(
+                      "w-10 h-6 rounded-full transition-colors relative",
+                      bingeMode ? "bg-white" : "bg-white/30"
+                    )}
+                  >
+                    <span 
+                      className={cn(
+                        "absolute top-1 w-4 h-4 rounded-full transition-all",
+                        bingeMode ? "left-5 bg-violet-600" : "left-1 bg-white"
+                      )}
+                    />
+                  </button>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); setShowNextEpisode(false); }}
+                    className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); onNextEpisode?.(); }}
+                    className="flex-1 bg-white text-violet-600 hover:bg-white/90"
+                  >
+                    Play Now
+                  </Button>
+                </div>
               </div>
             </div>
           )}

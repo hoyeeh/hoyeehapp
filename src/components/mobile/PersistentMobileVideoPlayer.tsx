@@ -88,6 +88,12 @@ export function PersistentMobileVideoPlayer() {
           onClose={handleClose}
           onNextEpisode={playerState.hasNextEpisode ? playNextEpisode : undefined}
           hasNextEpisode={playerState.hasNextEpisode}
+          nextEpisodeInfo={playerState.nextEpisode ? {
+            id: playerState.nextEpisode.id,
+            title: playerState.nextEpisode.title,
+            episodeNumber: playerState.nextEpisode.episode_number,
+            thumbnail: playerState.nextEpisode.thumbnail_url,
+          } : undefined}
           introStartTime={playerState.introStartTime}
           introEndTime={playerState.introEndTime}
           recapStartTime={playerState.recapStartTime}
