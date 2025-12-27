@@ -69,6 +69,9 @@ export type {
 // Cast Adapters
 export * from './adapters/cast';
 
+// Playback Adapters (Shaka, Video.js placeholder)
+export * from './adapters/playback';
+
 // Analytics Adapter
 export { createAnalyticsAdapter } from './adapters/analytics/AnalyticsAdapter';
 export type { AnalyticsAdapterInstance, AnalyticsOptions } from './adapters/analytics/AnalyticsAdapter';
