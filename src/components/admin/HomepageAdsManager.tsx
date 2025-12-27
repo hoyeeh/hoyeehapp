@@ -37,7 +37,7 @@ import { Plus, MoreHorizontal, Pencil, Trash2, Pause, Play, Eye, Archive } from 
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { HomepageAdForm } from './HomepageAdForm';
-import { HomepageAdStats } from './HomepageAdStats';
+import { HomepageAdAnalytics } from './HomepageAdAnalytics';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -101,7 +101,7 @@ export function HomepageAdsManager() {
 
   if (viewingStats) {
     return (
-      <HomepageAdStats 
+      <HomepageAdAnalytics 
         ad={viewingStats} 
         onBack={() => setViewingStats(null)} 
       />
