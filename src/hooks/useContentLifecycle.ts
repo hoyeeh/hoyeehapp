@@ -186,10 +186,12 @@ export function useBulkUpdateLifecycle() {
       contentIds,
       status,
       extendDays,
+      adminOverride,
     }: {
       contentIds: string[];
       status?: LifecycleStatus;
       extendDays?: number;
+      adminOverride?: boolean;
     }) => {
       for (const contentId of contentIds) {
         const updates: Record<string, unknown> = {
@@ -197,6 +199,7 @@ export function useBulkUpdateLifecycle() {
         };
 
         if (status) updates.lifecycle_status = status;
+        if (typeof adminOverride === 'boolean') updates.admin_override = adminOverride;
 
         if (extendDays) {
           const { data: current } = await supabase
