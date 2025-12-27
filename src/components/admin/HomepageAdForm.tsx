@@ -51,6 +51,10 @@ const formSchema = z.object({
   kids_safe: z.boolean(),
   start_at: z.string().optional(),
   end_at: z.string().optional(),
+  // New A/B testing and subscription targeting fields
+  subscription_target: z.enum(['all', 'free', 'premium']),
+  ab_test_id: z.string().optional(),
+  variant: z.string().min(1),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -85,9 +89,11 @@ export function HomepageAdForm({ ad, onClose }: HomepageAdFormProps) {
       kids_safe: ad?.kids_safe ?? false,
       start_at: ad?.start_at ? new Date(ad.start_at).toISOString().slice(0, 16) : '',
       end_at: ad?.end_at ? new Date(ad.end_at).toISOString().slice(0, 16) : '',
+      subscription_target: ad?.subscription_target || 'all',
+      ab_test_id: ad?.ab_test_id || '',
+      variant: ad?.variant || 'A',
     },
   });
-
   const videoUrl = form.watch('video_url');
 
   // Auto-detect video type from URL
@@ -121,6 +127,9 @@ export function HomepageAdForm({ ad, onClose }: HomepageAdFormProps) {
         kids_safe: values.kids_safe,
         start_at: values.start_at ? new Date(values.start_at).toISOString() : null,
         end_at: values.end_at ? new Date(values.end_at).toISOString() : null,
+        subscription_target: values.subscription_target,
+        ab_test_id: values.ab_test_id || null,
+        variant: values.variant,
       };
 
       if (isEditing && ad) {
@@ -490,6 +499,32 @@ export function HomepageAdForm({ ad, onClose }: HomepageAdFormProps) {
 
               <FormField
                 control={form.control}
+                name="subscription_target"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subscription Target</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="all">All Users</SelectItem>
+                        <SelectItem value="free">Free Users Only</SelectItem>
+                        <SelectItem value="premium">Premium Subscribers Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Target ads based on user subscription status
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="kids_safe"
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between rounded-lg border p-4">
@@ -505,6 +540,61 @@ export function HomepageAdForm({ ad, onClose }: HomepageAdFormProps) {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* A/B Testing */}
+          <Card>
+            <CardHeader>
+              <CardTitle>A/B Testing</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="ab_test_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>A/B Test ID</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Leave empty for no A/B test, or enter a shared ID" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Ads with the same A/B Test ID compete against each other. Only one variant shows per session.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="variant"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Variant</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="A">Variant A (Control)</SelectItem>
+                        <SelectItem value="B">Variant B</SelectItem>
+                        <SelectItem value="C">Variant C</SelectItem>
+                        <SelectItem value="D">Variant D</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Identifies this ad variant. Use different variants for A/B testing.
+                    </FormDescription>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

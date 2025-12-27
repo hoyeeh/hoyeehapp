@@ -1571,6 +1571,7 @@ export type Database = {
       }
       homepage_ads: {
         Row: {
+          ab_test_id: string | null
           contexts: Json
           created_at: string
           cta_internal_route: string | null
@@ -1583,15 +1584,18 @@ export type Database = {
           priority: number
           start_at: string | null
           status: string
+          subscription_target: string | null
           subtitle: string | null
           targeting: Json | null
           title: string
           updated_at: string
+          variant: string | null
           video_type: string | null
           video_url: string | null
           weight: number
         }
         Insert: {
+          ab_test_id?: string | null
           contexts?: Json
           created_at?: string
           cta_internal_route?: string | null
@@ -1604,15 +1608,18 @@ export type Database = {
           priority?: number
           start_at?: string | null
           status?: string
+          subscription_target?: string | null
           subtitle?: string | null
           targeting?: Json | null
           title: string
           updated_at?: string
+          variant?: string | null
           video_type?: string | null
           video_url?: string | null
           weight?: number
         }
         Update: {
+          ab_test_id?: string | null
           contexts?: Json
           created_at?: string
           cta_internal_route?: string | null
@@ -1625,10 +1632,12 @@ export type Database = {
           priority?: number
           start_at?: string | null
           status?: string
+          subscription_target?: string | null
           subtitle?: string | null
           targeting?: Json | null
           title?: string
           updated_at?: string
+          variant?: string | null
           video_type?: string | null
           video_url?: string | null
           weight?: number
@@ -1645,6 +1654,8 @@ export type Database = {
           id: string
           session_id: string
           user_id: string | null
+          user_is_subscribed: boolean | null
+          variant: string | null
         }
         Insert: {
           ad_id: string
@@ -1655,6 +1666,8 @@ export type Database = {
           id?: string
           session_id: string
           user_id?: string | null
+          user_is_subscribed?: boolean | null
+          variant?: string | null
         }
         Update: {
           ad_id?: string
@@ -1665,6 +1678,8 @@ export type Database = {
           id?: string
           session_id?: string
           user_id?: string | null
+          user_is_subscribed?: boolean | null
+          variant?: string | null
         }
         Relationships: [
           {
