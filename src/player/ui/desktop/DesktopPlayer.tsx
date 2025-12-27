@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   ArrowLeft, SkipBack, SkipForward, Loader2, Settings,
-  AlertCircle
+  PictureInPicture2, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
@@ -12,11 +12,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CastButton } from "@/components/player/CastButton";
+import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
-import { formatTime } from "@/player/core/utils/time";
-import { createShakaAdapter, PlayerAdapter } from "@/player/adapters/playback";
+import { createPlayer, formatTime, PlayerInstance, loadHlsJs } from "@/player";
 
 interface DesktopPlayerProps {
   src: string;
@@ -51,7 +50,7 @@ export const DesktopPlayer = ({
 }: DesktopPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const adapterRef = useRef<PlayerAdapter | null>(null);
+  const playerRef = useRef<PlayerInstance | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -63,84 +62,83 @@ export const DesktopPlayer = ({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [playbackRate, setPlaybackRate] = useState(1);
-  const [mediaError, setMediaError] = useState<{ code: string; message: string } | null>(null);
+  const [mediaError, setMediaError] = useState<{ code: number; message: string } | null>(null);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeFromTime, setResumeFromTime] = useState(0);
 
-  // Initialize Shaka adapter
+  // Initialize player engine
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !src) return;
 
-    const adapter = createShakaAdapter({ debug: localStorage.getItem('HOYEEH_DEBUG') === '1' });
-    adapterRef.current = adapter;
-
-    const initAdapter = async () => {
-      await adapter.init(video);
-
-      // Set up event listeners
-      adapter.on('loadstart', () => setIsBuffering(true));
-      
-      adapter.on('loadedmetadata', (data) => {
-        setDuration(data?.duration || 0);
-        if (initialProgress > 30 && data?.duration && initialProgress < data.duration * 0.95) {
-          setResumeFromTime(initialProgress);
-          setShowResumePrompt(true);
-          adapter.pause();
-        } else if (initialProgress > 0) {
-          adapter.seek(initialProgress);
+    const player = createPlayer({
+      videoEl: video,
+      platform: 'desktop',
+      debug: localStorage.getItem('HOYEEH_DEBUG') === '1',
+      onEvent: (event, data: any) => {
+        switch (event) {
+          case 'loadstart':
+            setIsBuffering(true);
+            break;
+          case 'loadedmetadata':
+            setDuration(data?.duration || 0);
+            if (initialProgress > 30 && data?.duration && initialProgress < data.duration * 0.95) {
+              setResumeFromTime(initialProgress);
+              setShowResumePrompt(true);
+              player.pause();
+            } else if (initialProgress > 0) {
+              player.seek(initialProgress);
+            }
+            break;
+          case 'timeupdate':
+            setCurrentTime(data?.currentTime || 0);
+            const time = data?.currentTime || 0;
+            if (introEndTime > introStartTime && time >= introStartTime && time < introEndTime) {
+              setShowSkipIntro(true);
+            } else {
+              setShowSkipIntro(false);
+            }
+            break;
+          case 'play':
+            setIsPlaying(true);
+            setIsBuffering(false);
+            break;
+          case 'pause':
+            setIsPlaying(false);
+            break;
+          case 'waiting':
+            setIsBuffering(true);
+            break;
+          case 'playing':
+            setIsBuffering(false);
+            setIsPlaying(true);
+            break;
+          case 'ended':
+            setIsPlaying(false);
+            onEnded?.();
+            break;
+          case 'error':
+            setMediaError({ code: data?.code || 0, message: data?.message || 'Unknown error' });
+            setIsBuffering(false);
+            break;
+          case 'volumechange':
+            setVolume(data?.volume || 0);
+            setIsMuted(data?.muted || false);
+            break;
         }
-      });
+      },
+    });
 
-      adapter.on('timeupdate', (data) => {
-        setCurrentTime(data?.currentTime || 0);
-        const time = data?.currentTime || 0;
-        if (introEndTime > introStartTime && time >= introStartTime && time < introEndTime) {
-          setShowSkipIntro(true);
-        } else {
-          setShowSkipIntro(false);
-        }
-      });
+    playerRef.current = player;
 
-      adapter.on('play', () => {
-        setIsPlaying(true);
-        setIsBuffering(false);
-      });
-
-      adapter.on('pause', () => setIsPlaying(false));
-      adapter.on('waiting', () => setIsBuffering(true));
-      
-      adapter.on('playing', () => {
-        setIsBuffering(false);
-        setIsPlaying(true);
-      });
-
-      adapter.on('ended', () => {
-        setIsPlaying(false);
-        onEnded?.();
-      });
-
-      adapter.on('error', (err) => {
-        setMediaError({ code: err?.code || 'UNKNOWN', message: err?.message || 'Unknown error' });
-        setIsBuffering(false);
-      });
-
-      adapter.on('volumechange', (data) => {
-        setVolume(data?.volume || 0);
-        setIsMuted(data?.muted || false);
-      });
-
-      // Load the video
-      const cdnSrc = toCdnUrl(src);
-      await adapter.load(cdnSrc, 0, { title, contentId, episodeId, thumbnail });
-    };
-
-    initAdapter();
+    // Load the video
+    const cdnSrc = toCdnUrl(src);
+    player.load(cdnSrc, 0, { title, contentId, episodeId, thumbnail });
 
     return () => {
-      adapter.destroy();
-      adapterRef.current = null;
+      player.destroy();
+      playerRef.current = null;
     };
   }, [src, contentId]);
 
@@ -170,54 +168,54 @@ export const DesktopPlayer = ({
   }, []);
 
   const togglePlay = () => {
-    if (!adapterRef.current) return;
+    if (!playerRef.current) return;
     if (isPlaying) {
-      adapterRef.current.pause();
+      playerRef.current.pause();
     } else {
-      adapterRef.current.play();
+      playerRef.current.play();
     }
   };
 
   const toggleMute = () => {
-    if (!adapterRef.current) return;
-    adapterRef.current.setMuted(!isMuted);
+    if (!playerRef.current) return;
+    playerRef.current.setMuted(!isMuted);
   };
 
   const handleVolumeChange = (value: number[]) => {
-    if (!adapterRef.current) return;
+    if (!playerRef.current) return;
     const vol = value[0];
-    adapterRef.current.setVolume(vol);
+    playerRef.current.setVolume(vol);
     if (vol > 0 && isMuted) {
-      adapterRef.current.setMuted(false);
+      playerRef.current.setMuted(false);
     }
   };
 
   const handleSeek = (value: number[]) => {
-    if (!adapterRef.current) return;
-    adapterRef.current.seek(value[0]);
+    if (!playerRef.current) return;
+    playerRef.current.seek(value[0]);
   };
 
   const skip = (seconds: number) => {
-    if (!adapterRef.current) return;
-    adapterRef.current.seek(currentTime + seconds);
+    if (!playerRef.current) return;
+    playerRef.current.seek(currentTime + seconds);
   };
 
   const skipIntro = () => {
-    if (!adapterRef.current) return;
-    adapterRef.current.seek(introEndTime);
+    if (!playerRef.current) return;
+    playerRef.current.seek(introEndTime);
     setShowSkipIntro(false);
   };
 
   const handleResume = () => {
     setShowResumePrompt(false);
-    adapterRef.current?.seek(resumeFromTime);
-    adapterRef.current?.play();
+    playerRef.current?.seek(resumeFromTime);
+    playerRef.current?.play();
   };
 
   const handleStartOver = () => {
     setShowResumePrompt(false);
-    adapterRef.current?.seek(0);
-    adapterRef.current?.play();
+    playerRef.current?.seek(0);
+    playerRef.current?.play();
   };
 
   const toggleFullscreen = async () => {
@@ -230,8 +228,11 @@ export const DesktopPlayer = ({
   };
 
   const handlePlaybackRateChange = (rate: number) => {
-    adapterRef.current?.setPlaybackRate(rate);
-    setPlaybackRate(rate);
+    const video = videoRef.current;
+    if (video) {
+      video.playbackRate = rate;
+      setPlaybackRate(rate);
+    }
   };
 
   if (mediaError) {
@@ -317,12 +318,7 @@ export const DesktopPlayer = ({
               <span className="font-medium">{title}</span>
             </button>
             <div className="flex items-center gap-2">
-              <CastButton 
-                videoUrl={src} 
-                videoTitle={title} 
-                videoThumbnail={thumbnail}
-                onOpenFullscreen={toggleFullscreen}
-              />
+              <CastToTVButton videoUrl={src} videoTitle={title} />
             </div>
           </div>
         </div>

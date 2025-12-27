@@ -8,7 +8,6 @@ import {
   PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown,
   Clock, Save, X, Users
 } from "lucide-react";
-import { createShakaAdapter, PlayerAdapter } from "@/player/adapters/playback";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Content } from "@/types";
@@ -89,7 +88,6 @@ export function MobileVideoPlayer({
   const doubleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapTimeRef = useRef<number>(0);
   const lastTapSideRef = useRef<"left" | "right" | null>(null);
-  const adapterRef = useRef<PlayerAdapter | null>(null);
   const { user } = useAuth();
   
   // Use back navigation hook for proper history handling
@@ -304,99 +302,28 @@ export function MobileVideoPlayer({
     }
   }, [castHistory.lastUsedDevice, cast.isConnected, cast.isConnecting]);
 
-  // Initialize Shaka adapter and load video
+  // Auto-play with muted audio
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const adapter = createShakaAdapter();
-    adapterRef.current = adapter;
-
-    const initAndLoad = async () => {
+    const attemptPlay = async () => {
       try {
-        await adapter.init(video);
-        
-        // Determine start time from saved progress
-        const startTime = loadedProgressRef.current || 0;
-        const videoSource = getVideoSource();
-        
-        if (videoSource) {
-          await adapter.load(videoSource, startTime > 0 ? startTime : undefined);
-        }
+        video.muted = true;
+        setIsMuted(true);
+        await video.play();
+        setIsPlaying(true);
+        setShowTapToPlay(false);
+        setShowUnmutePrompt(true);
       } catch (error) {
-        console.error('[MobileVideoPlayer] Adapter init error:', error);
+        console.log("[MobileVideoPlayer] Autoplay blocked:", error);
+        setShowTapToPlay(true);
+        setIsPlaying(false);
       }
     };
 
-    // Set up adapter event listeners
-    adapter.on('loadedmetadata', ({ duration: dur }) => {
-      setDuration(dur);
-      setIsBuffering(false);
-    });
-
-    adapter.on('timeupdate', ({ currentTime: time, duration: dur }) => {
-      setCurrentTime(time);
-      // We can't get buffered from adapter, but that's fine for mobile
-    });
-
-    adapter.on('waiting', () => setIsBuffering(true));
-    adapter.on('canplay', () => {
-      setIsBuffering(false);
-      setMediaError(null);
-    });
-    adapter.on('playing', () => {
-      setIsPlaying(true);
-      setShowTapToPlay(false);
-      setShowUnmutePrompt(true);
-    });
-    adapter.on('play', () => setIsPlaying(true));
-    adapter.on('pause', () => setIsPlaying(false));
-    adapter.on('ended', () => {
-      setIsPlaying(false);
-      if (hasNextEpisode && onNextEpisode) {
-        onNextEpisode();
-      }
-    });
-    adapter.on('error', (error) => {
-      setIsBuffering(false);
-      let errorMessage = "Video failed to load";
-      let errorCode = 0;
-      
-      if (error.code.startsWith('MEDIA_')) {
-        errorCode = parseInt(error.code.replace('MEDIA_', '')) || 0;
-      }
-      
-      switch (errorCode) {
-        case 1:
-          errorMessage = "Video playback was interrupted";
-          break;
-        case 2:
-          errorMessage = "Network error - check your connection";
-          break;
-        case 3:
-          errorMessage = "Video format not supported";
-          break;
-        case 4:
-          errorMessage = "Video not available - please try again later";
-          break;
-        default:
-          errorMessage = error.message || "Unknown error occurred";
-      }
-      
-      console.error("[MobileVideoPlayer] Video error:", errorCode, errorMessage);
-      setMediaError({ code: errorCode, message: errorMessage });
-    });
-    adapter.on('volumechange', ({ muted }) => {
-      setIsMuted(muted);
-    });
-
-    initAndLoad();
-
-    return () => {
-      adapter.destroy();
-      adapterRef.current = null;
-    };
-  }, [videoUrl, selectedQuality, hasNextEpisode, onNextEpisode, getVideoSource]);
+    attemptPlay();
+  }, [videoUrl, selectedQuality]);
 
   // Hide controls after inactivity
   const resetControlsTimeout = useCallback(() => {
@@ -434,9 +361,9 @@ export function MobileVideoPlayer({
       // Auto-skip if preference is enabled
       if (skipPrefs.autoSkipIntro && isInIntro && !autoSkippedIntroRef.current) {
         autoSkippedIntroRef.current = true;
-        const adapter = adapterRef.current;
-        if (adapter) {
-          adapter.seek(effectiveIntroEnd);
+        const video = videoRef.current;
+        if (video) {
+          video.currentTime = effectiveIntroEnd;
           setCurrentTime(effectiveIntroEnd);
         }
         setShowSkipIntro(false);
@@ -466,9 +393,9 @@ export function MobileVideoPlayer({
       // Auto-skip if preference is enabled
       if (skipPrefs.autoSkipRecap && isInRecap && !autoSkippedRecapRef.current) {
         autoSkippedRecapRef.current = true;
-        const adapter = adapterRef.current;
-        if (adapter) {
-          adapter.seek(recapEndTime);
+        const video = videoRef.current;
+        if (video) {
+          video.currentTime = recapEndTime;
           setCurrentTime(recapEndTime);
         }
         toast.info('Recap skipped automatically', { duration: 2000 });
@@ -593,11 +520,11 @@ export function MobileVideoPlayer({
       .channel(`watch-party-reactions-${party.id}`)
       .on('broadcast', { event: 'start_playback' }, (payload) => {
         console.log('[MobileVideoPlayer] Received start_playback broadcast:', payload);
-        const adapter = adapterRef.current;
-        if (adapter) {
+        const video = videoRef.current;
+        if (video) {
           // Force sync to start position and begin playback
-          adapter.seek(0);
-          adapter.play().catch(console.error);
+          video.currentTime = 0;
+          video.play().catch(console.error);
           toast.success("🎬 Playback started!", { duration: 3000 });
         }
       })
@@ -732,35 +659,34 @@ export function MobileVideoPlayer({
 
   // Control handlers
   const togglePlay = useCallback(() => {
-    const adapter = adapterRef.current;
-    if (!adapter) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-    if (adapter.getState().isPaused) {
-      adapter.play().then(() => {
+    if (video.paused) {
+      video.play().then(() => {
         setIsPlaying(true);
         setShowTapToPlay(false);
       }).catch(() => {
         toast.error("Unable to play video");
       });
     } else {
-      adapter.pause();
+      video.pause();
       setIsPlaying(false);
     }
     resetControlsTimeout();
   }, [resetControlsTimeout]);
 
   const toggleMute = useCallback(() => {
-    const adapter = adapterRef.current;
-    if (!adapter) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-    const newMuted = !adapter.isMuted();
-    adapter.setMuted(newMuted);
-    setIsMuted(newMuted);
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
     setShowUnmutePrompt(false);
     
     // Show volume indicator animation
-    if (!newMuted) {
-      setVolumeLevel(Math.round(adapter.getVolume() * 100));
+    if (!video.muted) {
+      setVolumeLevel(Math.round(video.volume * 100));
       setShowVolumeIndicator(true);
       setTimeout(() => setShowVolumeIndicator(false), 1500);
     }
@@ -769,38 +695,38 @@ export function MobileVideoPlayer({
   }, [resetControlsTimeout]);
 
   const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const adapter = adapterRef.current;
-    if (!adapter) return;
+    const video = videoRef.current;
+    if (!video) return;
 
     const newTime = parseFloat(e.target.value);
-    adapter.seek(newTime);
+    video.currentTime = newTime;
     setCurrentTime(newTime);
     resetControlsTimeout();
   }, [resetControlsTimeout]);
 
   const skip = useCallback((seconds: number) => {
-    const adapter = adapterRef.current;
-    if (!adapter) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-    const newTime = Math.max(0, Math.min(adapter.getCurrentTime() + seconds, duration));
-    adapter.seek(newTime);
+    const newTime = Math.max(0, Math.min(video.currentTime + seconds, duration));
+    video.currentTime = newTime;
     setCurrentTime(newTime);
     resetControlsTimeout();
   }, [duration, resetControlsTimeout]);
 
   const skipIntro = useCallback(() => {
-    const adapter = adapterRef.current;
-    if (adapter && introEndTime) {
-      adapter.seek(introEndTime);
+    const video = videoRef.current;
+    if (video && introEndTime) {
+      video.currentTime = introEndTime;
       setCurrentTime(introEndTime);
       setShowSkipIntro(false);
     }
   }, [introEndTime]);
 
   const skipRecap = useCallback(() => {
-    const adapter = adapterRef.current;
-    if (adapter && recapEndTime) {
-      adapter.seek(recapEndTime);
+    const video = videoRef.current;
+    if (video && recapEndTime) {
+      video.currentTime = recapEndTime;
       setCurrentTime(recapEndTime);
     }
   }, [recapEndTime]);
@@ -813,6 +739,7 @@ export function MobileVideoPlayer({
       if (!document.fullscreenElement) {
         await container.requestFullscreen();
         setIsFullscreen(true);
+        // Try to lock orientation to landscape
         try {
           await (screen.orientation as any)?.lock?.("landscape");
         } catch {}
@@ -829,17 +756,17 @@ export function MobileVideoPlayer({
   }, []);
 
   const handleResume = useCallback(() => {
-    const adapter = adapterRef.current;
-    if (adapter && savedProgress) {
-      adapter.seek(savedProgress);
+    const video = videoRef.current;
+    if (video && savedProgress) {
+      video.currentTime = savedProgress;
     }
     setShowResumePrompt(false);
   }, [savedProgress]);
 
   const handleStartOver = useCallback(() => {
-    const adapter = adapterRef.current;
-    if (adapter) {
-      adapter.seek(0);
+    const video = videoRef.current;
+    if (video) {
+      video.currentTime = 0;
     }
     setShowResumePrompt(false);
   }, []);
@@ -1287,12 +1214,19 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
-      {/* Video Element - Shaka adapter handles src loading */}
+      {/* Video Element */}
       <video
         ref={videoRef}
+        src={getVideoSource()}
         className="w-full h-full object-contain"
         playsInline
         muted={isMuted}
+        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={handleTimeUpdate}
+        onWaiting={handleWaiting}
+        onCanPlay={handleCanPlay}
+        onEnded={handleEnded}
+        onError={handleError}
         poster={thumbnail || content.thumbnailUrl}
       />
 
