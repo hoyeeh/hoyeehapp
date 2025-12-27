@@ -3482,7 +3482,9 @@ export type Database = {
         }[]
       }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
+      clear_session: { Args: never; Returns: undefined }
       generate_party_code: { Args: never; Returns: string }
+      generate_secure_session_id: { Args: never; Returns: string }
       get_content_views_last_30_days: {
         Args: { content_uuid: string }
         Returns: number
@@ -3552,6 +3554,7 @@ export type Database = {
         }[]
       }
       update_mobile_number: { Args: { new_mobile: string }; Returns: boolean }
+      validate_session: { Args: { session_id: string }; Returns: boolean }
       verify_parental_pin: {
         Args: { input_pin: string; user_uuid: string }
         Returns: boolean
