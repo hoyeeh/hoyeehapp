@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
-import { Play, Info, Plus, Check, Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Info, Plus, Check, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
 import { toast } from "sonner";
@@ -39,7 +39,6 @@ export const EnhancedHeroBanner = ({
   });
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
   const hasInitialized = useRef(false);
   
   const { data: watchlistIds = [] } = useWatchlist();
@@ -144,28 +143,11 @@ export const EnhancedHeroBanner = ({
   const displayVideo = activeBanner?.video_url;
   const ctaText = activeBanner?.cta_text || "Play";
 
-  // Handle hover for navigation arrows only
-  const handleMouseEnter = useCallback(() => {
-    setIsHovering(true);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setIsHovering(false);
-  }, []);
-
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
     }
-  };
-
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % banners.length);
   };
 
   if (!content && !activeBanner) return null;
@@ -224,11 +206,7 @@ export const EnhancedHeroBanner = ({
   };
 
   return (
-    <div 
-      className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden bg-background">
       {/* Background with smooth transition */}
       <AnimatePresence mode="wait">
         <motion.div 
@@ -294,7 +272,7 @@ export const EnhancedHeroBanner = ({
             variants={staggerChildren}
             initial="hidden"
             animate="visible"
-            className="container mx-auto px-6 md:px-16 pb-20 md:pb-32 max-w-5xl"
+            className="px-6 md:px-16 pb-40 md:pb-44 max-w-3xl"
           >
             {/* Subtitle - Apple-style uppercase tracking */}
             {displaySubtitle && (
@@ -422,76 +400,50 @@ export const EnhancedHeroBanner = ({
         </motion.button>
       )}
 
-      {/* Banner Navigation */}
+      {/* Banner Thumbnails Carousel */}
       {banners.length > 1 && (
-        <>
-          {/* Navigation Arrows - Glass morphism, appear on hover */}
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isHovering ? 1 : 0 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={goToPrevious}
-            className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors z-20"
-          >
-            <ChevronLeft className="h-6 w-6 text-foreground" />
-          </motion.button>
-          
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isHovering ? 1 : 0 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={goToNext}
-            className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition-colors z-20"
-          >
-            <ChevronRight className="h-6 w-6 text-foreground" />
-          </motion.button>
-
-          {/* Banner Thumbnails Carousel */}
-          <div className="absolute bottom-6 left-6 md:left-16 z-10">
-            <div className="flex items-end gap-2 md:gap-3">
-              {banners.map((banner, index) => {
-                const thumbnailImage = banner.image_url || (banner.content as any)?.thumbnail_url || "/placeholder.svg";
-                const isActive = index === currentIndex;
-                
-                return (
-                  <motion.button
-                    key={banner.id}
-                    onClick={() => setCurrentIndex(index)}
-                    className={cn(
-                      "relative rounded-xl overflow-hidden transition-all duration-300 flex-shrink-0",
-                      isActive 
-                        ? "ring-2 ring-white shadow-xl shadow-black/40" 
-                        : "ring-1 ring-white/20 opacity-70 hover:opacity-100"
-                    )}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    animate={{
-                      width: isActive ? 200 : 144,
-                      height: isActive ? 120 : 88,
-                    }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  >
-                    <img
-                      src={thumbnailImage}
-                      alt={banner.title || "Banner"}
-                      className="w-full h-full object-cover"
+        <div className="absolute bottom-6 left-6 md:left-16 z-10">
+          <div className="flex items-end gap-3 md:gap-4">
+            {banners.map((banner, index) => {
+              const thumbnailImage = banner.image_url || (banner.content as any)?.thumbnail_url || "/placeholder.svg";
+              const isActive = index === currentIndex;
+              
+              return (
+                <motion.button
+                  key={banner.id}
+                  onClick={() => setCurrentIndex(index)}
+                  className={cn(
+                    "relative rounded-xl overflow-hidden transition-all duration-300 flex-shrink-0",
+                    isActive 
+                      ? "ring-3 ring-white shadow-2xl shadow-black/50" 
+                      : "ring-2 ring-white/40 opacity-60 hover:opacity-100 hover:ring-white/70"
+                  )}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  animate={{
+                    width: isActive ? 200 : 144,
+                    height: isActive ? 120 : 88,
+                  }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <img
+                    src={thumbnailImage}
+                    alt={banner.title || "Banner"}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Active indicator gradient overlay */}
+                  {isActive && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent"
                     />
-                    {/* Active indicator gradient overlay */}
-                    {isActive && (
-                      <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent"
-                      />
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
