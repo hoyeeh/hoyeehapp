@@ -10,6 +10,20 @@ const FLUTTERWAVE_SECRET_KEY = Deno.env.get("FLUTTERWAVE_SECRET_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Input validation helpers
+const isValidAction = (action: unknown): action is 'initialize' | 'verify' => {
+  return action === 'initialize' || action === 'verify';
+};
+
+const isValidPlanType = (planType: unknown): planType is 'monthly' | 'yearly' => {
+  return planType === 'monthly' || planType === 'yearly';
+};
+
+const isValidTxRef = (txRef: unknown): txRef is string => {
+  if (typeof txRef !== 'string') return false;
+  return txRef.length > 0 && txRef.length <= 200;
+};
+
 // Helper to send confirmation email
 async function sendConfirmationEmail(userEmail: string, userName: string, amount: number, planType: string, expiryDate: string) {
   try {
@@ -42,7 +56,10 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      throw new Error("Missing authorization header");
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -52,10 +69,35 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      throw new Error("Unauthorized");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const { action, plan_type = "monthly", ...params } = await req.json();
+    // Parse and validate request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { action, plan_type, tx_ref } = body as Record<string, unknown>;
+
+    // Validate action
+    if (!isValidAction(action)) {
+      return new Response(JSON.stringify({ error: "Invalid action. Must be: initialize or verify" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate plan_type for initialize
+    const validatedPlanType = isValidPlanType(plan_type) ? plan_type : 'monthly';
 
     // Fetch current pricing from subscription_settings
     const { data: settings } = await supabase
@@ -69,8 +111,8 @@ serve(async (req) => {
     const monthlyPrice = monthlySettings?.base_price || 2500;
     const yearlyPrice = yearlySettings?.base_price || 20000;
     
-    const selectedPrice = plan_type === "yearly" ? yearlyPrice : monthlyPrice;
-    const daysToAdd = plan_type === "yearly" ? 365 : 30;
+    const selectedPrice = validatedPlanType === "yearly" ? yearlyPrice : monthlyPrice;
+    const daysToAdd = validatedPlanType === "yearly" ? 365 : 30;
 
     if (action === "initialize") {
       console.log(`Initializing Flutterwave payment for user: ${user.id}, plan: ${plan_type}`);
@@ -117,7 +159,7 @@ serve(async (req) => {
       // Create pending subscription record
       const { error: insertError } = await supabase.from("subscriptions").insert({
         user_id: user.id,
-        plan_type: plan_type,
+        plan_type: validatedPlanType,
         payment_provider: "flutterwave",
         payment_reference: txRef,
         amount: selectedPrice,
@@ -140,12 +182,18 @@ serve(async (req) => {
     }
 
     if (action === "verify") {
-      const { tx_ref } = params;
+      // Validate tx_ref
+      if (!isValidTxRef(tx_ref)) {
+        return new Response(JSON.stringify({ error: "Invalid tx_ref format" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       
       console.log("Verifying Flutterwave payment:", tx_ref);
 
       // Verify transaction
-      const response = await fetch(`https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${tx_ref}`, {
+      const response = await fetch(`https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(tx_ref)}`, {
         headers: {
           "Authorization": `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
         },
@@ -155,7 +203,7 @@ serve(async (req) => {
 
       if (result.status === "success" && result.data.status === "successful") {
         // Extract plan type from tx_ref (hoyeeh-{plan_type}-{user_id}-{timestamp})
-        const verifiedPlanType = tx_ref.split("-")[1] === "yearly" ? "yearly" : "monthly";
+        const verifiedPlanType = (tx_ref as string).split("-")[1] === "yearly" ? "yearly" : "monthly";
         const verifiedDaysToAdd = verifiedPlanType === "yearly" ? 365 : 30;
         const verifiedPrice = verifiedPlanType === "yearly" ? yearlyPrice : monthlyPrice;
         

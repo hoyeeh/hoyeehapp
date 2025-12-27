@@ -125,7 +125,7 @@ const PinAuth = () => {
       try {
         // Create account with temporary email/password
         const tempEmail = `${formData.mobileNumber.replace(/\+/g, '')}@hoyeeh.pin`;
-        const tempPassword = `pin_${formData.pin}_${Date.now()}`;
+        const tempPassword = `pin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         
         const { error: signUpError } = await signUp(tempEmail, tempPassword, formData.name.trim());
         
@@ -148,29 +148,22 @@ const PinAuth = () => {
           return;
         }
         
-        // Update profile with PIN data
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            mobile_number: formData.mobileNumber,
-            pin_code: formData.pin,
-            secret_word: formData.secretWord.toLowerCase(),
-            display_name: formData.name.trim(),
-          })
-          .eq('id', user.id);
-        
-        if (profileError) {
-          console.error('Profile update error:', profileError);
+        // Use secure edge function to register PIN data (PIN never sent in plaintext to DB)
+        const { data, error: registerError } = await supabase.functions.invoke('register-pin', {
+          body: {
+            mobileNumber: formData.mobileNumber,
+            pin: formData.pin,
+            secretWord: formData.secretWord,
+            displayName: formData.name.trim(),
+          }
+        });
+
+        if (registerError || data?.error) {
+          console.error('PIN registration error:', registerError || data?.error);
+          toast.error(data?.error || "Failed to complete registration. Please try again.");
+          setIsLoading(false);
+          return;
         }
-        
-        // Create user profile in user_profiles table
-        await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: user.id,
-            name: formData.name.trim(),
-            is_kids: false,
-          });
         
         toast.success("Account created successfully!");
         setShowWelcome(true);
