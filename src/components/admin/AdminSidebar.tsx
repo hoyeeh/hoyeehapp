@@ -1,4 +1,4 @@
-import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone, Mail, HeartPulse, Youtube, Palette, Cast, Sparkles } from "lucide-react";
+import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone, Mail, HeartPulse, Youtube, Palette, Cast, Sparkles, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 import { useIsSuperAdmin } from "@/hooks/useSuperAdmin";
@@ -27,6 +27,7 @@ const menuItems = [
   { id: "top10", label: "Top 10", icon: Trophy },
   { id: "homepage", label: "Home Page", icon: LayoutGrid },
   { id: "comingsoon", label: "Coming Soon", icon: Clock },
+  { id: "leaving-soon", label: "Leaving Soon", icon: Timer },
   { id: "banners", label: "Hero Banners", icon: Image },
   { id: "spotlight-ads", label: "Spotlight Ads", icon: Sparkles },
   { id: "walkthrough", label: "Walkthrough", icon: Smartphone },
