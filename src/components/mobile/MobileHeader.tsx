@@ -47,7 +47,7 @@ export function MobileHeader({
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-transparent">
+      <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-black">
         {/* Main Header Row */}
         <div className="flex items-center justify-between px-4 h-14">
           {/* Profile Avatar & Name */}

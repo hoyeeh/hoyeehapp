@@ -391,7 +391,7 @@ export function MobileHome() {
 
       {/* Main Content - Scrollable area with pull to refresh */}
       <PullToRefresh onRefresh={handleRefresh}>
-        <main className="flex-1 pt-0 pb-24">
+        <main className="flex-1 pt-28 pb-24">
           {/* Hero Card with loading skeleton */}
           <FadeIn delay={0}>
             {isLoadingTop10 && !featuredContent ? (
