@@ -937,12 +937,18 @@
             receiverId = result.receiverId;
             pairingCode = result.pairingCode;
 
-            document.getElementById('pairingCode').textContent = pairingCode;
+          document.getElementById('pairingCode').textContent = pairingCode;
             generateQRCode(pairingCode);
             document.getElementById('status').textContent = 'Waiting for connection...';
 
             var expiresAt = new Date(result.expiresAt);
             updateExpiry(expiresAt);
+            
+            // Setup realtime subscription IMMEDIATELY to catch first-scan pairing
+            if (supabaseClient && sessionId) {
+              setupRealtimeSubscription(sessionId);
+            }
+            
             startPolling();
           } else {
             throw new Error(result.error || 'Failed to generate code');
@@ -1301,12 +1307,18 @@
       }
 
       function renderQueue() {
+        var queuePanel = document.getElementById('queuePanel');
         var queueList = document.getElementById('queueList');
         
         if (!currentQueue || currentQueue.length === 0) {
-          queueList.innerHTML = '<div class="queue-empty">No items in queue</div>';
+          // Hide the entire queue panel when empty
+          queuePanel.style.display = 'none';
+          queueList.innerHTML = '';
           return;
         }
+        
+        // Show panel when there are items
+        queuePanel.style.display = '';
 
         var html = '';
         for (var i = 0; i < currentQueue.length; i++) {
