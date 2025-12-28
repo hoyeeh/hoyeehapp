@@ -77,7 +77,7 @@ export const RecommendationsRow = ({
           Recommended For You
         </h2>
         {data?.aiMessage && (
-          <p className="text-sm text-muted-foreground mt-1">{data.aiMessage}</p>
+          <p className="text-sm text-muted-foreground mt-1 md:hidden">{data.aiMessage}</p>
         )}
         {data?.preferredGenres?.length > 0 && (
           <div className="flex gap-2 mt-2">
