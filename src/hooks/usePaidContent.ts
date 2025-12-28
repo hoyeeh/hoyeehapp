@@ -228,3 +228,160 @@ export const usePriceRange = () => {
     },
   });
 };
+
+// Fetch trending content (most purchases in last 7 days)
+export const useTrendingContent = () => {
+  return useQuery({
+    queryKey: ["trending-content"],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      // Get purchases from the last 7 days
+      const { data: recentPurchases, error: purchaseError } = await supabase
+        .from('content_purchases')
+        .select('paid_content_id')
+        .eq('status', 'completed')
+        .gte('created_at', sevenDaysAgo.toISOString());
+      
+      if (purchaseError) throw purchaseError;
+      
+      // Count purchases per content
+      const purchaseCounts: Record<string, number> = {};
+      recentPurchases?.forEach(purchase => {
+        purchaseCounts[purchase.paid_content_id] = (purchaseCounts[purchase.paid_content_id] || 0) + 1;
+      });
+      
+      // Get all active paid content
+      const { data: paidContent, error: contentError } = await supabase
+        .from('paid_content')
+        .select(`
+          *,
+          content(*),
+          creator_profiles(id, display_name, avatar_url, is_verified)
+        `)
+        .eq('is_active', true);
+      
+      if (contentError) throw contentError;
+      
+      // Sort by recent purchase count and return top items
+      const sortedContent = (paidContent || [])
+        .map(item => ({
+          ...item,
+          recentPurchases: purchaseCounts[item.id] || 0
+        }))
+        .filter(item => item.recentPurchases > 0)
+        .sort((a, b) => b.recentPurchases - a.recentPurchases)
+        .slice(0, 12);
+      
+      return sortedContent;
+    },
+  });
+};
+
+// Fetch content by creator
+export const useCreatorContent = (creatorId: string) => {
+  return useQuery({
+    queryKey: ["creator-content", creatorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('paid_content')
+        .select(`
+          *,
+          content(*),
+          creator_profiles(id, display_name, avatar_url, is_verified, bio, cover_url, follower_count)
+        `)
+        .eq('creator_id', creatorId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!creatorId,
+  });
+};
+
+// Fetch single creator profile
+export const useCreatorProfileById = (creatorId: string) => {
+  return useQuery({
+    queryKey: ["creator-profile", creatorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('creator_profiles')
+        .select('*')
+        .eq('id', creatorId)
+        .eq('is_active', true)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!creatorId,
+  });
+};
+
+// Check if user follows a creator
+export const useIsFollowingCreator = (creatorId: string) => {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ["is-following", creatorId, user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      
+      const { data, error } = await supabase
+        .from('creator_followers')
+        .select('id')
+        .eq('creator_id', creatorId)
+        .eq('follower_user_id', user.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return !!data;
+    },
+    enabled: !!creatorId && !!user,
+  });
+};
+
+// Follow/unfollow creator
+export const useToggleFollowCreator = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ creatorId, isFollowing }: { creatorId: string; isFollowing: boolean }) => {
+      if (!user) throw new Error("Must be logged in");
+      
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from('creator_followers')
+          .delete()
+          .eq('creator_id', creatorId)
+          .eq('follower_user_id', user.id);
+        
+        if (error) throw error;
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from('creator_followers')
+          .insert({
+            creator_id: creatorId,
+            follower_user_id: user.id
+          });
+        
+        if (error) throw error;
+      }
+      
+      return !isFollowing;
+    },
+    onSuccess: (_, { creatorId }) => {
+      queryClient.invalidateQueries({ queryKey: ["is-following", creatorId] });
+      queryClient.invalidateQueries({ queryKey: ["creator-profile", creatorId] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update follow status");
+    }
+  });
+};

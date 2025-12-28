@@ -31,7 +31,7 @@ const navItems = [
   { icon: Tv, label: "TV Shows", view: "shows" as ViewState },
   { icon: Youtube, label: "Channels", view: "youtube" as const },
   { icon: Users, label: "Watch Party", view: "watch-party" as const },
-  { icon: Store, label: "Creator Store", view: "creator-store" as const },
+  { icon: Store, label: "Hoyeeh Studio", view: "creator-store" as const },
   { icon: Clock, label: "Watch Later", view: "watch-later" as const },
   { icon: List, label: "My List", view: "mylist" as ViewState },
 ];

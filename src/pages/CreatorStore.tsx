@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePaidContentForStore, useCreatorsWithContent, usePaidContentGenres, usePriceRange, useVerifyPurchase } from "@/hooks/usePaidContent";
+import { usePaidContentForStore, usePaidContentGenres, usePriceRange, useVerifyPurchase, useTrendingContent } from "@/hooks/usePaidContent";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
@@ -10,14 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { FeaturedCreatorCarousel } from "@/components/creator-store/FeaturedCreatorCarousel";
 import { CreatorAvatarRow } from "@/components/creator-store/CreatorAvatarRow";
 import { ContentRow } from "@/components/creator-store/ContentRow";
 import { EnhancedContentCard } from "@/components/creator-store/EnhancedContentCard";
-import { Search, Filter, ShoppingBag, ArrowLeft, SlidersHorizontal, X, TrendingUp, Clock, Sparkles } from "lucide-react";
+import { GenreFilterChips } from "@/components/creator-store/GenreFilterChips";
+import { Search, ShoppingBag, ArrowLeft, SlidersHorizontal, X, Flame, Sparkles } from "lucide-react";
 
 export default function CreatorStore() {
   const navigate = useNavigate();
@@ -44,6 +44,7 @@ export default function CreatorStore() {
     maxPrice: priceRange[1],
     sortBy,
   });
+  const { data: trendingContent = [] } = useTrendingContent();
   const verifyPurchase = useVerifyPurchase();
 
   // Handle payment verification from redirect
@@ -274,6 +275,27 @@ export default function CreatorStore() {
             </section>
           ) : (
             <>
+              {/* Genre Filter Chips */}
+              <section className="px-4">
+                <GenreFilterChips 
+                  selectedGenre={selectedGenre} 
+                  onSelectGenre={setSelectedGenre} 
+                />
+              </section>
+
+              {/* Trending Now */}
+              {trendingContent.length > 0 && (
+                <section className="px-4">
+                  <ContentRow
+                    title="🔥 Trending Now"
+                    items={trendingContent}
+                    onItemClick={setSelectedContent}
+                    showSeeAll={false}
+                    cardVariant="large"
+                  />
+                </section>
+              )}
+
               {/* New Releases */}
               {newReleases.length > 0 && (
                 <section className="px-4">
@@ -380,7 +402,7 @@ export default function CreatorStore() {
                 <ShoppingBag className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold">Creator Store</h1>
+                <h1 className="text-2xl md:text-3xl font-bold">Hoyeeh Studio</h1>
                 <p className="text-muted-foreground text-sm">
                   Exclusive content from verified creators
                 </p>
@@ -445,6 +467,27 @@ export default function CreatorStore() {
             </section>
           ) : (
             <>
+              {/* Genre Filter Chips */}
+              <section>
+                <GenreFilterChips 
+                  selectedGenre={selectedGenre} 
+                  onSelectGenre={setSelectedGenre} 
+                />
+              </section>
+
+              {/* Trending Now */}
+              {trendingContent.length > 0 && (
+                <section>
+                  <ContentRow
+                    title="🔥 Trending Now"
+                    items={trendingContent}
+                    onItemClick={setSelectedContent}
+                    showSeeAll={false}
+                    cardVariant="large"
+                  />
+                </section>
+              )}
+
               {/* New Releases */}
               {newReleases.length > 0 && (
                 <section>

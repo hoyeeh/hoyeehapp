@@ -62,7 +62,7 @@ const SECTION_TYPES = [
   { value: "custom", label: "Custom (All content)" },
   { value: "my_list", label: "My List" },
   { value: "continue_watching", label: "Continue Watching" },
-  { value: "creator_store", label: "Creator Store (Paid Content)" },
+  { value: "creator_store", label: "Hoyeeh Studio (Paid Content)" },
   { value: "by_year", label: "By Year (Movies by release year)" },
 ];
 

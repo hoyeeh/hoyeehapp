@@ -221,7 +221,7 @@ export function MobileProfile() {
     {
       title: "Explore",
       items: [
-        { icon: Store, label: "Creator Store", path: "/creator-store" },
+        { icon: Store, label: "Hoyeeh Studio", path: "/creator-store" },
         ...(isCreator ? [{ icon: Brush, label: "Creator Dashboard", path: "/creator-dashboard" }] : []),
         ...(isAdmin ? [{ icon: Shield, label: "Admin Panel", path: "/admin" }] : []),
       ],
