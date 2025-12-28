@@ -18,7 +18,8 @@ import { KidsMobileContinueWatching } from "@/components/kids/KidsMobileContinue
 import { KidsMobileAgeGroupSections } from "@/components/kids/KidsMobileAgeGroupSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { KidsParentalSetupNotice } from "@/components/kids/KidsParentalSetupNotice";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 
 interface KidsMobileHomeProps {
   onPlay: (content: Content) => void;
@@ -114,6 +115,13 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   const displayContent = requiresApproval 
     ? kidsContent.filter(c => isContentApproved(c.id))
     : kidsContent;
+
+  // Get TV show content IDs for new episode/season badges
+  const tvShowIds = useMemo(() => 
+    displayContent.filter(c => c.contentType === 'series').map(c => c.id),
+    [displayContent]
+  );
+  const { data: tvShowUpdates = {} } = useLatestTVShowUpdates(tvShowIds);
 
   // Prioritize animation content
   const animationContent = displayContent.filter((c) => 
@@ -278,6 +286,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
                 onDetails={onDetails}
                 index={index}
                 variant="large"
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />
             ))}
           </div>
@@ -311,6 +321,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
                 onDetails={onDetails}
                 index={index}
                 variant="large"
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />
             ))}
           </div>
@@ -372,6 +384,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
                 onPlay={onPlay}
                 onDetails={onDetails}
                 index={index}
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />
             ))}
           </div>

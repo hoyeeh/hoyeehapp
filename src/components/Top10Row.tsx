@@ -76,11 +76,6 @@ export const Top10Row = ({ content, onPlay, onDetails }: Top10RowProps) => {
                   alt={item.content.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                {item.content.isPremium && (
-                  <div className="absolute top-2 right-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                    PREMIUM
-                  </div>
-                )}
                 {/* Top 10 Badge */}
                 <div className="absolute bottom-0 right-0 bg-destructive text-destructive-foreground px-2 py-1 text-xs font-bold rounded-tl">
                   TOP 10
