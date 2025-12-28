@@ -80,7 +80,7 @@ export function MobileHome() {
     toast.success("Content refreshed!");
   }, [queryClient]);
 
-  // Fetch home sections from database - same as desktop
+  // Fetch home sections from database - filter for mobile display
   const { data: homeSections = [] } = useQuery({
     queryKey: ["mobile-home-sections"],
     queryFn: async () => {
@@ -88,6 +88,7 @@ export function MobileHome() {
         .from("home_sections")
         .select("*, genre:genre_id(name)")
         .eq("is_active", true)
+        .eq("show_on_mobile", true)
         .order("display_order");
       if (error) throw error;
       return data || [];
@@ -244,6 +245,19 @@ export function MobileHome() {
       filtered = movies;
     } else if (section.content_type_filter === "series") {
       filtered = series;
+    }
+    
+    // Handle free_content section type
+    if (section.section_type === "free_content") {
+      let freeFiltered = content.filter((c) => !c.isPremium);
+      if (section.content_type_filter === "movie") {
+        freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
+      } else if (section.content_type_filter === "series") {
+        freeFiltered = freeFiltered.filter((c) => c.contentType === "series");
+      }
+      return freeFiltered
+        .sort((a, b) => (b.year || 0) - (a.year || 0))
+        .slice(0, section.max_items || 15);
     }
     
     return filtered
