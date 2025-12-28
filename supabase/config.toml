@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.notify-new-episode]
 verify_jwt = false
+
+[functions.youtube-monthly-sync]
+verify_jwt = false

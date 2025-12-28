@@ -3419,6 +3419,7 @@ export type Database = {
           is_active: boolean | null
           is_kids_friendly: boolean | null
           kids_category_id: string | null
+          last_synced_at: string | null
           name: string
           show_on_desktop: boolean | null
           show_on_mobile: boolean | null
@@ -3437,6 +3438,7 @@ export type Database = {
           is_active?: boolean | null
           is_kids_friendly?: boolean | null
           kids_category_id?: string | null
+          last_synced_at?: string | null
           name: string
           show_on_desktop?: boolean | null
           show_on_mobile?: boolean | null
@@ -3455,6 +3457,7 @@ export type Database = {
           is_active?: boolean | null
           is_kids_friendly?: boolean | null
           kids_category_id?: string | null
+          last_synced_at?: string | null
           name?: string
           show_on_desktop?: boolean | null
           show_on_mobile?: boolean | null
@@ -3481,6 +3484,7 @@ export type Database = {
           display_order: number | null
           id: string
           is_active: boolean | null
+          last_synced_at: string | null
           playlist_id: string
           thumbnail_url: string | null
           title: string
@@ -3494,6 +3498,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          last_synced_at?: string | null
           playlist_id: string
           thumbnail_url?: string | null
           title: string
@@ -3507,6 +3512,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          last_synced_at?: string | null
           playlist_id?: string
           thumbnail_url?: string | null
           title?: string
