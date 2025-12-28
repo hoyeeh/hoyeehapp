@@ -1,4 +1,4 @@
-import { Play, Info, MoreVertical, CloudOff, ShoppingBag } from "lucide-react";
+import { Play, Info, MoreVertical, CloudOff, ShoppingBag, CheckCircle } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import badge from "@/assets/hoyeeh-badge.png";
@@ -17,6 +17,7 @@ interface MobileContentCardProps {
   showNewBadge?: boolean; // Explicit control for "NEW"/"JUST ADDED" badges
   isDownloaded?: boolean;
   isPaidContent?: boolean; // Indicates this is creator-paid content
+  hasPurchased?: boolean; // Indicates user has purchased this paid content
   price?: number; // Price for paid content
   currency?: string; // Currency for paid content
 }
@@ -35,6 +36,7 @@ export function MobileContentCard({
   showNewBadge = false, // Default to false - only show when explicitly enabled
   isDownloaded = false,
   isPaidContent = false,
+  hasPurchased = false,
   price,
   currency = 'XAF'
 }: MobileContentCardProps) {
@@ -258,8 +260,16 @@ export function MobileContentCard({
             </div>
           )}
 
-          {/* Paid Content Badge */}
-          {isPaidContent && !showOfflineBadge && (
+          {/* Paid Access Badge - Show when user has purchased */}
+          {isPaidContent && hasPurchased && !showOfflineBadge && (
+            <div className="absolute top-1 right-1 bg-green-500 rounded-md px-1 py-0.5 flex items-center gap-0.5">
+              <CheckCircle className="h-2 w-2 text-white" />
+              <span className="text-[7px] font-bold text-white">Paid Access</span>
+            </div>
+          )}
+
+          {/* Paid Content Badge - Show price when not purchased */}
+          {isPaidContent && !hasPurchased && !showOfflineBadge && (
             <div className="absolute top-1 right-1 bg-amber-500 rounded-md px-1 py-0.5 flex items-center gap-0.5">
               <ShoppingBag className="h-2 w-2 text-white" />
               {price !== undefined && (
@@ -330,8 +340,16 @@ export function MobileContentCard({
           </div>
         )}
 
-        {/* Paid Content Badge */}
-        {isPaidContent && !showOfflineBadge && (
+        {/* Paid Access Badge - Show when user has purchased */}
+        {isPaidContent && hasPurchased && !showOfflineBadge && (
+          <div className="absolute top-1.5 right-1.5 bg-green-500 rounded-md px-1.5 py-0.5 flex items-center gap-1">
+            <CheckCircle className="h-2.5 w-2.5 text-white" />
+            <span className="text-[8px] font-bold text-white">Paid Access</span>
+          </div>
+        )}
+
+        {/* Paid Content Badge - Show price when not purchased */}
+        {isPaidContent && !hasPurchased && !showOfflineBadge && (
           <div className="absolute top-1.5 right-1.5 bg-amber-500 rounded-md px-1.5 py-0.5 flex items-center gap-1">
             <ShoppingBag className="h-2.5 w-2.5 text-white" />
             {price !== undefined && (
