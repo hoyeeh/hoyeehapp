@@ -20,6 +20,8 @@ interface MobileContentCardProps {
   hasPurchased?: boolean; // Indicates user has purchased this paid content
   price?: number; // Price for paid content
   currency?: string; // Currency for paid content
+  hasNewEpisode?: boolean; // Show "New Episode" badge for TV shows
+  hasNewSeason?: boolean; // Show "New Season" badge for TV shows
 }
 
 // Fallback placeholder for broken images
@@ -38,7 +40,9 @@ export function MobileContentCard({
   isPaidContent = false,
   hasPurchased = false,
   price,
-  currency = 'XAF'
+  currency = 'XAF',
+  hasNewEpisode = false,
+  hasNewSeason = false
 }: MobileContentCardProps) {
   const [imageError, setImageError] = useState(false);
   const [badgeError, setBadgeError] = useState(false);
@@ -285,8 +289,26 @@ export function MobileContentCard({
             </div>
           )}
 
+          {/* New Season Badge */}
+          {hasNewSeason && content.contentType === 'series' && (
+            <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
+              <span className="block text-center text-[8px] font-bold text-destructive-foreground">
+                NEW SEASON
+              </span>
+            </div>
+          )}
+
+          {/* New Episode Badge */}
+          {hasNewEpisode && !hasNewSeason && content.contentType === 'series' && (
+            <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
+              <span className="block text-center text-[8px] font-bold text-destructive-foreground">
+                NEW EPISODE
+              </span>
+            </div>
+          )}
+
           {/* New Badge */}
-          {showNewBadge && isNewlyAdded && (
+          {showNewBadge && isNewlyAdded && !hasNewSeason && !hasNewEpisode && (
             <div className="absolute bottom-0 left-0 right-0 bg-primary py-0.5">
               <span className="block text-center text-[8px] font-bold text-primary-foreground">
                 NEW
@@ -365,8 +387,26 @@ export function MobileContentCard({
           </div>
         )}
 
+        {/* New Season Badge */}
+        {hasNewSeason && content.contentType === 'series' && (
+          <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
+            <span className="block text-center text-[9px] font-bold text-destructive-foreground">
+              NEW SEASON
+            </span>
+          </div>
+        )}
+
+        {/* New Episode Badge */}
+        {hasNewEpisode && !hasNewSeason && content.contentType === 'series' && (
+          <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
+            <span className="block text-center text-[9px] font-bold text-destructive-foreground">
+              NEW EPISODE
+            </span>
+          </div>
+        )}
+
         {/* New Badge */}
-        {showNewBadge && isNewlyAdded && (
+        {showNewBadge && isNewlyAdded && !hasNewSeason && !hasNewEpisode && (
           <div className="absolute bottom-0 left-0 right-0 bg-primary py-0.5">
             <span className="block text-center text-[9px] font-bold text-primary-foreground">
               JUST ADDED
