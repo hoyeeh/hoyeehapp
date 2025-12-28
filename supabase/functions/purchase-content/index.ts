@@ -31,6 +31,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const flutterwaveSecretKey = Deno.env.get('FLUTTERWAVE_SECRET_KEY')!;
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -145,103 +146,144 @@ serve(async (req) => {
       // Generate transaction reference
       const transactionRef = `purchase_${contentId}_${user.id}_${Date.now()}`;
 
-      // Determine payment options based on selected method
-      const paymentOptions = paymentMethod === 'card' 
-        ? 'card' 
-        : 'mobilemoney,mobilemoneyghana,mobilemoneyuganda,mobilemoneyzambia,mobilemoneyfranco';
+      // Route payment based on selected method
+      if (paymentMethod === 'card' && stripeSecretKey) {
+        // Use Stripe for card payments
+        const Stripe = (await import("https://esm.sh/stripe@14.21.0")).default;
+        const stripe = new Stripe(stripeSecretKey, { apiVersion: "2023-10-16" });
 
-      // Initialize Flutterwave payment
-      const flutterwavePayload = {
-        tx_ref: transactionRef,
-        amount: paidContent.price,
-        currency: paidContent.currency,
-        redirect_url: `${supabaseUrl}/functions/v1/purchase-content-callback`,
-        payment_options: paymentOptions,
-        customer: {
-          email: user.email,
-          name: userProfile?.display_name || user.email
-        },
-        meta: {
-          user_id: user.id,
-          content_id: contentId,
-          paid_content_id: paidContent.id,
-          creator_id: paidContent.creator_id,
-          creator_share: creatorShare,
-          platform_share: platformShare
-        },
-        customizations: {
-          title: 'Hoyeeh Content Purchase',
-          description: `Purchase: ${paidContent.content?.title}`,
-          logo: 'https://example.com/logo.png'
-        }
-      };
+        // Convert XAF to smallest currency unit (XAF doesn't have decimals)
+        const amountInCents = Math.round(paidContent.price);
 
-      const flutterwaveResponse = await fetch('https://api.flutterwave.com/v3/payments', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${flutterwaveSecretKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(flutterwavePayload)
-      });
-
-      const flutterwaveResult = await flutterwaveResponse.json();
-
-      if (flutterwaveResult.status !== 'success') {
-        throw new Error(flutterwaveResult.message || 'Payment initialization failed');
-      }
-
-      // Create pending purchase record
-      await supabase
-        .from('content_purchases')
-        .insert({
-          user_id: user.id,
-          content_id: contentId,
-          paid_content_id: paidContent.id,
-          creator_id: paidContent.creator_id,
-          amount: paidContent.price,
-          currency: paidContent.currency,
-          creator_share: creatorShare,
-          platform_share: platformShare,
-          payment_provider: 'flutterwave',
-          payment_reference: transactionRef,
-          status: 'pending'
+        // Create Stripe Checkout Session
+        const session = await stripe.checkout.sessions.create({
+          customer_email: user.email || undefined,
+          line_items: [
+            {
+              price_data: {
+                currency: paidContent.currency.toLowerCase(),
+                product_data: {
+                  name: paidContent.content?.title || 'Content Purchase',
+                  description: `Purchase content from Hoyeeh`,
+                },
+                unit_amount: amountInCents,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: 'payment',
+          success_url: `${req.headers.get('origin')}/creator-store?payment=success&tx_ref=${transactionRef}`,
+          cancel_url: `${req.headers.get('origin')}/creator-store?payment=cancelled`,
+          metadata: {
+            tx_ref: transactionRef,
+            user_id: user.id,
+            content_id: contentId as string,
+            paid_content_id: paidContent.id,
+            creator_id: paidContent.creator_id,
+            creator_share: creatorShare.toString(),
+            platform_share: platformShare.toString(),
+          },
         });
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          paymentLink: flutterwaveResult.data.link,
-          txRef: transactionRef
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        // Create pending purchase record
+        await supabase
+          .from('content_purchases')
+          .insert({
+            user_id: user.id,
+            content_id: contentId,
+            paid_content_id: paidContent.id,
+            creator_id: paidContent.creator_id,
+            amount: paidContent.price,
+            currency: paidContent.currency,
+            creator_share: creatorShare,
+            platform_share: platformShare,
+            payment_provider: 'stripe',
+            payment_reference: transactionRef,
+            status: 'pending'
+          });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            paymentLink: session.url,
+            txRef: transactionRef
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        // Use Flutterwave for mobile money payments
+        const paymentOptions = 'mobilemoney,mobilemoneyghana,mobilemoneyuganda,mobilemoneyzambia,mobilemoneyfranco';
+
+        const flutterwavePayload = {
+          tx_ref: transactionRef,
+          amount: paidContent.price,
+          currency: paidContent.currency,
+          redirect_url: `${supabaseUrl}/functions/v1/purchase-content-callback`,
+          payment_options: paymentOptions,
+          customer: {
+            email: user.email,
+            name: userProfile?.display_name || user.email
+          },
+          meta: {
+            user_id: user.id,
+            content_id: contentId,
+            paid_content_id: paidContent.id,
+            creator_id: paidContent.creator_id,
+            creator_share: creatorShare,
+            platform_share: platformShare
+          },
+          customizations: {
+            title: 'Hoyeeh Content Purchase',
+            description: `Purchase: ${paidContent.content?.title}`,
+            logo: 'https://example.com/logo.png'
+          }
+        };
+
+        const flutterwaveResponse = await fetch('https://api.flutterwave.com/v3/payments', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${flutterwaveSecretKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(flutterwavePayload)
+        });
+
+        const flutterwaveResult = await flutterwaveResponse.json();
+
+        if (flutterwaveResult.status !== 'success') {
+          throw new Error(flutterwaveResult.message || 'Payment initialization failed');
+        }
+
+        // Create pending purchase record
+        await supabase
+          .from('content_purchases')
+          .insert({
+            user_id: user.id,
+            content_id: contentId,
+            paid_content_id: paidContent.id,
+            creator_id: paidContent.creator_id,
+            amount: paidContent.price,
+            currency: paidContent.currency,
+            creator_share: creatorShare,
+            platform_share: platformShare,
+            payment_provider: 'flutterwave',
+            payment_reference: transactionRef,
+            status: 'pending'
+          });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            paymentLink: flutterwaveResult.data.link,
+            txRef: transactionRef
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (action === 'verify') {
-      // Verify payment and complete purchase
-      const verifyResponse = await fetch(
-        `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${txRef}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${flutterwaveSecretKey}`
-          }
-        }
-      );
-
-      const verifyResult = await verifyResponse.json();
-
-      if (verifyResult.status !== 'success' || verifyResult.data?.status !== 'successful') {
-        // Update purchase to failed
-        await supabase
-          .from('content_purchases')
-          .update({ status: 'failed' })
-          .eq('payment_reference', txRef);
-
-        throw new Error('Payment verification failed');
-      }
-
-      // Get the pending purchase
+      // Get the pending purchase first to check payment provider
       const { data: purchase, error: purchaseError } = await supabase
         .from('content_purchases')
         .select('*')
@@ -258,6 +300,51 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      let paymentVerified = false;
+
+      if (purchase.payment_provider === 'stripe') {
+        // Verify Stripe payment using checkout session
+        const Stripe = (await import("https://esm.sh/stripe@14.21.0")).default;
+        const stripe = new Stripe(stripeSecretKey!, { apiVersion: "2023-10-16" });
+        
+        // List checkout sessions and find the one with matching tx_ref
+        const sessions = await stripe.checkout.sessions.list({
+          limit: 10,
+        });
+        
+        const matchingSession = sessions.data.find(
+          (session: { metadata?: Record<string, string> }) => session.metadata?.tx_ref === txRef
+        );
+        
+        if (matchingSession && matchingSession.payment_status === 'paid') {
+          paymentVerified = true;
+        }
+      } else {
+        // Verify Flutterwave payment
+        const verifyResponse = await fetch(
+          `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${txRef}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${flutterwaveSecretKey}`
+            }
+          }
+        );
+
+        const verifyResult = await verifyResponse.json();
+        paymentVerified = verifyResult.status === 'success' && verifyResult.data?.status === 'successful';
+      }
+
+      if (!paymentVerified) {
+        // Update purchase to failed
+        await supabase
+          .from('content_purchases')
+          .update({ status: 'failed' })
+          .eq('payment_reference', txRef);
+
+        throw new Error('Payment verification failed');
+      }
+
 
       // Update purchase to completed
       await supabase
