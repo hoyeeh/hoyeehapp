@@ -145,11 +145,7 @@ export function MobileVideoPlayer({
   const [isLocked, setIsLocked] = useState(false);
   const [showUnlockHint, setShowUnlockHint] = useState(false);
   
-  // Gesture states
-  const [brightness, setBrightness] = useState(100);
-  const [showBrightnessIndicator, setShowBrightnessIndicator] = useState(false);
-  const [showGestureVolumeIndicator, setShowGestureVolumeIndicator] = useState(false);
-  const gestureStartRef = useRef<{ x: number; y: number; side: 'left' | 'right' | null; startValue: number } | null>(null);
+  // Gesture states (simplified - brightness/volume gestures removed)
   const isGesturingRef = useRef(false);
   
   // Swipe down to close state
@@ -837,90 +833,18 @@ export function MobileVideoPlayer({
     lastTapSideRef.current = tapSide;
   }, [skip, resetControlsTimeout, isLocked]);
 
-  // Gesture handlers for brightness/volume
+  // Touch handlers removed - brightness/volume gestures disabled to fix back/close controls
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (isLocked) return;
-    
-    const touch = e.touches[0];
-    const container = containerRef.current;
-    if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const relativeX = x / rect.width;
-    
-    // Only start gesture if touch is on the sides (left 30% or right 30%)
-    if (relativeX < 0.3) {
-      gestureStartRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-        side: 'left',
-        startValue: brightness
-      };
-    } else if (relativeX > 0.7) {
-      gestureStartRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-        side: 'right',
-        startValue: volumeLevel
-      };
-    } else {
-      gestureStartRef.current = null;
-    }
-  }, [isLocked, brightness, volumeLevel]);
+    // No-op - gestures disabled
+  }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!gestureStartRef.current || isLocked) return;
-    
-    const touch = e.touches[0];
-    const deltaY = gestureStartRef.current.y - touch.clientY;
-    const container = containerRef.current;
-    if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const sensitivity = 200; // pixels for full range
-    const deltaPercent = (deltaY / sensitivity) * 100;
-    
-    // Only mark as gesturing if moved more than 10px
-    if (Math.abs(deltaY) > 10) {
-      isGesturingRef.current = true;
-    }
-    
-    if (gestureStartRef.current.side === 'left') {
-      // Brightness control (left side)
-      const newBrightness = Math.max(10, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
-      setBrightness(Math.round(newBrightness));
-      setShowBrightnessIndicator(true);
-    } else if (gestureStartRef.current.side === 'right') {
-      // Volume control (right side)
-      const newVolume = Math.max(0, Math.min(100, gestureStartRef.current.startValue + deltaPercent));
-      setVolumeLevel(Math.round(newVolume));
-      
-      const video = videoRef.current;
-      if (video) {
-        video.volume = newVolume / 100;
-        video.muted = newVolume === 0;
-        setIsMuted(newVolume === 0);
-      }
-      setShowGestureVolumeIndicator(true);
-    }
-  }, [isLocked]);
+    // No-op - gestures disabled
+  }, []);
 
   const handleTouchEnd = useCallback(() => {
-    if (gestureStartRef.current) {
-      // Hide indicators after a delay
-      setTimeout(() => {
-        setShowBrightnessIndicator(false);
-        setShowGestureVolumeIndicator(false);
-      }, 500);
-    }
-    
-    gestureStartRef.current = null;
-    
-    // Reset gesturing flag after a small delay to not interfere with tap
-    setTimeout(() => {
-      isGesturingRef.current = false;
-    }, 100);
+    // Reset gesturing flag
+    isGesturingRef.current = false;
   }, []);
 
   // Toggle lock
@@ -1153,7 +1077,6 @@ export function MobileVideoPlayer({
       ref={containerRef}
       className="fixed inset-0 z-[200] bg-black"
       style={{ 
-        filter: `brightness(${brightness}%)`,
         y: swipeY,
         opacity: swipeOpacity,
       }}
@@ -1341,55 +1264,7 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
-      {/* Brightness Gesture Indicator (left side) */}
-      <AnimatePresence>
-        {showBrightnessIndicator && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 pointer-events-none z-40"
-          >
-            <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-4 py-6 flex flex-col items-center gap-3">
-              <Sun className="h-8 w-8 text-yellow-400" />
-              <div className="w-2 h-32 bg-white/30 rounded-full overflow-hidden rotate-180">
-                <motion.div
-                  className="w-full bg-yellow-400 rounded-full"
-                  style={{ height: `${brightness}%` }}
-                />
-              </div>
-              <span className="text-white text-sm font-medium">{brightness}%</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Volume Gesture Indicator (right side) */}
-      <AnimatePresence>
-        {showGestureVolumeIndicator && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 pointer-events-none z-40"
-          >
-            <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-4 py-6 flex flex-col items-center gap-3">
-              {volumeLevel === 0 ? (
-                <VolumeX className="h-8 w-8 text-white" />
-              ) : (
-                <Volume2 className="h-8 w-8 text-white" />
-              )}
-              <div className="w-2 h-32 bg-white/30 rounded-full overflow-hidden rotate-180">
-                <motion.div
-                  className="w-full bg-white rounded-full"
-                  style={{ height: `${volumeLevel}%` }}
-                />
-              </div>
-              <span className="text-white text-sm font-medium">{volumeLevel}%</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Brightness/Volume gesture indicators removed */}
 
       {/* Locked Screen Overlay */}
       <AnimatePresence>

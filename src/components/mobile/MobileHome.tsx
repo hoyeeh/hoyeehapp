@@ -653,6 +653,11 @@ export function MobileHome() {
               // Genre and other sections - use processed deduplicated content
               if (sectionContent.length === 0) return null;
 
+              // Determine the appropriate "See All" destination based on section type
+              const seeAllRoute = section.section_type === "free_content" 
+                ? "/free-content" 
+                : "/genres";
+
               return (
                 <FadeIn key={section.id} delay={150 + index * 50}>
                   <MobileContentRow
@@ -660,7 +665,7 @@ export function MobileHome() {
                     content={sectionContent}
                     onDetails={handleDetails}
                     showSeeAll
-                    onSeeAll={() => navigate("/genres")}
+                    onSeeAll={() => navigate(seeAllRoute)}
                     tvShowUpdates={tvShowUpdates}
                   />
                 </FadeIn>

@@ -66,6 +66,7 @@ import Cast from "./pages/Cast";
 import WatchParty from "./pages/WatchParty";
 import MyPurchases from "./pages/MyPurchases";
 import PurchaseReturn from "./pages/PurchaseReturn";
+import FreeContent from "./pages/FreeContent";
 import { usePendingPurchaseVerification } from "./hooks/usePendingPurchaseVerification";
 
 const queryClient = new QueryClient();
@@ -250,6 +251,7 @@ const App = () => (
                         <Route path="/cast" element={<Cast />} />
                         <Route path="/my-purchases" element={<MyPurchases />} />
                         <Route path="/purchase-return" element={<PurchaseReturn />} />
+                        <Route path="/free-content" element={<FreeContent />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                       <PersistentMobileVideoPlayer />

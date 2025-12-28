@@ -850,6 +850,11 @@ const Index = () => {
 
                     if (sectionContent.length === 0) return null;
 
+                    // Determine the appropriate "See All" destination based on section type
+                    const seeAllRoute = section.section_type === "free_content" 
+                      ? "/free-content" 
+                      : "/genres";
+
                     return (
                       <ContentRow
                         key={section.id}
@@ -861,7 +866,7 @@ const Index = () => {
                         userList={watchlistIds}
                         cardStyle="poster"
                         showSeeAll
-                        onSeeAll={() => navigate("/genres")}
+                        onSeeAll={() => navigate(seeAllRoute)}
                       />
                     );
                   })}
