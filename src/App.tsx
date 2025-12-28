@@ -56,6 +56,7 @@ import YouTubeChannels from "./pages/YouTubeChannels";
 import ChannelsPage from "./pages/ChannelsPage";
 import WatchLater from "./pages/WatchLater";
 import CreatorStore from "./pages/CreatorStore";
+import CreatorProfile from "./pages/CreatorProfile";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import TV from "./pages/TV";
 import TVReceiver from "./pages/TVReceiver";
@@ -230,6 +231,7 @@ const App = () => (
                         <Route path="/watch-later" element={<WatchLater />} />
                         <Route path="/watch-party" element={<WatchParty />} />
                         <Route path="/creator-store" element={<CreatorStore />} />
+                        <Route path="/creator/:creatorId" element={<CreatorProfile />} />
                         <Route path="/creator-dashboard" element={<CreatorDashboard />} />
                         <Route path="/tv" element={<TV />} />
                         <Route path="/tv-receiver" element={<TVReceiver />} />

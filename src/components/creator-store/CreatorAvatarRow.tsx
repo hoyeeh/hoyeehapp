@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCreatorsWithContent } from "@/hooks/usePaidContent";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
@@ -10,6 +11,7 @@ interface CreatorAvatarRowProps {
 }
 
 export function CreatorAvatarRow({ selectedCreator, onSelectCreator }: CreatorAvatarRowProps) {
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { data: creators = [], isLoading } = useCreatorsWithContent();
 
@@ -91,6 +93,7 @@ export function CreatorAvatarRow({ selectedCreator, onSelectCreator }: CreatorAv
           <button
             key={creator.id}
             onClick={() => onSelectCreator(creator.id)}
+            onDoubleClick={() => navigate(`/creator/${creator.id}`)}
             className="flex flex-col items-center gap-2 flex-shrink-0"
           >
             <div
