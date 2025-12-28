@@ -13,7 +13,9 @@ import {
   Mail, 
   MessageCircle,
   Globe,
-  Check
+  Check,
+  Send,
+  Hash
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -75,6 +77,22 @@ function TikTokIcon({ className }: { className?: string }) {
   );
 }
 
+function RedditIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
+    </svg>
+  );
+}
+
+function PinterestIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017 0z"/>
+    </svg>
+  );
+}
+
 function UmojamiIcon({ className }: { className?: string }) {
   return (
     <Globe className={className} />
@@ -96,15 +114,28 @@ export function ShareMenu({
   const encodedText = encodeURIComponent(text || title);
 
   const shareLinks = {
+    // WhatsApp - Uses wa.me API for sharing text with URL
     whatsapp: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+    // X (Twitter) - Uses intent/tweet API with text and url params
     x: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-    instagram: `https://www.instagram.com/`, // Instagram doesn't support direct sharing via URL
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-    tiktok: `https://www.tiktok.com/`, // TikTok doesn't support direct sharing via URL
+    // Facebook - Uses sharer.php with URL and optional quote
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`,
+    // LinkedIn - Uses share-offsite API with URL, title, and summary
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}&title=${encodedTitle}&summary=${encodedText}`,
+    // Telegram - Uses t.me share API
+    telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
+    // Reddit - Uses submit API
+    reddit: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`,
+    // Pinterest - Uses pin/create API (requires image URL for best results)
+    pinterest: `https://pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedText}`,
+    // Umojami - Opens login page as specified
     umojami: `https://umojami.com/login`,
-    email: `mailto:?subject=${encodedTitle}&body=${encodedText}%20${encodedUrl}`,
+    // Email - Uses mailto protocol with subject and body
+    email: `mailto:?subject=${encodedTitle}&body=${encodedText}%0A%0A${encodedUrl}`,
   };
+
+  // Platforms that don't support direct URL sharing
+  const noDirectShare = ['instagram', 'tiktok'];
 
   const handleCopy = async () => {
     try {
@@ -117,15 +148,16 @@ export function ShareMenu({
     }
   };
 
-  const handleShare = (platform: keyof typeof shareLinks) => {
-    if (platform === 'instagram' || platform === 'tiktok') {
-      // For platforms without direct sharing, copy link first then open
-      handleCopy();
-      toast.info(`Link copied! Open ${platform === 'instagram' ? 'Instagram' : 'TikTok'} to share.`);
-      window.open(shareLinks[platform], '_blank', 'noopener,noreferrer');
-    } else {
-      window.open(shareLinks[platform], '_blank', 'noopener,noreferrer');
+  const handleShare = (platform: string) => {
+    const link = shareLinks[platform as keyof typeof shareLinks];
+    if (link) {
+      window.open(link, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const handleNoDirectShare = async (platform: string) => {
+    await handleCopy();
+    toast.info(`Link copied! Open ${platform} and paste to share.`);
   };
 
   return (
@@ -148,7 +180,7 @@ export function ShareMenu({
           <FacebookIcon className="h-4 w-4 mr-3" />
           Facebook
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleShare('instagram')} className="cursor-pointer">
+        <DropdownMenuItem onClick={() => handleNoDirectShare('Instagram')} className="cursor-pointer">
           <InstagramIcon className="h-4 w-4 mr-3" />
           Instagram
         </DropdownMenuItem>
@@ -156,9 +188,21 @@ export function ShareMenu({
           <LinkedInIcon className="h-4 w-4 mr-3" />
           LinkedIn
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleShare('tiktok')} className="cursor-pointer">
+        <DropdownMenuItem onClick={() => handleNoDirectShare('TikTok')} className="cursor-pointer">
           <TikTokIcon className="h-4 w-4 mr-3" />
           TikTok
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleShare('telegram')} className="cursor-pointer">
+          <Send className="h-4 w-4 mr-3" />
+          Telegram
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleShare('reddit')} className="cursor-pointer">
+          <RedditIcon className="h-4 w-4 mr-3" />
+          Reddit
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleShare('pinterest')} className="cursor-pointer">
+          <PinterestIcon className="h-4 w-4 mr-3" />
+          Pinterest
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleShare('umojami')} className="cursor-pointer">
           <UmojamiIcon className="h-4 w-4 mr-3" />
