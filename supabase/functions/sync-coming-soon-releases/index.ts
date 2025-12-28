@@ -76,7 +76,7 @@ function getComingSoonEmailHtml({
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <!-- Logo -->
     <div style="text-align: center; margin-bottom: 32px;">
-      <img src="https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png" width="150" height="auto" alt="Hoyeeh" style="margin: 0 auto;">
+      <p style="color: #ff6300; font-size: 36px; font-weight: 700; margin: 0; letter-spacing: -1px;">Hoyeeh</p>
     </div>
     
     <!-- Content -->

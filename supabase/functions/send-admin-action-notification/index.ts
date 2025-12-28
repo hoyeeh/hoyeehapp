@@ -51,8 +51,6 @@ const handler = async (req: Request): Promise<Response> => {
     const actionInfo = actionMessages[actionType];
     const displayName = userName || "User";
 
-    const logoUrl = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
-
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -63,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #0a0a0a;">
         <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
           <div style="text-align: center; margin-bottom: 32px;">
-            <img src="${logoUrl}" alt="Hoyeeh" style="height: 50px;">
+            <p style="color: #ff6300; font-size: 36px; font-weight: 700; margin: 0; letter-spacing: -1px;">Hoyeeh</p>
           </div>
           <div style="background-color: #141414; border-radius: 12px; padding: 32px;">
             <div style="text-align: center; margin-bottom: 24px;">

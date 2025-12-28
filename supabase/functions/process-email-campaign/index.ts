@@ -9,8 +9,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LOGO_URL = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
-
 const wrapInTemplate = (content: string, subject: string) => `
 <!DOCTYPE html>
 <html>
@@ -27,7 +25,7 @@ const wrapInTemplate = (content: string, subject: string) => `
           <!-- Logo -->
           <tr>
             <td align="center" style="padding-bottom: 32px;">
-              <img src="${LOGO_URL}" width="150" height="50" alt="Hoyeeh" style="display: block;">
+              <p style="color: #ff6300; font-size: 36px; font-weight: 700; margin: 0; letter-spacing: -1px;">Hoyeeh</p>
             </td>
           </tr>
           <!-- Content -->

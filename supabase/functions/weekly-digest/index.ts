@@ -207,8 +207,6 @@ function generateDigestEmail(
   personalized: ContentRecommendation[],
   favoriteGenres: string[]
 ): string {
-  const logoUrl = "https://hoyeeh.sgp1.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
-
   const generateContentGrid = (items: ContentRecommendation[], title: string) => {
     if (!items || items.length === 0) return "";
     
@@ -253,7 +251,7 @@ function generateDigestEmail(
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
         <!-- Header -->
         <div style="text-align: center; padding: 30px 0;">
-          <img src="${logoUrl}" alt="Hoyeeh" style="height: 50px;">
+          <p style="color: #ff6300; font-size: 36px; font-weight: 700; margin: 0; letter-spacing: -1px;">Hoyeeh</p>
         </div>
 
         <!-- Main Content -->
