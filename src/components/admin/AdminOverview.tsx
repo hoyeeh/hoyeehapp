@@ -8,9 +8,10 @@ interface AdminOverviewProps {
   users: any[];
   content: any[];
   subscriptions: any[];
+  onNavigate?: (tab: string) => void;
 }
 
-export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewProps) => {
+export const AdminOverview = ({ users, content, subscriptions, onNavigate }: AdminOverviewProps) => {
   const [cdnConfigured, setCdnConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -225,22 +226,34 @@ export const AdminOverview = ({ users, content, subscriptions }: AdminOverviewPr
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button 
+              onClick={() => onNavigate?.("content")}
+              className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <Film className="h-6 w-6 mb-2 text-primary" />
               <p className="font-medium">Add Content</p>
               <p className="text-sm text-muted-foreground">Upload new movie or series</p>
             </button>
-            <button className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button 
+              onClick={() => onNavigate?.("users")}
+              className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <Users className="h-6 w-6 mb-2 text-primary" />
               <p className="font-medium">Manage Users</p>
               <p className="text-sm text-muted-foreground">View and edit users</p>
             </button>
-            <button className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button 
+              onClick={() => onNavigate?.("subscriptions")}
+              className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <CreditCard className="h-6 w-6 mb-2 text-primary" />
               <p className="font-medium">Subscriptions</p>
               <p className="text-sm text-muted-foreground">Manage plans</p>
             </button>
-            <button className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button 
+              onClick={() => onNavigate?.("email-analytics")}
+              className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <TrendingUp className="h-6 w-6 mb-2 text-primary" />
               <p className="font-medium">Analytics</p>
               <p className="text-sm text-muted-foreground">View reports</p>

@@ -716,7 +716,7 @@ const Admin = () => {
         return null;
       
       default:
-        return <AdminOverview users={users} content={content} subscriptions={subscriptions} />;
+        return <AdminOverview users={users} content={content} subscriptions={subscriptions} onNavigate={setActiveTab} />;
     }
   };
 
