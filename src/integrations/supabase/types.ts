@@ -219,6 +219,38 @@ export type Database = {
           },
         ]
       }
+      channel_subscriptions: {
+        Row: {
+          channel_id: string
+          id: string
+          notifications_enabled: boolean
+          subscribed_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          notifications_enabled?: boolean
+          subscribed_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          notifications_enabled?: boolean
+          subscribed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_subscriptions_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coming_soon: {
         Row: {
           backdrop_url: string | null

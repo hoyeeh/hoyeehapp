@@ -53,6 +53,7 @@ import Notifications from "./pages/Notifications";
 import Parental from "./pages/Parental";
 import ComingSoon from "./pages/ComingSoon";
 import YouTubeChannels from "./pages/YouTubeChannels";
+import ChannelsPage from "./pages/ChannelsPage";
 import WatchLater from "./pages/WatchLater";
 import CreatorStore from "./pages/CreatorStore";
 import CreatorDashboard from "./pages/CreatorDashboard";
@@ -225,6 +226,7 @@ const App = () => (
                         <Route path="/parental" element={<Parental />} />
                         <Route path="/coming-soon" element={<ComingSoon />} />
                         <Route path="/youtube" element={<YouTubeChannels />} />
+                        <Route path="/channels" element={<ChannelsPage />} />
                         <Route path="/watch-later" element={<WatchLater />} />
                         <Route path="/watch-party" element={<WatchParty />} />
                         <Route path="/creator-store" element={<CreatorStore />} />
