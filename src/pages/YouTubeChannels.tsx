@@ -371,6 +371,13 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
               <Button 
                 variant="outline"
                 className="border-white/30 text-white hover:bg-white/10 font-semibold px-6 py-3 text-base"
+                onClick={() => {
+                  const channelId = currentItem.id.replace('channel-', '');
+                  const channel = channels?.find(c => c.id === channelId);
+                  if (channel) {
+                    window.location.href = `/channels?selected=${channelId}`;
+                  }
+                }}
               >
                 <Youtube className="h-5 w-5 mr-2" />
                 View Channel

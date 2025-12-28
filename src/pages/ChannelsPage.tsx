@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +16,7 @@ import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
 import { YouTubeVideoPlayer } from "@/components/YouTubeVideoPlayer";
 import { 
   Youtube, Search, Filter, Bell, BellOff, Users, 
-  Play, Grid, List, ChevronRight, Star, TrendingUp
+  Play, Grid, List, ChevronRight, Star, TrendingUp, X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ interface YouTubeVideo {
 
 export default function ChannelsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { signOut, user } = useAuth();
   const { data: profile } = useProfile();
   const isMobile = useIsMobile();
@@ -79,6 +80,20 @@ export default function ChannelsPage() {
       return data as YouTubeChannel[];
     },
   });
+
+  // Handle URL query param for pre-selecting a channel
+  useEffect(() => {
+    const selectedId = searchParams.get("selected");
+    if (selectedId && allChannels.length > 0 && !selectedChannel) {
+      const channel = allChannels.find(c => c.id === selectedId);
+      if (channel) {
+        setSelectedChannel(channel);
+        // Clear the URL param after selecting
+        searchParams.delete("selected");
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, allChannels, selectedChannel, setSearchParams]);
 
   // Fetch videos for selected channel
   const { data: channelVideos = [], isLoading: videosLoading } = useQuery({

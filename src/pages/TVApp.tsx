@@ -16,7 +16,8 @@ import {
   Tv as TvIcon,
   Star,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Youtube
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toCdnUrl } from '@/utils/cdnUrl';
@@ -29,6 +30,14 @@ interface ContentItem {
   genre: string | null;
   year: number | null;
   description: string | null;
+}
+
+interface ChannelItem {
+  id: string;
+  name: string;
+  thumbnail_url: string | null;
+  cover_url: string | null;
+  subscriber_count: string | null;
 }
 
 interface FocusPosition {
@@ -81,10 +90,25 @@ export default function TVApp() {
     }
   });
 
+  // Fetch YouTube channels
+  const { data: channelsContent = [] } = useQuery({
+    queryKey: ['tv-channels'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('youtube_channels')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order')
+        .limit(10);
+      return (data || []) as ChannelItem[];
+    }
+  });
+
   const sections = [
-    { id: 'trending', title: 'Trending Now', icon: TrendingUp, items: trendingContent },
-    { id: 'movies', title: 'Movies', icon: Film, items: moviesContent },
-    { id: 'series', title: 'TV Series', icon: TvIcon, items: seriesContent },
+    { id: 'trending', title: 'Trending Now', icon: TrendingUp, items: trendingContent, type: 'content' as const },
+    { id: 'channels', title: 'Channels', icon: Youtube, items: channelsContent, type: 'channel' as const },
+    { id: 'movies', title: 'Movies', icon: Film, items: moviesContent, type: 'content' as const },
+    { id: 'series', title: 'TV Series', icon: TvIcon, items: seriesContent, type: 'content' as const },
   ];
 
   // Handle keyboard navigation
@@ -120,9 +144,15 @@ export default function TVApp() {
       case 'Enter':
       case ' ':
         e.preventDefault();
-        const item = currentSection.items[focusPosition.item];
+        const section = sections[focusPosition.section];
+        const item = section.items[focusPosition.item];
         if (item) {
-          setSelectedContent(item);
+          if (section.type === 'channel') {
+            // Navigate to channels page with pre-selected channel
+            navigate(`/channels?selected=${item.id}`);
+          } else {
+            setSelectedContent(item as ContentItem);
+          }
         }
         break;
       case 'Escape':
@@ -252,12 +282,21 @@ export default function TVApp() {
               {section.items.map((item, itemIndex) => {
                 const isFocused = focusPosition.section === sectionIndex && focusPosition.item === itemIndex;
                 const key = `${sectionIndex}-${itemIndex}`;
+                const isChannel = section.type === 'channel';
+                const channelItem = item as ChannelItem;
+                const contentItem = item as ContentItem;
                 
                 return (
                   <button
                     key={item.id}
                     ref={(el: HTMLButtonElement | null) => { if (el) itemsRef.current.set(key, el); }}
-                    onClick={() => setSelectedContent(item)}
+                    onClick={() => {
+                      if (isChannel) {
+                        navigate(`/channels?selected=${item.id}`);
+                      } else {
+                        setSelectedContent(contentItem);
+                      }
+                    }}
                     onFocus={() => setFocusPosition({ section: sectionIndex, item: itemIndex })}
                     className={cn(
                       "flex-shrink-0 relative group transition-all duration-300 focus:outline-none rounded-lg overflow-hidden",
@@ -265,31 +304,58 @@ export default function TVApp() {
                         ? "scale-110 ring-4 ring-orange-500 z-10" 
                         : "hover:scale-105"
                     )}
-                    style={{ width: '280px', height: '160px' }}
+                    style={{ 
+                      width: isChannel ? '180px' : '280px', 
+                      height: isChannel ? '180px' : '160px' 
+                    }}
                   >
-                    <img
-                      src={toCdnUrl(item.thumbnail_url || '/placeholder.svg')}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className={cn(
-                      "absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-opacity",
-                      isFocused ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )} />
-                    <div className={cn(
-                      "absolute bottom-0 left-0 right-0 p-4 transition-transform",
-                      isFocused ? "translate-y-0" : "translate-y-full group-hover:translate-y-0"
-                    )}>
-                      <h3 className="font-bold text-lg truncate">{item.title}</h3>
-                      <p className="text-sm text-white/70">{item.year}</p>
-                    </div>
+                    {isChannel ? (
+                      // Channel card - circular thumbnail
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-white/10 to-white/5 p-4">
+                        <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-orange-500/50 mb-3">
+                          <img
+                            src={channelItem.thumbnail_url || '/placeholder.svg'}
+                            alt={channelItem.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <h3 className="font-bold text-sm text-center truncate w-full">{channelItem.name}</h3>
+                        {channelItem.subscriber_count && (
+                          <p className="text-xs text-white/50">{channelItem.subscriber_count}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <img
+                          src={toCdnUrl(contentItem.thumbnail_url || '/placeholder.svg')}
+                          alt={contentItem.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className={cn(
+                          "absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-opacity",
+                          isFocused ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )} />
+                        <div className={cn(
+                          "absolute bottom-0 left-0 right-0 p-4 transition-transform",
+                          isFocused ? "translate-y-0" : "translate-y-full group-hover:translate-y-0"
+                        )}>
+                          <h3 className="font-bold text-lg truncate">{contentItem.title}</h3>
+                          <p className="text-sm text-white/70">{contentItem.year}</p>
+                        </div>
+                      </>
+                    )}
                     
-                    {/* Play indicator on focus */}
-                    {isFocused && (
+                    {/* Indicator on focus */}
+                    {isFocused && !isChannel && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center">
                           <Play className="h-8 w-8 text-white" fill="white" />
                         </div>
+                      </div>
+                    )}
+                    {isFocused && isChannel && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="absolute inset-0 bg-orange-500/20" />
                       </div>
                     )}
                   </button>

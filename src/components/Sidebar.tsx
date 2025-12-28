@@ -121,21 +121,18 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
-                {isAdmin && (
-                  <div className="mt-1">
-                    <AdminAccessBadge />
-                  </div>
-                )}
-                {isUserMenuOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
+                
               </div>
             </button>
           </CollapsibleTrigger>
           
           <CollapsibleContent className="space-y-1 mt-1">
+            {/* Admin Access Badge - at the top of menu */}
+            {isAdmin && (
+              <div className="px-3 py-2">
+                <AdminAccessBadge />
+              </div>
+            )}
             {/* Dashboard */}
             <button
               onClick={() => onNavigate("dashboard" as any)}
