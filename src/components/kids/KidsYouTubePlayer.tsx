@@ -61,45 +61,50 @@ export const KidsYouTubePlayer = ({ videoId, title, onClose }: KidsYouTubePlayer
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 bg-[#0A0A0F]"
       >
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
+        {/* Header - Responsive */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-3 sm:p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top">
+          <div className="flex items-center justify-between max-w-7xl mx-auto gap-2">
+            {/* Back Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
-              style={{ minHeight: 48 }}
+              className="flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 backdrop-blur-md text-white font-medium hover:from-violet-500/40 hover:to-fuchsia-500/40 active:from-violet-500/50 active:to-fuchsia-500/50 transition-all touch-manipulation cursor-pointer border border-white/20"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="hidden sm:inline">Back</span>
+              <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="text-sm sm:text-base hidden xs:inline">Back</span>
             </button>
 
-            <h1 className="text-lg font-semibold text-white truncate max-w-md mx-4">
+            {/* Title - Hidden on small screens */}
+            <h1 className="text-base sm:text-lg font-semibold text-white truncate max-w-[120px] sm:max-w-md mx-2 sm:mx-4 hidden sm:block">
               {title}
             </h1>
 
+            {/* Right side controls */}
             <div className="flex items-center gap-2">
+              {/* Fullscreen Button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleFullscreen();
                 }}
-                className="p-3 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
-                style={{ minWidth: 48, minHeight: 48 }}
+                className="flex items-center justify-center p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-cyan-500/30 to-blue-500/30 backdrop-blur-md text-white hover:from-cyan-500/40 hover:to-blue-500/40 active:from-cyan-500/50 active:to-blue-500/50 transition-all touch-manipulation cursor-pointer border border-white/20"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
               >
-                <Maximize className="h-5 w-5" />
+                <Maximize className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
+              {/* Close Button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
                 }}
-                className="p-3 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
-                style={{ minWidth: 48, minHeight: 48 }}
+                className="flex items-center justify-center p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-rose-500/30 to-pink-500/30 backdrop-blur-md text-white hover:from-rose-500/40 hover:to-pink-500/40 active:from-rose-500/50 active:to-pink-500/50 transition-all touch-manipulation cursor-pointer border border-white/20"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
           </div>

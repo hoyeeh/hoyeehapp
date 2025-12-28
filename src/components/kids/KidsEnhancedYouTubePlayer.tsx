@@ -512,39 +512,42 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
           </div>
         </div>
 
-        {/* Top Header */}
+        {/* Top Header - Responsive */}
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: showControls ? 1 : 0 }}
           transition={{ duration: 0.2 }}
-          className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top"
+          className="absolute top-0 left-0 right-0 z-30 p-3 sm:p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top"
         >
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center justify-between max-w-7xl mx-auto gap-2">
+            {/* Back Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleClose();
               }}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
-              style={{ minHeight: 48 }}
+              className="flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 backdrop-blur-md text-white font-medium hover:from-violet-500/40 hover:to-fuchsia-500/40 active:from-violet-500/50 active:to-fuchsia-500/50 transition-all touch-manipulation cursor-pointer border border-white/20"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="hidden sm:inline">Back</span>
+              <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="text-sm sm:text-base hidden xs:inline">Back</span>
             </button>
 
-            <h1 className="text-lg font-semibold text-white truncate max-w-md mx-4 hidden sm:block">
+            {/* Title - Hidden on small screens */}
+            <h1 className="text-base sm:text-lg font-semibold text-white truncate max-w-[150px] sm:max-w-md mx-2 sm:mx-4 hidden sm:block">
               {title}
             </h1>
 
+            {/* Close Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleClose();
               }}
-              className="p-3 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation cursor-pointer"
-              style={{ minWidth: 48, minHeight: 48 }}
+              className="flex items-center justify-center p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-rose-500/30 to-pink-500/30 backdrop-blur-md text-white hover:from-rose-500/40 hover:to-pink-500/40 active:from-rose-500/50 active:to-pink-500/50 transition-all touch-manipulation cursor-pointer border border-white/20"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
           </div>
         </motion.div>
