@@ -63,7 +63,7 @@ export function HomeYouTubeRow({
         .select('id, name, thumbnail_url, cover_url, subscriber_count, video_count, description')
         .eq('is_active', true)
         .eq('show_on_desktop', true)
-        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(maxItems);
       
       if (error) throw error;
