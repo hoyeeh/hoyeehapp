@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.7c6d73391e454d9abc3875192bbd33e0',
-  appName: 'hoyeehapp',
+  appId: 'com.hoyeeh.app',
+  appName: 'Hoyeeh',
   webDir: 'dist',
   server: {
-    url: 'https://7c6d7339-1e45-4d9a-bc38-75192bbd33e0.lovableproject.com?forceHideBadge=true',
+    url: 'https://hoyeeh.com',
     cleartext: true
   },
   plugins: {

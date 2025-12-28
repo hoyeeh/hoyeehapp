@@ -234,7 +234,7 @@ serve(async (req) => {
       } else {
         // Use Flutterwave for mobile money payments
         const paymentOptions = 'mobilemoney,mobilemoneyghana,mobilemoneyuganda,mobilemoneyzambia,mobilemoneyfranco';
-        const origin = req.headers.get('origin') || 'https://hoyeeh.lovable.app';
+        const origin = req.headers.get('origin') || 'https://hoyeeh.com';
 
         const flutterwavePayload = {
           tx_ref: transactionRef,
