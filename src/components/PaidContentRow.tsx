@@ -17,7 +17,7 @@ interface PaidContentRowProps {
 }
 
 export const PaidContentRow = ({
-  title = "Creator Store",
+  title = "Creator Studio",
   onPlay,
   onToggleList,
   onDetails,

@@ -8,7 +8,7 @@ interface TVShowUpdateInfo {
 
 export type TVShowUpdatesMap = Record<string, TVShowUpdateInfo>;
 
-const NEW_CONTENT_DAYS = 14;
+const NEW_CONTENT_DAYS = 7;
 
 export const useLatestTVShowUpdates = (contentIds: string[]) => {
   return useQuery({

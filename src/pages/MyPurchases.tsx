@@ -64,11 +64,11 @@ export default function MyPurchases() {
             <ShoppingBag className="h-20 w-20 text-muted-foreground mb-6" />
             <h2 className="text-2xl font-bold mb-2">No purchases yet</h2>
             <p className="text-muted-foreground text-center mb-6 max-w-md">
-              You haven't purchased any content from creators yet. Explore the creator store to find amazing content!
+              You haven't purchased any content from creators yet. Explore the creator studio to find amazing content!
             </p>
             <Button onClick={() => navigate("/creator-store")} className="gap-2">
               <ShoppingBag className="h-4 w-4" />
-              Explore Creator Store
+              Explore Creator Studio
             </Button>
           </div>
         ) : (

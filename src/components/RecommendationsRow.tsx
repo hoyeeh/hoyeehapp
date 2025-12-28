@@ -76,9 +76,6 @@ export const RecommendationsRow = ({
           <Sparkles className="h-5 w-5 text-brand" />
           Recommended For You
         </h2>
-        {data?.aiMessage && (
-          <p className="text-sm text-muted-foreground mt-1 md:hidden">{data.aiMessage}</p>
-        )}
         {data?.preferredGenres?.length > 0 && (
           <div className="flex gap-2 mt-2">
             {data.preferredGenres.slice(0, 3).map((genre: string) => (
