@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, GripVertical, Loader2, LayoutGrid, Eye, EyeOff, Film, Search, X } from "lucide-react";
+import { Plus, Trash2, Edit2, GripVertical, Loader2, LayoutGrid, Eye, EyeOff, Film, Search, X, Monitor, Smartphone, Baby } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -41,6 +41,11 @@ interface HomeSection {
   is_active: boolean;
   max_items: number | null;
   content_type_filter?: string;
+  show_on_desktop: boolean;
+  show_on_mobile: boolean;
+  show_on_kids: boolean;
+  is_curated: boolean;
+  allow_duplicates: boolean;
 }
 
 interface Content {
@@ -58,6 +63,7 @@ const SECTION_TYPES = [
   { value: "trending", label: "Trending" },
   { value: "genre", label: "Genre-based" },
   { value: "curated", label: "Curated (Select specific content)" },
+  { value: "free_content", label: "Free Content" },
   { value: "youtube", label: "YouTube Videos" },
   { value: "custom", label: "Custom (All content)" },
   { value: "my_list", label: "My List" },
@@ -111,12 +117,17 @@ const SortableItem = ({ section, onEdit, onDelete, onToggleActive, onManageConte
         </p>
       </div>
       <div className="flex items-center gap-2">
-        {section.section_type === "curated" && (
+        {(section.section_type === "curated" || (section.section_type === "free_content" && section.is_curated)) && (
           <Button variant="outline" size="sm" onClick={() => onManageContent(section)}>
             <Film className="h-4 w-4 mr-1" />
             Content
           </Button>
         )}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {section.show_on_desktop && <span title="Desktop"><Monitor className="h-3 w-3" /></span>}
+          {section.show_on_mobile && <span title="Mobile"><Smartphone className="h-3 w-3" /></span>}
+          {section.show_on_kids && <span title="Kids"><Baby className="h-3 w-3" /></span>}
+        </div>
         <Button
           variant="ghost"
           size="icon"
@@ -151,6 +162,10 @@ export const EnhancedHomeSectionManagement = () => {
     max_items: 15,
     is_active: true,
     content_type_filter: "all" as "all" | "movie" | "series",
+    show_on_desktop: true,
+    show_on_mobile: true,
+    show_on_kids: false,
+    is_curated: false,
   });
 
   const sensors = useSensors(
@@ -181,10 +196,10 @@ export const EnhancedHomeSectionManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content")
-        .select("id, title, thumbnail_url, content_type, year")
+        .select("id, title, thumbnail_url, content_type, year, is_premium")
         .order("title");
       if (error) throw error;
-      return data as Content[];
+      return data as (Content & { is_premium: boolean | null })[];
     },
   });
 
@@ -215,6 +230,10 @@ export const EnhancedHomeSectionManagement = () => {
         is_active: data.is_active,
         display_order: maxOrder + 1,
         content_type_filter: data.content_type_filter,
+        show_on_desktop: data.show_on_desktop,
+        show_on_mobile: data.show_on_mobile,
+        show_on_kids: data.show_on_kids,
+        is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
       });
       if (error) throw error;
     },
@@ -238,6 +257,10 @@ export const EnhancedHomeSectionManagement = () => {
           max_items: data.max_items,
           is_active: data.is_active,
           content_type_filter: data.content_type_filter,
+          show_on_desktop: data.show_on_desktop,
+          show_on_mobile: data.show_on_mobile,
+          show_on_kids: data.show_on_kids,
+          is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
         })
         .eq("id", id);
       if (error) throw error;
@@ -340,6 +363,10 @@ export const EnhancedHomeSectionManagement = () => {
       max_items: 15,
       is_active: true,
       content_type_filter: "all",
+      show_on_desktop: true,
+      show_on_mobile: true,
+      show_on_kids: false,
+      is_curated: false,
     });
   };
 
@@ -353,6 +380,10 @@ export const EnhancedHomeSectionManagement = () => {
       max_items: section.max_items || 15,
       is_active: section.is_active,
       content_type_filter: (section.content_type_filter as "all" | "movie" | "series") || "all",
+      show_on_desktop: section.show_on_desktop ?? true,
+      show_on_mobile: section.show_on_mobile ?? true,
+      show_on_kids: section.show_on_kids ?? false,
+      is_curated: section.is_curated ?? false,
     });
     setShowForm(true);
   };
@@ -380,7 +411,10 @@ export const EnhancedHomeSectionManagement = () => {
     const matchesSearch = c.title.toLowerCase().includes(contentSearch.toLowerCase());
     const matchesType = contentTypeFilter === "all" || c.content_type === contentTypeFilter;
     const notAlreadyAdded = !sectionContent.some((sc: any) => sc.content_id === c.id);
-    return matchesSearch && matchesType && notAlreadyAdded;
+    // For free_content sections, only show free content (is_premium = false or null)
+    const isFreeContentSection = managingContentSection?.section_type === "free_content";
+    const matchesFreeContent = !isFreeContentSection || !c.is_premium;
+    return matchesSearch && matchesType && notAlreadyAdded && matchesFreeContent;
   });
 
   return (
@@ -469,6 +503,31 @@ export const EnhancedHomeSectionManagement = () => {
                   </Select>
                 </div>
               )}
+              {formData.section_type === "free_content" && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Content Type Filter</Label>
+                    <Select 
+                      value={formData.content_type_filter} 
+                      onValueChange={(v) => setFormData({ ...formData, content_type_filter: v as "all" | "movie" | "series" })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Free Content</SelectItem>
+                        <SelectItem value="movie">Free Movies Only</SelectItem>
+                        <SelectItem value="series">Free TV Shows Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={formData.is_curated}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_curated: checked })}
+                    />
+                    <Label>Curated (manually select content)</Label>
+                  </div>
+                </>
+              )}
               <div className="space-y-2">
                 <Label>Max Items</Label>
                 <Input
@@ -479,6 +538,44 @@ export const EnhancedHomeSectionManagement = () => {
                   max={50}
                 />
               </div>
+              
+              {/* Display Targets */}
+              <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
+                <Label className="text-sm font-medium">Display On</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="show_desktop"
+                      checked={formData.show_on_desktop}
+                      onCheckedChange={(checked) => setFormData({ ...formData, show_on_desktop: !!checked })}
+                    />
+                    <Label htmlFor="show_desktop" className="flex items-center gap-1 text-sm cursor-pointer">
+                      <Monitor className="h-4 w-4" /> Desktop
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="show_mobile"
+                      checked={formData.show_on_mobile}
+                      onCheckedChange={(checked) => setFormData({ ...formData, show_on_mobile: !!checked })}
+                    />
+                    <Label htmlFor="show_mobile" className="flex items-center gap-1 text-sm cursor-pointer">
+                      <Smartphone className="h-4 w-4" /> Mobile
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="show_kids"
+                      checked={formData.show_on_kids}
+                      onCheckedChange={(checked) => setFormData({ ...formData, show_on_kids: !!checked })}
+                    />
+                    <Label htmlFor="show_kids" className="flex items-center gap-1 text-sm cursor-pointer">
+                      <Baby className="h-4 w-4" /> Kids
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-3">
                 <Switch
                   checked={formData.is_active}
