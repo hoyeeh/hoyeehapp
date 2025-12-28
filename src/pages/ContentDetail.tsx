@@ -248,7 +248,7 @@ const ContentDetail = () => {
   const episodeIdFromUrl = searchParams.get('episode') || searchParams.get('episodeId');
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: allContent = [] } = useContent();
+  const { data: allContent = [], isLoading: contentLoading } = useContent();
   const { data: watchlistIds = [] } = useWatchlist();
   const { data: profile } = useProfile();
   const addToWatchlist = useAddToWatchlist();
@@ -744,7 +744,7 @@ const ContentDetail = () => {
     );
   }
 
-  if (loading) {
+  if (loading || contentLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <LoadingSpinner size="lg" text="Loading content..." />
