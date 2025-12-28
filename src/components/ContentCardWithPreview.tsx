@@ -1,5 +1,5 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Info, Lock, Volume2, VolumeX, Download, Share2, ShoppingBag } from "lucide-react";
+import { Play, Plus, Check, Info, Lock, Volume2, VolumeX, Download, Share2, ShoppingBag, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -23,6 +23,8 @@ interface ContentCardWithPreviewProps {
   isPaidContent?: boolean; // Indicates this is creator-paid content
   paidPrice?: number; // Price for paid content
   paidCurrency?: string; // Currency for paid content
+  hasPurchased?: boolean; // Whether user has purchased this content
+  isCheckingPurchase?: boolean; // Whether purchase check is in progress
 }
 
 export const ContentCardWithPreview = ({
@@ -40,6 +42,8 @@ export const ContentCardWithPreview = ({
   isPaidContent = false,
   paidPrice,
   paidCurrency = 'XAF',
+  hasPurchased = false,
+  isCheckingPurchase = false,
 }: ContentCardWithPreviewProps) => {
   // Check if content was added within the specified days
   const isJustAdded = useMemo(() => {
@@ -259,23 +263,34 @@ export const ContentCardWithPreview = ({
           {/* Badges - Top Right */}
           <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
             <ContentRatingBadge rating={content.contentRating} size="sm" />
-            {/* Paid Content Badge */}
-            {isPaidContent && (
+            {/* Paid Content Badge - Show Paid Access ribbon if purchased, price if not */}
+            {isPaidContent && hasPurchased && (
+              <div className="bg-green-500 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-lg">
+                <Check className="h-3 w-3 text-white" />
+                <span className="text-[10px] font-bold text-white">PAID ACCESS</span>
+              </div>
+            )}
+            {isPaidContent && !hasPurchased && paidPrice !== undefined && (
               <div className="bg-amber-500 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-lg">
                 <ShoppingBag className="h-3 w-3 text-white" />
-                {paidPrice !== undefined && (
-                  <span className="text-[10px] font-bold text-white">
-                    {new Intl.NumberFormat('fr-FR', {
-                      style: 'currency',
-                      currency: paidCurrency,
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(paidPrice)}
-                  </span>
-                )}
+                <span className="text-[10px] font-bold text-white">
+                  {new Intl.NumberFormat('fr-FR', {
+                    style: 'currency',
+                    currency: paidCurrency,
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  }).format(paidPrice)}
+                </span>
               </div>
             )}
           </div>
+
+          {/* Green Paid Access Top Ribbon for purchased content */}
+          {isPaidContent && hasPurchased && (
+            <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] font-bold text-center py-1 shadow-md">
+              ✓ PAID ACCESS
+            </div>
+          )}
 
           {/* Top 10 Badge - Bottom Right */}
           {showTop10Badge && (
@@ -309,6 +324,25 @@ export const ContentCardWithPreview = ({
           {isRestricted && (
             <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
               <Lock className="h-8 w-8 text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Locked Overlay for unpurchased paid content */}
+          {isPaidContent && !hasPurchased && !isRestricted && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col items-center justify-end pb-4 pointer-events-none">
+              <div className="bg-amber-500/90 backdrop-blur-sm rounded-full p-2 mb-2">
+                <Lock className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-white text-xs font-medium px-2 py-1 bg-black/50 rounded-full">
+                Purchase to unlock
+              </span>
+            </div>
+          )}
+
+          {/* Loading overlay when checking purchase */}
+          {isCheckingPurchase && (
+            <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           )}
 

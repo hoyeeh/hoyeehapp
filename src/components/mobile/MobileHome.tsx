@@ -32,6 +32,7 @@ import { MobileAIRecommendations } from "./MobileAIRecommendations";
 import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { MobilePaidContentRow } from "./MobilePaidContentRow";
+import { MobilePurchasesShortcut } from "./MobilePurchasesShortcut";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -502,6 +503,11 @@ export function MobileHome() {
               onPlay={(c, progress, episodeId) => handlePlay(c, progress, episodeId)}
               onDetails={handleDetails}
             />
+          </FadeIn>
+
+          {/* My Purchases Shortcut */}
+          <FadeIn delay={60}>
+            <MobilePurchasesShortcut onDetails={handleDetails} />
           </FadeIn>
 
           {/* Recently Watched - Completed content for rewatching */}

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check, Bell, Settings, Crown, Users, Play, MessageSquare, Share2 } from "lucide-react";
+import { Loader2, ArrowLeft, Camera, User, CreditCard, Shield, Check, Bell, Settings, Crown, Users, Play, MessageSquare, Share2, ShoppingBag, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileProfile } from "@/components/mobile/MobileProfile";
 import { CreatorSection } from "@/components/creator/CreatorSection";
+import { useRestorePurchases } from "@/hooks/usePendingPurchaseVerification";
+import { useUserPurchases } from "@/hooks/usePaidContent";
 
 // Import centralized avatars
 import { AVATARS, isPresetAvatar } from "@/lib/avatars";
@@ -35,6 +37,77 @@ const COUNTRIES = [
   { code: 'GB', name: 'United Kingdom' },
   { code: 'FR', name: 'France' },
 ];
+
+// Purchases Card Component
+function PurchasesCard() {
+  const navigate = useNavigate();
+  const { restorePurchases } = useRestorePurchases();
+  const { data: purchases = [], isLoading } = useUserPurchases();
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    try {
+      const result = await restorePurchases();
+      if (result.restored > 0) {
+        toast.success(`${result.restored} purchase${result.restored > 1 ? 's' : ''} restored!`);
+      } else {
+        toast.info("All purchases are up to date");
+      }
+    } catch (error) {
+      toast.error("Failed to restore purchases");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  return (
+    <Card className="bg-card mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShoppingBag className="h-5 w-5" />
+          Purchases
+        </CardTitle>
+        <CardDescription>Manage your purchased content</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">
+              {isLoading ? "Loading..." : `${purchases.length} item${purchases.length !== 1 ? 's' : ''} purchased`}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Access your unlocked creator content
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/my-purchases")}
+          >
+            View All
+          </Button>
+        </div>
+        <Separator />
+        <Button 
+          variant="secondary" 
+          className="w-full gap-2"
+          onClick={handleRestore}
+          disabled={isRestoring}
+        >
+          {isRestoring ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          Restore Purchases
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          Use this if your purchased content isn't showing as unlocked
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -413,6 +486,9 @@ const Profile = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Purchases Section */}
+        <PurchasesCard />
 
         {/* Parental Controls */}
         <ParentalControls />
