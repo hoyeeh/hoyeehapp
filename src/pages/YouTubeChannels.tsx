@@ -103,6 +103,20 @@ export default function YouTubeChannels() {
         onPlayVideo={handlePlayVideo}
       />
 
+      {/* Browse All Channels Link */}
+      <div className="px-4 md:px-8 py-2 flex items-center justify-between">
+        <div />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate("/channels")}
+          className="gap-2"
+        >
+          Browse All Channels
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Channel Stories Selector */}
       <ChannelStorySelector
         channels={channels || []}
