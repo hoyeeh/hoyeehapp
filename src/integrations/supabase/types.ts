@@ -1794,6 +1794,9 @@ export type Database = {
           is_active: boolean
           max_items: number | null
           section_type: string
+          show_on_desktop: boolean
+          show_on_kids: boolean
+          show_on_mobile: boolean
           title: string
           updated_at: string
         }
@@ -1808,6 +1811,9 @@ export type Database = {
           is_active?: boolean
           max_items?: number | null
           section_type?: string
+          show_on_desktop?: boolean
+          show_on_kids?: boolean
+          show_on_mobile?: boolean
           title: string
           updated_at?: string
         }
@@ -1822,6 +1828,9 @@ export type Database = {
           is_active?: boolean
           max_items?: number | null
           section_type?: string
+          show_on_desktop?: boolean
+          show_on_kids?: boolean
+          show_on_mobile?: boolean
           title?: string
           updated_at?: string
         }

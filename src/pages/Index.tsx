@@ -98,7 +98,7 @@ const Index = () => {
     },
   });
 
-  // Fetch home sections config
+  // Fetch home sections config - filter for desktop display
   const { data: homeSections = [] } = useQuery({
     queryKey: ["home-sections-display"],
     queryFn: async () => {
@@ -106,6 +106,7 @@ const Index = () => {
         .from("home_sections")
         .select("*, genre:genre_id(name)")
         .eq("is_active", true)
+        .eq("show_on_desktop", true)
         .order("display_order");
       if (error) throw error;
       return data || [];
@@ -494,6 +495,17 @@ const Index = () => {
           filtered = content;
         }
         return filtered
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
+      case "free_content":
+        // Filter for non-premium (free) content
+        let freeFiltered = content.filter((c) => !c.isPremium);
+        if (section.content_type_filter === "movie") {
+          freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
+        } else if (section.content_type_filter === "series") {
+          freeFiltered = freeFiltered.filter((c) => c.contentType === "series");
+        }
+        return freeFiltered
           .sort((a, b) => (b.year || 0) - (a.year || 0))
           .slice(0, section.max_items || 15);
       default:

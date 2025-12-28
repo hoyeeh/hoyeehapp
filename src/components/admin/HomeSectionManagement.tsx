@@ -43,6 +43,10 @@ interface HomeSection {
   is_active: boolean;
   max_items: number | null;
   allow_duplicates: boolean;
+  content_type_filter?: string | null;
+  show_on_desktop: boolean;
+  show_on_mobile: boolean;
+  show_on_kids: boolean;
 }
 
 interface Genre {
@@ -64,6 +68,13 @@ const SECTION_TYPES = [
   { value: "my_list", label: "My List" },
   { value: "continue_watching", label: "Continue Watching" },
   { value: "leaving_soon", label: "Leaving Soon" },
+  { value: "free_content", label: "Free Content" },
+];
+
+const CONTENT_TYPE_OPTIONS = [
+  { value: "all", label: "All (Movies & TV Shows)" },
+  { value: "movie", label: "Movies Only" },
+  { value: "series", label: "TV Shows Only" },
 ];
 
 const CARD_STYLES = [
@@ -147,6 +158,10 @@ export const HomeSectionManagement = () => {
     max_items: 15,
     is_active: true,
     allow_duplicates: false,
+    content_type_filter: "all",
+    show_on_desktop: true,
+    show_on_mobile: true,
+    show_on_kids: false,
   });
 
   const sensors = useSensors(
@@ -203,6 +218,10 @@ export const HomeSectionManagement = () => {
         is_active: data.is_active,
         display_order: maxOrder + 1,
         allow_duplicates: data.allow_duplicates,
+        content_type_filter: data.content_type_filter === "all" ? null : data.content_type_filter,
+        show_on_desktop: data.show_on_desktop,
+        show_on_mobile: data.show_on_mobile,
+        show_on_kids: data.show_on_kids,
       });
       if (error) throw error;
     },
@@ -224,6 +243,10 @@ export const HomeSectionManagement = () => {
         max_items: data.max_items,
         is_active: data.is_active,
         allow_duplicates: data.allow_duplicates,
+        content_type_filter: data.content_type_filter === "all" ? null : data.content_type_filter,
+        show_on_desktop: data.show_on_desktop,
+        show_on_mobile: data.show_on_mobile,
+        show_on_kids: data.show_on_kids,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -315,6 +338,10 @@ export const HomeSectionManagement = () => {
       max_items: 15,
       is_active: true,
       allow_duplicates: false,
+      content_type_filter: "all",
+      show_on_desktop: true,
+      show_on_mobile: true,
+      show_on_kids: false,
     });
   };
 
@@ -328,6 +355,10 @@ export const HomeSectionManagement = () => {
       max_items: section.max_items || 15,
       is_active: section.is_active,
       allow_duplicates: section.allow_duplicates || false,
+      content_type_filter: section.content_type_filter || "all",
+      show_on_desktop: section.show_on_desktop ?? true,
+      show_on_mobile: section.show_on_mobile ?? true,
+      show_on_kids: section.show_on_kids ?? false,
     });
     setShowForm(true);
   };
@@ -436,6 +467,19 @@ export const HomeSectionManagement = () => {
                   </Select>
                 </div>
               )}
+              {formData.section_type === "free_content" && (
+                <div className="space-y-2">
+                  <Label>Content Type Filter</Label>
+                  <Select value={formData.content_type_filter} onValueChange={(v) => setFormData({ ...formData, content_type_filter: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CONTENT_TYPE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Max Items</Label>
                 <Input
@@ -446,6 +490,35 @@ export const HomeSectionManagement = () => {
                   max={50}
                 />
               </div>
+              
+              {/* Display Target Options */}
+              <div className="space-y-3 p-3 bg-secondary/20 rounded-lg">
+                <Label className="text-sm font-medium">Display On</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.show_on_desktop}
+                      onCheckedChange={(checked) => setFormData({ ...formData, show_on_desktop: checked })}
+                    />
+                    <Label className="text-sm">Desktop</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.show_on_mobile}
+                      onCheckedChange={(checked) => setFormData({ ...formData, show_on_mobile: checked })}
+                    />
+                    <Label className="text-sm">Mobile</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.show_on_kids}
+                      onCheckedChange={(checked) => setFormData({ ...formData, show_on_kids: checked })}
+                    />
+                    <Label className="text-sm">Kids</Label>
+                  </div>
+                </div>
+              </div>
+              
               <div className="flex items-center gap-3">
                 <Switch
                   checked={formData.is_active}
