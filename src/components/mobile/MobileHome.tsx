@@ -51,6 +51,7 @@ export function MobileHome() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [scrollY, setScrollY] = useState(0);
   const [purchaseModalContent, setPurchaseModalContent] = useState<any>(null);
+  const [checkingPaidContentId, setCheckingPaidContentId] = useState<string | null>(null);
 
   // Track scroll for header transparency
   useEffect(() => {
@@ -387,6 +388,9 @@ export function MobileHome() {
   };
 
   const handleDetails = async (item: Content) => {
+    // Show loading indicator
+    setCheckingPaidContentId(item.id);
+    
     // Check if this is paid creator content that requires purchase first
     try {
       const { data: paidContent } = await supabase
@@ -425,6 +429,8 @@ export function MobileHome() {
       // If not paid content or is_free, show content detail
     } catch (error) {
       console.error('Error checking paid content:', error);
+    } finally {
+      setCheckingPaidContentId(null);
     }
     
     setSelectedContent(item);
