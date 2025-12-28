@@ -167,9 +167,6 @@ export function MobileAIRecommendations({ onDetails }: MobileAIRecommendationsPr
               
               <div className="mt-1.5">
                 <h3 className="font-medium text-xs truncate">{content.title}</h3>
-                <p className="text-[10px] text-muted-foreground line-clamp-1">
-                  {reason}
-                </p>
               </div>
             </div>
           ))}
