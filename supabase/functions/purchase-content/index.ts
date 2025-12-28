@@ -33,27 +33,17 @@ serve(async (req) => {
     const flutterwaveSecretKey = Deno.env.get('FLUTTERWAVE_SECRET_KEY')!;
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const authHeader = req.headers.get('Authorization');
     
-    // Get user from auth header
-    const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } }
-    });
-    
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Get user from auth header (optional for verify action)
+    let user: { id: string; email?: string } | null = null;
+    if (authHeader) {
+      const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user: authUser } } = await userClient.auth.getUser();
+      user = authUser;
     }
 
     // Parse and validate request body
@@ -93,7 +83,18 @@ serve(async (req) => {
       );
     }
 
+    // Actions that require authentication
+    if ((action === 'initialize' || action === 'check') && !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'initialize') {
+      // User is guaranteed non-null here due to the check above
+      const authenticatedUser = user!;
+      
       // Get paid content details
       const { data: paidContent, error: contentError } = await supabase
         .from('paid_content')
@@ -110,7 +111,7 @@ serve(async (req) => {
       const { data: existingPurchase } = await supabase
         .from('content_purchases')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', authenticatedUser.id)
         .eq('content_id', contentId)
         .eq('status', 'completed')
         .maybeSingle();
@@ -140,11 +141,11 @@ serve(async (req) => {
       const { data: userProfile } = await supabase
         .from('profiles')
         .select('display_name')
-        .eq('id', user.id)
+        .eq('id', authenticatedUser.id)
         .single();
 
       // Generate transaction reference
-      const transactionRef = `purchase_${contentId}_${user.id}_${Date.now()}`;
+      const transactionRef = `purchase_${contentId}_${authenticatedUser.id}_${Date.now()}`;
 
       // Route payment based on selected method
       if (paymentMethod === 'card' && stripeSecretKey) {
@@ -167,7 +168,7 @@ serve(async (req) => {
 
         // Create Stripe Checkout Session
         const session = await stripe.checkout.sessions.create({
-          customer_email: user.email || undefined,
+          customer_email: authenticatedUser.email || undefined,
           line_items: [
             {
               price_data: {
@@ -186,7 +187,7 @@ serve(async (req) => {
           cancel_url: `${req.headers.get('origin')}/creator-store?payment=cancelled`,
           metadata: {
             tx_ref: transactionRef,
-            user_id: user.id,
+            user_id: authenticatedUser.id,
             content_id: contentId as string,
             paid_content_id: paidContent.id,
             creator_id: paidContent.creator_id,
@@ -201,7 +202,7 @@ serve(async (req) => {
         await supabase
           .from('content_purchases')
           .insert({
-            user_id: user.id,
+            user_id: authenticatedUser.id,
             content_id: contentId,
             paid_content_id: paidContent.id,
             creator_id: paidContent.creator_id,
@@ -234,11 +235,11 @@ serve(async (req) => {
           redirect_url: `${origin}/purchase-return?content_id=${contentId}`,
           payment_options: paymentOptions,
           customer: {
-            email: user.email,
-            name: userProfile?.display_name || user.email
+            email: authenticatedUser.email,
+            name: userProfile?.display_name || authenticatedUser.email
           },
           meta: {
-            user_id: user.id,
+            user_id: authenticatedUser.id,
             content_id: contentId,
             paid_content_id: paidContent.id,
             creator_id: paidContent.creator_id,
@@ -271,7 +272,7 @@ serve(async (req) => {
         await supabase
           .from('content_purchases')
           .insert({
-            user_id: user.id,
+            user_id: authenticatedUser.id,
             content_id: contentId,
             paid_content_id: paidContent.id,
             creator_id: paidContent.creator_id,
@@ -402,11 +403,14 @@ serve(async (req) => {
     }
 
     if (action === 'check') {
+      // User is guaranteed non-null here due to the check above
+      const authenticatedUser = user!;
+      
       // Check if user has purchased content
       const { data: purchase } = await supabase
         .from('content_purchases')
         .select('id, status')
-        .eq('user_id', user.id)
+        .eq('user_id', authenticatedUser.id)
         .eq('content_id', contentId)
         .eq('status', 'completed')
         .maybeSingle();

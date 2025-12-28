@@ -1,23 +1,45 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useVerifyPurchase } from "@/hooks/usePaidContent";
 import { CheckCircle, XCircle, Loader2, Play, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PurchaseReturn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const verifyPurchase = useVerifyPurchase();
 
   const [status, setStatus] = useState<'verifying' | 'success' | 'failed' | 'cancelled'>('verifying');
   const [showConfetti, setShowConfetti] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const txRef = searchParams.get('tx_ref');
   const contentId = searchParams.get('content_id');
   const paymentStatus = searchParams.get('status');
+
+  const verifyPayment = useCallback(async (txRefToVerify: string): Promise<boolean> => {
+    try {
+      // Call edge function directly - it now allows verification without auth
+      const { data, error } = await supabase.functions.invoke('purchase-content', {
+        body: {
+          action: 'verify',
+          txRef: txRefToVerify
+        }
+      });
+
+      if (error) {
+        console.error('Verification error:', error);
+        return false;
+      }
+
+      return data?.success === true;
+    } catch (error) {
+      console.error('Verification failed:', error);
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
     const verify = async () => {
@@ -29,8 +51,22 @@ export default function PurchaseReturn() {
 
       // If we have a tx_ref, verify the payment
       if (txRef) {
-        try {
-          await verifyPurchase.mutateAsync(txRef);
+        // Retry logic - payment might take a moment to process
+        const maxRetries = 3;
+        let verified = false;
+
+        for (let i = 0; i <= maxRetries; i++) {
+          verified = await verifyPayment(txRef);
+          if (verified) break;
+          
+          // Wait before retrying (increasing delay)
+          if (i < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, (i + 1) * 2000));
+            setRetryCount(i + 1);
+          }
+        }
+
+        if (verified) {
           setStatus('success');
           setShowConfetti(true);
           
@@ -47,8 +83,7 @@ export default function PurchaseReturn() {
               navigate('/creator-store', { replace: true });
             }
           }, 3000);
-        } catch (error) {
-          console.error('Verification failed:', error);
+        } else {
           setStatus('failed');
         }
       } else {
@@ -62,7 +97,7 @@ export default function PurchaseReturn() {
     };
 
     verify();
-  }, [txRef, paymentStatus, contentId]);
+  }, [txRef, paymentStatus, contentId, verifyPayment, queryClient, navigate]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
