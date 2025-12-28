@@ -114,9 +114,33 @@ export function CreatorContentUploadForm({ onSuccess }: CreatorContentUploadForm
     }
   };
 
+  // Trigger automatic French subtitle generation
+  const triggerSubtitleGeneration = async (contentId: string, videoUrl: string) => {
+    try {
+      console.log('Triggering automatic French subtitle generation for:', contentId);
+      await supabase.functions.invoke('generate-subtitles', {
+        body: {
+          contentId,
+          audioUrl: videoUrl,
+          languageCode: 'fra', // French by default
+        },
+      });
+      console.log('Subtitle generation started successfully');
+    } catch (error) {
+      console.error('Failed to trigger subtitle generation:', error);
+      // Don't block the upload on subtitle generation failure
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await submitContent.mutateAsync(formData);
+    const result = await submitContent.mutateAsync(formData);
+    
+    // Trigger automatic French subtitle generation if video was uploaded
+    if (result?.id && formData.video_url) {
+      triggerSubtitleGeneration(result.id, formData.video_url);
+    }
+    
     setOpen(false);
     onSuccess?.();
     
