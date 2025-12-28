@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCreatorsWithContent } from "@/hooks/usePaidContent";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CreatorAvatarRowProps {
@@ -72,14 +72,14 @@ export function CreatorAvatarRow({ selectedCreator, onSelectCreator }: CreatorAv
         >
           <div
             className={cn(
-              "w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-2xl transition-all",
+              "w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all",
               "border-2",
               selectedCreator === '' 
                 ? "border-primary bg-primary/20 ring-2 ring-primary ring-offset-2 ring-offset-background" 
                 : "border-border bg-card hover:border-primary/50"
             )}
           >
-            🎬
+            <Film className="h-6 w-6 md:h-7 md:w-7 text-primary" />
           </div>
           <span className={cn(
             "text-xs md:text-sm font-medium text-center max-w-[70px] truncate",
@@ -92,8 +92,7 @@ export function CreatorAvatarRow({ selectedCreator, onSelectCreator }: CreatorAv
         {creators.map((creator: any) => (
           <button
             key={creator.id}
-            onClick={() => onSelectCreator(creator.id)}
-            onDoubleClick={() => navigate(`/creator/${creator.id}`)}
+            onClick={() => navigate(`/creator/${creator.id}`)}
             className="flex flex-col items-center gap-2 flex-shrink-0"
           >
             <div
