@@ -139,6 +139,24 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
+        {/* Status Header Banner */}
+        {checkingPurchase ? (
+          <div className="bg-secondary/50 px-4 py-3 flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Checking purchase status...</span>
+          </div>
+        ) : hasPurchased ? (
+          <div className="bg-green-500/20 border-b border-green-500/30 px-4 py-3 flex items-center justify-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            <span className="text-sm font-semibold text-green-500">Paid Access</span>
+          </div>
+        ) : (
+          <div className="bg-amber-500/20 border-b border-amber-500/30 px-4 py-3 flex items-center justify-center gap-2">
+            <ShoppingBag className="h-5 w-5 text-amber-500" />
+            <span className="text-sm font-semibold text-amber-500">Purchase Required</span>
+          </div>
+        )}
+
         {/* Preview Video or Image */}
         <div className="relative aspect-video">
           {isPreviewPlaying && content.video_url ? (
@@ -174,15 +192,27 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
               
-              {/* Price Badge */}
-              <div className="absolute top-4 right-4">
-                <Badge className="bg-primary text-primary-foreground text-lg px-4 py-2 font-bold">
-                  {formatPrice(paidContent.price, paidContent.currency)}
-                </Badge>
-              </div>
+              {/* Price Badge - Only show if not purchased */}
+              {!hasPurchased && !checkingPurchase && (
+                <div className="absolute top-4 right-4">
+                  <Badge className="bg-primary text-primary-foreground text-lg px-4 py-2 font-bold">
+                    {formatPrice(paidContent.price, paidContent.currency)}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Owned Badge - Show if purchased */}
+              {hasPurchased && (
+                <div className="absolute top-4 right-4">
+                  <Badge className="bg-green-500 text-white text-lg px-4 py-2 font-bold gap-2">
+                    <CheckCircle className="h-5 w-5" />
+                    Owned
+                  </Badge>
+                </div>
+              )}
 
               {/* Play Preview Button */}
-              {content.video_url && (
+              {content.video_url && !hasPurchased && (
                 <Button
                   variant="secondary"
                   size="lg"
@@ -305,11 +335,11 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
             </div>
           ) : hasPurchased ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-green-500 justify-center">
+              <div className="flex items-center gap-2 text-green-500 justify-center p-3 bg-green-500/10 rounded-lg">
                 <CheckCircle className="h-5 w-5" />
-                <span className="font-medium">You own this content</span>
+                <span className="font-medium">You have Paid Access to this content</span>
               </div>
-              <Button onClick={handleWatch} className="w-full gap-2" size="lg">
+              <Button onClick={handleWatch} className="w-full gap-2 bg-green-600 hover:bg-green-700" size="lg">
                 <Play className="h-5 w-5" />
                 Watch Now
               </Button>
@@ -322,7 +352,7 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
               <Button 
                 onClick={handlePurchase} 
                 disabled={isPurchasing}
-                className="flex-1 gap-2"
+                className="flex-1 gap-2 bg-amber-500 hover:bg-amber-600 text-white"
                 size="lg"
               >
                 {isPurchasing ? (

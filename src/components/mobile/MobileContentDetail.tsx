@@ -16,6 +16,7 @@ import { useProfileContext } from "@/contexts/ProfileContext";
 import { MobileCastSheet } from "./MobileCastSheet";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
 import { Episode } from "@/hooks/useSeasons";
+import { PurchaseModal } from "@/components/creator/PurchaseModal";
 
 interface MobileContentDetailProps {
   content: Content;
@@ -47,6 +48,9 @@ export function MobileContentDetail({
   
   // Cast sheet state
   const [showCastSheet, setShowCastSheet] = useState(false);
+  
+  // Purchase modal state for paid content
+  const [purchaseModalContent, setPurchaseModalContent] = useState<any>(null);
   
   // Preview video state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -244,6 +248,31 @@ export function MobileContentDetail({
       const rating = (content as any).contentRating;
       if (rating && !['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G'].includes(rating)) {
         toast.error("This content is not available for Kids profiles");
+        return;
+      }
+    }
+    
+    // Check if this is paid creator content
+    const { data: paidContent } = await supabase
+      .from('paid_content')
+      .select(`*, content(*), creator_profiles(*)`)
+      .eq('content_id', content.id)
+      .eq('is_active', true)
+      .maybeSingle();
+    
+    if (paidContent && !paidContent.is_free) {
+      // Check if user has purchased this content
+      const { data: purchase } = await supabase
+        .from('content_purchases')
+        .select('id')
+        .eq('user_id', user?.id || '')
+        .eq('content_id', content.id)
+        .eq('status', 'completed')
+        .maybeSingle();
+      
+      if (!purchase) {
+        // Show purchase modal instead of playing
+        setPurchaseModalContent(paidContent);
         return;
       }
     }
@@ -833,6 +862,13 @@ export function MobileContentDetail({
         thumbnail={content.thumbnailUrl}
         currentTime={0}
         duration={content.duration || 0}
+      />
+
+      {/* Purchase Modal for Paid Content */}
+      <PurchaseModal
+        open={!!purchaseModalContent}
+        onClose={() => setPurchaseModalContent(null)}
+        paidContent={purchaseModalContent}
       />
     </motion.div>
   );
