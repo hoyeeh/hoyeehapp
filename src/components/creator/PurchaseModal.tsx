@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHasPurchasedContent } from "@/hooks/useCreator";
@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Play, ShoppingBag, Loader2, CreditCard, Smartphone, Clock, Star, User } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { CheckCircle, Play, ShoppingBag, Loader2, CreditCard, Smartphone, Clock, Star, User, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface PurchaseModalProps {
@@ -26,6 +28,11 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
   const initializePurchase = useInitializePurchase();
   
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'mobile_money' | 'card'>('mobile_money');
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const formatPrice = (price: number, currency: string) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -34,6 +41,68 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
       minimumFractionDigits: 0,
     }).format(price);
   };
+
+  // Calculate preview start time: 10 mins for long videos, 1 min for short videos
+  const getPreviewStartTime = (duration: number | null | undefined): number => {
+    if (!duration) return 0;
+    const durationInMinutes = duration / 60;
+    // For videos >= 10 minutes, start at 10 minutes mark
+    // For shorter videos, start at 1 minute mark
+    if (durationInMinutes >= 10) {
+      return 10 * 60; // 10 minutes in seconds
+    } else if (durationInMinutes >= 1) {
+      return 60; // 1 minute in seconds
+    }
+    return 0;
+  };
+
+  const handlePreviewPlay = () => {
+    if (!content?.video_url) {
+      toast.error("No video available for preview");
+      return;
+    }
+    setIsPreviewPlaying(true);
+  };
+
+  const handlePreviewEnd = () => {
+    setIsPreviewPlaying(false);
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+    }
+  };
+
+  useEffect(() => {
+    if (isPreviewPlaying && videoRef.current && content?.video_url) {
+      const video = videoRef.current;
+      const startTime = getPreviewStartTime(content.duration);
+      
+      video.currentTime = startTime;
+      video.play().catch(console.error);
+      
+      // Stop after 10 seconds
+      previewTimeoutRef.current = setTimeout(() => {
+        video.pause();
+        setIsPreviewPlaying(false);
+        toast.info("Preview ended. Purchase to watch the full content!");
+      }, 10000);
+    }
+
+    return () => {
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    };
+  }, [isPreviewPlaying, content?.video_url, content?.duration]);
+
+  // Reset preview when modal closes
+  useEffect(() => {
+    if (!open) {
+      setIsPreviewPlaying(false);
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    }
+  }, [open]);
 
   const handlePurchase = async () => {
     if (!user) {
@@ -44,9 +113,11 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
 
     setIsPurchasing(true);
     try {
-      const result = await initializePurchase.mutateAsync(content.id);
+      const result = await initializePurchase.mutateAsync({
+        contentId: content.id,
+        paymentMethod,
+      });
       if (result.paymentLink) {
-        // Open payment in new tab
         window.open(result.paymentLink, '_blank');
         toast.info("Complete your payment in the new tab");
         onClose();
@@ -67,33 +138,62 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
-        {/* Preview Image/Video */}
+      <DialogContent className="max-w-2xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
+        {/* Preview Video or Image */}
         <div className="relative aspect-video">
-          <img
-            src={content.thumbnail_url || '/placeholder.svg'}
-            alt={content.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-          
-          {/* Price Badge */}
-          <div className="absolute top-4 right-4">
-            <Badge className="bg-primary text-primary-foreground text-lg px-4 py-2 font-bold">
-              {formatPrice(paidContent.price, paidContent.currency)}
-            </Badge>
-          </div>
+          {isPreviewPlaying && content.video_url ? (
+            <div className="relative w-full h-full bg-black">
+              <video
+                ref={videoRef}
+                src={content.video_url}
+                className="w-full h-full object-contain"
+                onEnded={handlePreviewEnd}
+                onError={() => {
+                  toast.error("Error playing preview");
+                  setIsPreviewPlaying(false);
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-4 right-4 bg-background/80"
+                onClick={handlePreviewEnd}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <div className="absolute bottom-4 left-4 bg-background/80 px-3 py-1 rounded-full text-sm">
+                Preview: 10 seconds
+              </div>
+            </div>
+          ) : (
+            <>
+              <img
+                src={content.thumbnail_url || '/placeholder.svg'}
+                alt={content.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+              
+              {/* Price Badge */}
+              <div className="absolute top-4 right-4">
+                <Badge className="bg-primary text-primary-foreground text-lg px-4 py-2 font-bold">
+                  {formatPrice(paidContent.price, paidContent.currency)}
+                </Badge>
+              </div>
 
-          {/* Play Preview Button */}
-          {content.video_url && (
-            <Button
-              variant="secondary"
-              size="lg"
-              className="absolute bottom-4 left-4 gap-2"
-            >
-              <Play className="h-5 w-5" />
-              Preview
-            </Button>
+              {/* Play Preview Button */}
+              {content.video_url && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="absolute bottom-4 left-4 gap-2"
+                  onClick={handlePreviewPlay}
+                >
+                  <Play className="h-5 w-5" />
+                  Preview
+                </Button>
+              )}
+            </>
           )}
         </div>
 
@@ -155,20 +255,48 @@ export function PurchaseModal({ open, onClose, paidContent }: PurchaseModalProps
 
           <Separator />
 
-          {/* Payment Methods Info */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Accepted Payment Methods</p>
-            <div className="flex items-center gap-4 text-muted-foreground">
-              <div className="flex items-center gap-1 text-sm">
-                <Smartphone className="h-4 w-4" />
-                Mobile Money
-              </div>
-              <div className="flex items-center gap-1 text-sm">
-                <CreditCard className="h-4 w-4" />
-                Card Payment
-              </div>
+          {/* Payment Method Selection */}
+          {!hasPurchased && !checkingPurchase && (
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Select Payment Method</p>
+              <RadioGroup
+                value={paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as 'mobile_money' | 'card')}
+                className="grid grid-cols-2 gap-3"
+              >
+                <div className="relative">
+                  <RadioGroupItem
+                    value="mobile_money"
+                    id="mobile_money"
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor="mobile_money"
+                    className="flex flex-col items-center gap-2 p-4 border-2 rounded-lg cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 hover:bg-secondary/50"
+                  >
+                    <Smartphone className="h-6 w-6" />
+                    <span className="font-medium">Mobile Money</span>
+                    <span className="text-xs text-muted-foreground">MTN, Orange, etc.</span>
+                  </Label>
+                </div>
+                <div className="relative">
+                  <RadioGroupItem
+                    value="card"
+                    id="card"
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor="card"
+                    className="flex flex-col items-center gap-2 p-4 border-2 rounded-lg cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 hover:bg-secondary/50"
+                  >
+                    <CreditCard className="h-6 w-6" />
+                    <span className="font-medium">Card Payment</span>
+                    <span className="text-xs text-muted-foreground">Visa, Mastercard</span>
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
-          </div>
+          )}
 
           {/* Action Buttons */}
           {checkingPurchase ? (

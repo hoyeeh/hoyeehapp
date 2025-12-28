@@ -66,7 +66,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, contentId, txRef } = body as Record<string, unknown>;
+    const { action, contentId, txRef, paymentMethod } = body as Record<string, unknown>;
 
     // Validate action
     if (!isValidAction(action)) {
@@ -145,12 +145,18 @@ serve(async (req) => {
       // Generate transaction reference
       const transactionRef = `purchase_${contentId}_${user.id}_${Date.now()}`;
 
+      // Determine payment options based on selected method
+      const paymentOptions = paymentMethod === 'card' 
+        ? 'card' 
+        : 'mobilemoney,mobilemoneyghana,mobilemoneyuganda,mobilemoneyzambia,mobilemoneyfranco';
+
       // Initialize Flutterwave payment
       const flutterwavePayload = {
         tx_ref: transactionRef,
         amount: paidContent.price,
         currency: paidContent.currency,
         redirect_url: `${supabaseUrl}/functions/v1/purchase-content-callback`,
+        payment_options: paymentOptions,
         customer: {
           email: user.email,
           name: userProfile?.display_name || user.email

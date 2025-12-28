@@ -134,11 +134,12 @@ export const useInitializePurchase = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (contentId: string) => {
+    mutationFn: async ({ contentId, paymentMethod = 'mobile_money' }: { contentId: string; paymentMethod?: 'mobile_money' | 'card' }) => {
       const { data, error } = await supabase.functions.invoke('purchase-content', {
         body: {
           action: 'initialize',
-          contentId
+          contentId,
+          paymentMethod
         }
       });
       
