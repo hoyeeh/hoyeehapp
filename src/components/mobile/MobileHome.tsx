@@ -10,6 +10,7 @@ import { subDays } from "date-fns";
 import { toast } from "sonner";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
+import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 
 // Storage key for persistent random banner
 const HERO_BANNER_KEY = "hoyeeh-featured-banner";
@@ -46,6 +47,13 @@ export function MobileHome() {
   const removeFromWatchlist = useRemoveFromWatchlist();
   const { canAccessPremium, isLoading: subscriptionLoading } = useSubscriptionAccess();
   const mobilePlayer = useMobileVideoPlayer();
+
+  // Get TV show content IDs for new episode/season badges
+  const tvShowIds = useMemo(() => 
+    content.filter(c => c.contentType === 'series').map(c => c.id),
+    [content]
+  );
+  const { data: tvShowUpdates = {} } = useLatestTVShowUpdates(tvShowIds);
 
   const [showSearch, setShowSearch] = useState(false);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
@@ -538,6 +546,7 @@ export function MobileHome() {
                 onDetails={handleDetails}
                 showSeeAll
                 onSeeAll={() => navigate("/genres")}
+                tvShowUpdates={tvShowUpdates}
               />
             </FadeIn>
           ) : (
@@ -570,6 +579,7 @@ export function MobileHome() {
                       onDetails={handleDetails}
                       showSeeAll
                       onSeeAll={() => navigate("/my-list")}
+                      tvShowUpdates={tvShowUpdates}
                     />
                   </FadeIn>
                 ) : null;
@@ -587,6 +597,7 @@ export function MobileHome() {
                       onSeeAll={() => navigate("/genres")}
                       showNewBadge={true}
                       isLoading={isLoadingNewReleases}
+                      tvShowUpdates={tvShowUpdates}
                     />
                   </FadeIn>
                 ) : null;
@@ -629,6 +640,7 @@ export function MobileHome() {
                     onDetails={handleDetails}
                     showSeeAll
                     onSeeAll={() => navigate("/genres")}
+                    tvShowUpdates={tvShowUpdates}
                   />
                 </FadeIn>
               );
@@ -647,6 +659,7 @@ export function MobileHome() {
                   onSeeAll={() => navigate("/genres")}
                   showNewBadge={true}
                   isLoading={isLoadingNewReleases}
+                  tvShowUpdates={tvShowUpdates}
                 />
               </FadeIn>
 
@@ -668,6 +681,7 @@ export function MobileHome() {
                   onDetails={handleDetails}
                   variant="landscape"
                   isLoading={isLoadingTrending}
+                  tvShowUpdates={tvShowUpdates}
                 />
               </FadeIn>
             </>

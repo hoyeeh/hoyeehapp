@@ -3,6 +3,7 @@ import { Content } from "@/types";
 import { MobileContentCard } from "./MobileContentCard";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TVShowUpdatesMap } from "@/hooks/useLatestTVShowUpdates";
 
 interface MobileContentRowProps {
   title: string;
@@ -16,6 +17,7 @@ interface MobileContentRowProps {
   showNewBadge?: boolean; // Pass through to cards for "NEW"/"JUST ADDED" badges
   progressMap?: Record<string, number>;
   isLoading?: boolean;
+  tvShowUpdates?: TVShowUpdatesMap; // Map of content IDs to new episode/season flags
 }
 
 // Skeleton components for different variants
@@ -59,6 +61,7 @@ export function MobileContentRow({
   showNewBadge = false,
   progressMap,
   isLoading = false,
+  tvShowUpdates = {},
 }: MobileContentRowProps) {
   // Show skeleton when loading
   if (isLoading) {
@@ -120,6 +123,8 @@ export function MobileContentRow({
               rank={showRank ? index + 1 : undefined}
               progress={progressMap?.[item.id]}
               showNewBadge={showNewBadge}
+              hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+              hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
             />
           </div>
         ))}

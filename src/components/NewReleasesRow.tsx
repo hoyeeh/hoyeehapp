@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { subDays } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 
 interface NewReleasesRowProps {
   onPlay: (content: Content) => void;
@@ -74,6 +75,13 @@ export const NewReleasesRow = ({
       createdAt: item.created_at,
     }));
   }, [newReleases]);
+
+  // Get TV show content IDs for new episode/season badges
+  const tvShowIds = useMemo(() => 
+    content.filter(c => c.contentType === 'series').map(c => c.id),
+    [content]
+  );
+  const { data: tvShowUpdates = {} } = useLatestTVShowUpdates(tvShowIds);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -189,6 +197,8 @@ export const NewReleasesRow = ({
                 cardStyle={index === 0 ? "backdrop" : "poster"}
                 showJustAddedBadge={true}
                 justAddedDays={14}
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />
             </div>
           ))}

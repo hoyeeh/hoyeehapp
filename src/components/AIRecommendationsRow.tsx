@@ -169,21 +169,12 @@ export const AIRecommendationsRow = ({
                   <span className="text-[10px] font-semibold">HY PICKS</span>
                 </div>
 
-                {content.isPremium && (
-                  <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                    PREMIUM
-                  </div>
-                )}
-
                 {/* Hover overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               
               <div className="mt-2">
                 <h3 className="font-medium text-sm truncate">{content.title}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                  {reason}
-                </p>
               </div>
             </div>
           ))}

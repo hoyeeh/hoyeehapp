@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Shuffle } from "lucide-react";
 import { useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-
+import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 interface ContentRowProps {
   title: string;
   content: Content[];
@@ -37,6 +37,13 @@ export const ContentRow = ({
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [isShuffled, setIsShuffled] = useState(false);
   const [shuffleKey, setShuffleKey] = useState(0);
+
+  // Get TV show content IDs for new episode/season badges
+  const tvShowIds = useMemo(() => 
+    content.filter(c => c.contentType === 'series').map(c => c.id),
+    [content]
+  );
+  const { data: tvShowUpdates = {} } = useLatestTVShowUpdates(tvShowIds);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -176,6 +183,8 @@ export const ContentRow = ({
                 onDetails={onDetails}
                 isInList={userList.includes(item.id)}
                 cardStyle={cardStyle}
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />
             </div>
           ))}
