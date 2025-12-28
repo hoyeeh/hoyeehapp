@@ -570,6 +570,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "content_purchases_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "content_purchases_paid_content_id_fkey"
             columns: ["paid_content_id"]
             isOneToOne: false
@@ -624,6 +631,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_analytics_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -746,6 +760,13 @@ export type Database = {
             referencedRelation: "creator_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "creator_content_submissions_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       creator_followers: {
@@ -773,6 +794,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_followers_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -841,6 +869,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_imported_content_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
             referencedColumns: ["id"]
           },
           {
@@ -934,6 +969,13 @@ export type Database = {
             referencedRelation: "creator_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "creator_kyc_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: true
+            referencedRelation: "creator_profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       creator_payouts: {
@@ -988,6 +1030,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_payouts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1100,6 +1149,13 @@ export type Database = {
             referencedRelation: "creator_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "creator_reports_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       creator_social_accounts: {
@@ -1153,6 +1209,13 @@ export type Database = {
             referencedRelation: "creator_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "creator_social_accounts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       creator_tips: {
@@ -1198,6 +1261,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_tips_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1615,6 +1685,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "featured_creators_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2076,6 +2153,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kyc_access_logs_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "kyc_access_logs_kyc_id_fkey"
             columns: ["kyc_id"]
             isOneToOne: false
@@ -2252,6 +2336,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_content_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3520,6 +3611,48 @@ export type Database = {
       }
     }
     Views: {
+      creator_profiles_public: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          cover_url: string | null
+          created_at: string | null
+          display_name: string | null
+          follower_count: number | null
+          id: string | null
+          is_active: boolean | null
+          is_verified: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          follower_count?: number | null
+          id?: string | null
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          follower_count?: number | null
+          id?: string | null
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles_safe: {
         Row: {
           avatar_url: string | null
