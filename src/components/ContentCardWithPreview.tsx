@@ -1,5 +1,5 @@
 import { Content } from "@/types";
-import { Play, Plus, Check, Info, Lock, Volume2, VolumeX, Download, Share2 } from "lucide-react";
+import { Play, Plus, Check, Info, Lock, Volume2, VolumeX, Download, Share2, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -20,6 +20,9 @@ interface ContentCardWithPreviewProps {
   showTop10Badge?: boolean;
   showJustAddedBadge?: boolean;
   justAddedDays?: number; // Number of days to show "Just Added" badge (default: 2)
+  isPaidContent?: boolean; // Indicates this is creator-paid content
+  paidPrice?: number; // Price for paid content
+  paidCurrency?: string; // Currency for paid content
 }
 
 export const ContentCardWithPreview = ({
@@ -34,6 +37,9 @@ export const ContentCardWithPreview = ({
   showTop10Badge = false,
   showJustAddedBadge = false,
   justAddedDays = 2, // Default 2 days for most sections
+  isPaidContent = false,
+  paidPrice,
+  paidCurrency = 'XAF',
 }: ContentCardWithPreviewProps) => {
   // Check if content was added within the specified days
   const isJustAdded = useMemo(() => {
@@ -253,6 +259,22 @@ export const ContentCardWithPreview = ({
           {/* Badges - Top Right */}
           <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
             <ContentRatingBadge rating={content.contentRating} size="sm" />
+            {/* Paid Content Badge */}
+            {isPaidContent && (
+              <div className="bg-amber-500 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-lg">
+                <ShoppingBag className="h-3 w-3 text-white" />
+                {paidPrice !== undefined && (
+                  <span className="text-[10px] font-bold text-white">
+                    {new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: paidCurrency,
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(paidPrice)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Top 10 Badge - Bottom Right */}

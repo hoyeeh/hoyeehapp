@@ -64,6 +64,7 @@ import TVApp from "./pages/TVApp";
 import KidsYouTube from "./pages/KidsYouTube";
 import Cast from "./pages/Cast";
 import WatchParty from "./pages/WatchParty";
+import MyPurchases from "./pages/MyPurchases";
 
 const queryClient = new QueryClient();
 
@@ -238,6 +239,7 @@ const App = () => (
                         <Route path="/tv-app" element={<TVApp />} />
                         <Route path="/kids-youtube" element={<KidsYouTube />} />
                         <Route path="/cast" element={<Cast />} />
+                        <Route path="/my-purchases" element={<MyPurchases />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                       <PersistentMobileVideoPlayer />

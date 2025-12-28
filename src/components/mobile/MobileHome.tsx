@@ -320,6 +320,7 @@ export function MobileHome() {
           currency,
           creator_id,
           is_active,
+          is_free,
           content(*),
           creator_profiles(id, display_name, avatar_url, is_verified)
         `)
@@ -327,8 +328,8 @@ export function MobileHome() {
         .eq('is_active', true)
         .maybeSingle();
       
-      if (paidContent) {
-        // Content is paid creator content - check if user has purchased it
+      if (paidContent && !paidContent.is_free) {
+        // Content is paid creator content (not free) - check if user has purchased it
         const { data: purchase } = await supabase
           .from('content_purchases')
           .select('id')
@@ -344,6 +345,7 @@ export function MobileHome() {
         }
         // User has purchased - allow playback (fall through to normal logic)
       }
+      // If paidContent.is_free is true, allow playback without purchase
     } catch (error) {
       console.error('Error checking paid content:', error);
     }
