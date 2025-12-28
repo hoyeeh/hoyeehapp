@@ -174,7 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const productionUrl = 'https://hoyeeh.com';
     const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
     // Prefer production URL, fallback to current origin for local development
-    const redirectUrl = currentOrigin.includes('localhost') || currentOrigin.includes('lovable.app') 
+    const redirectUrl = currentOrigin.includes('localhost') 
       ? currentOrigin 
       : productionUrl;
 
