@@ -504,14 +504,26 @@ export const VideoPlayer = ({
     };
   }, [initialProgress, loadedProgress, saveProgressImmediately, nextEpisode, onPlayNextEpisode, introStartTime, introEndTime, showNextEpisode]);
 
-  // Auto-hide controls
+  // Controls visibility - 5 second auto-hide
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const resetControlsTimeout = useCallback(() => {
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    setShowControls(true);
+    controlsTimeoutRef.current = setTimeout(() => {
+      const video = videoRef.current;
+      if (video && !video.paused && !video.ended) {
+        setShowControls(false);
+      }
+    }, 5000);
+  }, []);
+
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    if (isPlaying && showControls) {
-      timeout = setTimeout(() => setShowControls(false), 3000);
-    }
-    return () => clearTimeout(timeout);
-  }, [isPlaying, showControls]);
+    resetControlsTimeout();
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [resetControlsTimeout]);
 
   // Watch Party sync - sync video to party state for non-hosts
   // Force sync on initial join, then use tighter threshold
@@ -925,7 +937,7 @@ export const VideoPlayer = ({
       <div
         ref={containerRef}
         className="relative w-full h-screen bg-background cursor-none"
-        onMouseMove={() => setShowControls(true)}
+        onMouseMove={resetControlsTimeout}
         onClick={togglePlay}
       >
       {/* Video */}
