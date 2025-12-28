@@ -386,7 +386,47 @@ export function MobileHome() {
     navigate(`/content/${item.id}`);
   };
 
-  const handleDetails = (item: Content) => {
+  const handleDetails = async (item: Content) => {
+    // Check if this is paid creator content that requires purchase first
+    try {
+      const { data: paidContent } = await supabase
+        .from('paid_content')
+        .select(`
+          id,
+          price,
+          currency,
+          creator_id,
+          is_active,
+          is_free,
+          content(*),
+          creator_profiles(id, display_name, avatar_url, is_verified)
+        `)
+        .eq('content_id', item.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (paidContent && !paidContent.is_free) {
+        // Content is paid creator content - check if user has purchased it
+        const { data: purchase } = await supabase
+          .from('content_purchases')
+          .select('id')
+          .eq('user_id', user?.id || '')
+          .eq('content_id', item.id)
+          .eq('status', 'completed')
+          .maybeSingle();
+        
+        if (!purchase) {
+          // User hasn't purchased - show purchase modal instead of content detail
+          setPurchaseModalContent(paidContent);
+          return;
+        }
+        // User has purchased - show content detail (fall through)
+      }
+      // If not paid content or is_free, show content detail
+    } catch (error) {
+      console.error('Error checking paid content:', error);
+    }
+    
     setSelectedContent(item);
   };
 
