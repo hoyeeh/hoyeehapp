@@ -4,6 +4,8 @@ import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   Maximize, ChevronLeft, Loader2, Lock, Unlock, FastForward, Zap
 } from "lucide-react";
+import { LogoOpener } from "@/components/LogoOpener";
+import { useLogoOpener } from "@/hooks/useLogoOpener";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
@@ -80,6 +82,12 @@ export const MobilePlayer = ({
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [bingeMode, setBingeMode] = useState(() => localStorage.getItem('binge_mode') === 'true');
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(bingeMode ? NEXT_EPISODE_COUNTDOWN_BINGE : NEXT_EPISODE_COUNTDOWN_NORMAL);
+
+  // Logo opener hook
+  const { showOpener, openerComplete, markOpenerComplete } = useLogoOpener({
+    contentId,
+    episodeId,
+  });
 
   // Initialize player engine
   useEffect(() => {
@@ -317,15 +325,23 @@ export const MobilePlayer = ({
   };
 
   return (
-    <motion.div
-      ref={containerRef}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black"
-      onTouchStart={handleTap}
-      onClick={handleTap}
-    >
+    <>
+      {/* Logo Opener */}
+      <AnimatePresence>
+        {showOpener && !openerComplete && (
+          <LogoOpener onComplete={markOpenerComplete} />
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        ref={containerRef}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 bg-black"
+        onTouchStart={handleTap}
+        onClick={handleTap}
+      >
       {/* Video Element */}
       <video
         ref={videoRef}
@@ -533,5 +549,6 @@ export const MobilePlayer = ({
         )}
       </AnimatePresence>
     </motion.div>
+    </>
   );
 };

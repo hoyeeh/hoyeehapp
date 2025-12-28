@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { LogoOpener } from "@/components/LogoOpener";
+import { useLogoOpener } from "@/hooks/useLogoOpener";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { 
@@ -160,6 +162,12 @@ export function MobileVideoPlayer({
   // Store loaded progress for later use when duration is available
   const loadedProgressRef = useRef<number | null>(null);
   const resumePromptShownRef = useRef(false);
+  
+  // Logo opener hook
+  const { showOpener, openerComplete, markOpenerComplete } = useLogoOpener({
+    contentId: content.id,
+    episodeId,
+  });
   
   // Hooks
   const { saveProgressImmediately } = useWatchProgress({
@@ -1073,31 +1081,39 @@ export function MobileVideoPlayer({
   const swipeOpacity = isSwipingDown ? Math.max(0.3, 1 - swipeY / 300) : 1;
 
   return (
-    <motion.div
-      ref={containerRef}
-      className="fixed inset-0 z-[200] bg-black"
-      style={{ 
-        y: swipeY,
-        opacity: swipeOpacity,
-      }}
-      initial={{ opacity: 0, x: 0, y: 0 }}
-      animate={{ 
-        opacity: swipeOpacity, 
-        y: isSwipingDown ? swipeY : 0,
-        x: isSwipingRight ? swipeX * 0.3 : 0 
-      }}
-      exit={{ opacity: 0, y: 100 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-      drag
-      dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
-      dragElastic={{ top: 0, bottom: 0.5, left: 0, right: 0.5 }}
-      onDrag={handleSwipePan}
-      onDragEnd={handleSwipePanEnd}
-      onClick={handleTap}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <>
+      {/* Logo Opener */}
+      <AnimatePresence>
+        {showOpener && !openerComplete && (
+          <LogoOpener onComplete={markOpenerComplete} />
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        ref={containerRef}
+        className="fixed inset-0 z-[200] bg-black"
+        style={{ 
+          y: swipeY,
+          opacity: swipeOpacity,
+        }}
+        initial={{ opacity: 0, x: 0, y: 0 }}
+        animate={{ 
+          opacity: swipeOpacity, 
+          y: isSwipingDown ? swipeY : 0,
+          x: isSwipingRight ? swipeX * 0.3 : 0 
+        }}
+        exit={{ opacity: 0, y: 100 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        drag
+        dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        dragElastic={{ top: 0, bottom: 0.5, left: 0, right: 0.5 }}
+        onDrag={handleSwipePan}
+        onDragEnd={handleSwipePanEnd}
+        onClick={handleTap}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
       {/* Swipe Down Hint */}
       <AnimatePresence>
         {showSwipeHint && (
@@ -2420,5 +2436,6 @@ export function MobileVideoPlayer({
         }}
       />
     </motion.div>
+    </>
   );
 }

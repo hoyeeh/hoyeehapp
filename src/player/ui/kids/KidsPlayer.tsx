@@ -4,6 +4,8 @@ import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   Maximize, ArrowLeft, Loader2, Home
 } from "lucide-react";
+import { LogoOpener } from "@/components/LogoOpener";
+import { useLogoOpener } from "@/hooks/useLogoOpener";
 import { cn } from "@/lib/utils";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance } from "@/player";
@@ -74,6 +76,12 @@ export const KidsPlayer = ({
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
   const [bingeMode, setBingeMode] = useState(() => localStorage.getItem('kidsPlayer_bingeMode') === 'true');
   const [showSkipRecap, setShowSkipRecap] = useState(false);
+
+  // Logo opener hook
+  const { showOpener, openerComplete, markOpenerComplete } = useLogoOpener({
+    contentId,
+    episodeId,
+  });
 
   // Initialize player engine
   useEffect(() => {
@@ -265,15 +273,23 @@ export const KidsPlayer = ({
   };
 
   return (
-    <motion.div
-      ref={containerRef}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-[#0A0A0F]"
-      onTouchStart={handleTap}
-      onClick={handleTap}
-    >
+    <>
+      {/* Logo Opener */}
+      <AnimatePresence>
+        {showOpener && !openerComplete && (
+          <LogoOpener onComplete={markOpenerComplete} />
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        ref={containerRef}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 bg-[#0A0A0F]"
+        onTouchStart={handleTap}
+        onClick={handleTap}
+      >
       {/* Kids-themed decorative elements */}
       <div className="absolute bottom-4 left-4 w-20 h-20 rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20 blur-xl pointer-events-none" />
       <div className="absolute bottom-8 right-8 w-32 h-32 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 blur-xl pointer-events-none" />
@@ -523,5 +539,6 @@ export const KidsPlayer = ({
         </div>
       </div>
     </motion.div>
+    </>
   );
 };
