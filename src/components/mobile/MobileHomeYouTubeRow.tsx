@@ -39,7 +39,7 @@ const formatDuration = (seconds: number | null) => {
 };
 
 export function MobileHomeYouTubeRow({
-  title = "YouTube Channels",
+  title = "Channels",
   maxItems = 10,
 }: MobileHomeYouTubeRowProps) {
   const { openPlayer } = useMobileYouTubePlayer();

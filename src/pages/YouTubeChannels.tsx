@@ -76,7 +76,7 @@ export default function YouTubeChannels() {
           <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
             <Youtube className="h-8 w-8 text-primary" />
           </div>
-          <p className="text-muted-foreground">Loading YouTube content...</p>
+          <p className="text-muted-foreground">Loading channels...</p>
         </div>
       </div>
     );
@@ -265,7 +265,7 @@ function HeroCarousel({ playlists, onPlayVideo }: HeroCarouselProps) {
       <div className="relative h-[60vh] md:h-[70vh] bg-gradient-to-b from-secondary/50 to-background flex items-center justify-center">
         <div className="text-center">
           <Youtube className="h-20 w-20 mx-auto text-primary mb-4" />
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">YouTube Channels</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Channels</h1>
           <p className="text-muted-foreground">Watch curated content from top creators</p>
         </div>
       </div>

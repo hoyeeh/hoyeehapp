@@ -29,7 +29,7 @@ const navItems = [
   { icon: Layers, label: "Genres", view: "genres" as const },
   { icon: Film, label: "Movies", view: "movies" as ViewState },
   { icon: Tv, label: "TV Shows", view: "shows" as ViewState },
-  { icon: Youtube, label: "YouTube", view: "youtube" as const },
+  { icon: Youtube, label: "Channels", view: "youtube" as const },
   { icon: Users, label: "Watch Party", view: "watch-party" as const },
   { icon: Store, label: "Creator Store", view: "creator-store" as const },
   { icon: Clock, label: "Watch Later", view: "watch-later" as const },

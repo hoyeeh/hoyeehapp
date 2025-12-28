@@ -383,7 +383,7 @@ export const YouTubeChannelManagement = () => {
   };
 
   if (channelsLoading) {
-    return <LoadingSpinner text="Loading YouTube channels..." />;
+    return <LoadingSpinner text="Loading channels..." />;
   }
 
   return (
@@ -392,10 +392,10 @@ export const YouTubeChannelManagement = () => {
         <div>
           <h2 className="text-2xl font-display flex items-center gap-2">
             <Youtube className="h-6 w-6 text-red-500" />
-            YouTube Channels
+            Channels
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage YouTube channels and playlists for in-app viewing
+            Manage channels and playlists for in-app viewing
           </p>
         </div>
         
