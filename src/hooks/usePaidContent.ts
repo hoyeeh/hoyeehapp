@@ -148,7 +148,17 @@ export const useInitializePurchase = () => {
       return data;
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to initiate purchase");
+      const errorMessage = error.message || "Failed to initiate purchase";
+      
+      // Handle minimum amount error with helpful message
+      if (errorMessage.includes('MINIMUM_AMOUNT_ERROR:')) {
+        const userMessage = errorMessage.replace('MINIMUM_AMOUNT_ERROR:', '');
+        toast.error(userMessage, { duration: 6000 });
+      } else if (errorMessage.includes('minimum') || errorMessage.includes('too low') || errorMessage.includes('at least')) {
+        toast.error("This amount is too low for card payment. Please use Mobile Money instead.", { duration: 5000 });
+      } else {
+        toast.error(errorMessage);
+      }
     }
   });
 };
