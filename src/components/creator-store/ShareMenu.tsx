@@ -102,7 +102,7 @@ export function ShareMenu({
     instagram: `https://www.instagram.com/`, // Instagram doesn't support direct sharing via URL
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
     tiktok: `https://www.tiktok.com/`, // TikTok doesn't support direct sharing via URL
-    umojami: `https://umojami.com/share?url=${encodedUrl}`,
+    umojami: `https://umojami.com/login`,
     email: `mailto:?subject=${encodedTitle}&body=${encodedText}%20${encodedUrl}`,
   };
 
