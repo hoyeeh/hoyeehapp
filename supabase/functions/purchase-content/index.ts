@@ -152,8 +152,18 @@ serve(async (req) => {
         const Stripe = (await import("https://esm.sh/stripe@14.21.0")).default;
         const stripe = new Stripe(stripeSecretKey, { apiVersion: "2023-10-16" });
 
-        // Convert XAF to smallest currency unit (XAF doesn't have decimals)
-        const amountInCents = Math.round(paidContent.price);
+        // Convert XAF to USD for Stripe (Stripe doesn't support XAF)
+        // Using approximate exchange rate: 1 USD ≈ 600 XAF
+        const XAF_TO_USD_RATE = 600;
+        const amountInUSD = paidContent.price / XAF_TO_USD_RATE;
+        
+        // Stripe minimum is $0.50 USD
+        if (amountInUSD < 0.50) {
+          throw new Error('MINIMUM_AMOUNT_ERROR:The amount is too low for card payment. Please use Mobile Money or purchase content worth at least 300 XAF.');
+        }
+        
+        // Convert to cents for Stripe
+        const amountInCents = Math.round(amountInUSD * 100);
 
         // Create Stripe Checkout Session
         const session = await stripe.checkout.sessions.create({
@@ -161,10 +171,10 @@ serve(async (req) => {
           line_items: [
             {
               price_data: {
-                currency: paidContent.currency.toLowerCase(),
+                currency: 'usd',
                 product_data: {
                   name: paidContent.content?.title || 'Content Purchase',
-                  description: `Purchase content from Hoyeeh`,
+                  description: `Purchase content from Hoyeeh (${paidContent.price} ${paidContent.currency})`,
                 },
                 unit_amount: amountInCents,
               },
@@ -182,6 +192,8 @@ serve(async (req) => {
             creator_id: paidContent.creator_id,
             creator_share: creatorShare.toString(),
             platform_share: platformShare.toString(),
+            original_amount: paidContent.price.toString(),
+            original_currency: paidContent.currency,
           },
         });
 
