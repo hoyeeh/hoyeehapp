@@ -229,6 +229,30 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     }
   };
 
+  // Trigger subtitle generation in background (fire-and-forget)
+  const triggerSubtitleGeneration = async (contentId: string, videoUrl: string, title: string) => {
+    try {
+      const { error } = await supabase.functions.invoke("generate-subtitles", {
+        body: {
+          contentId,
+          audioUrl: videoUrl,
+          languageCode: "fra", // Default to French
+        },
+      });
+      
+      if (error) {
+        console.error("Background subtitle generation failed:", error);
+      } else {
+        toast.info(`French subtitles are being generated for "${title}"`, {
+          description: "This may take a few minutes",
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to trigger subtitle generation:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title) {
@@ -253,7 +277,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
         setThumbnailUploading(false);
       }
 
-      await createContent.mutateAsync({
+      const createdContent = await createContent.mutateAsync({
         title: formData.title,
         description: formData.description,
         genre: formData.genre,
@@ -271,6 +295,12 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       } as any);
 
       toast.success("Content created successfully!");
+      
+      // Trigger automatic French subtitle generation if video was uploaded
+      if (videoUrl && createdContent?.id && formData.content_type === "movie") {
+        triggerSubtitleGeneration(createdContent.id, videoUrl, formData.title);
+      }
+      
       onClose();
     } catch (error) {
       console.error('Submit error:', error);

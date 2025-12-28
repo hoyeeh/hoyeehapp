@@ -53,6 +53,7 @@ import { CastSessionsManagement } from "@/components/admin/CastSessionsManagemen
 import { HomepageAdsManager } from "@/components/admin/HomepageAdsManager";
 import { LeavingSoonManagement } from "@/components/admin/LeavingSoonManagement";
 import { EmailTemplateManagement } from "@/components/admin/EmailTemplateManagement";
+import { BatchSubtitleGenerator } from "@/components/admin/BatchSubtitleGenerator";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -699,6 +700,14 @@ const Admin = () => {
       
       case "cast-sessions":
         return <CastSessionsManagement />;
+      
+      case "subtitles":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display">Subtitle Generation</h2>
+            <BatchSubtitleGenerator />
+          </div>
+        );
       
       case "analytics":
         navigate("/analytics");

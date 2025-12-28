@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { X, Save, Loader2, Plus, Trash2, User } from "lucide-react";
 import { VideoUploadField } from "./VideoUploadField";
 import { ThumbnailUploadField } from "./ThumbnailUploadField";
+import { SubtitleGenerator } from "./SubtitleGenerator";
 
 interface CastMember {
   id: number;
@@ -368,6 +369,15 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                   </Button>
                 </div>
               </div>
+
+              {/* Subtitle Generator - Only show for movies */}
+              {formData.content_type === "movie" && (
+                <SubtitleGenerator
+                  contentId={content.id}
+                  videoUrl={formData.video_url}
+                  title={formData.title}
+                />
+              )}
             </div>
           </div>
 
