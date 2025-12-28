@@ -54,7 +54,7 @@ export function MobileHomeYouTubeRow({
         .select("id, name, thumbnail_url, cover_url, subscriber_count, video_count")
         .eq("is_active", true)
         .eq("show_on_mobile", true)
-        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: false })
         .limit(maxItems);
 
       if (error) throw error;
