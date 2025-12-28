@@ -395,3 +395,75 @@ export const useToggleFollowCreator = () => {
     }
   });
 };
+
+// Check if content is paid creator content
+export const useCheckPaidContent = (contentId: string | undefined) => {
+  return useQuery({
+    queryKey: ["check-paid-content", contentId],
+    queryFn: async () => {
+      if (!contentId) return null;
+      
+      const { data, error } = await supabase
+        .from('paid_content')
+        .select(`
+          id,
+          price,
+          currency,
+          creator_id,
+          is_active,
+          creator_profiles(id, display_name, avatar_url)
+        `)
+        .eq('content_id', contentId)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!contentId,
+  });
+};
+
+// Check if user has purchased specific content
+export const useHasPurchasedContent = (contentId: string | undefined) => {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ["has-purchased", contentId, user?.id],
+    queryFn: async () => {
+      if (!user || !contentId) return false;
+      
+      const { data, error } = await supabase
+        .from('content_purchases')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('content_id', contentId)
+        .eq('status', 'completed')
+        .maybeSingle();
+      
+      if (error) throw error;
+      return !!data;
+    },
+    enabled: !!user && !!contentId,
+  });
+};
+
+// Combined hook to check if user can play content (for paid creator content)
+export const useCanPlayPaidContent = (contentId: string | undefined) => {
+  const { user } = useAuth();
+  const { data: paidContent, isLoading: isLoadingPaid } = useCheckPaidContent(contentId);
+  const { data: hasPurchased, isLoading: isLoadingPurchase } = useHasPurchasedContent(
+    paidContent ? contentId : undefined
+  );
+  
+  const isPaidContent = !!paidContent && paidContent.is_active;
+  const canPlay = !isPaidContent || hasPurchased === true;
+  
+  return {
+    isPaidContent,
+    canPlay,
+    hasPurchased: hasPurchased === true,
+    paidContentDetails: paidContent,
+    isLoading: isLoadingPaid || (isPaidContent && isLoadingPurchase),
+  };
+};

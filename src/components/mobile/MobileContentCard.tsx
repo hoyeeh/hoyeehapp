@@ -14,6 +14,7 @@ interface MobileContentCardProps {
   rank?: number;
   progress?: number;
   showBadges?: boolean;
+  showNewBadge?: boolean; // Explicit control for "NEW"/"JUST ADDED" badges
   isDownloaded?: boolean;
 }
 
@@ -28,6 +29,7 @@ export function MobileContentCard({
   rank,
   progress,
   showBadges = true,
+  showNewBadge = false, // Default to false - only show when explicitly enabled
   isDownloaded = false
 }: MobileContentCardProps) {
   const [imageError, setImageError] = useState(false);
@@ -79,7 +81,7 @@ export function MobileContentCard({
           )}
 
           {/* Badges */}
-          {showBadges && isNewlyAdded && (
+          {showNewBadge && isNewlyAdded && (
             <div className="absolute bottom-2 left-2">
               <span className="px-1.5 py-0.5 bg-primary text-[10px] font-bold rounded text-primary-foreground">
                 Recently Added
@@ -251,7 +253,7 @@ export function MobileContentCard({
           )}
 
           {/* New Badge */}
-          {showBadges && isNewlyAdded && (
+          {showNewBadge && isNewlyAdded && (
             <div className="absolute bottom-0 left-0 right-0 bg-primary py-0.5">
               <span className="block text-center text-[8px] font-bold text-primary-foreground">
                 NEW
@@ -306,7 +308,7 @@ export function MobileContentCard({
         )}
 
         {/* New Badge */}
-        {showBadges && isNewlyAdded && (
+        {showNewBadge && isNewlyAdded && (
           <div className="absolute bottom-0 left-0 right-0 bg-primary py-0.5">
             <span className="block text-center text-[9px] font-bold text-primary-foreground">
               JUST ADDED
