@@ -249,6 +249,13 @@ export function MobileHome() {
     
     // Handle free_content section type
     if (section.section_type === "free_content") {
+      // Check if curated
+      if (section.is_curated) {
+        const curatedFree = sectionContentData
+          .filter((sc: any) => sc.section_id === section.id && sc.content && !sc.content.is_premium)
+          .map((sc: any) => transformContent([sc.content])[0]);
+        return curatedFree.slice(0, section.max_items || 15);
+      }
       let freeFiltered = content.filter((c) => !c.isPremium);
       if (section.content_type_filter === "movie") {
         freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
