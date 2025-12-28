@@ -9,8 +9,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Consistent logo URL across all emails
-const LOGO_URL = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
 
 interface KidsViewingData {
   profile_name: string;
@@ -260,7 +258,7 @@ function generateEmailHtml(parentName: string, kidsData: KidsViewingData[]): str
       <div style="max-width: 600px; margin: 0 auto;">
         <!-- Header with Logo -->
         <div style="text-align: center; padding: 30px 0;">
-          <img src="${LOGO_URL}" alt="Hoyeeh" style="height: 60px; margin-bottom: 20px;">
+          <p style="color: #ff6300; font-size: 36px; font-weight: 700; margin: 0 0 20px 0; letter-spacing: -1px;">Hoyeeh</p>
           <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Weekly Viewing Report</h1>
           <p style="color: #888; margin: 10px 0 0 0; font-size: 16px;">
             Week of ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

@@ -6,8 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LOGO_URL = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
-
 interface ContentNotification {
   contentIds: string[];
   categoryName?: string;
@@ -133,7 +131,7 @@ serve(async (req) => {
                   <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px;">
                     <tr>
                       <td align="center" style="padding-bottom: 30px;">
-                        <img src="${LOGO_URL}" alt="Hoyeeh" width="140" style="display: block;" />
+                        <p style="color: #ff6300; font-size: 36px; font-weight: 700; margin: 0; letter-spacing: -1px;">Hoyeeh</p>
                       </td>
                     </tr>
                     <tr>

@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const LOGO_URL = "https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png";
 const BASE_URL = "https://hoyeeh.com";
 const SUPABASE_FUNCTIONS_URL = Deno.env.get('SUPABASE_URL') + '/functions/v1';
 
@@ -298,7 +297,7 @@ async function sendDetailedEmail(params: DetailedEmailParams): Promise<void> {
       <div style="max-width: 600px; margin: 0 auto;">
         <!-- Header -->
         <div style="text-align: center; padding: 30px 0;">
-          <img src="${LOGO_URL}" alt="Hoyeeh" style="height: 50px; margin-bottom: 16px;">
+          <p style="color: #ff6300; font-size: 36px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -1px;">Hoyeeh</p>
         </div>
         
         <!-- Main Content -->

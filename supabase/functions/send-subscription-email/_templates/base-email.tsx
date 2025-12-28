@@ -4,7 +4,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -27,13 +26,7 @@ export const BaseEmail = ({ previewText, children }: BaseEmailProps) => (
       <Container style={container}>
         {/* Logo Header */}
         <Section style={logoSection}>
-          <Img
-            src="https://hoyeeh-videos.sfo3.cdn.digitaloceanspaces.com/logo/hoyeeh-logo-web.png"
-            width="150"
-            height="50"
-            alt="Hoyeeh"
-            style={logo}
-          />
+          <Text style={logoText}>Hoyeeh</Text>
         </Section>
         
         {/* Main Content */}
@@ -77,8 +70,12 @@ const logoSection = {
   marginBottom: '32px',
 };
 
-const logo = {
-  margin: '0 auto',
+const logoText = {
+  color: '#ff6300',
+  fontSize: '36px',
+  fontWeight: '700',
+  margin: '0',
+  letterSpacing: '-1px',
 };
 
 const contentSection = {
