@@ -263,34 +263,7 @@ export const ContentCardWithPreview = ({
           {/* Badges - Top Right */}
           <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
             <ContentRatingBadge rating={content.contentRating} size="sm" />
-            {/* Paid Content Badge - Show Paid Access ribbon if purchased, price if not */}
-            {isPaidContent && hasPurchased && (
-              <div className="bg-green-500 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-lg">
-                <Check className="h-3 w-3 text-white" />
-                <span className="text-[10px] font-bold text-white">PAID ACCESS</span>
-              </div>
-            )}
-            {isPaidContent && !hasPurchased && paidPrice !== undefined && (
-              <div className="bg-amber-500 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-lg">
-                <ShoppingBag className="h-3 w-3 text-white" />
-                <span className="text-[10px] font-bold text-white">
-                  {new Intl.NumberFormat('fr-FR', {
-                    style: 'currency',
-                    currency: paidCurrency,
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  }).format(paidPrice)}
-                </span>
-              </div>
-            )}
           </div>
-
-          {/* Green Paid Access Top Ribbon for purchased content */}
-          {isPaidContent && hasPurchased && (
-            <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] font-bold text-center py-1 shadow-md">
-              ✓ PAID ACCESS
-            </div>
-          )}
 
           {/* Top 10 Badge - Bottom Right */}
           {showTop10Badge && (
@@ -303,6 +276,25 @@ export const ContentCardWithPreview = ({
           {shouldShowJustAdded && !showTop10Badge && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
               JUST ADDED
+            </div>
+          )}
+
+          {/* Paid Access Badge - Bottom of poster */}
+          {isPaidContent && hasPurchased && !showTop10Badge && !shouldShowJustAdded && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold text-center py-1.5 shadow-md flex items-center justify-center gap-1">
+              <Check className="h-3 w-3" />
+              PAID ACCESS
+            </div>
+          )}
+          {isPaidContent && !hasPurchased && paidPrice !== undefined && !showTop10Badge && !shouldShowJustAdded && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold text-center py-1.5 shadow-md flex items-center justify-center gap-1">
+              <ShoppingBag className="h-3 w-3" />
+              {new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: paidCurrency,
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }).format(paidPrice)}
             </div>
           )}
 
