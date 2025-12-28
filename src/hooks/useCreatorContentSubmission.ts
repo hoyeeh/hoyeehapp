@@ -161,10 +161,16 @@ export function useReviewContentSubmission() {
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Get the submission details
+      // Get the submission details with creator profile for user_id
       const { data: submission, error: fetchError } = await supabase
         .from('creator_content_submissions')
-        .select('*')
+        .select(`
+          *,
+          creator_profiles (
+            id,
+            user_id
+          )
+        `)
         .eq('id', submissionId)
         .single();
 
@@ -173,6 +179,9 @@ export function useReviewContentSubmission() {
       let contentId = null;
 
       if (status === 'approved') {
+        // Get the creator's user_id for the content.created_by foreign key
+        const creatorUserId = submission.creator_profiles?.user_id;
+        
         // Create content entry
         const { data: content, error: contentError } = await supabase
           .from('content')
@@ -186,7 +195,7 @@ export function useReviewContentSubmission() {
             thumbnail_url: submission.poster_image_url || submission.cover_image_url,
             duration: submission.duration,
             year: submission.release_date ? new Date(submission.release_date).getFullYear() : new Date().getFullYear(),
-            created_by: creatorId,
+            created_by: creatorUserId,
           })
           .select()
           .single();
