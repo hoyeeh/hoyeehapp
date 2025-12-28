@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCreatorProfileById, useCreatorContent, useIsFollowingCreator, useToggleFollowCreator } from "@/hooks/usePaidContent";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -10,20 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { EnhancedContentCard } from "@/components/creator-store/EnhancedContentCard";
+import { ShareMenu } from "@/components/creator-store/ShareMenu";
+import { CreatorImageUpload } from "@/components/creator-store/CreatorImageUpload";
 import { 
   ArrowLeft, 
   CheckCircle, 
   Users, 
   Play, 
   ShoppingBag,
-  Heart,
-  Share2,
-  ExternalLink
+  Heart
 } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function CreatorProfile() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { creatorId } = useParams<{ creatorId: string }>();
   const { user } = useAuth();
   const { isMobileDevice, isTablet } = useMobileDevice();
@@ -35,6 +39,22 @@ export default function CreatorProfile() {
   const { data: content = [], isLoading: contentLoading } = useCreatorContent(creatorId || '');
   const { data: isFollowing = false } = useIsFollowingCreator(creatorId || '');
   const toggleFollow = useToggleFollowCreator();
+  
+  // Check if current user is the owner of this creator profile
+  const { data: userCreatorProfile } = useQuery({
+    queryKey: ["user-creator-profile", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("creator_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+  });
+  const isOwner = userCreatorProfile?.id === creatorId;
 
   const isLoading = creatorLoading || contentLoading;
 
@@ -48,18 +68,9 @@ export default function CreatorProfile() {
     toggleFollow.mutate({ creatorId, isFollowing });
   };
 
-  const handleShare = async () => {
-    try {
-      await navigator.share({
-        title: creator?.display_name,
-        text: `Check out ${creator?.display_name}'s content on Hoyeeh Studio`,
-        url: window.location.href
-      });
-    } catch {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied to clipboard");
-    }
+  const handleImageUploadComplete = () => {
+    // Invalidate the creator profile query to refresh data
+    queryClient.invalidateQueries({ queryKey: ["creator-profile", creatorId] });
   };
 
   const formatCount = (count: number) => {
@@ -121,14 +132,22 @@ export default function CreatorProfile() {
           </Button>
 
           {/* Share Button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <ShareMenu
+            title={creator?.display_name || "Creator"}
+            text={`Check out ${creator?.display_name}'s content on Hoyeeh Studio`}
             className="absolute top-4 right-4 bg-background/50 backdrop-blur-sm"
-            onClick={handleShare}
-          >
-            <Share2 className="h-5 w-5" />
-          </Button>
+          />
+
+          {/* Cover Upload Button - Only for owner */}
+          {isOwner && (
+            <CreatorImageUpload
+              type="cover"
+              currentUrl={creator.cover_url}
+              creatorId={creatorId!}
+              onUploadComplete={handleImageUploadComplete}
+              className="absolute bottom-4 right-4"
+            />
+          )}
         </div>
 
         {/* Profile Info */}
@@ -154,27 +173,38 @@ export default function CreatorProfile() {
                   <CheckCircle className="h-6 w-6 text-primary fill-primary/20" />
                 </div>
               )}
+              {/* Avatar Upload Button - Only for owner */}
+              {isOwner && (
+                <CreatorImageUpload
+                  type="avatar"
+                  currentUrl={creator.avatar_url}
+                  creatorId={creatorId!}
+                  onUploadComplete={handleImageUploadComplete}
+                />
+              )}
             </div>
             
-            {/* Follow Button */}
-            <Button 
-              onClick={handleFollow}
-              disabled={toggleFollow.isPending}
-              variant={isFollowing ? "outline" : "default"}
-              className="flex-1"
-            >
-              {isFollowing ? (
-                <>
-                  <Heart className="h-4 w-4 mr-2 fill-current" />
-                  Following
-                </>
-              ) : (
-                <>
-                  <Heart className="h-4 w-4 mr-2" />
-                  Follow
-                </>
-              )}
-            </Button>
+            {/* Follow Button - Not for owner */}
+            {!isOwner && (
+              <Button 
+                onClick={handleFollow}
+                disabled={toggleFollow.isPending}
+                variant={isFollowing ? "outline" : "default"}
+                className="flex-1"
+              >
+                {isFollowing ? (
+                  <>
+                    <Heart className="h-4 w-4 mr-2 fill-current" />
+                    Following
+                  </>
+                ) : (
+                  <>
+                    <Heart className="h-4 w-4 mr-2" />
+                    Follow
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           {/* Name & Badges */}
@@ -278,6 +308,17 @@ export default function CreatorProfile() {
             <ArrowLeft className="h-4 w-4" />
             Back to Hoyeeh Studio
           </Button>
+
+          {/* Cover Upload Button - Only for owner */}
+          {isOwner && (
+            <CreatorImageUpload
+              type="cover"
+              currentUrl={creator.cover_url}
+              creatorId={creatorId!}
+              onUploadComplete={handleImageUploadComplete}
+              className="absolute top-6 right-6"
+            />
+          )}
         </div>
 
         {/* Profile Section */}
@@ -302,6 +343,15 @@ export default function CreatorProfile() {
                 <div className="absolute -bottom-2 -right-2 bg-background rounded-full p-1 shadow-lg">
                   <CheckCircle className="h-8 w-8 text-primary fill-primary/20" />
                 </div>
+              )}
+              {/* Avatar Upload Button - Only for owner */}
+              {isOwner && (
+                <CreatorImageUpload
+                  type="avatar"
+                  currentUrl={creator.avatar_url}
+                  creatorId={creatorId!}
+                  onUploadComplete={handleImageUploadComplete}
+                />
               )}
             </div>
 
@@ -333,32 +383,33 @@ export default function CreatorProfile() {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
-              <Button 
-                onClick={handleFollow}
-                disabled={toggleFollow.isPending}
+              {!isOwner && (
+                <Button 
+                  onClick={handleFollow}
+                  disabled={toggleFollow.isPending}
+                  size="lg"
+                  variant={isFollowing ? "outline" : "default"}
+                  className="gap-2"
+                >
+                  {isFollowing ? (
+                    <>
+                      <Heart className="h-5 w-5 fill-current" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <Heart className="h-5 w-5" />
+                      Follow
+                    </>
+                  )}
+                </Button>
+              )}
+              <ShareMenu
+                title={creator?.display_name || "Creator"}
+                text={`Check out ${creator?.display_name}'s content on Hoyeeh Studio`}
+                variant="outline"
                 size="lg"
-                variant={isFollowing ? "outline" : "default"}
-                className="gap-2"
-              >
-                {isFollowing ? (
-                  <>
-                    <Heart className="h-5 w-5 fill-current" />
-                    Following
-                  </>
-                ) : (
-                  <>
-                    <Heart className="h-5 w-5" />
-                    Follow
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={handleShare}
-              >
-                <Share2 className="h-5 w-5" />
-              </Button>
+              />
             </div>
           </div>
 
