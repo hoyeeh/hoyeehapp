@@ -27,9 +27,17 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
     };
 
     const handleCanPlay = () => {
+      // Try to play with sound first
+      video.muted = false;
       video.play().catch(() => {
-        // If autoplay fails, skip to content
-        onComplete();
+        // If autoplay with sound fails, try muted
+        console.log("[LogoOpener] Autoplay with sound blocked, trying muted");
+        video.muted = true;
+        video.play().catch(() => {
+          // If even muted fails, skip to content
+          console.log("[LogoOpener] Autoplay completely blocked, skipping");
+          onComplete();
+        });
       });
     };
 
@@ -66,7 +74,6 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
         src="/branding/Logo_Opener_Light.mp4"
         className="w-full h-full object-contain"
         playsInline
-        muted
         autoPlay
       />
       
