@@ -1,9 +1,12 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   ArrowLeft, SkipBack, SkipForward, Loader2, Settings,
   PictureInPicture2, AlertCircle, FastForward, Zap
 } from "lucide-react";
+import { LogoOpener } from "@/components/LogoOpener";
+import { useLogoOpener } from "@/hooks/useLogoOpener";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -88,6 +91,12 @@ export const DesktopPlayer = ({
   const [showNextEpisode, setShowNextEpisode] = useState(false);
   const [bingeMode, setBingeMode] = useState(() => localStorage.getItem('binge_mode') === 'true');
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(bingeMode ? NEXT_EPISODE_COUNTDOWN_BINGE : NEXT_EPISODE_COUNTDOWN_NORMAL);
+
+  // Logo opener hook
+  const { showOpener, openerComplete, markOpenerComplete } = useLogoOpener({
+    contentId,
+    episodeId,
+  });
 
   // Initialize player engine
   useEffect(() => {
@@ -347,12 +356,20 @@ export const DesktopPlayer = ({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 z-50 bg-black"
-      onMouseMove={resetControlsTimeout}
-      onClick={togglePlay}
-    >
+    <>
+      {/* Logo Opener */}
+      <AnimatePresence>
+        {showOpener && !openerComplete && (
+          <LogoOpener onComplete={markOpenerComplete} />
+        )}
+      </AnimatePresence>
+
+      <div
+        ref={containerRef}
+        className="fixed inset-0 z-50 bg-black"
+        onMouseMove={resetControlsTimeout}
+        onClick={togglePlay}
+      >
       {/* Video Element */}
       <video
         ref={videoRef}
@@ -565,5 +582,6 @@ export const DesktopPlayer = ({
         </div>
       </div>
     </div>
+    </>
   );
 };

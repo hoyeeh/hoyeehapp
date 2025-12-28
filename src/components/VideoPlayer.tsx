@@ -1,4 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
+import { LogoOpener } from "@/components/LogoOpener";
+import { useLogoOpener } from "@/hooks/useLogoOpener";
 import {
   Play,
   Pause,
@@ -154,6 +157,12 @@ export const VideoPlayer = ({
   const [localRecapEnd, setLocalRecapEnd] = useState<number>(recapEndTime ?? 0);
   const [isSavingIntro, setIsSavingIntro] = useState(false);
   const [isSavingRecap, setIsSavingRecap] = useState(false);
+
+  // Logo opener hook
+  const { showOpener, openerComplete, markOpenerComplete } = useLogoOpener({
+    contentId,
+    episodeId,
+  });
 
   // Skip preferences hook
   const skipPrefs = useSkipPreferences();
@@ -905,12 +914,20 @@ export const VideoPlayer = ({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-screen bg-background cursor-none"
-      onMouseMove={() => setShowControls(true)}
-      onClick={togglePlay}
-    >
+    <>
+      {/* Logo Opener */}
+      <AnimatePresence>
+        {showOpener && !openerComplete && (
+          <LogoOpener onComplete={markOpenerComplete} />
+        )}
+      </AnimatePresence>
+
+      <div
+        ref={containerRef}
+        className="relative w-full h-screen bg-background cursor-none"
+        onMouseMove={() => setShowControls(true)}
+        onClick={togglePlay}
+      >
       {/* Video */}
       <video
         ref={videoRef}
@@ -2000,5 +2017,6 @@ export const VideoPlayer = ({
         />
       )}
     </div>
+    </>
   );
 };
