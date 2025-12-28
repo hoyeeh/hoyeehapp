@@ -61,6 +61,9 @@ function convertToVtt(words: Array<{ text: string; start: number; end: number }>
   return vttContent;
 }
 
+// Maximum file size: 50MB (to stay within edge function memory limits)
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -88,6 +91,26 @@ serve(async (req) => {
     console.log(`Starting subtitle generation for content: ${contentId}, language: ${languageCode}`);
     console.log(`Audio URL: ${audioUrl}`);
 
+    // First, do a HEAD request to check file size without downloading
+    const headResponse = await fetch(audioUrl, { method: "HEAD" });
+    const contentLength = headResponse.headers.get("content-length");
+    
+    if (contentLength) {
+      const fileSize = parseInt(contentLength, 10);
+      console.log(`File size from HEAD: ${fileSize} bytes (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+      
+      if (fileSize > MAX_FILE_SIZE) {
+        console.error(`File too large: ${fileSize} bytes exceeds ${MAX_FILE_SIZE} bytes limit`);
+        return new Response(
+          JSON.stringify({ 
+            error: "File too large for subtitle generation", 
+            details: `Maximum file size is 50MB. Your file is ${(fileSize / 1024 / 1024).toFixed(2)}MB. Please use a smaller audio file or extract audio from the video first.`
+          }),
+          { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Fetch the audio file
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
@@ -99,7 +122,19 @@ serve(async (req) => {
     }
 
     const audioBlob = await audioResponse.blob();
-    console.log(`Audio file fetched, size: ${audioBlob.size} bytes`);
+    console.log(`Audio file fetched, size: ${audioBlob.size} bytes (${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+    
+    // Double-check size after download (in case HEAD didn't return content-length)
+    if (audioBlob.size > MAX_FILE_SIZE) {
+      console.error(`File too large after download: ${audioBlob.size} bytes`);
+      return new Response(
+        JSON.stringify({ 
+          error: "File too large for subtitle generation", 
+          details: `Maximum file size is 50MB. Your file is ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB. Please use a smaller audio file or extract audio from the video first.`
+        }),
+        { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Prepare form data for ElevenLabs Scribe API
     const formData = new FormData();
