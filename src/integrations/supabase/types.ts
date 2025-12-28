@@ -1696,6 +1696,54 @@ export type Database = {
           },
         ]
       }
+      free_content_analytics: {
+        Row: {
+          content_id: string
+          created_at: string
+          device_type: string | null
+          event_type: string
+          id: string
+          section_id: string | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          device_type?: string | null
+          event_type: string
+          id?: string
+          section_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          device_type?: string | null
+          event_type?: string
+          id?: string
+          section_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "free_content_analytics_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "free_content_analytics_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "home_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       genres: {
         Row: {
           created_at: string
@@ -1792,6 +1840,7 @@ export type Database = {
           genre_id: string | null
           id: string
           is_active: boolean
+          is_curated: boolean
           max_items: number | null
           section_type: string
           show_on_desktop: boolean
@@ -1809,6 +1858,7 @@ export type Database = {
           genre_id?: string | null
           id?: string
           is_active?: boolean
+          is_curated?: boolean
           max_items?: number | null
           section_type?: string
           show_on_desktop?: boolean
@@ -1826,6 +1876,7 @@ export type Database = {
           genre_id?: string | null
           id?: string
           is_active?: boolean
+          is_curated?: boolean
           max_items?: number | null
           section_type?: string
           show_on_desktop?: boolean
@@ -2380,6 +2431,45 @@ export type Database = {
           setting_value?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      premium_conversion_tracking: {
+        Row: {
+          created_at: string
+          days_to_convert: number | null
+          first_free_content_at: string | null
+          free_content_count: number | null
+          free_content_viewed: Json | null
+          id: string
+          subscription_plan: string | null
+          subscription_started_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_to_convert?: number | null
+          first_free_content_at?: string | null
+          free_content_count?: number | null
+          free_content_viewed?: Json | null
+          id?: string
+          subscription_plan?: string | null
+          subscription_started_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days_to_convert?: number | null
+          first_free_content_at?: string | null
+          free_content_count?: number | null
+          free_content_viewed?: Json | null
+          id?: string
+          subscription_plan?: string | null
+          subscription_started_at?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

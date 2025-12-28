@@ -498,6 +498,13 @@ const Index = () => {
           .sort((a, b) => (b.year || 0) - (a.year || 0))
           .slice(0, section.max_items || 15);
       case "free_content":
+        // Check if curated - use section_content table
+        if (section.is_curated) {
+          const curatedFree = sectionContentData
+            .filter((sc: any) => sc.section_id === section.id && sc.content && !sc.content.is_premium)
+            .map((sc: any) => transformRawContent(sc.content));
+          return curatedFree.slice(0, section.max_items || 15);
+        }
         // Filter for non-premium (free) content
         let freeFiltered = content.filter((c) => !c.isPremium);
         if (section.content_type_filter === "movie") {

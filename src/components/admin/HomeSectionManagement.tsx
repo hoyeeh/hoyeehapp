@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, Save, X, GripVertical, Loader2, LayoutGrid, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Edit2, Save, X, GripVertical, Loader2, LayoutGrid, Eye, EyeOff, Film, Search } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -47,6 +49,7 @@ interface HomeSection {
   show_on_desktop: boolean;
   show_on_mobile: boolean;
   show_on_kids: boolean;
+  is_curated?: boolean;
 }
 
 interface Genre {
@@ -90,9 +93,10 @@ interface SortableItemProps {
   onEdit: (section: HomeSection) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, active: boolean) => void;
+  onManageContent?: (section: HomeSection) => void;
 }
 
-const SortableItem = ({ section, onEdit, onDelete, onToggleActive }: SortableItemProps) => {
+const SortableItem = ({ section, onEdit, onDelete, onToggleActive, onManageContent }: SortableItemProps) => {
   const {
     attributes,
     listeners,
@@ -127,6 +131,12 @@ const SortableItem = ({ section, onEdit, onDelete, onToggleActive }: SortableIte
         </p>
       </div>
       <div className="flex items-center gap-2">
+        {(section.section_type === "free_content" && section.is_curated) && onManageContent && (
+          <Button variant="outline" size="sm" onClick={() => onManageContent(section)}>
+            <Film className="h-4 w-4 mr-1" />
+            Content
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -150,6 +160,8 @@ export const HomeSectionManagement = () => {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingSection, setEditingSection] = useState<HomeSection | null>(null);
+  const [managingContentSection, setManagingContentSection] = useState<HomeSection | null>(null);
+  const [contentSearch, setContentSearch] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     section_type: "genre",
@@ -162,6 +174,7 @@ export const HomeSectionManagement = () => {
     show_on_desktop: true,
     show_on_mobile: true,
     show_on_kids: false,
+    is_curated: false,
   });
 
   const sensors = useSensors(
@@ -222,6 +235,7 @@ export const HomeSectionManagement = () => {
         show_on_desktop: data.show_on_desktop,
         show_on_mobile: data.show_on_mobile,
         show_on_kids: data.show_on_kids,
+        is_curated: data.is_curated,
       });
       if (error) throw error;
     },
@@ -247,6 +261,7 @@ export const HomeSectionManagement = () => {
         show_on_desktop: data.show_on_desktop,
         show_on_mobile: data.show_on_mobile,
         show_on_kids: data.show_on_kids,
+        is_curated: data.is_curated,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -311,6 +326,77 @@ export const HomeSectionManagement = () => {
     },
   });
 
+  // Fetch all content for curated selection
+  const { data: allContent = [] } = useQuery({
+    queryKey: ["all-content-for-sections"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("content")
+        .select("id, title, thumbnail_url, content_type, is_premium, year")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!managingContentSection,
+  });
+
+  // Fetch curated content for the section being managed
+  const { data: sectionContent = [] } = useQuery({
+    queryKey: ["section-content", managingContentSection?.id],
+    queryFn: async () => {
+      if (!managingContentSection) return [];
+      const { data, error } = await supabase
+        .from("section_content")
+        .select("*, content:content_id(id, title, thumbnail_url, content_type)")
+        .eq("section_id", managingContentSection.id)
+        .order("display_order");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!managingContentSection,
+  });
+
+  const addContentToSection = useMutation({
+    mutationFn: async ({ sectionId, contentId }: { sectionId: string; contentId: string }) => {
+      const maxOrder = sectionContent.length > 0 ? Math.max(...sectionContent.map((s: any) => s.display_order || 0)) : 0;
+      const { error } = await supabase.from("section_content").insert({
+        section_id: sectionId,
+        content_id: contentId,
+        display_order: maxOrder + 1,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["section-content", managingContentSection?.id] });
+      toast.success("Content added");
+    },
+    onError: () => toast.error("Failed to add content"),
+  });
+
+  const removeContentFromSection = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("section_content").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["section-content", managingContentSection?.id] });
+      toast.success("Content removed");
+    },
+    onError: () => toast.error("Failed to remove content"),
+  });
+
+  // Filter available content for curated selection
+  const availableContent = allContent.filter((c: any) => {
+    const matchesSearch = c.title.toLowerCase().includes(contentSearch.toLowerCase());
+    const notAlreadyAdded = !sectionContent.some((sc: any) => sc.content_id === c.id);
+    const isFree = !c.is_premium;
+    // Apply content type filter if set
+    const matchesType = !managingContentSection?.content_type_filter || 
+      managingContentSection.content_type_filter === "all" ||
+      c.content_type === managingContentSection.content_type_filter;
+    return matchesSearch && notAlreadyAdded && isFree && matchesType;
+  });
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -342,6 +428,7 @@ export const HomeSectionManagement = () => {
       show_on_desktop: true,
       show_on_mobile: true,
       show_on_kids: false,
+      is_curated: false,
     });
   };
 
@@ -359,6 +446,7 @@ export const HomeSectionManagement = () => {
       show_on_desktop: section.show_on_desktop ?? true,
       show_on_mobile: section.show_on_mobile ?? true,
       show_on_kids: section.show_on_kids ?? false,
+      is_curated: section.is_curated ?? false,
     });
     setShowForm(true);
   };
@@ -468,16 +556,28 @@ export const HomeSectionManagement = () => {
                 </div>
               )}
               {formData.section_type === "free_content" && (
-                <div className="space-y-2">
-                  <Label>Content Type Filter</Label>
-                  <Select value={formData.content_type_filter} onValueChange={(v) => setFormData({ ...formData, content_type_filter: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CONTENT_TYPE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Content Type Filter</Label>
+                    <Select value={formData.content_type_filter} onValueChange={(v) => setFormData({ ...formData, content_type_filter: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CONTENT_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <Switch
+                      checked={formData.is_curated}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_curated: checked })}
+                    />
+                    <div>
+                      <Label>Curated Selection</Label>
+                      <p className="text-xs text-muted-foreground">Manually select specific content (save first, then use "Content" button)</p>
+                    </div>
+                  </div>
                 </div>
               )}
               <div className="space-y-2">
@@ -547,6 +647,95 @@ export const HomeSectionManagement = () => {
           </DialogContent>
         </Dialog>
 
+        {/* Content Management Dialog for Curated Free Content */}
+        <Dialog open={!!managingContentSection} onOpenChange={(open) => !open && setManagingContentSection(null)}>
+          <DialogContent className="max-w-3xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Manage Content: {managingContentSection?.title}</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 h-[60vh]">
+              {/* Selected Content */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Selected Content ({sectionContent.length})</Label>
+                <ScrollArea className="h-[50vh] border rounded-lg p-2">
+                  {sectionContent.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">No content selected</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sectionContent.map((item: any) => (
+                        <div key={item.id} className="flex items-center gap-2 p-2 bg-secondary/30 rounded-lg">
+                          <img 
+                            src={item.content?.thumbnail_url || "/placeholder.svg"} 
+                            alt={item.content?.title} 
+                            className="w-12 h-8 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{item.content?.title}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{item.content?.content_type}</p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => removeContentFromSection.mutate(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+              
+              {/* Available Content */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium">Available Free Content</Label>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search content..."
+                    value={contentSearch}
+                    onChange={(e) => setContentSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <ScrollArea className="h-[45vh] border rounded-lg p-2">
+                  <div className="space-y-2">
+                    {availableContent.slice(0, 50).map((item: any) => (
+                      <div 
+                        key={item.id} 
+                        className="flex items-center gap-2 p-2 bg-secondary/20 rounded-lg hover:bg-secondary/40 cursor-pointer transition-colors"
+                        onClick={() => managingContentSection && addContentToSection.mutate({ 
+                          sectionId: managingContentSection.id, 
+                          contentId: item.id 
+                        })}
+                      >
+                        <img 
+                          src={item.thumbnail_url || "/placeholder.svg"} 
+                          alt={item.title} 
+                          className="w-12 h-8 object-cover rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{item.title}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{item.content_type} • {item.year}</p>
+                        </div>
+                        <Plus className="h-4 w-4 text-brand" />
+                      </div>
+                    ))}
+                    {availableContent.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        {contentSearch ? "No matching content found" : "No free content available"}
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Sections List */}
         {isLoading ? (
           <div className="flex justify-center py-8">
@@ -567,6 +756,7 @@ export const HomeSectionManagement = () => {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onToggleActive={(id, active) => toggleActive.mutate({ id, is_active: active })}
+                    onManageContent={setManagingContentSection}
                   />
                 ))}
               </div>
