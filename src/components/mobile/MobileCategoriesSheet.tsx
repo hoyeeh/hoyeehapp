@@ -168,13 +168,13 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                           {filteredContent.movies.length}
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 px-4 py-3">
+                      <div className="grid grid-cols-3 gap-3 px-4 py-3">
                         {filteredContent.movies.map((item) => (
                           <motion.div 
                             key={item.id}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform"
+                            className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform shadow-md"
                             onClick={() => handleDetails(item)}
                           >
                             <img
@@ -183,14 +183,6 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                               className="w-full h-full object-cover"
                               loading="lazy"
                             />
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2">
-                              <p className="text-[10px] font-medium text-white line-clamp-2 leading-tight">
-                                {item.title}
-                              </p>
-                              {item.year && (
-                                <p className="text-[8px] text-white/70 mt-0.5">{item.year}</p>
-                              )}
-                            </div>
                           </motion.div>
                         ))}
                       </div>
@@ -207,13 +199,13 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                           {filteredContent.shows.length}
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 px-4 py-3">
+                      <div className="grid grid-cols-3 gap-3 px-4 py-3">
                         {filteredContent.shows.map((item) => (
                           <motion.div 
                             key={item.id}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform"
+                            className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform shadow-md"
                             onClick={() => handleDetails(item)}
                           >
                             <img
@@ -222,14 +214,6 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                               className="w-full h-full object-cover"
                               loading="lazy"
                             />
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2">
-                              <p className="text-[10px] font-medium text-white line-clamp-2 leading-tight">
-                                {item.title}
-                              </p>
-                              {item.year && (
-                                <p className="text-[8px] text-white/70 mt-0.5">{item.year}</p>
-                              )}
-                            </div>
                           </motion.div>
                         ))}
                       </div>
