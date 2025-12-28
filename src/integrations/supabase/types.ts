@@ -1566,6 +1566,59 @@ export type Database = {
           },
         ]
       }
+      featured_creators: {
+        Row: {
+          banner_image_url: string
+          created_at: string | null
+          creator_id: string
+          cta_label: string | null
+          end_at: string | null
+          id: string
+          priority: number | null
+          start_at: string | null
+          status: string | null
+          subtitle: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          banner_image_url: string
+          created_at?: string | null
+          creator_id: string
+          cta_label?: string | null
+          end_at?: string | null
+          id?: string
+          priority?: number | null
+          start_at?: string | null
+          status?: string | null
+          subtitle?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          banner_image_url?: string
+          created_at?: string | null
+          creator_id?: string
+          cta_label?: string | null
+          end_at?: string | null
+          id?: string
+          priority?: number | null
+          start_at?: string | null
+          status?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "featured_creators_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       genres: {
         Row: {
           created_at: string
