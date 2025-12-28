@@ -801,7 +801,7 @@ const Index = () => {
                       );
                     }
 
-                    // Creator Store / Paid Content section
+                    // Creator Studio / Paid Content section
                     if (section.section_type === "creator_store") {
                       return (
                         <PaidContentRow

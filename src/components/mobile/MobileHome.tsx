@@ -616,7 +616,7 @@ export function MobileHome() {
                 );
               }
 
-              // Creator Store / Paid Content section
+              // Creator Studio / Paid Content section
               if (section.section_type === "creator_store") {
                 return (
                   <FadeIn key={section.id} delay={150 + index * 50}>

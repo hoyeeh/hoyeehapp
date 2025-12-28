@@ -230,7 +230,7 @@ export function CreatorContentManager({ creatorProfile }: CreatorContentManagerP
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <ExternalLink className="h-4 w-4 mr-2" />
-                              View in Store
+                              View in Studio
                             </DropdownMenuItem>
                             {paidInfo && (
                               <DropdownMenuItem 
