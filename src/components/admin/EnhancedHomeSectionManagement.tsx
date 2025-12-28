@@ -239,6 +239,8 @@ export const EnhancedHomeSectionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["home-sections-display"] });
+      queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
       resetForm();
       toast.success("Section added");
     },
@@ -267,6 +269,8 @@ export const EnhancedHomeSectionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["home-sections-display"] });
+      queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
       resetForm();
       toast.success("Section updated");
     },
@@ -280,6 +284,8 @@ export const EnhancedHomeSectionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["home-sections-display"] });
+      queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
       toast.success("Section deleted");
     },
     onError: () => toast.error("Failed to delete section"),
@@ -322,6 +328,8 @@ export const EnhancedHomeSectionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["home-sections-display"] });
+      queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
     },
     onError: () => toast.error("Failed to reorder sections"),
   });
@@ -333,6 +341,8 @@ export const EnhancedHomeSectionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["home-sections-display"] });
+      queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
     },
   });
 
