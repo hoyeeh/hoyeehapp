@@ -304,12 +304,6 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
                   loading="lazy"
                 />
                 
-                {/* Premium Badge */}
-                {item.content.isPremium && (
-                  <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                    PREMIUM
-                  </div>
-                )}
 
                 {/* Episode Badge */}
                 {item.isEpisode && (

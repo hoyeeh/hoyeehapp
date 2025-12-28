@@ -13,7 +13,7 @@ interface MobilePaidContentRowProps {
 }
 
 export function MobilePaidContentRow({
-  title = "Creator Store",
+  title = "Creator Studio",
   onDetails,
   maxItems = 15,
 }: MobilePaidContentRowProps) {

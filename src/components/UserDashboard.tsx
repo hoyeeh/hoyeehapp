@@ -251,11 +251,6 @@ export const UserDashboard = ({ onPlay, onDetails }: UserDashboardProps) => {
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  {item.is_premium && (
-                    <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                      PREMIUM
-                    </div>
-                  )}
                   <div className="absolute top-2 right-2 bg-green-500 px-2 py-0.5 rounded text-xs font-semibold text-white">
                     NEW
                   </div>
