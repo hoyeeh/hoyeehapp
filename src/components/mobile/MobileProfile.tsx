@@ -28,7 +28,8 @@ import {
   Lock,
   BellRing,
   Store,
-  Brush
+  Brush,
+  ShoppingBag
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
@@ -214,6 +215,7 @@ export function MobileProfile() {
       items: [
         { icon: Users, label: "Manage Profiles", modalKey: "profiles" },
         { icon: CreditCard, label: "Subscription", path: "/subscription", value: profile?.is_subscribed ? "Premium" : "Free" },
+        { icon: ShoppingBag, label: "My Purchases", path: "/my-purchases" },
         { icon: Lock, label: "Account Security", modalKey: "security" },
         { icon: Shield, label: "Parental Controls", path: "/parental" },
       ],

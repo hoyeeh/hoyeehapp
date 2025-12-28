@@ -2207,6 +2207,7 @@ export type Database = {
           currency: string
           id: string
           is_active: boolean
+          is_free: boolean
           price: number
           sale_count: number
           total_revenue: number
@@ -2219,6 +2220,7 @@ export type Database = {
           currency?: string
           id?: string
           is_active?: boolean
+          is_free?: boolean
           price: number
           sale_count?: number
           total_revenue?: number
@@ -2231,6 +2233,7 @@ export type Database = {
           currency?: string
           id?: string
           is_active?: boolean
+          is_free?: boolean
           price?: number
           sale_count?: number
           total_revenue?: number
