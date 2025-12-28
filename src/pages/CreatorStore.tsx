@@ -286,8 +286,12 @@ export default function CreatorStore() {
               {/* Trending Now */}
               {trendingContent.length > 0 && (
                 <section className="px-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Flame className="h-5 w-5 text-orange-500" />
+                    <h2 className="text-lg font-bold">Trending Now</h2>
+                  </div>
                   <ContentRow
-                    title="🔥 Trending Now"
+                    title=""
                     items={trendingContent}
                     onItemClick={setSelectedContent}
                     showSeeAll={false}

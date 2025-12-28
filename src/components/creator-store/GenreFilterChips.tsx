@@ -1,5 +1,28 @@
 import { usePaidContentGenres } from "@/hooks/usePaidContent";
 import { cn } from "@/lib/utils";
+import { 
+  Flame, 
+  Laugh, 
+  Theater, 
+  Ghost, 
+  Heart, 
+  Rocket, 
+  AlertTriangle, 
+  Video, 
+  Sparkles, 
+  Wand2,
+  Mountain,
+  Search,
+  Music,
+  Users,
+  Target,
+  Swords,
+  Scroll,
+  Trophy,
+  Sun,
+  Mic,
+  Film
+} from "lucide-react";
 
 interface GenreFilterChipsProps {
   selectedGenre: string;
@@ -30,36 +53,36 @@ const genreColors: Record<string, string> = {
   "Musical": "from-fuchsia-500 to-pink-600",
 };
 
-// Emojis for genres
-const genreEmojis: Record<string, string> = {
-  "Action": "🔥",
-  "Comedy": "😂",
-  "Drama": "🎭",
-  "Horror": "👻",
-  "Romance": "💕",
-  "Sci-Fi": "🚀",
-  "Thriller": "😱",
-  "Documentary": "📹",
-  "Animation": "✨",
-  "Fantasy": "🧙",
-  "Adventure": "🏔️",
-  "Mystery": "🔍",
-  "Music": "🎵",
-  "Family": "👨‍👩‍👧",
-  "Crime": "🔫",
-  "War": "⚔️",
-  "History": "📜",
-  "Sports": "⚽",
-  "Western": "🤠",
-  "Musical": "🎤",
+// Icons for genres
+const genreIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  "Action": Flame,
+  "Comedy": Laugh,
+  "Drama": Theater,
+  "Horror": Ghost,
+  "Romance": Heart,
+  "Sci-Fi": Rocket,
+  "Thriller": AlertTriangle,
+  "Documentary": Video,
+  "Animation": Sparkles,
+  "Fantasy": Wand2,
+  "Adventure": Mountain,
+  "Mystery": Search,
+  "Music": Music,
+  "Family": Users,
+  "Crime": Target,
+  "War": Swords,
+  "History": Scroll,
+  "Sports": Trophy,
+  "Western": Sun,
+  "Musical": Mic,
 };
 
 function getGradient(genre: string): string {
   return genreColors[genre] || "from-primary/80 to-primary";
 }
 
-function getEmoji(genre: string): string {
-  return genreEmojis[genre] || "🎬";
+function getIcon(genre: string): React.ComponentType<{ className?: string }> {
+  return genreIcons[genre] || Film;
 }
 
 export function GenreFilterChips({ selectedGenre, onSelectGenre }: GenreFilterChipsProps) {
@@ -93,27 +116,30 @@ export function GenreFilterChips({ selectedGenre, onSelectGenre }: GenreFilterCh
             : "bg-card/50 text-foreground border-border/50 hover:border-primary/50 hover:bg-card"
         )}
       >
-        <span>🎬</span>
+        <Film className="h-4 w-4" />
         <span>All Genres</span>
       </button>
 
       {/* Genre Chips */}
-      {genres.map((genre) => (
-        <button
-          key={genre}
-          onClick={() => onSelectGenre(genre === selectedGenre ? '' : genre)}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-            "border flex-shrink-0",
-            selectedGenre === genre
-              ? `bg-gradient-to-r ${getGradient(genre)} text-white border-transparent shadow-lg`
-              : "bg-card/50 text-foreground border-border/50 hover:border-primary/50 hover:bg-card"
-          )}
-        >
-          <span>{getEmoji(genre)}</span>
-          <span>{genre}</span>
-        </button>
-      ))}
+      {genres.map((genre) => {
+        const IconComponent = getIcon(genre);
+        return (
+          <button
+            key={genre}
+            onClick={() => onSelectGenre(genre === selectedGenre ? '' : genre)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+              "border flex-shrink-0",
+              selectedGenre === genre
+                ? `bg-gradient-to-r ${getGradient(genre)} text-white border-transparent shadow-lg`
+                : "bg-card/50 text-foreground border-border/50 hover:border-primary/50 hover:bg-card"
+            )}
+          >
+            <IconComponent className="h-4 w-4" />
+            <span>{genre}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
