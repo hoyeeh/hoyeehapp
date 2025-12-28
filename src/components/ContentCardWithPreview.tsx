@@ -25,6 +25,8 @@ interface ContentCardWithPreviewProps {
   paidCurrency?: string; // Currency for paid content
   hasPurchased?: boolean; // Whether user has purchased this content
   isCheckingPurchase?: boolean; // Whether purchase check is in progress
+  hasNewEpisode?: boolean; // Show "New Episode" badge for TV shows
+  hasNewSeason?: boolean; // Show "New Season" badge for TV shows
 }
 
 export const ContentCardWithPreview = ({
@@ -44,6 +46,8 @@ export const ContentCardWithPreview = ({
   paidCurrency = 'XAF',
   hasPurchased = false,
   isCheckingPurchase = false,
+  hasNewEpisode = false,
+  hasNewSeason = false,
 }: ContentCardWithPreviewProps) => {
   // Check if content was added within the specified days
   const isJustAdded = useMemo(() => {
@@ -272,8 +276,22 @@ export const ContentCardWithPreview = ({
             </div>
           )}
 
+          {/* New Season Badge - Centered with rounded edges (priority over New Episode) */}
+          {hasNewSeason && !showTop10Badge && content.contentType === 'series' && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
+              NEW SEASON
+            </div>
+          )}
+
+          {/* New Episode Badge - Centered with rounded edges */}
+          {hasNewEpisode && !hasNewSeason && !showTop10Badge && content.contentType === 'series' && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
+              NEW EPISODE
+            </div>
+          )}
+
           {/* Just Added Badge - Centered with rounded edges */}
-          {shouldShowJustAdded && !showTop10Badge && (
+          {shouldShowJustAdded && !showTop10Badge && !hasNewSeason && !hasNewEpisode && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
               JUST ADDED
             </div>

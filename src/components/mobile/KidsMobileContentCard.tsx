@@ -8,6 +8,8 @@ interface KidsMobileContentCardProps {
   onDetails: (content: Content) => void;
   index: number;
   variant?: "default" | "large" | "featured";
+  hasNewEpisode?: boolean;
+  hasNewSeason?: boolean;
 }
 
 export const KidsMobileContentCard = ({ 
@@ -15,7 +17,9 @@ export const KidsMobileContentCard = ({
   onPlay, 
   onDetails, 
   index,
-  variant = "default" 
+  variant = "default",
+  hasNewEpisode = false,
+  hasNewSeason = false
 }: KidsMobileContentCardProps) => {
   
   const sizes = {
@@ -57,6 +61,20 @@ export const KidsMobileContentCard = ({
               <span className="text-[10px] font-semibold text-white/90 tracking-wide">
                 {content.contentRating}
               </span>
+            </div>
+          )}
+
+          {/* New Season Badge */}
+          {hasNewSeason && content.contentType === 'series' && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[10px] font-bold rounded-full">
+              NEW SEASON
+            </div>
+          )}
+
+          {/* New Episode Badge */}
+          {hasNewEpisode && !hasNewSeason && content.contentType === 'series' && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[10px] font-bold rounded-full">
+              NEW EPISODE
             </div>
           )}
         </div>
