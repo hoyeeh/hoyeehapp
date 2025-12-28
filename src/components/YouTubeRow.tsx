@@ -12,7 +12,7 @@ interface YouTubeRowProps {
 }
 
 export function YouTubeRow({ 
-  title = "YouTube Videos", 
+  title = "Channel Videos", 
   channelId,
   playlistId,
   onPlayVideo 

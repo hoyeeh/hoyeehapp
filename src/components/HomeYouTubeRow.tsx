@@ -41,7 +41,7 @@ interface YouTubePlaylist {
 }
 
 export function HomeYouTubeRow({ 
-  title = "YouTube Channels", 
+  title = "Channels", 
   maxItems = 10,
   cardStyle = "backdrop",
   onPlayVideo 

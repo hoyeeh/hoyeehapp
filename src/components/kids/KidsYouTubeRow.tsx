@@ -117,7 +117,7 @@ export const KidsYouTubeRow = ({ onPlayVideo }: KidsYouTubeRowProps) => {
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
           <Youtube className="h-5 w-5 text-white" />
         </div>
-        <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">YouTube Videos</h2>
+        <h2 className="text-xl font-semibold text-white tracking-[-0.02em]">Channel Videos</h2>
       </div>
 
       {/* Videos Row */}
