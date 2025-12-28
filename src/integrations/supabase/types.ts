@@ -2960,6 +2960,66 @@ export type Database = {
         }
         Relationships: []
       }
+      subtitles: {
+        Row: {
+          cdn_url: string | null
+          content_id: string
+          created_at: string
+          created_by: string | null
+          duration_seconds: number | null
+          episode_id: string | null
+          id: string
+          language_code: string
+          language_label: string
+          subtitle_url: string
+          updated_at: string
+          word_count: number | null
+        }
+        Insert: {
+          cdn_url?: string | null
+          content_id: string
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          episode_id?: string | null
+          id?: string
+          language_code: string
+          language_label: string
+          subtitle_url: string
+          updated_at?: string
+          word_count?: number | null
+        }
+        Update: {
+          cdn_url?: string | null
+          content_id?: string
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          episode_id?: string | null
+          id?: string
+          language_code?: string
+          language_label?: string
+          subtitle_url?: string
+          updated_at?: string
+          word_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtitles_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtitles_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_messages: {
         Row: {
           created_at: string

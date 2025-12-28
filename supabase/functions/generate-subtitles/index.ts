@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,20 @@ interface SubtitleRequest {
   audioUrl: string;
   languageCode?: string; // ISO 639-3 code, defaults to 'fra' for French
 }
+
+// Language code to label mapping
+const LANGUAGE_LABELS: Record<string, string> = {
+  fra: "French",
+  eng: "English",
+  spa: "Spanish",
+  ara: "Arabic",
+  deu: "German",
+  ita: "Italian",
+  por: "Portuguese",
+  hin: "Hindi",
+  zho: "Chinese",
+  jpn: "Japanese",
+};
 
 // ============= AWS Signature V4 Helpers =============
 
@@ -376,6 +391,36 @@ serve(async (req) => {
 
     console.log(`Subtitle uploaded successfully to DO Spaces: ${cdnUrl}`);
 
+    // Save subtitle record to database
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const languageLabel = LANGUAGE_LABELS[languageCode] || languageCode;
+
+    // Upsert subtitle record (update if exists, insert if not)
+    const { error: dbError } = await supabase
+      .from("subtitles")
+      .upsert({
+        content_id: contentId,
+        episode_id: episodeId || null,
+        language_code: languageCode,
+        language_label: languageLabel,
+        subtitle_url: publicUrl,
+        cdn_url: cdnUrl,
+        word_count: transcription.words?.length || 0,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'content_id,episode_id,language_code',
+      });
+
+    if (dbError) {
+      console.error("Failed to save subtitle record:", dbError);
+      // Don't fail the request, the file was uploaded successfully
+    } else {
+      console.log("Subtitle record saved to database");
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -383,6 +428,7 @@ serve(async (req) => {
         publicUrl,
         cdnUrl,
         language: languageCode,
+        languageLabel,
         wordCount: transcription.words?.length || 0,
         fullText: transcription.text || "",
       }),

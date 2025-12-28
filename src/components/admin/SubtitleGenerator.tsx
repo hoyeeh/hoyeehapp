@@ -20,14 +20,17 @@ const SUPPORTED_LANGUAGES = [
   { code: "fra", label: "French", flag: "🇫🇷" },
   { code: "eng", label: "English", flag: "🇬🇧" },
   { code: "spa", label: "Spanish", flag: "🇪🇸" },
+  { code: "ara", label: "Arabic", flag: "🇸🇦" },
   { code: "deu", label: "German", flag: "🇩🇪" },
   { code: "ita", label: "Italian", flag: "🇮🇹" },
   { code: "por", label: "Portuguese", flag: "🇵🇹" },
-  { code: "ara", label: "Arabic", flag: "🇸🇦" },
   { code: "hin", label: "Hindi", flag: "🇮🇳" },
   { code: "zho", label: "Chinese", flag: "🇨🇳" },
   { code: "jpn", label: "Japanese", flag: "🇯🇵" },
 ];
+
+// Export for use in other components
+export { SUPPORTED_LANGUAGES };
 
 export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onComplete }: SubtitleGeneratorProps) {
   const [selectedLanguage, setSelectedLanguage] = useState("fra");
