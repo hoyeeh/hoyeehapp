@@ -225,12 +225,13 @@ serve(async (req) => {
       } else {
         // Use Flutterwave for mobile money payments
         const paymentOptions = 'mobilemoney,mobilemoneyghana,mobilemoneyuganda,mobilemoneyzambia,mobilemoneyfranco';
+        const origin = req.headers.get('origin') || 'https://hoyeeh.lovable.app';
 
         const flutterwavePayload = {
           tx_ref: transactionRef,
           amount: paidContent.price,
           currency: paidContent.currency,
-          redirect_url: `${supabaseUrl}/functions/v1/purchase-content-callback`,
+          redirect_url: `${origin}/purchase-return?content_id=${contentId}`,
           payment_options: paymentOptions,
           customer: {
             email: user.email,

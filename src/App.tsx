@@ -65,6 +65,7 @@ import KidsYouTube from "./pages/KidsYouTube";
 import Cast from "./pages/Cast";
 import WatchParty from "./pages/WatchParty";
 import MyPurchases from "./pages/MyPurchases";
+import PurchaseReturn from "./pages/PurchaseReturn";
 
 const queryClient = new QueryClient();
 
@@ -240,6 +241,7 @@ const App = () => (
                         <Route path="/kids-youtube" element={<KidsYouTube />} />
                         <Route path="/cast" element={<Cast />} />
                         <Route path="/my-purchases" element={<MyPurchases />} />
+                        <Route path="/purchase-return" element={<PurchaseReturn />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                       <PersistentMobileVideoPlayer />

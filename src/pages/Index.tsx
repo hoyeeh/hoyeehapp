@@ -74,6 +74,7 @@ const Index = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [pinModalContent, setPinModalContent] = useState<Content | null>(null);
   const [purchaseModalContent, setPurchaseModalContent] = useState<any>(null);
+  const [checkingPaidContentId, setCheckingPaidContentId] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     genre: null,
     year: null,
@@ -323,6 +324,9 @@ const Index = () => {
   };
 
   const handleDetails = async (item: Content) => {
+    // Show loading indicator
+    setCheckingPaidContentId(item.id);
+    
     // Check if this is paid creator content that requires purchase first
     try {
       const { data: paidContent } = await supabase
@@ -361,6 +365,8 @@ const Index = () => {
       // If not paid content or is_free, show content detail
     } catch (error) {
       console.error('Error checking paid content:', error);
+    } finally {
+      setCheckingPaidContentId(null);
     }
     
     setSelectedContent(item);
