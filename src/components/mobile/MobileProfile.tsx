@@ -54,6 +54,8 @@ import { MobileAccountSecurity } from "./MobileAccountSecurity";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { useIsCreator } from "@/hooks/useCreator";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import { SupportChat } from "@/components/SupportChat";
+import { MobileSupportChat } from "./MobileSupportChat";
 
 // Import centralized avatars
 import { AVATARS } from "@/lib/avatars";
@@ -98,6 +100,7 @@ export function MobileProfile() {
   const [showWatchHistory, setShowWatchHistory] = useState(false);
   const [showAccountSecurity, setShowAccountSecurity] = useState(false);
   const [showWatchPartyGuide, setShowWatchPartyGuide] = useState(false);
+  const [showSupportChat, setShowSupportChat] = useState(false);
   
   // Settings toggles
   const [wifiOnly, setWifiOnly] = useState(() => {
@@ -261,7 +264,7 @@ export function MobileProfile() {
     {
       title: "Support",
       items: [
-        { icon: MessageCircle, label: "Contact Support", path: "/support" },
+        { icon: MessageCircle, label: "Contact Support", modalKey: "supportChat" },
         { icon: HelpCircle, label: "Help Center", path: "/help" },
         { icon: Star, label: "Rate Hoyeeh", action: () => toast.info("Thank you for your support!") },
       ],
@@ -320,6 +323,7 @@ export function MobileProfile() {
       else if (item.modalKey === "watchHistory") setShowWatchHistory(true);
       else if (item.modalKey === "security") setShowAccountSecurity(true);
       else if (item.modalKey === "watchParty") setShowWatchPartyGuide(true);
+      else if (item.modalKey === "supportChat") setShowSupportChat(true);
       else if (item.action) item.action();
       else if (item.path) navigate(item.path);
     };
@@ -750,6 +754,12 @@ export function MobileProfile() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Support Chat */}
+      <MobileSupportChat 
+        open={showSupportChat} 
+        onClose={() => setShowSupportChat(false)} 
+      />
 
       {/* Bottom Nav */}
       <MobileBottomNav />
