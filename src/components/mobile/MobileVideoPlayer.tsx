@@ -1694,25 +1694,28 @@ export function MobileVideoPlayer({
             className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Bar - Only back button and title */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-safe">
+            {/* Top Bar - Back button and title - Responsive */}
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3 sm:p-4 pt-safe z-40">
+              {/* Back Button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
                   handleBack();
                 }}
-                className="p-3 rounded-full bg-black/50 backdrop-blur-sm active:bg-black/70 touch-manipulation cursor-pointer"
-                style={{ minWidth: 48, minHeight: 48, WebkitTapHighlightColor: 'transparent' }}
+                className="flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-black/60 backdrop-blur-md active:bg-black/80 hover:bg-black/70 touch-manipulation cursor-pointer transition-colors"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
                 type="button"
               >
-                <ChevronLeft className="h-6 w-6 text-white" />
+                <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                <span className="text-white text-sm sm:text-base font-medium hidden xs:inline">Back</span>
               </button>
               
-              <div className="flex-1 text-center px-4">
-                <h2 className="text-white font-semibold truncate">{title}</h2>
+              {/* Title - Hidden on very small screens, truncated on medium */}
+              <div className="flex-1 text-center px-2 sm:px-4 hidden sm:block">
+                <h2 className="text-white font-semibold text-sm sm:text-base truncate">{title}</h2>
                 {episodeTitle && (
-                  <p className="text-white/70 text-sm truncate">{episodeTitle}</p>
+                  <p className="text-white/70 text-xs sm:text-sm truncate">{episodeTitle}</p>
                 )}
               </div>
               
@@ -1723,11 +1726,11 @@ export function MobileVideoPlayer({
                   e.preventDefault();
                   handleBack();
                 }}
-                className="p-3 rounded-full bg-black/50 backdrop-blur-sm active:bg-black/70 touch-manipulation cursor-pointer"
-                style={{ minWidth: 48, minHeight: 48, WebkitTapHighlightColor: 'transparent' }}
+                className="flex items-center justify-center p-2.5 sm:p-3 rounded-xl bg-black/60 backdrop-blur-md active:bg-black/80 hover:bg-black/70 touch-manipulation cursor-pointer transition-colors"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
                 type="button"
               >
-                <X className="h-6 w-6 text-white" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </button>
             </div>
 
