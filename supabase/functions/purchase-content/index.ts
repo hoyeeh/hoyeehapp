@@ -107,16 +107,19 @@ serve(async (req) => {
         throw new Error('Paid content not found');
       }
 
-      // Check if already purchased
-      const { data: existingPurchase } = await supabase
+      // Check if already purchased (or if there is an existing attempt)
+      const { data: existingPurchase, error: existingPurchaseError } = await supabase
         .from('content_purchases')
-        .select('id')
+        .select('id, status')
         .eq('user_id', authenticatedUser.id)
         .eq('content_id', contentId)
-        .eq('status', 'completed')
         .maybeSingle();
 
-      if (existingPurchase) {
+      if (existingPurchaseError) {
+        throw existingPurchaseError;
+      }
+
+      if (existingPurchase?.status === 'completed') {
         throw new Error('Content already purchased');
       }
 
@@ -198,22 +201,27 @@ serve(async (req) => {
           },
         });
 
-        // Create pending purchase record
-        await supabase
+        // Create (or reuse) pending purchase record (handles retries because user_id+content_id is unique)
+        const { error: purchaseUpsertError } = await supabase
           .from('content_purchases')
-          .insert({
-            user_id: authenticatedUser.id,
-            content_id: contentId,
-            paid_content_id: paidContent.id,
-            creator_id: paidContent.creator_id,
-            amount: paidContent.price,
-            currency: paidContent.currency,
-            creator_share: creatorShare,
-            platform_share: platformShare,
-            payment_provider: 'stripe',
-            payment_reference: transactionRef,
-            status: 'pending'
-          });
+          .upsert(
+            {
+              user_id: authenticatedUser.id,
+              content_id: contentId,
+              paid_content_id: paidContent.id,
+              creator_id: paidContent.creator_id,
+              amount: paidContent.price,
+              currency: paidContent.currency,
+              creator_share: creatorShare,
+              platform_share: platformShare,
+              payment_provider: 'stripe',
+              payment_reference: transactionRef,
+              status: 'pending',
+            },
+            { onConflict: 'user_id,content_id' }
+          );
+
+        if (purchaseUpsertError) throw purchaseUpsertError;
 
         return new Response(
           JSON.stringify({
@@ -268,22 +276,27 @@ serve(async (req) => {
           throw new Error(flutterwaveResult.message || 'Payment initialization failed');
         }
 
-        // Create pending purchase record
-        await supabase
+        // Create (or reuse) pending purchase record (handles retries because user_id+content_id is unique)
+        const { error: purchaseUpsertError } = await supabase
           .from('content_purchases')
-          .insert({
-            user_id: authenticatedUser.id,
-            content_id: contentId,
-            paid_content_id: paidContent.id,
-            creator_id: paidContent.creator_id,
-            amount: paidContent.price,
-            currency: paidContent.currency,
-            creator_share: creatorShare,
-            platform_share: platformShare,
-            payment_provider: 'flutterwave',
-            payment_reference: transactionRef,
-            status: 'pending'
-          });
+          .upsert(
+            {
+              user_id: authenticatedUser.id,
+              content_id: contentId,
+              paid_content_id: paidContent.id,
+              creator_id: paidContent.creator_id,
+              amount: paidContent.price,
+              currency: paidContent.currency,
+              creator_share: creatorShare,
+              platform_share: platformShare,
+              payment_provider: 'flutterwave',
+              payment_reference: transactionRef,
+              status: 'pending',
+            },
+            { onConflict: 'user_id,content_id' }
+          );
+
+        if (purchaseUpsertError) throw purchaseUpsertError;
 
         return new Response(
           JSON.stringify({
