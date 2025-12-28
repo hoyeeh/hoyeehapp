@@ -66,6 +66,7 @@ import Cast from "./pages/Cast";
 import WatchParty from "./pages/WatchParty";
 import MyPurchases from "./pages/MyPurchases";
 import PurchaseReturn from "./pages/PurchaseReturn";
+import { usePendingPurchaseVerification } from "./hooks/usePendingPurchaseVerification";
 
 const queryClient = new QueryClient();
 
@@ -178,6 +179,12 @@ function DownloadQueueWrapper() {
   );
 }
 
+// Background purchase verification handler
+function PendingPurchaseVerifier() {
+  usePendingPurchaseVerification();
+  return null;
+}
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -197,6 +204,7 @@ const App = () => (
                     <PWAUpdateHandler />
                     <PWANavigationHandler />
                     <CapacitorBackHandler />
+                    <PendingPurchaseVerifier />
                     <CastProvider>
                       <PusherNotificationHandler />
                       <PersistentWatchPartyPanel />

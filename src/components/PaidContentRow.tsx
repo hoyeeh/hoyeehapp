@@ -1,6 +1,6 @@
 import { Content } from "@/types";
 import { ContentCardWithPreview } from "./ContentCardWithPreview";
-import { ChevronLeft, ChevronRight, ShoppingBag, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { usePaidContentForHome, useUserPurchases } from "@/hooks/usePaidContent";
@@ -142,29 +142,6 @@ export const PaidContentRow = ({
         >
           {contentItems.map((item) => (
             <div key={item.id} className="relative flex-shrink-0">
-              {/* Paid/Purchased Badge */}
-              <div className="absolute top-2 right-2 z-10">
-                {item.hasPurchased || item.isFree ? (
-                  <div className="bg-green-500 rounded-md px-2 py-1 flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3 text-white" />
-                    <span className="text-[10px] font-bold text-white">
-                      {item.isFree ? "Free" : "Paid Access"}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="bg-amber-500 rounded-md px-2 py-1 flex items-center gap-1">
-                    <ShoppingBag className="h-3 w-3 text-white" />
-                    <span className="text-[10px] font-bold text-white">
-                      {new Intl.NumberFormat('fr-FR', {
-                        style: 'currency',
-                        currency: item.currency || 'XAF',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      }).format(item.price)}
-                    </span>
-                  </div>
-                )}
-              </div>
               <ContentCardWithPreview
                 content={item}
                 onPlay={onPlay}
@@ -172,6 +149,10 @@ export const PaidContentRow = ({
                 onDetails={onDetails}
                 isInList={userList.includes(item.id)}
                 cardStyle="poster"
+                isPaidContent={!item.isFree}
+                paidPrice={item.price}
+                paidCurrency={item.currency}
+                hasPurchased={item.hasPurchased || item.isFree}
               />
               {/* Creator Name */}
               {item.creatorName && (

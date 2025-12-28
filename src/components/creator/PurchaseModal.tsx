@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle, Play, ShoppingBag, Loader2, CreditCard, Smartphone, Clock, User, X, ExternalLink, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePaidContentAnalytics } from "@/hooks/usePaidContentAnalytics";
 
 interface PurchaseModalProps {
   open: boolean;
@@ -33,7 +34,9 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
   const { data: hasPurchased, isLoading: checkingPurchase, refetch: refetchPurchase } = useHasPurchasedContent(content?.id);
   const initializePurchase = useInitializePurchase();
   const verifyPurchase = useVerifyPurchase();
+  const analytics = usePaidContentAnalytics();
   
+  // Track modal open
   const [modalState, setModalState] = useState<ModalState>('purchase');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
