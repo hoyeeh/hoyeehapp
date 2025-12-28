@@ -46,6 +46,8 @@ import { MiniPlayerProvider } from "@/contexts/MiniPlayerContext";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { HomeYouTubeRow } from "@/components/HomeYouTubeRow";
 import { HomepageSpotlight } from "@/components/spotlight/HomepageSpotlight";
+import { PaidContentRow } from "@/components/PaidContentRow";
+import { PurchaseModal } from "@/components/creator/PurchaseModal";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -71,6 +73,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [pinModalContent, setPinModalContent] = useState<Content | null>(null);
+  const [purchaseModalContent, setPurchaseModalContent] = useState<any>(null);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     genre: null,
     year: null,
@@ -242,7 +245,7 @@ const Index = () => {
     }
   };
 
-  const handlePlay = (item: Content) => {
+  const handlePlay = async (item: Content) => {
     // Check kids profile restrictions
     if (currentProfile?.is_kids && isRestrictedForKids(item.contentRating)) {
       toast.error("This content is not available for Kids profiles");
@@ -255,6 +258,46 @@ const Index = () => {
         setPinModalContent(item);
         return;
       }
+    }
+    
+    // Check if content is paid creator content (takes priority over subscription)
+    try {
+      const { data: paidContent } = await supabase
+        .from('paid_content')
+        .select(`
+          id,
+          price,
+          currency,
+          creator_id,
+          is_active,
+          is_free,
+          content(*),
+          creator_profiles(id, display_name, avatar_url, is_verified)
+        `)
+        .eq('content_id', item.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (paidContent && !paidContent.is_free) {
+        // Content is paid creator content (not free) - check if user has purchased it
+        const { data: purchase } = await supabase
+          .from('content_purchases')
+          .select('id')
+          .eq('user_id', user?.id || '')
+          .eq('content_id', item.id)
+          .eq('status', 'completed')
+          .maybeSingle();
+        
+        if (!purchase) {
+          // User hasn't purchased - show purchase modal
+          setPurchaseModalContent(paidContent);
+          return;
+        }
+        // User has purchased - allow playback (fall through to normal logic)
+      }
+      // If paidContent.is_free is true, allow playback without purchase
+    } catch (error) {
+      console.error('Error checking paid content:', error);
     }
     
     if (item.isPremium && !profile?.is_subscribed) {
@@ -712,6 +755,21 @@ const Index = () => {
                       );
                     }
 
+                    // Creator Store / Paid Content section
+                    if (section.section_type === "creator_store") {
+                      return (
+                        <PaidContentRow
+                          key={section.id}
+                          title={section.title}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                          maxItems={section.max_items || 15}
+                        />
+                      );
+                    }
+
                     // Leaving Soon section - use dedicated component
                     if (section.section_type === "leaving_soon") {
                       return (
@@ -823,6 +881,13 @@ const Index = () => {
           contentTitle={pinModalContent.title}
         />
       )}
+
+      {/* Purchase Modal for paid creator content */}
+      <PurchaseModal
+        open={!!purchaseModalContent}
+        onClose={() => setPurchaseModalContent(null)}
+        paidContent={purchaseModalContent}
+      />
 
       <SupportChat />
       <PWAInstallBanner />
