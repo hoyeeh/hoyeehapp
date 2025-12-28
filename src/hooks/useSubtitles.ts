@@ -127,6 +127,27 @@ function parseTimestamp(timestamp: string): number {
   return 0;
 }
 
+// Language code to display label mapping
+const LANGUAGE_LABELS: Record<string, string> = {
+  fra: 'Français',
+  eng: 'English',
+  spa: 'Español',
+  ara: 'العربية',
+  deu: 'Deutsch',
+  ita: 'Italiano',
+  por: 'Português',
+  hin: 'हिन्दी',
+  zho: '中文',
+  jpn: '日本語',
+  // Legacy codes for backward compatibility
+  fr: 'Français',
+  en: 'English',
+  es: 'Español',
+  yo: 'Yorùbá',
+  ha: 'Hausa',
+  ig: 'Igbo',
+};
+
 export function useSubtitles(contentId: string, episodeId?: string) {
   const [state, setState] = useState<SubtitleState>({
     isLoading: false,
@@ -139,56 +160,56 @@ export function useSubtitles(contentId: string, episodeId?: string) {
   const cuesRef = useRef<SubtitleCue[]>([]);
   const lastCueIndexRef = useRef(-1);
   
-  // Fetch available subtitle tracks
+  // Fetch available subtitle tracks from database
   const fetchSubtitleTracks = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      // For now, we'll create mock tracks - in production this would fetch from DB
-      // You can add a subtitles table to the database
-      const mockTracks: SubtitleTrack[] = [];
+      // Query subtitles from database
+      let query = supabase
+        .from('subtitles')
+        .select('*')
+        .eq('content_id', contentId);
       
-      // Check if there are subtitle files in storage
-      const baseId = episodeId || contentId;
-      const possibleLanguages = [
-        { code: 'en', label: 'English' },
-        { code: 'es', label: 'Español' },
-        { code: 'fr', label: 'Français' },
-        { code: 'yo', label: 'Yorùbá' },
-        { code: 'ha', label: 'Hausa' },
-        { code: 'ig', label: 'Igbo' },
-      ];
-      
-      // Try to find subtitle files in storage
-      for (const lang of possibleLanguages) {
-        const subtitlePath = `subtitles/${baseId}/${lang.code}.vtt`;
-        const { data } = await supabase.storage
-          .from('videos')
-          .createSignedUrl(subtitlePath, 3600);
-        
-        if (data?.signedUrl) {
-          mockTracks.push({
-            id: `${baseId}-${lang.code}`,
-            language: lang.label,
-            languageCode: lang.code,
-            label: lang.label,
-            url: data.signedUrl,
-            isDefault: lang.code === 'en',
-          });
-        }
+      if (episodeId) {
+        query = query.eq('episode_id', episodeId);
+      } else {
+        query = query.is('episode_id', null);
       }
       
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        tracks: mockTracks,
-        activeTrack: mockTracks.find(t => t.isDefault) || null,
-      }));
+      const { data: subtitles, error } = await query;
       
-      // Load the default track's cues
-      const defaultTrack = mockTracks.find(t => t.isDefault);
-      if (defaultTrack) {
-        loadSubtitleCues(defaultTrack);
+      if (error) {
+        console.error('[Subtitles] Database error:', error);
+        // Fall back to legacy storage check
+        return fetchLegacySubtitles();
+      }
+      
+      if (subtitles && subtitles.length > 0) {
+        const tracks: SubtitleTrack[] = subtitles.map((sub) => ({
+          id: sub.id,
+          language: sub.language_label,
+          languageCode: sub.language_code,
+          label: LANGUAGE_LABELS[sub.language_code] || sub.language_label,
+          url: sub.cdn_url || sub.subtitle_url,
+          isDefault: sub.language_code === 'eng' || sub.language_code === 'fra',
+        }));
+        
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          tracks,
+          activeTrack: tracks.find(t => t.isDefault) || null,
+        }));
+        
+        // Load the default track's cues
+        const defaultTrack = tracks.find(t => t.isDefault);
+        if (defaultTrack) {
+          loadSubtitleCues(defaultTrack);
+        }
+      } else {
+        // No subtitles in database, try legacy storage
+        await fetchLegacySubtitles();
       }
     } catch (error) {
       console.error('[Subtitles] Failed to fetch tracks:', error);
@@ -199,6 +220,55 @@ export function useSubtitles(contentId: string, episodeId?: string) {
       }));
     }
   }, [contentId, episodeId]);
+  
+  // Legacy fallback for subtitles stored directly in storage
+  const fetchLegacySubtitles = async () => {
+    const baseId = episodeId || contentId;
+    const possibleLanguages = [
+      { code: 'eng', label: 'English' },
+      { code: 'fra', label: 'Français' },
+      { code: 'spa', label: 'Español' },
+      { code: 'ara', label: 'العربية' },
+      // Legacy codes
+      { code: 'en', label: 'English' },
+      { code: 'fr', label: 'Français' },
+      { code: 'es', label: 'Español' },
+    ];
+    
+    const foundTracks: SubtitleTrack[] = [];
+    
+    // Try to find subtitle files in storage
+    for (const lang of possibleLanguages) {
+      const subtitlePath = `subtitles/${baseId}/${lang.code}.vtt`;
+      const { data } = await supabase.storage
+        .from('videos')
+        .createSignedUrl(subtitlePath, 3600);
+      
+      if (data?.signedUrl) {
+        foundTracks.push({
+          id: `${baseId}-${lang.code}`,
+          language: lang.label,
+          languageCode: lang.code,
+          label: lang.label,
+          url: data.signedUrl,
+          isDefault: lang.code === 'eng' || lang.code === 'en',
+        });
+      }
+    }
+    
+    setState(prev => ({
+      ...prev,
+      isLoading: false,
+      tracks: foundTracks,
+      activeTrack: foundTracks.find(t => t.isDefault) || null,
+    }));
+    
+    // Load the default track's cues
+    const defaultTrack = foundTracks.find(t => t.isDefault);
+    if (defaultTrack) {
+      loadSubtitleCues(defaultTrack);
+    }
+  };
   
   // Load subtitle cues from URL
   const loadSubtitleCues = useCallback(async (track: SubtitleTrack) => {

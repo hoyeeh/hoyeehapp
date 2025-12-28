@@ -54,6 +54,7 @@ import { HomepageAdsManager } from "@/components/admin/HomepageAdsManager";
 import { LeavingSoonManagement } from "@/components/admin/LeavingSoonManagement";
 import { EmailTemplateManagement } from "@/components/admin/EmailTemplateManagement";
 import { BatchSubtitleGenerator } from "@/components/admin/BatchSubtitleGenerator";
+import { SubtitleManagement } from "@/components/admin/SubtitleManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -704,7 +705,8 @@ const Admin = () => {
       case "subtitles":
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-display">Subtitle Generation</h2>
+            <h2 className="text-2xl font-display">Subtitle Management</h2>
+            <SubtitleManagement />
             <BatchSubtitleGenerator />
           </div>
         );
