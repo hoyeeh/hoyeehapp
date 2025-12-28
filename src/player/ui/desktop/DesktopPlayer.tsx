@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   ArrowLeft, SkipBack, SkipForward, Loader2, Settings,
-  PictureInPicture2, AlertCircle, FastForward, Zap
+  PictureInPicture2, AlertCircle, FastForward, Zap, Subtitles
 } from "lucide-react";
 import { LogoOpener } from "@/components/LogoOpener";
 import { useLogoOpener } from "@/hooks/useLogoOpener";
@@ -14,11 +14,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance, loadHlsJs } from "@/player";
+import { useSubtitles } from "@/hooks/useSubtitles";
+import { SubtitleDisplay } from "@/components/SubtitleDisplay";
 
 export interface NextEpisodeInfo {
   id: string;
@@ -98,6 +101,16 @@ export const DesktopPlayer = ({
     episodeId,
   });
 
+  // Subtitles hook
+  const { 
+    tracks: subtitleTracks, 
+    activeTrack: activeSubtitleTrack, 
+    currentCue,
+    selectTrack: selectSubtitleTrack,
+    updateCurrentCue,
+    hasSubtitles,
+  } = useSubtitles(contentId, episodeId);
+
   // Initialize player engine
   useEffect(() => {
     const video = videoRef.current;
@@ -124,6 +137,7 @@ export const DesktopPlayer = ({
             break;
           case 'timeupdate':
             setCurrentTime(data?.currentTime || 0);
+            updateCurrentCue(data?.currentTime || 0);
             const time = data?.currentTime || 0;
             const videoDuration = data?.duration || duration;
             
@@ -379,6 +393,13 @@ export const DesktopPlayer = ({
         poster={thumbnail}
       />
 
+      {/* Subtitle Display */}
+      <AnimatePresence>
+        {currentCue && activeSubtitleTrack && (
+          <SubtitleDisplay cue={currentCue} bottomOffset={120} />
+        )}
+      </AnimatePresence>
+
       {/* Buffering Indicator */}
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -556,6 +577,48 @@ export const DesktopPlayer = ({
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Subtitles/CC Button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    onClick={(e) => e.stopPropagation()} 
+                    className={cn(
+                      "text-white hover:text-white/80 relative",
+                      activeSubtitleTrack && "text-primary"
+                    )}
+                  >
+                    <Subtitles className="h-6 w-6" />
+                    {activeSubtitleTrack && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => selectSubtitleTrack(null)}
+                    className={cn(!activeSubtitleTrack && "bg-accent")}
+                  >
+                    Off
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {subtitleTracks.map((track) => (
+                    <DropdownMenuItem
+                      key={track.id}
+                      onClick={() => selectSubtitleTrack(track)}
+                      className={cn(activeSubtitleTrack?.id === track.id && "bg-accent")}
+                    >
+                      {track.label}
+                    </DropdownMenuItem>
+                  ))}
+                  {subtitleTracks.length === 0 && (
+                    <DropdownMenuItem disabled>
+                      No subtitles available
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              {/* Playback Speed */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button onClick={(e) => e.stopPropagation()} className="text-white hover:text-white/80">

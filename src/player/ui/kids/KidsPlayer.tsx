@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Maximize, ArrowLeft, Loader2, Home
+  Maximize, ArrowLeft, Loader2, Home, Subtitles
 } from "lucide-react";
 import { LogoOpener } from "@/components/LogoOpener";
 import { useLogoOpener } from "@/hooks/useLogoOpener";
@@ -11,6 +11,15 @@ import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance } from "@/player";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { useSubtitles } from "@/hooks/useSubtitles";
+import { SubtitleDisplay } from "@/components/SubtitleDisplay";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface NextEpisodeInfo {
   id: string;
@@ -83,6 +92,16 @@ export const KidsPlayer = ({
     episodeId,
   });
 
+  // Subtitles hook
+  const { 
+    tracks: subtitleTracks, 
+    activeTrack: activeSubtitleTrack, 
+    currentCue,
+    selectTrack: selectSubtitleTrack,
+    updateCurrentCue,
+    hasSubtitles,
+  } = useSubtitles(contentId, episodeId);
+
   // Initialize player engine
   useEffect(() => {
     const video = videoRef.current;
@@ -105,6 +124,7 @@ export const KidsPlayer = ({
             break;
           case 'timeupdate':
             setCurrentTime(data?.currentTime || 0);
+            updateCurrentCue(data?.currentTime || 0);
             // Show skip recap button
             if (recapStartTime && recapEndTime) {
               const inRecap = data?.currentTime >= recapStartTime && data?.currentTime < recapEndTime;
@@ -306,6 +326,13 @@ export const KidsPlayer = ({
             poster={thumbnail}
           />
 
+          {/* Subtitle Display */}
+          <AnimatePresence>
+            {currentCue && activeSubtitleTrack && (
+              <SubtitleDisplay cue={currentCue} bottomOffset={140} />
+            )}
+          </AnimatePresence>
+
           {/* Buffering Indicator */}
           {isBuffering && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-3xl">
@@ -498,14 +525,59 @@ export const KidsPlayer = ({
                       )}
                     </div>
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
-                      className="text-white hover:bg-white/20 h-11 w-11 rounded-xl"
-                    >
-                      <Maximize className="h-5 w-5" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {/* Subtitles/CC Button - Kid-friendly */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => e.stopPropagation()} 
+                            className={cn(
+                              "text-white hover:bg-white/20 h-11 w-11 rounded-xl relative",
+                              activeSubtitleTrack && "text-violet-400"
+                            )}
+                          >
+                            <Subtitles className="h-5 w-5" />
+                            {activeSubtitleTrack && (
+                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-violet-500 rounded-full" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => selectSubtitleTrack(null)}
+                            className={cn(!activeSubtitleTrack && "bg-accent")}
+                          >
+                            Off
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {subtitleTracks.map((track) => (
+                            <DropdownMenuItem
+                              key={track.id}
+                              onClick={() => selectSubtitleTrack(track)}
+                              className={cn(activeSubtitleTrack?.id === track.id && "bg-accent")}
+                            >
+                              {track.label}
+                            </DropdownMenuItem>
+                          ))}
+                          {subtitleTracks.length === 0 && (
+                            <DropdownMenuItem disabled>
+                              No subtitles available
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+                        className="text-white hover:bg-white/20 h-11 w-11 rounded-xl"
+                      >
+                        <Maximize className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </motion.div>

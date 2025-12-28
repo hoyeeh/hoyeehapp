@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Maximize, ChevronLeft, Loader2, Lock, Unlock, FastForward, Zap
+  Maximize, ChevronLeft, Loader2, Lock, Unlock, FastForward, Zap, Subtitles
 } from "lucide-react";
 import { LogoOpener } from "@/components/LogoOpener";
 import { useLogoOpener } from "@/hooks/useLogoOpener";
@@ -12,6 +12,15 @@ import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance } from "@/player";
 import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { Slider } from "@/components/ui/slider";
+import { useSubtitles } from "@/hooks/useSubtitles";
+import { SubtitleDisplay } from "@/components/SubtitleDisplay";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface NextEpisodeInfo {
   id: string;
@@ -89,6 +98,16 @@ export const MobilePlayer = ({
     episodeId,
   });
 
+  // Subtitles hook
+  const { 
+    tracks: subtitleTracks, 
+    activeTrack: activeSubtitleTrack, 
+    currentCue,
+    selectTrack: selectSubtitleTrack,
+    updateCurrentCue,
+    hasSubtitles,
+  } = useSubtitles(contentId, episodeId);
+
   // Initialize player engine
   useEffect(() => {
     const video = videoRef.current;
@@ -115,6 +134,7 @@ export const MobilePlayer = ({
             break;
           case 'timeupdate':
             setCurrentTime(data?.currentTime || 0);
+            updateCurrentCue(data?.currentTime || 0);
             const time = data?.currentTime || 0;
             const videoDuration = data?.duration || duration;
             
@@ -351,6 +371,13 @@ export const MobilePlayer = ({
         poster={thumbnail}
       />
 
+      {/* Subtitle Display */}
+      <AnimatePresence>
+        {currentCue && activeSubtitleTrack && (
+          <SubtitleDisplay cue={currentCue} bottomOffset={140} />
+        )}
+      </AnimatePresence>
+
       {/* Buffering Indicator */}
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center">
@@ -540,9 +567,51 @@ export const MobilePlayer = ({
                 <span className="text-white/80 text-sm">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
-                <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white">
-                  <Maximize className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* Subtitles/CC Button */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button 
+                        onClick={(e) => e.stopPropagation()} 
+                        className={cn(
+                          "text-white relative",
+                          activeSubtitleTrack && "text-primary"
+                        )}
+                      >
+                        <Subtitles className="h-6 w-6" />
+                        {activeSubtitleTrack && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                        )}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        onClick={() => selectSubtitleTrack(null)}
+                        className={cn(!activeSubtitleTrack && "bg-accent")}
+                      >
+                        Off
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {subtitleTracks.map((track) => (
+                        <DropdownMenuItem
+                          key={track.id}
+                          onClick={() => selectSubtitleTrack(track)}
+                          className={cn(activeSubtitleTrack?.id === track.id && "bg-accent")}
+                        >
+                          {track.label}
+                        </DropdownMenuItem>
+                      ))}
+                      {subtitleTracks.length === 0 && (
+                        <DropdownMenuItem disabled>
+                          No subtitles available
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white">
+                    <Maximize className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
