@@ -172,8 +172,8 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                         {filteredContent.movies.map((item) => (
                           <motion.div 
                             key={item.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform"
                             onClick={() => handleDetails(item)}
                           >
@@ -211,8 +211,8 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                         {filteredContent.shows.map((item) => (
                           <motion.div 
                             key={item.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             className="aspect-[2/3] relative rounded-lg overflow-hidden bg-secondary cursor-pointer active:scale-95 transition-transform"
                             onClick={() => handleDetails(item)}
                           >
