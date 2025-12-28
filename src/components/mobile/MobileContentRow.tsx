@@ -13,6 +13,7 @@ interface MobileContentRowProps {
   showSeeAll?: boolean;
   onSeeAll?: () => void;
   showRank?: boolean;
+  showNewBadge?: boolean; // Pass through to cards for "NEW"/"JUST ADDED" badges
   progressMap?: Record<string, number>;
   isLoading?: boolean;
 }
@@ -55,6 +56,7 @@ export function MobileContentRow({
   showSeeAll = false,
   onSeeAll,
   showRank = false,
+  showNewBadge = false,
   progressMap,
   isLoading = false,
 }: MobileContentRowProps) {
@@ -117,6 +119,7 @@ export function MobileContentRow({
               variant={variant}
               rank={showRank ? index + 1 : undefined}
               progress={progressMap?.[item.id]}
+              showNewBadge={showNewBadge}
             />
           </div>
         ))}

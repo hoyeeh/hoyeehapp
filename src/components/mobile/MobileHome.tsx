@@ -30,6 +30,7 @@ import { MobileHomeYouTubeRow } from "./MobileHomeYouTubeRow";
 import { MobileRecentlyWatched } from "./MobileRecentlyWatched";
 import { MobileAIRecommendations } from "./MobileAIRecommendations";
 import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
+import { PurchaseModal } from "@/components/creator/PurchaseModal";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ export function MobileHome() {
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [scrollY, setScrollY] = useState(0);
+  const [purchaseModalContent, setPurchaseModalContent] = useState<any>(null);
 
   // Track scroll for header transparency
   useEffect(() => {
@@ -298,7 +300,7 @@ export function MobileHome() {
     return selected;
   }, [top10Content, trending, newContent, content]);
 
-  const handlePlay = (item: Content, progress?: number, episodeId?: string) => {
+  const handlePlay = async (item: Content, progress?: number, episodeId?: string) => {
     // Check kids profile restrictions
     if (currentProfile?.is_kids) {
       const rating = (item as any).contentRating;
@@ -308,7 +310,45 @@ export function MobileHome() {
       }
     }
     
-    // All content requires premium subscription except for admins
+    // Check if content is paid creator content (takes priority over subscription)
+    try {
+      const { data: paidContent } = await supabase
+        .from('paid_content')
+        .select(`
+          id,
+          price,
+          currency,
+          creator_id,
+          is_active,
+          content(*),
+          creator_profiles(id, display_name, avatar_url, is_verified)
+        `)
+        .eq('content_id', item.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (paidContent) {
+        // Content is paid creator content - check if user has purchased it
+        const { data: purchase } = await supabase
+          .from('content_purchases')
+          .select('id')
+          .eq('user_id', user?.id || '')
+          .eq('content_id', item.id)
+          .eq('status', 'completed')
+          .maybeSingle();
+        
+        if (!purchase) {
+          // User hasn't purchased - show purchase modal
+          setPurchaseModalContent(paidContent);
+          return;
+        }
+        // User has purchased - allow playback (fall through to normal logic)
+      }
+    } catch (error) {
+      console.error('Error checking paid content:', error);
+    }
+    
+    // Check subscription for non-creator content
     if (!canAccessPremium) {
       toast.error("Subscribe to watch this content");
       navigate("/subscription");
@@ -490,6 +530,7 @@ export function MobileHome() {
                       onDetails={handleDetails}
                       showSeeAll
                       onSeeAll={() => navigate("/genres")}
+                      showNewBadge={true}
                       isLoading={isLoadingNewReleases}
                     />
                   </FadeIn>
@@ -536,6 +577,7 @@ export function MobileHome() {
                   onDetails={handleDetails}
                   showSeeAll
                   onSeeAll={() => navigate("/genres")}
+                  showNewBadge={true}
                   isLoading={isLoadingNewReleases}
                 />
               </FadeIn>
@@ -590,6 +632,13 @@ export function MobileHome() {
           isInList={watchlistIds.includes(selectedContent.id)}
         />
       )}
+
+      {/* Purchase Modal for paid creator content */}
+      <PurchaseModal
+        open={!!purchaseModalContent}
+        onClose={() => setPurchaseModalContent(null)}
+        paidContent={purchaseModalContent}
+      />
     </div>
   );
 }
