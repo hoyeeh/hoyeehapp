@@ -31,6 +31,7 @@ import { MobileRecentlyWatched } from "./MobileRecentlyWatched";
 import { MobileAIRecommendations } from "./MobileAIRecommendations";
 import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
+import { MobilePaidContentRow } from "./MobilePaidContentRow";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -547,6 +548,19 @@ export function MobileHome() {
                       title={section.title}
                       maxItems={section.max_items || 15}
                       cardStyle={section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal"}
+                    />
+                  </FadeIn>
+                );
+              }
+
+              // Creator Store / Paid Content section
+              if (section.section_type === "creator_store") {
+                return (
+                  <FadeIn key={section.id} delay={150 + index * 50}>
+                    <MobilePaidContentRow
+                      title={section.title}
+                      onDetails={handleDetails}
+                      maxItems={section.max_items || 15}
                     />
                   </FadeIn>
                 );
