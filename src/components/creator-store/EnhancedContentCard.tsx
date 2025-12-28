@@ -10,10 +10,11 @@ interface EnhancedContentCardProps {
 }
 
 export function EnhancedContentCard({ item, onClick, variant = 'default' }: EnhancedContentCardProps) {
-  const formatPrice = (price: number, currency: string) => {
+  const formatPrice = (price: number, currency?: string) => {
+    const currencyCode = currency || 'XAF';
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: currency,
+      currency: currencyCode,
       minimumFractionDigits: 0,
     }).format(price);
   };
