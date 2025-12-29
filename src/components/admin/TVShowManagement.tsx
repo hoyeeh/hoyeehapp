@@ -15,6 +15,7 @@ import { SortableEpisodeList } from "./SortableEpisodeList";
 import { TMDBEpisodeImport } from "./TMDBEpisodeImport";
 import { TMDBImportPreview, ImportOptions } from "./TMDBImportPreview";
 import { SubtitleGenerator } from "./SubtitleGenerator";
+import { SubtitleUploader } from "./SubtitleUploader";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -877,13 +878,31 @@ const SeasonItem = ({ season, contentId, tmdbId, isExpanded, onToggle, onDelete 
                     </div>
                   </div>
 
-                  {/* Subtitle Generator - only for existing episodes with video */}
+                  {/* Subtitle Options - only for existing episodes with video */}
                   {editingEpisode && episodeForm.video_url && (
-                    <div className="border-t border-border pt-4">
+                    <div className="border-t border-border pt-4 space-y-4">
                       <SubtitleGenerator
                         contentId={contentId}
                         episodeId={editingEpisode.id}
                         videoUrl={episodeForm.video_url}
+                        title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
+                        onComplete={() => {}}
+                      />
+                      <SubtitleUploader
+                        contentId={contentId}
+                        episodeId={editingEpisode.id}
+                        title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
+                        onComplete={() => {}}
+                      />
+                    </div>
+                  )}
+
+                  {/* Manual Subtitle Upload - for existing episodes without video */}
+                  {editingEpisode && !episodeForm.video_url && (
+                    <div className="border-t border-border pt-4">
+                      <SubtitleUploader
+                        contentId={contentId}
+                        episodeId={editingEpisode.id}
                         title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
                         onComplete={() => {}}
                       />
