@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Maximize, ChevronLeft, Loader2, Lock, Unlock, FastForward, Zap, Subtitles
+  Maximize, ChevronLeft, Loader2, Lock, Unlock, FastForward, Zap, Subtitles, Download
 } from "lucide-react";
 import { LogoOpener } from "@/components/LogoOpener";
 import { useLogoOpener } from "@/hooks/useLogoOpener";
@@ -568,6 +568,16 @@ export const MobilePlayer = ({
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
                 <div className="flex items-center gap-3">
+                  {/* Download Button */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toast.info("Download started");
+                    }} 
+                    className="text-white"
+                  >
+                    <Download className="h-6 w-6" />
+                  </button>
                   {/* Subtitles/CC Button */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
