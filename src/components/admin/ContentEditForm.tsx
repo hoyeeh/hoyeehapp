@@ -24,6 +24,7 @@ import { X, Save, Loader2, Plus, Trash2, User } from "lucide-react";
 import { VideoUploadField } from "./VideoUploadField";
 import { ThumbnailUploadField } from "./ThumbnailUploadField";
 import { SubtitleGenerator } from "./SubtitleGenerator";
+import { SubtitleUploader } from "./SubtitleUploader";
 
 interface CastMember {
   id: number;
@@ -370,13 +371,20 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                 </div>
               </div>
 
-              {/* Subtitle Generator - Only show for movies */}
+              {/* Subtitles Section - Only show for movies */}
               {formData.content_type === "movie" && (
-                <SubtitleGenerator
-                  contentId={content.id}
-                  videoUrl={formData.video_url}
-                  title={formData.title}
-                />
+                <div className="space-y-4">
+                  <SubtitleUploader
+                    contentId={content.id}
+                    title={formData.title}
+                    onComplete={() => {}}
+                  />
+                  <SubtitleGenerator
+                    contentId={content.id}
+                    videoUrl={formData.video_url}
+                    title={formData.title}
+                  />
+                </div>
               )}
             </div>
           </div>
