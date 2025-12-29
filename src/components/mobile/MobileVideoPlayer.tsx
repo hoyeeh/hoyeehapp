@@ -22,7 +22,7 @@ import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { usePictureInPicture } from "@/hooks/usePictureInPicture";
 import { useCastHistory } from "@/hooks/useCastHistory";
 import { toCdnUrl } from "@/utils/cdnUrl";
-import { useBackNavigation } from "@/hooks/useBackNavigation";
+
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
 import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
@@ -103,8 +103,6 @@ export function MobileVideoPlayer({
   const lastTapSideRef = useRef<"left" | "right" | null>(null);
   const { user } = useAuth();
   
-  // Use back navigation hook for proper history handling
-  const { goBack } = useBackNavigation({ fallbackPath: '/' });
   // State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -906,12 +904,10 @@ export function MobileVideoPlayer({
       }).catch(console.error);
     }
     
-    // Call onClose to update parent state
+    // ONLY close the overlay - do NOT navigate browser history
+    // The underlying page remains visible when the overlay closes
     onClose();
-    
-    // Navigate back to previous page
-    goBack();
-  }, [duration, saveProgressImmediately, onClose, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl, goBack]);
+  }, [duration, saveProgressImmediately, onClose, content.id, episodeId, episodeTitle, title, thumbnail, content.thumbnailUrl]);
 
   // Swipe gesture handlers (down to minimize, right to go back)
   const handleSwipePan = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -950,10 +946,9 @@ export function MobileVideoPlayer({
       handleBack();
     }
     
-    // Navigate to homepage if swiped right more than 150px with enough velocity
+    // Close player if swiped right (just close overlay, don't navigate)
     if (info.offset.x > 150 || (info.offset.x > 80 && info.velocity.x > 500)) {
       handleBack();
-      navigate('/');
     }
     
     // Reset positions
@@ -961,7 +956,7 @@ export function MobileVideoPlayer({
     setIsSwipingDown(false);
     setSwipeX(0);
     setIsSwipingRight(false);
-  }, [isLocked, handleBack, navigate]);
+  }, [isLocked, handleBack]);
 
   // Show swipe hint on first open
   useEffect(() => {
@@ -977,46 +972,15 @@ export function MobileVideoPlayer({
     }
   }, []);
 
-  // Handle Capacitor/browser back button for proper navigation
+  // Listen for the custom close event from CapacitorBackHandler
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-
-    const setupBackHandler = async () => {
-      try {
-        // Try to use Capacitor App plugin for native back button
-        const { App } = await import('@capacitor/app');
-        
-        const listener = App.addListener('backButton', () => {
-          handleBack();
-        });
-
-        cleanup = () => {
-          listener.then(l => l.remove());
-        };
-      } catch (e) {
-        // Capacitor not available - handle browser back with popstate
-        const handlePopstate = (event: PopStateEvent) => {
-          // Prevent default navigation and close the player instead
-          event.preventDefault();
-          handleBack();
-          // Push state back to prevent actual navigation
-          window.history.pushState(null, '', window.location.href);
-        };
-        
-        // Push a state so we can intercept back button
-        window.history.pushState(null, '', window.location.href);
-        window.addEventListener('popstate', handlePopstate);
-        
-        cleanup = () => {
-          window.removeEventListener('popstate', handlePopstate);
-        };
-      }
+    const handleCloseEvent = () => {
+      handleBack();
     };
-
-    setupBackHandler();
-
+    
+    window.addEventListener('close-mobile-player', handleCloseEvent);
     return () => {
-      cleanup?.();
+      window.removeEventListener('close-mobile-player', handleCloseEvent);
     };
   }, [handleBack]);
 
@@ -1100,6 +1064,7 @@ export function MobileVideoPlayer({
 
       <motion.div
         ref={containerRef}
+        data-mobile-video-player="true"
         className="fixed inset-0 z-[200] bg-black"
         style={{ 
           y: swipeY,

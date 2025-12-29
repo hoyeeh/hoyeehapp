@@ -91,6 +91,8 @@ function PWANavigationHandler() {
 }
 
 // Global back button handler for Capacitor native apps and PWA
+// This handler is "overlay aware" - it checks if video player overlays are open
+// and closes them instead of navigating history
 function CapacitorBackHandler() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,6 +110,15 @@ function CapacitorBackHandler() {
         const { App } = await import('@capacitor/app');
         
         const listener = App.addListener('backButton', ({ canGoBack }) => {
+          // Check if mobile video player overlay is open by looking for the player context
+          // The player renders a fixed overlay, so we can detect it via DOM
+          const mobilePlayerOverlay = document.querySelector('[data-mobile-video-player]');
+          if (mobilePlayerOverlay) {
+            // Dispatch a custom event that the player will listen to
+            window.dispatchEvent(new CustomEvent('close-mobile-player'));
+            return;
+          }
+          
           // If on home page, minimize app
           if (location.pathname === '/') {
             App.minimizeApp?.() || App.exitApp();
@@ -126,6 +137,15 @@ function CapacitorBackHandler() {
         // Capacitor not available - handle PWA back navigation
         if (isStandalonePWA) {
           const handlePopState = () => {
+            // Check if mobile video player overlay is open
+            const mobilePlayerOverlay = document.querySelector('[data-mobile-video-player]');
+            if (mobilePlayerOverlay) {
+              window.dispatchEvent(new CustomEvent('close-mobile-player'));
+              // Push state back to prevent navigation
+              window.history.pushState(null, '', window.location.href);
+              return;
+            }
+            
             // If trying to exit the app (no more history), go to home
             if (window.history.length <= 1 && location.pathname !== '/') {
               navigate('/', { replace: true });
