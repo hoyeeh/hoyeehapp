@@ -159,6 +159,7 @@ export function useSubtitles(contentId: string, episodeId?: string) {
   
   const cuesRef = useRef<SubtitleCue[]>([]);
   const lastCueIndexRef = useRef(-1);
+  const currentCueIdRef = useRef<string | null>(null);
   
   // Fetch available subtitle tracks from database
   const fetchSubtitleTracks = useCallback(async () => {
@@ -295,6 +296,7 @@ export function useSubtitles(contentId: string, episodeId?: string) {
   
   // Select a subtitle track
   const selectTrack = useCallback((track: SubtitleTrack | null) => {
+    currentCueIdRef.current = null;
     setState(prev => ({ ...prev, activeTrack: track, currentCue: null }));
     
     if (track) {
@@ -310,7 +312,8 @@ export function useSubtitles(contentId: string, episodeId?: string) {
   const updateCurrentCue = useCallback((currentTime: number) => {
     const cues = cuesRef.current;
     if (!cues.length) {
-      if (state.currentCue) {
+      if (currentCueIdRef.current !== null) {
+        currentCueIdRef.current = null;
         setState(prev => ({ ...prev, currentCue: null }));
       }
       return;
@@ -335,11 +338,14 @@ export function useSubtitles(contentId: string, episodeId?: string) {
       }
     }
     
-    // Only update if changed
-    if (foundCue?.id !== state.currentCue?.id) {
+    const foundCueId = foundCue?.id ?? null;
+    
+    // Only update if the cue has changed (uses ref to avoid stale closure)
+    if (foundCueId !== currentCueIdRef.current) {
+      currentCueIdRef.current = foundCueId;
       setState(prev => ({ ...prev, currentCue: foundCue }));
     }
-  }, [state.currentCue]);
+  }, []);
   
   // Load preferred language on mount
   useEffect(() => {
