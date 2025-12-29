@@ -974,10 +974,7 @@ export const VideoPlayer = ({
 
       {/* Subtitle Display */}
       {subtitles.isSubtitlesEnabled && (
-        <SubtitleDisplay 
-          cue={subtitles.currentCue} 
-          bottomOffset={showControls ? 120 : 60}
-        />
+        <SubtitleDisplay cue={subtitles.currentCue} />
       )}
       
       {/* Tap to Play Overlay (when autoplay blocked) */}
