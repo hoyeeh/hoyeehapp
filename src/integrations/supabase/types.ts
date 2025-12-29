@@ -2969,8 +2969,11 @@ export type Database = {
           duration_seconds: number | null
           episode_id: string | null
           id: string
+          is_translated: boolean | null
           language_code: string
           language_label: string
+          source_subtitle_id: string | null
+          source_type: string | null
           subtitle_url: string
           updated_at: string
           word_count: number | null
@@ -2983,8 +2986,11 @@ export type Database = {
           duration_seconds?: number | null
           episode_id?: string | null
           id?: string
+          is_translated?: boolean | null
           language_code: string
           language_label: string
+          source_subtitle_id?: string | null
+          source_type?: string | null
           subtitle_url: string
           updated_at?: string
           word_count?: number | null
@@ -2997,8 +3003,11 @@ export type Database = {
           duration_seconds?: number | null
           episode_id?: string | null
           id?: string
+          is_translated?: boolean | null
           language_code?: string
           language_label?: string
+          source_subtitle_id?: string | null
+          source_type?: string | null
           subtitle_url?: string
           updated_at?: string
           word_count?: number | null
@@ -3016,6 +3025,13 @@ export type Database = {
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtitles_source_subtitle_id_fkey"
+            columns: ["source_subtitle_id"]
+            isOneToOne: false
+            referencedRelation: "subtitles"
             referencedColumns: ["id"]
           },
         ]

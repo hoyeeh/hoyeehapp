@@ -23,8 +23,7 @@ import { toast } from "sonner";
 import { X, Save, Loader2, Plus, Trash2, User } from "lucide-react";
 import { VideoUploadField } from "./VideoUploadField";
 import { ThumbnailUploadField } from "./ThumbnailUploadField";
-import { SubtitleGenerator } from "./SubtitleGenerator";
-import { SubtitleUploader } from "./SubtitleUploader";
+import { SubtitleManagementPanel } from "./SubtitleManagementPanel";
 
 interface CastMember {
   id: number;
@@ -382,24 +381,11 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                         </p>
                       </CardContent>
                     </Card>
-                  ) : content.video_url ? (
-                    <>
-                      <SubtitleUploader
-                        contentId={content.id}
-                        title={formData.title}
-                        onComplete={() => {}}
-                      />
-                      <SubtitleGenerator
-                        contentId={content.id}
-                        videoUrl={content.video_url}
-                        title={formData.title}
-                      />
-                    </>
                   ) : (
-                    <SubtitleUploader
+                    <SubtitleManagementPanel
                       contentId={content.id}
+                      videoUrl={content.video_url || undefined}
                       title={formData.title}
-                      onComplete={() => {}}
                     />
                   )}
                 </div>

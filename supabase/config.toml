@@ -173,3 +173,6 @@ verify_jwt = true
 
 [functions.refresh-signed-urls]
 verify_jwt = false
+
+[functions.translate-subtitles]
+verify_jwt = true
