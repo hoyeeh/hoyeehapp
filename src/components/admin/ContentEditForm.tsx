@@ -371,19 +371,37 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                 </div>
               </div>
 
-              {/* Subtitles Section - Only show for movies */}
+              {/* Subtitles Section - Only show for movies with saved video URL */}
               {formData.content_type === "movie" && (
                 <div className="space-y-4">
-                  <SubtitleUploader
-                    contentId={content.id}
-                    title={formData.title}
-                    onComplete={() => {}}
-                  />
-                  <SubtitleGenerator
-                    contentId={content.id}
-                    videoUrl={formData.video_url}
-                    title={formData.title}
-                  />
+                  {formData.video_url !== content.video_url ? (
+                    <Card className="border-amber-500/50 bg-amber-500/10">
+                      <CardContent className="p-4">
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          ⚠️ Please save changes first before adding subtitles. The video URL has been modified but not saved yet.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : content.video_url ? (
+                    <>
+                      <SubtitleUploader
+                        contentId={content.id}
+                        title={formData.title}
+                        onComplete={() => {}}
+                      />
+                      <SubtitleGenerator
+                        contentId={content.id}
+                        videoUrl={content.video_url}
+                        title={formData.title}
+                      />
+                    </>
+                  ) : (
+                    <SubtitleUploader
+                      contentId={content.id}
+                      title={formData.title}
+                      onComplete={() => {}}
+                    />
+                  )}
                 </div>
               )}
             </div>
