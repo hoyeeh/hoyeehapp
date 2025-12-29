@@ -7,15 +7,24 @@ const corsHeaders = {
 };
 
 // Verify admin authentication
-async function verifyAdminAuth(req: Request, supabase: any): Promise<{ user: any; error?: string }> {
+async function verifyAdminAuth(req: Request, supabaseAdmin: any): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) return { user: null, error: 'Missing authorization header' };
 
   const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  // Use a client with the anon key for user token verification
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } }
+  });
+  
+  const { data: { user }, error } = await supabaseAuth.auth.getUser();
   if (error || !user) return { user: null, error: 'Invalid token' };
 
-  const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+  // Use admin client to check role
+  const { data: isAdmin } = await supabaseAdmin.rpc('has_role', { _user_id: user.id, _role: 'admin' });
   if (!isAdmin) return { user: null, error: 'Forbidden - admin access required' };
 
   return { user };
