@@ -222,8 +222,9 @@ function convertToVtt(words: Array<{ text: string; start: number; end: number }>
   return vttContent;
 }
 
-// Maximum file size: 50MB (to stay within edge function memory limits)
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
+// Maximum file size: 500MB (increased for audio files extracted from videos)
+// For video files larger than this, use the extract-audio function first
+const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -281,7 +282,8 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             error: "File too large for subtitle generation", 
-            details: `Maximum file size is 50MB. Your file is ${(fileSize / 1024 / 1024).toFixed(2)}MB. Please use a smaller audio file or extract audio from the video first.`
+            details: `Maximum file size is 500MB. Your file is ${(fileSize / 1024 / 1024).toFixed(2)}MB. Please extract audio from the video first using the "Extract Audio" feature, which will create a much smaller audio file suitable for subtitle generation.`,
+            suggestExtractAudio: true
           }),
           { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -307,7 +309,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: "File too large for subtitle generation", 
-          details: `Maximum file size is 50MB. Your file is ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB. Please use a smaller audio file or extract audio from the video first.`
+          details: `Maximum file size is 500MB. Your file is ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB. Please extract audio from the video first using the "Extract Audio" feature.`,
+          suggestExtractAudio: true
         }),
         { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
