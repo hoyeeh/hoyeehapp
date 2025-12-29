@@ -2,10 +2,11 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Maximize, ArrowLeft, Loader2, Home, Subtitles
+  Maximize, ArrowLeft, Loader2, Home, Subtitles, Download
 } from "lucide-react";
 import { LogoOpener } from "@/components/LogoOpener";
 import { useLogoOpener } from "@/hooks/useLogoOpener";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance } from "@/player";
@@ -526,6 +527,18 @@ export const KidsPlayer = ({
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Download Button - Kid-friendly */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toast.info("Download started! 📥");
+                        }}
+                        className="text-white hover:bg-white/20 h-11 w-11 rounded-xl"
+                      >
+                        <Download className="h-5 w-5" />
+                      </Button>
                       {/* Subtitles/CC Button - Kid-friendly */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

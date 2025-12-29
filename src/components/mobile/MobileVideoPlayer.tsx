@@ -8,7 +8,7 @@ import {
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
   RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
   PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown,
-  Clock, Save, X, Users, Subtitles, Languages
+  Clock, Save, X, Users, Subtitles, Languages, Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -1869,6 +1869,33 @@ export function MobileVideoPlayer({
                 </span>
                 
                 <div className="flex items-center gap-1">
+                  {/* Download */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toast.info("Download started");
+                    }}
+                    className="p-3 rounded-full active:bg-white/20 touch-manipulation"
+                    style={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <Download className="h-5 w-5 text-white" />
+                  </button>
+                  
+                  {/* Subtitles */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSubtitleMenu(!showSubtitleMenu);
+                    }}
+                    className={cn(
+                      "p-3 rounded-full active:bg-white/20 touch-manipulation",
+                      subtitles.activeTrack && "bg-primary"
+                    )}
+                    style={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <Subtitles className="h-5 w-5 text-white" />
+                  </button>
+                  
                   {/* Volume */}
                   <button
                     onClick={(e) => {

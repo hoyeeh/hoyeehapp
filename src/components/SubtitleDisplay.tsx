@@ -95,7 +95,7 @@ export function SubtitleDisplay({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       className={cn(
-        "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[80%] text-center pointer-events-none z-30",
+        "absolute left-1/2 bottom-20 -translate-x-1/2 max-w-[80%] text-center pointer-events-none z-30",
         className
       )}
     >

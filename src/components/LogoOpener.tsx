@@ -10,6 +10,7 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
   const videoRef = useRef<HTMLVideoElement>(null);
   const [canSkip, setCanSkip] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -26,7 +27,13 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
       onComplete();
     };
 
+    const handleLoadedData = () => {
+      // Video data is loaded, now it's safe to display
+      setIsVideoReady(true);
+    };
+
     const handleCanPlay = () => {
+      setIsVideoReady(true);
       // Try to play with sound first
       video.muted = false;
       video.play().catch(() => {
@@ -44,19 +51,30 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
     video.addEventListener("ended", handleEnded);
     video.addEventListener("error", handleError);
     video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("loadeddata", handleLoadedData);
 
     // Enable skip after delay
     const skipTimer = setTimeout(() => {
       setCanSkip(true);
     }, skipAfterSeconds * 1000);
 
+    // Fallback timeout - if video doesn't load within 5 seconds, skip
+    const fallbackTimer = setTimeout(() => {
+      if (!isVideoReady) {
+        console.log("[LogoOpener] Video load timeout, skipping");
+        onComplete();
+      }
+    }, 5000);
+
     return () => {
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("error", handleError);
       video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadeddata", handleLoadedData);
       clearTimeout(skipTimer);
+      clearTimeout(fallbackTimer);
     };
-  }, [onComplete, skipAfterSeconds]);
+  }, [onComplete, skipAfterSeconds, isVideoReady]);
 
   if (hasError) {
     return null;
@@ -72,9 +90,11 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
       <video
         ref={videoRef}
         src="/branding/Logo_Opener_Light.mp4"
-        className="w-full h-full object-contain"
+        className="w-full h-full object-contain opacity-100"
+        style={{ visibility: 'visible', display: 'block' }}
         playsInline
         autoPlay
+        preload="auto"
       />
       
       <AnimatePresence>
