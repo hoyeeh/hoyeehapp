@@ -715,7 +715,8 @@ const ContentDetail = () => {
       <VideoPlayer
         src={playingEpisode.video_url || ''}
         title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
-        contentId={playingEpisode.id}
+        contentId={content.id}
+        episodeId={playingEpisode.id}
         initialProgress={episodeResumeAt}
         introStartTime={epData.intro_start_time ?? 0}
         introEndTime={epData.intro_end_time ?? 90}
