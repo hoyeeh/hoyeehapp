@@ -374,7 +374,7 @@ export const MobilePlayer = ({
       {/* Subtitle Display */}
       <AnimatePresence>
         {currentCue && activeSubtitleTrack && (
-          <SubtitleDisplay cue={currentCue} bottomOffset={140} />
+          <SubtitleDisplay cue={currentCue} />
         )}
       </AnimatePresence>
 

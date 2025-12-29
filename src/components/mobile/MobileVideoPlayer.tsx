@@ -1202,10 +1202,7 @@ export function MobileVideoPlayer({
 
       {/* Subtitle Display */}
       {subtitles.isSubtitlesEnabled && (
-        <SubtitleDisplay 
-          cue={subtitles.currentCue} 
-          bottomOffset={showControls ? 140 : 80}
-        />
+        <SubtitleDisplay cue={subtitles.currentCue} />
       )}
 
       {/* Error Overlay */}

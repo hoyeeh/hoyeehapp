@@ -396,7 +396,7 @@ export const DesktopPlayer = ({
       {/* Subtitle Display */}
       <AnimatePresence>
         {currentCue && activeSubtitleTrack && (
-          <SubtitleDisplay cue={currentCue} bottomOffset={120} />
+          <SubtitleDisplay cue={currentCue} />
         )}
       </AnimatePresence>
 
