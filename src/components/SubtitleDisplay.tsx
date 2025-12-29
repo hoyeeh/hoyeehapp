@@ -1,6 +1,7 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { SubtitleCue } from "@/hooks/useSubtitles";
+import { useSubtitleSettings } from "@/hooks/useSubtitleSettings";
 import { cn } from "@/lib/utils";
 
 interface SubtitleDisplayProps {
@@ -87,21 +88,40 @@ export function SubtitleDisplay({
   cue, 
   className,
 }: SubtitleDisplayProps) {
-  if (!cue) return null;
+  const { getFontSizeClass, getFontStyleClass, settings } = useSubtitleSettings();
   
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className={cn(
-        "absolute left-1/2 bottom-20 -translate-x-1/2 max-w-[80%] text-center pointer-events-none z-30",
-        className
+    <AnimatePresence mode="wait">
+      {cue && (
+        <motion.div
+          key={cue.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          transition={{ 
+            duration: 0.2,
+            ease: "easeOut"
+          }}
+          className={cn(
+            "absolute left-1/2 bottom-20 -translate-x-1/2 max-w-[80%] text-center pointer-events-none z-30",
+            className
+          )}
+        >
+          <span 
+            className={cn(
+              "inline-block px-3 py-1.5 rounded leading-relaxed",
+              getFontSizeClass(),
+              getFontStyleClass()
+            )}
+            style={{
+              backgroundColor: settings.backgroundColor,
+              color: settings.textColor,
+            }}
+          >
+            {renderSubtitleText(cue.text)}
+          </span>
+        </motion.div>
       )}
-    >
-      <span className="inline-block bg-black/75 text-white px-3 py-1.5 rounded text-base sm:text-lg leading-relaxed">
-        {renderSubtitleText(cue.text)}
-      </span>
-    </motion.div>
+    </AnimatePresence>
   );
 }
