@@ -14,6 +14,7 @@ import { BulkEpisodeEdit } from "./BulkEpisodeEdit";
 import { SortableEpisodeList } from "./SortableEpisodeList";
 import { TMDBEpisodeImport } from "./TMDBEpisodeImport";
 import { TMDBImportPreview, ImportOptions } from "./TMDBImportPreview";
+import { SubtitleGenerator } from "./SubtitleGenerator";
 import { 
   useSeasons, 
   useCreateSeason, 
@@ -387,6 +388,7 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
               <SeasonItem
                 key={season.id}
                 season={season}
+                contentId={contentId}
                 tmdbId={tmdbId}
                 isExpanded={expandedSeasons.includes(season.id)}
                 onToggle={() => toggleSeason(season.id)}
@@ -413,13 +415,14 @@ const TVShowManagement = ({ contentId, contentTitle, tmdbId, onClose }: TVShowMa
 
 interface SeasonItemProps {
   season: Season;
+  contentId: string;
   tmdbId?: number | null;
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
 }
 
-const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonItemProps) => {
+const SeasonItem = ({ season, contentId, tmdbId, isExpanded, onToggle, onDelete }: SeasonItemProps) => {
   const { toast } = useToast();
   const { data: episodes, isLoading, refetch } = useEpisodes(season.id);
   const createEpisode = useCreateEpisode();
@@ -873,6 +876,19 @@ const SeasonItem = ({ season, tmdbId, isExpanded, onToggle, onDelete }: SeasonIt
                       </div>
                     </div>
                   </div>
+
+                  {/* Subtitle Generator - only for existing episodes with video */}
+                  {editingEpisode && episodeForm.video_url && (
+                    <div className="border-t border-border pt-4">
+                      <SubtitleGenerator
+                        contentId={contentId}
+                        episodeId={editingEpisode.id}
+                        videoUrl={episodeForm.video_url}
+                        title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
+                        onComplete={() => {}}
+                      />
+                    </div>
+                  )}
 
                   {/* Apply to Season Button */}
                   {editingEpisode && (
