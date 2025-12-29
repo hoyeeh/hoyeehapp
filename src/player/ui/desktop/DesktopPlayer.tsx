@@ -22,6 +22,7 @@ import { toCdnUrl } from "@/utils/cdnUrl";
 import { createPlayer, formatTime, PlayerInstance, loadHlsJs } from "@/player";
 import { useSubtitles } from "@/hooks/useSubtitles";
 import { SubtitleDisplay } from "@/components/SubtitleDisplay";
+import { SubtitleSettings } from "@/components/SubtitleSettings";
 
 export interface NextEpisodeInfo {
   id: string;
@@ -394,11 +395,7 @@ export const DesktopPlayer = ({
       />
 
       {/* Subtitle Display */}
-      <AnimatePresence>
-        {currentCue && activeSubtitleTrack && (
-          <SubtitleDisplay cue={currentCue} />
-        )}
-      </AnimatePresence>
+      {activeSubtitleTrack && <SubtitleDisplay cue={currentCue} />}
 
       {/* Buffering Indicator */}
       {isBuffering && (
@@ -617,6 +614,9 @@ export const DesktopPlayer = ({
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Subtitle Settings */}
+              <SubtitleSettings className="text-white hover:text-white/80" />
               
               {/* Playback Speed */}
               <DropdownMenu>

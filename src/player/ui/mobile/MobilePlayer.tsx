@@ -14,6 +14,7 @@ import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { Slider } from "@/components/ui/slider";
 import { useSubtitles } from "@/hooks/useSubtitles";
 import { SubtitleDisplay } from "@/components/SubtitleDisplay";
+import { SubtitleSettings } from "@/components/SubtitleSettings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -372,11 +373,7 @@ export const MobilePlayer = ({
       />
 
       {/* Subtitle Display */}
-      <AnimatePresence>
-        {currentCue && activeSubtitleTrack && (
-          <SubtitleDisplay cue={currentCue} />
-        )}
-      </AnimatePresence>
+      {activeSubtitleTrack && <SubtitleDisplay cue={currentCue} />}
 
       {/* Buffering Indicator */}
       {isBuffering && (
@@ -618,6 +615,10 @@ export const MobilePlayer = ({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  
+                  {/* Subtitle Settings */}
+                  <SubtitleSettings className="text-white hover:bg-white/20 h-11 w-11 rounded-xl" />
+                  
                   <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white">
                     <Maximize className="h-6 w-6" />
                   </button>
