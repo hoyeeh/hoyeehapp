@@ -878,34 +878,41 @@ const SeasonItem = ({ season, contentId, tmdbId, isExpanded, onToggle, onDelete 
                     </div>
                   </div>
 
-                  {/* Subtitle Options - only for existing episodes with video */}
-                  {editingEpisode && episodeForm.video_url && (
+                  {/* Subtitle Options - only for existing episodes */}
+                  {editingEpisode && (
                     <div className="border-t border-border pt-4 space-y-4">
-                      <SubtitleGenerator
-                        contentId={contentId}
-                        episodeId={editingEpisode.id}
-                        videoUrl={episodeForm.video_url}
-                        title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
-                        onComplete={() => {}}
-                      />
-                      <SubtitleUploader
-                        contentId={contentId}
-                        episodeId={editingEpisode.id}
-                        title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
-                        onComplete={() => {}}
-                      />
-                    </div>
-                  )}
-
-                  {/* Manual Subtitle Upload - for existing episodes without video */}
-                  {editingEpisode && !episodeForm.video_url && (
-                    <div className="border-t border-border pt-4">
-                      <SubtitleUploader
-                        contentId={contentId}
-                        episodeId={editingEpisode.id}
-                        title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
-                        onComplete={() => {}}
-                      />
+                      {episodeForm.video_url !== editingEpisode.video_url ? (
+                        <Card className="border-amber-500/50 bg-amber-500/10">
+                          <CardContent className="p-4">
+                            <p className="text-sm text-amber-600 dark:text-amber-400">
+                              ⚠️ Please save changes first before adding subtitles. The video URL has been modified but not saved yet.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ) : editingEpisode.video_url ? (
+                        <>
+                          <SubtitleGenerator
+                            contentId={contentId}
+                            episodeId={editingEpisode.id}
+                            videoUrl={editingEpisode.video_url}
+                            title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
+                            onComplete={() => {}}
+                          />
+                          <SubtitleUploader
+                            contentId={contentId}
+                            episodeId={editingEpisode.id}
+                            title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
+                            onComplete={() => {}}
+                          />
+                        </>
+                      ) : (
+                        <SubtitleUploader
+                          contentId={contentId}
+                          episodeId={editingEpisode.id}
+                          title={`S${season.season_number}E${episodeForm.episode_number}: ${episodeForm.title}`}
+                          onComplete={() => {}}
+                        />
+                      )}
                     </div>
                   )}
 
