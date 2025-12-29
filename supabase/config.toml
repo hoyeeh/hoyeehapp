@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.extract-audio]
 verify_jwt = true
+
+[functions.refresh-signed-urls]
+verify_jwt = false

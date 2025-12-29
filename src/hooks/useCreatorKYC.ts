@@ -130,10 +130,11 @@ export function useUploadKYCDocument() {
 
       if (uploadError) throw uploadError;
 
-      // Use signed URL instead of public URL for security
+      // Use signed URL with 1-year expiry for long-term access
+      const ONE_YEAR_SECONDS = 31536000;
       const { data, error } = await supabase.storage
         .from('creator-uploads')
-        .createSignedUrl(fileName, 86400); // 24 hour expiry
+        .createSignedUrl(fileName, ONE_YEAR_SECONDS);
 
       if (error) throw error;
       return data.signedUrl;
