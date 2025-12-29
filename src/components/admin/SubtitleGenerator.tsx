@@ -121,6 +121,7 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
         <Collapsible open={showExtractAudio} onOpenChange={setShowExtractAudio}>
           <CollapsibleTrigger asChild>
             <Button 
+              type="button"
               variant="outline" 
               size="sm" 
               className={`w-full justify-between ${suggestExtractAudio ? 'border-amber-500 bg-amber-500/10' : ''}`}
@@ -153,6 +154,7 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
               Using extracted audio for subtitle generation
             </span>
             <Button 
+              type="button"
               variant="ghost" 
               size="sm" 
               className="ml-auto h-6 text-xs"
@@ -188,6 +190,7 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
           </Select>
           
           <Button 
+            type="button"
             onClick={handleGenerate} 
             disabled={isGenerating || (!videoUrl && !customAudioUrl)}
             className="gap-2"

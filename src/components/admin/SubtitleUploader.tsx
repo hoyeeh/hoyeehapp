@@ -235,6 +235,7 @@ export function SubtitleUploader({ contentId, episodeId, title, onComplete }: Su
           />
           
           <Button
+            type="button"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
@@ -247,6 +248,7 @@ export function SubtitleUploader({ contentId, episodeId, title, onComplete }: Su
 
         {selectedFile && (
           <Button 
+            type="button"
             onClick={handleUpload} 
             disabled={isUploading}
             className="w-full gap-2"
