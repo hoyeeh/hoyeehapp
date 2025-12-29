@@ -8,7 +8,7 @@ import {
   Maximize, Minimize, ChevronLeft, Settings, Cast, Loader2,
   RotateCcw, FastForward, RefreshCw, AlertCircle, WifiOff,
   PictureInPicture2, Wifi, Signal, Check, Lock, Unlock, Sun, ChevronDown,
-  Clock, Save, X, Users
+  Clock, Save, X, Users, Subtitles, Languages
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage
 import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
+import { useSubtitles } from "@/hooks/useSubtitles";
+import { SubtitleDisplay } from "@/components/SubtitleDisplay";
 
 interface NextEpisodeInfo {
   id: string;
@@ -221,6 +223,10 @@ export function MobileVideoPlayer({
   const skipPrefs = useSkipPreferences();
   const autoSkippedIntroRef = useRef(false);
   const autoSkippedRecapRef = useRef(false);
+  
+  // Subtitles hook
+  const subtitles = useSubtitles(content.id, episodeId);
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   
   // Watch Party sync
   const { party, isHost, isWatchPartyGuest, isSyncing, updatePlayback, syncToParty } = useWatchPartyContext();
@@ -606,6 +612,9 @@ export function MobileVideoPlayer({
     const video = videoRef.current;
     if (video) {
       setCurrentTime(video.currentTime);
+      
+      // Update subtitle cue based on current time
+      subtitles.updateCurrentCue(video.currentTime);
       
       // Update buffered progress
       if (video.buffered.length > 0) {
@@ -1190,6 +1199,14 @@ export function MobileVideoPlayer({
         onError={handleError}
         poster={thumbnail || content.thumbnailUrl}
       />
+
+      {/* Subtitle Display */}
+      {subtitles.isSubtitlesEnabled && (
+        <SubtitleDisplay 
+          cue={subtitles.currentCue} 
+          bottomOffset={showControls ? 140 : 80}
+        />
+      )}
 
       {/* Error Overlay */}
       <AnimatePresence>
@@ -2035,6 +2052,18 @@ export function MobileVideoPlayer({
                 >
                   Skip
                 </button>
+                <button
+                  onClick={() => setSettingsTab("subtitles" as any)}
+                  className={cn(
+                    "flex-1 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-1",
+                    (settingsTab as string) === "subtitles"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  )}
+                >
+                  <Subtitles className="h-4 w-4" />
+                  CC
+                </button>
                 {!isKidsMode && isAdmin && episodeId && (
                   <>
                     <button
@@ -2203,6 +2232,60 @@ export function MobileVideoPlayer({
                   <p className="text-muted-foreground text-xs mt-4">
                     Your preferences are saved and will apply to all videos.
                   </p>
+                </div>
+              )}
+
+              {/* Subtitles Tab */}
+              {(settingsTab as string) === "subtitles" && (
+                <div>
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <Languages className="h-5 w-5" />
+                    Subtitles & Captions
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    {/* Off option */}
+                    <button
+                      onClick={() => subtitles.selectTrack(null)}
+                      className={cn(
+                        "w-full flex items-center justify-between py-3 px-4 rounded-lg font-medium transition-colors",
+                        !subtitles.isSubtitlesEnabled
+                          ? "bg-primary text-white"
+                          : "bg-secondary text-foreground"
+                      )}
+                    >
+                      <span>Off</span>
+                      {!subtitles.isSubtitlesEnabled && <Check className="h-5 w-5" />}
+                    </button>
+                    
+                    {subtitles.tracks.length === 0 && !subtitles.isLoading && (
+                      <p className="text-muted-foreground text-sm text-center py-4">
+                        No subtitles available for this content
+                      </p>
+                    )}
+                    
+                    {subtitles.isLoading && (
+                      <p className="text-muted-foreground text-sm text-center py-4">
+                        Loading subtitles...
+                      </p>
+                    )}
+                    
+                    {subtitles.tracks.map((track) => (
+                      <button
+                        key={track.id}
+                        onClick={() => subtitles.selectTrack(track)}
+                        className={cn(
+                          "w-full flex items-center justify-between py-3 px-4 rounded-lg font-medium transition-colors",
+                          subtitles.activeTrack?.id === track.id
+                            ? "bg-primary text-white"
+                            : "bg-secondary text-foreground"
+                        )}
+                      >
+                        <span>{track.label}</span>
+                        {subtitles.activeTrack?.id === track.id && <Check className="h-5 w-5" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
