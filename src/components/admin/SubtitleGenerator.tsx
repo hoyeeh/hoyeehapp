@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Languages, Loader2, Check, AlertCircle, Subtitles } from "lucide-react";
+import { Languages, Loader2, Check, AlertCircle, Subtitles, Music, ChevronDown, Info } from "lucide-react";
+import { AudioExtractor } from "./AudioExtractor";
 
 interface SubtitleGeneratorProps {
   contentId: string;
@@ -38,10 +40,15 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showExtractAudio, setShowExtractAudio] = useState(false);
+  const [customAudioUrl, setCustomAudioUrl] = useState<string | null>(null);
+  const [suggestExtractAudio, setSuggestExtractAudio] = useState(false);
 
   const handleGenerate = async () => {
-    if (!videoUrl) {
-      toast.error("No video URL available for this content");
+    const urlToUse = customAudioUrl || videoUrl;
+    
+    if (!urlToUse) {
+      toast.error("No video/audio URL available for this content");
       return;
     }
 
@@ -49,6 +56,7 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
     setStatus("processing");
     setProgress(10);
     setErrorMessage("");
+    setSuggestExtractAudio(false);
 
     try {
       setProgress(30);
@@ -57,7 +65,7 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
         body: {
           contentId,
           episodeId,
-          audioUrl: videoUrl,
+          audioUrl: urlToUse,
           languageCode: selectedLanguage,
         },
       });
@@ -72,6 +80,11 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
         toast.success(`${SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.label} subtitles generated successfully!`);
         onComplete?.();
       } else {
+        // Check if the error suggests using audio extraction
+        if (data?.suggestExtractAudio) {
+          setSuggestExtractAudio(true);
+          setShowExtractAudio(true);
+        }
         throw new Error(data?.error || "Unknown error occurred");
       }
     } catch (error: any) {
@@ -82,6 +95,12 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleAudioExtracted = (audioUrl: string) => {
+    setCustomAudioUrl(audioUrl);
+    setSuggestExtractAudio(false);
+    toast.success("Audio extracted! Click 'Generate' to create subtitles from the audio.");
   };
 
   const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage);
@@ -98,6 +117,52 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Audio extraction collapsible */}
+        <Collapsible open={showExtractAudio} onOpenChange={setShowExtractAudio}>
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className={`w-full justify-between ${suggestExtractAudio ? 'border-amber-500 bg-amber-500/10' : ''}`}
+            >
+              <span className="flex items-center gap-2">
+                <Music className="h-4 w-4" />
+                {suggestExtractAudio ? "Extract Audio First (Recommended for Large Videos)" : "Extract Audio from Video"}
+              </span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showExtractAudio ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">
+            {videoUrl && (
+              <AudioExtractor
+                contentId={contentId}
+                episodeId={episodeId}
+                videoUrl={videoUrl}
+                title={title}
+                onExtracted={handleAudioExtracted}
+              />
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Show custom audio URL if set */}
+        {customAudioUrl && (
+          <div className="flex items-center gap-2 p-2 bg-blue-500/10 rounded-md border border-blue-500/20">
+            <Info className="h-4 w-4 text-blue-500" />
+            <span className="text-xs text-blue-600 dark:text-blue-400">
+              Using extracted audio for subtitle generation
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="ml-auto h-6 text-xs"
+              onClick={() => setCustomAudioUrl(null)}
+            >
+              Use original video
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <Select value={selectedLanguage} onValueChange={setSelectedLanguage} disabled={isGenerating}>
             <SelectTrigger className="flex-1 bg-secondary">
@@ -124,7 +189,7 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
           
           <Button 
             onClick={handleGenerate} 
-            disabled={isGenerating || !videoUrl}
+            disabled={isGenerating || (!videoUrl && !customAudioUrl)}
             className="gap-2"
           >
             {isGenerating ? (
@@ -158,13 +223,20 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
         )}
 
         {status === "error" && (
-          <div className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            <span>{errorMessage}</span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span>{errorMessage}</span>
+            </div>
+            {suggestExtractAudio && (
+              <p className="text-xs text-muted-foreground">
+                💡 The video file is too large. Use the "Extract Audio" option above to create a smaller audio file first.
+              </p>
+            )}
           </div>
         )}
 
-        {!videoUrl && (
+        {!videoUrl && !customAudioUrl && (
           <Badge variant="outline" className="text-amber-500 border-amber-500">
             No video URL - upload a video first
           </Badge>

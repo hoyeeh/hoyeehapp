@@ -167,3 +167,6 @@ verify_jwt = false
 
 [functions.youtube-monthly-sync]
 verify_jwt = false
+
+[functions.extract-audio]
+verify_jwt = true
