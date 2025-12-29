@@ -103,13 +103,16 @@ export function SubtitleDisplay({
             ease: "easeOut"
           }}
           className={cn(
-            "absolute left-1/2 bottom-20 -translate-x-1/2 max-w-[80%] text-center pointer-events-none z-30",
+            "absolute left-0 right-0 flex justify-center px-4 pointer-events-none z-30",
             className
           )}
+          style={{
+            bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
+          }}
         >
           <span 
             className={cn(
-              "inline-block px-3 py-1.5 rounded leading-relaxed",
+              "inline-block px-3 py-1.5 rounded leading-relaxed text-center max-w-[80%]",
               getFontSizeClass(),
               getFontStyleClass()
             )}

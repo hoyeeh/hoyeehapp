@@ -3,14 +3,17 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface LogoOpenerProps {
   onComplete: () => void;
-  skipAfterSeconds?: number;
 }
 
-export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerProps) {
+// UNIFIED CONSTANT: Skip button always appears after exactly 5 seconds
+const SKIP_BUTTON_DELAY_SECONDS = 5;
+
+export function LogoOpener({ onComplete }: LogoOpenerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [canSkip, setCanSkip] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const [hasVideoTrack, setHasVideoTrack] = useState(true);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -30,6 +33,13 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
     const handleLoadedData = () => {
       // Video data is loaded, now it's safe to display
       setIsVideoReady(true);
+      
+      // Check if video actually has video track (not just audio)
+      // On some mobile devices, video may load but show blank
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.warn("[LogoOpener] Video loaded but no video track detected");
+        setHasVideoTrack(false);
+      }
     };
 
     const handleCanPlay = () => {
@@ -53,10 +63,10 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
     video.addEventListener("canplay", handleCanPlay);
     video.addEventListener("loadeddata", handleLoadedData);
 
-    // Enable skip after delay
+    // Enable skip after exactly 5 seconds (unified across all players)
     const skipTimer = setTimeout(() => {
       setCanSkip(true);
-    }, skipAfterSeconds * 1000);
+    }, SKIP_BUTTON_DELAY_SECONDS * 1000);
 
     // Fallback timeout - if video doesn't load within 5 seconds, skip
     const fallbackTimer = setTimeout(() => {
@@ -74,9 +84,10 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
       clearTimeout(skipTimer);
       clearTimeout(fallbackTimer);
     };
-  }, [onComplete, skipAfterSeconds, isVideoReady]);
+  }, [onComplete, isVideoReady]);
 
-  if (hasError) {
+  // Skip opener if there's an error or no video track detected
+  if (hasError || !hasVideoTrack) {
     return null;
   }
 
@@ -85,7 +96,7 @@ export function LogoOpener({ onComplete, skipAfterSeconds = 1.5 }: LogoOpenerPro
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+      className="fixed inset-0 z-[1000] bg-black flex items-center justify-center"
     >
       <video
         ref={videoRef}
