@@ -33,6 +33,8 @@ import {
   Folder,
   Check,
   Users,
+  Subtitles,
+  Languages,
 } from "lucide-react";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { cn } from "@/lib/utils";
@@ -59,11 +61,13 @@ import { NativeCastButton } from "@/components/cast/NativeCastButton";
 import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
 import { CastToTVButton } from "@/components/cast/CastToTVButton";
+import { SubtitleDisplay } from "@/components/SubtitleDisplay";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
+import { useSubtitles } from "@/hooks/useSubtitles";
 
 interface NextEpisodeInfo {
   id: string;
@@ -194,6 +198,9 @@ export const VideoPlayer = ({
 
   // DLNA hook
   const dlna = useDLNA();
+
+  // Subtitles hook
+  const subtitles = useSubtitles(contentId, episodeId);
 
   // Cast history hook for device memory and auto-reconnect
   const castHistory = useCastHistory();
@@ -358,6 +365,9 @@ export const VideoPlayer = ({
     const handleTimeUpdate = () => {
       const time = video.currentTime;
       setCurrentTime(time);
+      
+      // Update subtitle cue based on current time
+      subtitles.updateCurrentCue(time);
 
       // Determine effective intro times (use default if no specific times and default is set)
       const effectiveIntroStart = introStartTime;
@@ -961,6 +971,14 @@ export const VideoPlayer = ({
           }
         }}
       />
+
+      {/* Subtitle Display */}
+      {subtitles.isSubtitlesEnabled && (
+        <SubtitleDisplay 
+          cue={subtitles.currentCue} 
+          bottomOffset={showControls ? 120 : 60}
+        />
+      )}
       
       {/* Tap to Play Overlay (when autoplay blocked) */}
       {showTapToPlay && (
@@ -1378,6 +1396,68 @@ export const VideoPlayer = ({
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
+
+              {/* Subtitles/Captions Control */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    className={cn(
+                      "hidden sm:flex items-center gap-1.5 hover:text-brand transition-colors text-sm px-2 py-1 rounded",
+                      subtitles.isSubtitlesEnabled ? "text-brand bg-brand/20" : ""
+                    )}
+                    title="Subtitles"
+                  >
+                    <Subtitles className="h-5 w-5" />
+                    {subtitles.isSubtitlesEnabled ? subtitles.activeTrack?.label : "CC"}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card min-w-[180px]">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-2">
+                    <Languages className="h-3 w-3" />
+                    Subtitles & Captions
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Off option */}
+                  <DropdownMenuItem
+                    onClick={() => subtitles.selectTrack(null)}
+                    className={cn(
+                      "cursor-pointer",
+                      !subtitles.isSubtitlesEnabled && "text-brand font-semibold"
+                    )}
+                  >
+                    Off
+                    {!subtitles.isSubtitlesEnabled && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  
+                  {subtitles.tracks.length === 0 && !subtitles.isLoading && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                      No subtitles available
+                    </div>
+                  )}
+                  
+                  {subtitles.isLoading && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                      Loading subtitles...
+                    </div>
+                  )}
+                  
+                  {/* Available tracks */}
+                  {subtitles.tracks.map((track) => (
+                    <DropdownMenuItem
+                      key={track.id}
+                      onClick={() => subtitles.selectTrack(track)}
+                      className={cn(
+                        "cursor-pointer",
+                        subtitles.activeTrack?.id === track.id && "text-brand font-semibold"
+                      )}
+                    >
+                      {track.label}
+                      {subtitles.activeTrack?.id === track.id && <Check className="ml-auto h-4 w-4" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Playback Speed & Skip Preferences */}
               <DropdownMenu>
