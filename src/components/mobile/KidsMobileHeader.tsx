@@ -76,8 +76,8 @@ export const KidsMobileHeader = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 pt-safe">
-        <div className="bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4">
+<header className="fixed top-0 left-0 right-0 z-50">
+        <div className="bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4 pt-safe">
           <div className="flex items-center justify-between">
             <motion.div 
               className="flex items-center gap-3"
@@ -103,11 +103,11 @@ export const KidsMobileHeader = () => {
             </motion.div>
 
             <div className="flex items-center gap-2">
-              <motion.button
-                onClick={() => window.dispatchEvent(new CustomEvent('toggleWatchParty'))}
+<motion.button
+                onClick={() => navigate("/kids-profile")}
                 whileTap={{ scale: 0.96 }}
                 className="p-2.5 rounded-full bg-white/[0.08] text-white/90 transition-all hover:bg-white/[0.12] active:bg-white/[0.06]"
-                aria-label="Watch Party"
+                aria-label="My Profile"
               >
                 <Users className="h-5 w-5" />
               </motion.button>
