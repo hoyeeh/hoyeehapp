@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileProfile } from "@/components/mobile/MobileProfile";
 import { CreatorSection } from "@/components/creator/CreatorSection";
+import { CacheControlSettings } from "@/components/CacheControlSettings";
 import { useRestorePurchases } from "@/hooks/usePendingPurchaseVerification";
 import { useUserPurchases } from "@/hooks/usePaidContent";
 
@@ -571,6 +572,9 @@ const Profile = () => {
 
         {/* Creator Section */}
         <CreatorSection />
+
+        {/* Cache & Storage Settings */}
+        <CacheControlSettings />
 
         {/* Account Actions */}
         <Card className="bg-card mb-6">
