@@ -16,6 +16,7 @@ import { PersistentMobileYouTubePlayer } from "@/components/mobile/PersistentMob
 import { PersistentWatchPartyPanel } from "@/components/PersistentWatchPartyPanel";
 import { SubscriptionExpiryChecker } from "@/components/SubscriptionExpiryChecker";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { AppUpdateBanner } from "@/components/AppUpdateBanner";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { EnhancedDownloadQueue } from "@/components/EnhancedDownloadQueue";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
@@ -219,6 +220,7 @@ const App = () => (
                   <Sonner />
                   <SubscriptionExpiryChecker />
                   <OfflineIndicator />
+                  <AppUpdateBanner />
                   <PWAInstallBanner />
                   <DownloadQueueWrapper />
                   <BrowserRouter>

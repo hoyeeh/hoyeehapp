@@ -1,7 +1,8 @@
 // Service Worker for Push Notifications, PWA, and Background Downloads
 // Version is updated automatically to trigger updates
 const SW_VERSION = Date.now();
-const CACHE_NAME = "hoyeeh-v2";
+const CACHE_NAME = "hoyeeh-v3";
+const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours max cache age
 const OFFLINE_URL = "/";
 
 // Track active background downloads
@@ -463,7 +464,22 @@ self.addEventListener("sync", (event) => {
     const downloadId = event.tag.replace("sync-download-", "");
     event.waitUntil(syncDownload(downloadId));
   }
+  
+  // Handle offline action sync
+  if (event.tag === "sync-offline-actions") {
+    event.waitUntil(syncOfflineActions());
+  }
 });
+
+// Sync offline actions queued by the app
+async function syncOfflineActions() {
+  console.log("Syncing offline actions...");
+  // Notify clients to process their queued actions
+  await broadcastToClients({
+    type: "PROCESS_OFFLINE_QUEUE",
+    payload: { timestamp: Date.now() }
+  });
+}
 
 async function syncWatchlist() {
   console.log("Syncing watchlist data...");
@@ -523,23 +539,80 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // NetworkFirst strategy - always try network, fall back to cache
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
-        // Cache successful responses
-        if (fetchResponse.status === 200) {
-          const responseClone = fetchResponse.clone();
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Cache successful GET responses
+        if (networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
+            // Add timestamp header for cache age tracking
             cache.put(event.request, responseClone);
           });
         }
-        return fetchResponse;
-      });
-    }).catch(() => {
-      // Return offline page for navigation requests
-      if (event.request.mode === "navigate") {
-        return caches.match(OFFLINE_URL);
+        return networkResponse;
+      })
+      .catch(async () => {
+        // Network failed - try cache
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        
+        // Return offline page for navigation requests
+        if (event.request.mode === "navigate") {
+          return caches.match(OFFLINE_URL);
+        }
+        
+        // Return error for other requests
+        return new Response("Network error", { status: 503 });
+      })
+  );
+});
+
+// Cleanup old cache entries periodically
+async function cleanupOldCacheEntries() {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const keys = await cache.keys();
+    const now = Date.now();
+    
+    for (const request of keys) {
+      const response = await cache.match(request);
+      if (response) {
+        const dateHeader = response.headers.get('date');
+        if (dateHeader) {
+          const cacheTime = new Date(dateHeader).getTime();
+          if (now - cacheTime > CACHE_MAX_AGE) {
+            await cache.delete(request);
+            console.log('Cleaned old cache entry:', request.url);
+          }
+        }
       }
-    })
+    }
+  } catch (e) {
+    console.warn('Cache cleanup failed:', e);
+  }
+}
+
+// Run cleanup on activation
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    Promise.all([
+      cleanupOldCacheEntries(),
+      // Also clean up during periodic activation
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME && !cacheName.includes('download')) {
+              console.log("Deleting old cache:", cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      clients.claim()
+    ])
   );
 });
