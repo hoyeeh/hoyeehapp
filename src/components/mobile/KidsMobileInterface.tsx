@@ -104,7 +104,7 @@ export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
     <div className="min-h-screen bg-[#0A0A0F] overflow-hidden">
       <KidsMobileHeader />
       
-      <main className="relative z-10 pt-[72px] pb-24 min-h-screen overflow-hidden">
+      <main className="relative z-10 min-h-screen overflow-hidden" style={{ paddingTop: 'calc(72px + env(safe-area-inset-top, 0px))', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={activeTab}

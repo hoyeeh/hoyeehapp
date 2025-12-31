@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,6 +116,7 @@ const Profile = () => {
   const isMobile = useIsMobile();
   const { user, loading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading, refetch } = useProfile();
+  const { currentProfile } = useProfileContext();
 
   const [displayName, setDisplayName] = useState("");
   const [country, setCountry] = useState("CM");
@@ -123,6 +125,13 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
+
+  // Redirect kids profiles to kids profile page
+  useEffect(() => {
+    if (currentProfile?.is_kids) {
+      navigate("/kids-profile");
+    }
+  }, [currentProfile, navigate]);
 
   // Return mobile version for mobile devices
   if (isMobile) {

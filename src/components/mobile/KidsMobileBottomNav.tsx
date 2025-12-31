@@ -24,7 +24,7 @@ export const KidsMobileBottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
+<nav className="fixed bottom-0 left-0 right-0 z-50">
       <div className="bg-[#0A0A0F]/95 backdrop-blur-2xl border-t border-white/[0.06]">
         <div className="flex justify-around items-center px-2 py-2">
           {navItems.map(({ key, icon: Icon, path, label }) => {
@@ -73,6 +73,8 @@ export const KidsMobileBottomNav = () => {
           })}
         </div>
       </div>
+      {/* Safe area spacer */}
+      <div className="bg-[#0A0A0F] h-safe-area-inset-bottom" />
     </nav>
   );
 };
