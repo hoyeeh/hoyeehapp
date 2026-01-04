@@ -34,6 +34,7 @@ import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { MobilePaidContentRow } from "./MobilePaidContentRow";
 import { MobilePurchasesShortcut } from "./MobilePurchasesShortcut";
+import { MobileComingSoonRow } from "./MobileComingSoonRow";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -555,6 +556,11 @@ export function MobileHome() {
           {/* Because You Watched Row */}
           <FadeIn delay={125}>
             <MobileBecauseYouWatchedRow onDetails={handleDetails} />
+          </FadeIn>
+
+          {/* Coming Soon Row */}
+          <FadeIn delay={135}>
+            <MobileComingSoonRow />
           </FadeIn>
 
           {/* Dynamic sections from database - filtered by activeFilter */}
