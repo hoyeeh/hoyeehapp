@@ -35,6 +35,7 @@ import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { MobilePaidContentRow } from "./MobilePaidContentRow";
 import { MobilePurchasesShortcut } from "./MobilePurchasesShortcut";
 import { MobileComingSoonRow } from "./MobileComingSoonRow";
+import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -497,6 +498,7 @@ export function MobileHome() {
   console.log('[MobileHome] Rendering, content count:', content.length);
 
   return (
+    <MobileSwipeWrapper>
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header - Fixed at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
@@ -754,5 +756,6 @@ export function MobileHome() {
         paidContent={purchaseModalContent}
       />
     </div>
+    </MobileSwipeWrapper>
   );
 }
