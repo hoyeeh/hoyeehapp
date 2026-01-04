@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { toast } from "sonner";
+import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 
 interface KidsMobileInterfaceProps {
   children?: ReactNode;
@@ -101,26 +102,28 @@ export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] overflow-hidden">
-      <KidsMobileHeader />
-      
-      <main className="relative z-10 min-h-screen overflow-hidden" style={{ paddingTop: 'calc(72px + env(safe-area-inset-top, 0px))', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={activeTab}
-            custom={direction}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="w-full"
-          >
-            {renderContent()}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-      
-      <KidsMobileBottomNav />
-    </div>
+    <MobileSwipeWrapper>
+      <div className="min-h-screen bg-[#0A0A0F] overflow-hidden">
+        <KidsMobileHeader />
+        
+        <main className="relative z-10 min-h-screen overflow-hidden" style={{ paddingTop: 'calc(72px + env(safe-area-inset-top, 0px))', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={activeTab}
+              custom={direction}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="w-full"
+            >
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+        
+        <KidsMobileBottomNav />
+      </div>
+    </MobileSwipeWrapper>
   );
 };

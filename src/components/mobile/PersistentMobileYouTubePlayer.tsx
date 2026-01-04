@@ -393,8 +393,8 @@ export const PersistentMobileYouTubePlayer = () => {
               </div>
             )}
 
-            {/* Tap overlay for play/pause */}
-            <div className="absolute inset-0 z-10" onClick={togglePlay} />
+            {/* Tap overlay for play/pause - exclude top area for close button */}
+            <div className="absolute inset-0 z-10 pt-20" onClick={togglePlay} />
 
             {/* Controls Overlay */}
             <motion.div
