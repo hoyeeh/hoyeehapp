@@ -7,6 +7,20 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMobileYouTubePlayer } from "@/contexts/MobileYouTubePlayerContext";
+
+const extractYouTubeVideoId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
 
 interface MobileComingSoonRowProps {
   onWatchTrailer?: (trailerUrl: string, title: string) => void;
@@ -16,6 +30,7 @@ export function MobileComingSoonRow({ onWatchTrailer }: MobileComingSoonRowProps
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { openPlayer } = useMobileYouTubePlayer();
 
   // Fetch coming soon content
   const { data: comingSoon = [], isLoading } = useQuery({
@@ -102,9 +117,18 @@ export function MobileComingSoonRow({ onWatchTrailer }: MobileComingSoonRowProps
 
   const handlePlayTrailer = (e: React.MouseEvent, item: any) => {
     e.stopPropagation();
-    if (item.trailer_url && onWatchTrailer) {
+    if (!item.trailer_url) return;
+
+    const videoId = extractYouTubeVideoId(item.trailer_url);
+    if (videoId) {
+      openPlayer({
+        videoId,
+        title: `${item.title} - Trailer`,
+        thumbnail: item.thumbnail_url,
+      });
+    } else if (onWatchTrailer) {
       onWatchTrailer(item.trailer_url, item.title);
-    } else if (item.trailer_url) {
+    } else {
       window.open(item.trailer_url, "_blank");
     }
   };
