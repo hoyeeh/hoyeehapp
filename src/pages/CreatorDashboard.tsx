@@ -92,78 +92,78 @@ export default function CreatorDashboard() {
   const recentSales = sales.slice(0, 5);
 
   const DashboardContent = () => (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Total Earnings
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
+        <Card className="p-3 md:p-0">
+          <CardHeader className="pb-1 md:pb-2 p-0 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 md:gap-2">
+              <DollarSign className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="truncate">Total Earnings</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xl font-bold">{formatCurrency(totalEarnings)}</p>
+          <CardContent className="p-0 md:p-6 md:pt-0 pt-1">
+            <p className="text-base md:text-xl font-bold truncate">{formatCurrency(totalEarnings)}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-              <Wallet className="h-4 w-4" />
+        <Card className="p-3 md:p-0">
+          <CardHeader className="pb-1 md:pb-2 p-0 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 md:gap-2">
+              <Wallet className="h-3 w-3 md:h-4 md:w-4" />
               Available
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xl font-bold text-green-500">{formatCurrency(pendingBalance)}</p>
+          <CardContent className="p-0 md:p-6 md:pt-0 pt-1">
+            <p className="text-base md:text-xl font-bold text-green-500 truncate">{formatCurrency(pendingBalance)}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+        <Card className="p-3 md:p-0">
+          <CardHeader className="pb-1 md:pb-2 p-0 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 md:gap-2">
+              <TrendingUp className="h-3 w-3 md:h-4 md:w-4" />
               Sales
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xl font-bold">{totalSales}</p>
+          <CardContent className="p-0 md:p-6 md:pt-0 pt-1">
+            <p className="text-base md:text-xl font-bold">{totalSales}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-              <Film className="h-4 w-4" />
+        <Card className="p-3 md:p-0">
+          <CardHeader className="pb-1 md:pb-2 p-0 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 md:gap-2">
+              <Film className="h-3 w-3 md:h-4 md:w-4" />
               Content
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xl font-bold">{totalContent}</p>
+          <CardContent className="p-0 md:p-6 md:pt-0 pt-1">
+            <p className="text-base md:text-xl font-bold">{totalContent}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4" />
+        <Card className="p-3 md:p-0">
+          <CardHeader className="pb-1 md:pb-2 p-0 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 md:gap-2">
+              <Users className="h-3 w-3 md:h-4 md:w-4" />
               Followers
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xl font-bold">{followerCount}</p>
+          <CardContent className="p-0 md:p-6 md:pt-0 pt-1">
+            <p className="text-base md:text-xl font-bold">{followerCount}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-              <Heart className="h-4 w-4" />
+        <Card className="p-3 md:p-0">
+          <CardHeader className="pb-1 md:pb-2 p-0 md:p-6 md:pb-2">
+            <CardTitle className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 md:gap-2">
+              <Heart className="h-3 w-3 md:h-4 md:w-4" />
               Tips
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xl font-bold">{formatCurrency(totalTips)}</p>
+          <CardContent className="p-0 md:p-6 md:pt-0 pt-1">
+            <p className="text-base md:text-xl font-bold truncate">{formatCurrency(totalTips)}</p>
           </CardContent>
         </Card>
       </div>
@@ -173,17 +173,45 @@ export default function CreatorDashboard() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 md:grid-cols-9">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="upload">Upload</TabsTrigger>
-          <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="sales">Sales</TabsTrigger>
-          <TabsTrigger value="followers">Followers</TabsTrigger>
-          <TabsTrigger value="tips">Tips</TabsTrigger>
-          <TabsTrigger value="payouts">Payouts</TabsTrigger>
-          <TabsTrigger value="kyc">KYC</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+          <TabsList className="inline-flex w-max md:grid md:w-full md:grid-cols-9 gap-1">
+            <TabsTrigger value="overview" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="upload" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <Upload className="h-3 w-3 mr-1 md:hidden" />
+              Upload
+            </TabsTrigger>
+            <TabsTrigger value="content" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <Film className="h-3 w-3 mr-1 md:hidden" />
+              Content
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <BarChart3 className="h-3 w-3 mr-1 md:hidden" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="sales" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <TrendingUp className="h-3 w-3 mr-1 md:hidden" />
+              Sales
+            </TabsTrigger>
+            <TabsTrigger value="followers" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <Users className="h-3 w-3 mr-1 md:hidden" />
+              Followers
+            </TabsTrigger>
+            <TabsTrigger value="tips" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <Heart className="h-3 w-3 mr-1 md:hidden" />
+              Tips
+            </TabsTrigger>
+            <TabsTrigger value="payouts" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <Wallet className="h-3 w-3 mr-1 md:hidden" />
+              Payouts
+            </TabsTrigger>
+            <TabsTrigger value="kyc" className="whitespace-nowrap px-3 py-2 text-xs md:text-sm">
+              <Shield className="h-3 w-3 mr-1 md:hidden" />
+              KYC
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
@@ -445,15 +473,18 @@ export default function CreatorDashboard() {
   // Mobile Layout
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-b">
-          <div className="flex items-center gap-3 p-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+      <div className="min-h-screen bg-background pb-24">
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b safe-area-top">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-bold">Creator Dashboard</h1>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold truncate">Creator Studio</h1>
+            </div>
             {creatorProfile?.is_verified && (
-              <Badge variant="secondary" className="ml-auto gap-1">
+              <Badge variant="secondary" className="shrink-0 gap-1 text-xs">
                 <CheckCircle className="h-3 w-3" />
                 Verified
               </Badge>
@@ -461,7 +492,8 @@ export default function CreatorDashboard() {
           </div>
         </div>
 
-        <main className="pt-16 px-4">
+        {/* Main Content */}
+        <main className="pt-14 px-3 pb-4">
           <DashboardContent />
         </main>
       </div>
