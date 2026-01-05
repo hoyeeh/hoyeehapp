@@ -127,10 +127,8 @@ export default function ComingSoon() {
     return matchesSearch && matchesType;
   });
 
-  // Group by release status
-  const upcomingItems = filteredItems.filter(item => 
-    !item.expected_release_date || !isPast(parseISO(item.expected_release_date))
-  );
+  // All filtered items for "All Upcoming" tab
+  const upcomingItems = filteredItems;
   const myWatchlistItems = filteredItems.filter(item => isInWatchlist(item.id));
 
   const renderContentCard = (item: any) => {
