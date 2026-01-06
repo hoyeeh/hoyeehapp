@@ -549,10 +549,13 @@ export const EnhancedHomeSectionManagement = () => {
                 <>
                   <div className="space-y-2">
                     <Label>Filter by Genre (optional)</Label>
-                    <Select value={formData.genre_id} onValueChange={(v) => setFormData({ ...formData, genre_id: v })}>
+                    <Select 
+                      value={formData.genre_id || "__all__"} 
+                      onValueChange={(v) => setFormData({ ...formData, genre_id: v === "__all__" ? "" : v })}
+                    >
                       <SelectTrigger><SelectValue placeholder="All genres..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Genres</SelectItem>
+                        <SelectItem value="__all__">All Genres</SelectItem>
                         {genres.filter((genre: any) => genre.id).map((genre: any) => (
                           <SelectItem key={genre.id} value={genre.id}>{genre.name}</SelectItem>
                         ))}
