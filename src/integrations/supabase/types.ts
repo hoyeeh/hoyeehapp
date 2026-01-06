@@ -1848,6 +1848,7 @@ export type Database = {
           show_on_mobile: boolean
           title: string
           updated_at: string
+          year_filter: number | null
         }
         Insert: {
           allow_duplicates?: boolean
@@ -1866,6 +1867,7 @@ export type Database = {
           show_on_mobile?: boolean
           title: string
           updated_at?: string
+          year_filter?: number | null
         }
         Update: {
           allow_duplicates?: boolean
@@ -1884,6 +1886,7 @@ export type Database = {
           show_on_mobile?: boolean
           title?: string
           updated_at?: string
+          year_filter?: number | null
         }
         Relationships: [
           {

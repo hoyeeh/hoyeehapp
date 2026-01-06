@@ -46,6 +46,7 @@ interface HomeSection {
   show_on_kids: boolean;
   is_curated: boolean;
   allow_duplicates: boolean;
+  year_filter?: number | null;
 }
 
 interface Content {
@@ -70,6 +71,7 @@ const SECTION_TYPES = [
   { value: "continue_watching", label: "Continue Watching" },
   { value: "creator_store", label: "Hoyeeh Studio (Paid Content)" },
   { value: "by_year", label: "By Year (Movies by release year)" },
+  { value: "series", label: "TV Series (by genre and/or year)" },
 ];
 
 const CARD_STYLES = [
@@ -166,6 +168,7 @@ export const EnhancedHomeSectionManagement = () => {
     show_on_mobile: true,
     show_on_kids: false,
     is_curated: false,
+    year_filter: null as number | null,
   });
 
   const sensors = useSensors(
@@ -234,6 +237,7 @@ export const EnhancedHomeSectionManagement = () => {
         show_on_mobile: data.show_on_mobile,
         show_on_kids: data.show_on_kids,
         is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
+        year_filter: data.year_filter,
       });
       if (error) throw error;
     },
@@ -263,6 +267,7 @@ export const EnhancedHomeSectionManagement = () => {
           show_on_mobile: data.show_on_mobile,
           show_on_kids: data.show_on_kids,
           is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
+          year_filter: data.year_filter,
         })
         .eq("id", id);
       if (error) throw error;
@@ -377,6 +382,7 @@ export const EnhancedHomeSectionManagement = () => {
       show_on_mobile: true,
       show_on_kids: false,
       is_curated: false,
+      year_filter: null,
     });
   };
 
@@ -394,6 +400,7 @@ export const EnhancedHomeSectionManagement = () => {
       show_on_mobile: section.show_on_mobile ?? true,
       show_on_kids: section.show_on_kids ?? false,
       is_curated: section.is_curated ?? false,
+      year_filter: section.year_filter ?? null,
     });
     setShowForm(true);
   };
@@ -535,6 +542,33 @@ export const EnhancedHomeSectionManagement = () => {
                       onCheckedChange={(checked) => setFormData({ ...formData, is_curated: checked })}
                     />
                     <Label>Curated (manually select content)</Label>
+                  </div>
+                </>
+              )}
+              {formData.section_type === "series" && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Filter by Genre (optional)</Label>
+                    <Select value={formData.genre_id} onValueChange={(v) => setFormData({ ...formData, genre_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="All genres..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Genres</SelectItem>
+                        {genres.filter((genre: any) => genre.id).map((genre: any) => (
+                          <SelectItem key={genre.id} value={genre.id}>{genre.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Filter by Year (optional)</Label>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 2024"
+                      value={formData.year_filter ?? ""}
+                      onChange={(e) => setFormData({ ...formData, year_filter: e.target.value ? parseInt(e.target.value) : null })}
+                      min={1900}
+                      max={2100}
+                    />
                   </div>
                 </>
               )}

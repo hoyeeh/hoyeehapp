@@ -269,6 +269,24 @@ export function MobileHome() {
         .slice(0, section.max_items || 15);
     }
     
+    // Handle series section type with genre and year filters
+    if (section.section_type === "series") {
+      let seriesFiltered = series;
+      // Apply genre filter if set
+      if (section.genre?.name) {
+        seriesFiltered = seriesFiltered.filter((c) => 
+          c.genre?.toLowerCase().includes(section.genre.name.toLowerCase())
+        );
+      }
+      // Apply year filter if set
+      if (section.year_filter) {
+        seriesFiltered = seriesFiltered.filter((c) => c.year === section.year_filter);
+      }
+      return seriesFiltered
+        .sort((a, b) => (b.year || 0) - (a.year || 0))
+        .slice(0, section.max_items || 15);
+    }
+    
     return filtered
       .sort((a, b) => (b.year || 0) - (a.year || 0))
       .slice(0, section.max_items || 15);
