@@ -50,6 +50,7 @@ interface HomeSection {
   show_on_mobile: boolean;
   show_on_kids: boolean;
   is_curated?: boolean;
+  year_filter?: number | null;
 }
 
 interface Genre {
@@ -72,6 +73,7 @@ const SECTION_TYPES = [
   { value: "continue_watching", label: "Continue Watching" },
   { value: "leaving_soon", label: "Leaving Soon" },
   { value: "free_content", label: "Free Content" },
+  { value: "series", label: "TV Series (by genre and/or year)" },
 ];
 
 const CONTENT_TYPE_OPTIONS = [

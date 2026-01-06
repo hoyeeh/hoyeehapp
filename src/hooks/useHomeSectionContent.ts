@@ -7,6 +7,7 @@ interface Section {
   max_items?: number;
   content_type_filter?: string;
   genre?: { name: string };
+  year_filter?: number | null;
 }
 
 interface ProcessedSection {
