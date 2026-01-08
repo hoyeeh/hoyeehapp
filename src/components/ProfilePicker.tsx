@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Logo } from "./Logo";
 import { motion, AnimatePresence } from "framer-motion";
+import { ProfileBackgroundBanner } from "./ProfileBackgroundBanner";
 import { 
   AVATARS, 
   AVATAR_RINGS,
@@ -226,15 +226,7 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Logo className="mb-8" />
-      </motion.div>
-      
+    <ProfileBackgroundBanner variant="desktop">
       <motion.h1 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -536,6 +528,6 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </ProfileBackgroundBanner>
   );
 };

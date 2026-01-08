@@ -864,6 +864,11 @@ const Index = () => {
                       );
                     }
 
+                    // Continue watching section - handled above, skip in dynamic sections
+                    if (section.section_type === "continue_watching") {
+                      return null;
+                    }
+
                     if (sectionContent.length === 0) return null;
 
                     // Determine the appropriate "See All" destination based on section type

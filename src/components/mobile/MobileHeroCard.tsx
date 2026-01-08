@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { Play, Plus, Check, Info } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Play, Plus, Check, Info, Volume2, VolumeX } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import badge from "@/assets/hoyeeh-badge.png";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useBannerVideoPreview } from "@/hooks/useBannerVideoPreview";
 
 interface MobileHeroCardProps {
   content: Content;
@@ -11,13 +12,17 @@ interface MobileHeroCardProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   isInList?: boolean;
+  videoPreviewUrl?: string;
 }
 
 // Skeleton component for hero loading state
 export function MobileHeroSkeleton() {
   return (
     <div className="px-4">
-      <div className="relative w-full aspect-[2/3] max-h-[60vh] rounded-2xl overflow-hidden animate-pulse">
+      <div 
+        className="relative w-full aspect-[2/3] max-h-[60vh] overflow-hidden animate-pulse"
+        style={{ borderRadius: "24px 24px 48px 48px" }}
+      >
         <Skeleton className="absolute inset-0 w-full h-full" />
         
         {/* Badge skeleton */}
@@ -49,10 +54,24 @@ export function MobileHeroCard({
   onPlay, 
   onToggleList, 
   onDetails,
-  isInList = false 
+  isInList = false,
+  videoPreviewUrl
 }: MobileHeroCardProps) {
   const [scrollY, setScrollY] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Video preview hook
+  const {
+    videoRef,
+    isVideoPlaying,
+    isMuted,
+    toggleMute,
+    hasError,
+  } = useBannerVideoPreview({
+    videoUrl: videoPreviewUrl,
+    enabled: !!videoPreviewUrl && isLoaded,
+    delay: 2000,
+  });
 
   // Track scroll for parallax effect
   useEffect(() => {
@@ -64,20 +83,41 @@ export function MobileHeroCard({
   // Calculate parallax transform (subtle movement)
   const parallaxOffset = scrollY * 0.3;
 
+  const showVideo = isVideoPlaying && !hasError && videoPreviewUrl;
+
   return (
     <div className="px-4">
       <div 
         className={cn(
-          "relative w-full aspect-[2/3] max-h-[60vh] rounded-2xl overflow-hidden",
+          "relative w-full aspect-[2/3] max-h-[60vh] overflow-hidden",
           "shadow-2xl shadow-primary/10 border border-border/20",
           isLoaded ? "animate-scale-in" : "opacity-0"
         )}
+        style={{ borderRadius: "24px 24px 48px 48px" }}
       >
+        {/* Video Preview */}
+        {videoPreviewUrl && (
+          <video
+            ref={videoRef}
+            src={videoPreviewUrl}
+            muted
+            playsInline
+            className={cn(
+              "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
+              showVideo ? "opacity-100" : "opacity-0"
+            )}
+            style={{ transform: `translateY(${parallaxOffset}px) scale(1.1)` }}
+          />
+        )}
+
         {/* Background Image with Parallax */}
         <img
           src={content.thumbnailUrl}
           alt={content.title}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-100 ease-out"
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out",
+            showVideo ? "opacity-0" : "opacity-100"
+          )}
           style={{ transform: `translateY(${parallaxOffset}px) scale(1.1)` }}
           onLoad={() => setIsLoaded(true)}
           onError={(e) => {
@@ -103,6 +143,26 @@ export function MobileHeroCard({
             }}
           />
         </div>
+
+        {/* Mute/Unmute Button - Only show when video is playing */}
+        {showVideo && (
+          <button
+            onClick={toggleMute}
+            className={cn(
+              "absolute top-3 right-4 z-10 w-10 h-10 rounded-full",
+              "bg-black/40 backdrop-blur-sm border border-white/20",
+              "flex items-center justify-center",
+              "active:scale-90 transition-transform"
+            )}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? (
+              <VolumeX className="h-5 w-5 text-white" />
+            ) : (
+              <Volume2 className="h-5 w-5 text-white" />
+            )}
+          </button>
+        )}
 
         {/* Content Info */}
         <div className="absolute bottom-0 left-0 right-0 p-5 space-y-3">
