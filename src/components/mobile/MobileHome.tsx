@@ -543,6 +543,7 @@ export function MobileHome() {
                 onToggleList={handleToggleList}
                 onDetails={handleDetails}
                 isInList={watchlistIds.includes(featuredContent.id)}
+                videoPreviewUrl={featuredContent.videoUrl}
               />
             ) : null}
           </FadeIn>
@@ -674,6 +675,11 @@ export function MobileHome() {
                     />
                   </FadeIn>
                 );
+              }
+
+              // Continue watching section - handled above, skip in dynamic sections
+              if (section.section_type === "continue_watching") {
+                return null;
               }
 
               // Genre and other sections - use processed deduplicated content
