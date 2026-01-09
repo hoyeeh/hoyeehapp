@@ -1,6 +1,7 @@
 import { useProfileBackground, ProfileBackgroundContent } from "@/hooks/useProfileBackground";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 interface ProfileBackgroundBannerProps {
   children: React.ReactNode;
@@ -12,8 +13,29 @@ export const ProfileBackgroundBanner = ({
   variant = "desktop",
 }: ProfileBackgroundBannerProps) => {
   const { backgroundContent } = useProfileBackground();
+  const [displayContent, setDisplayContent] = useState<ProfileBackgroundContent | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  if (!backgroundContent) {
+  // Handle smooth transition between backgrounds
+  useEffect(() => {
+    if (!backgroundContent) return;
+    
+    if (!displayContent) {
+      setDisplayContent(backgroundContent);
+      return;
+    }
+
+    if (backgroundContent.id !== displayContent.id) {
+      setIsTransitioning(true);
+      const timeout = setTimeout(() => {
+        setDisplayContent(backgroundContent);
+        setIsTransitioning(false);
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [backgroundContent, displayContent]);
+
+  if (!displayContent) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
         {children}
@@ -27,9 +49,12 @@ export const ProfileBackgroundBanner = ({
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
-            src={backgroundContent.thumbnailUrl}
-            alt={backgroundContent.title}
-            className="w-full h-full object-cover"
+            src={displayContent.thumbnailUrl}
+            alt={displayContent.title}
+            className={cn(
+              "w-full h-full object-cover transition-opacity duration-500",
+              isTransitioning ? "opacity-0" : "opacity-100"
+            )}
           />
           {/* Dark gradient overlay from bottom */}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
@@ -45,11 +70,17 @@ export const ProfileBackgroundBanner = ({
 
           {/* Title in middle */}
           <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-20">
-            <h1 className="text-4xl sm:text-5xl font-display font-bold text-foreground text-center tracking-tight uppercase mb-2 drop-shadow-2xl">
-              {backgroundContent.title}
+            <h1 className={cn(
+              "text-4xl sm:text-5xl font-display font-bold text-foreground text-center tracking-tight uppercase mb-2 drop-shadow-2xl transition-opacity duration-500",
+              isTransitioning ? "opacity-0" : "opacity-100"
+            )}>
+              {displayContent.title}
             </h1>
-            <p className="text-muted-foreground text-sm mb-8">
-              {backgroundContent.contentType === "movie" ? "Movie" : "TV Series"}
+            <p className={cn(
+              "text-muted-foreground text-sm mb-8 transition-opacity duration-500",
+              isTransitioning ? "opacity-0" : "opacity-100"
+            )}>
+              {displayContent.contentType === "movie" ? "Movie" : "TV Series"}
             </p>
 
             {/* Children (profile grid) */}
@@ -66,9 +97,12 @@ export const ProfileBackgroundBanner = ({
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          src={backgroundContent.thumbnailUrl}
-          alt={backgroundContent.title}
-          className="w-full h-full object-cover"
+          src={displayContent.thumbnailUrl}
+          alt={displayContent.title}
+          className={cn(
+            "w-full h-full object-cover transition-opacity duration-500",
+            isTransitioning ? "opacity-0" : "opacity-100"
+          )}
         />
         {/* Dark gradient overlay - stronger on left for profiles */}
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-background/30" />
@@ -93,11 +127,17 @@ export const ProfileBackgroundBanner = ({
 
         {/* Title - bottom right */}
         <div className="absolute bottom-12 right-12 text-right max-w-lg">
-          <h1 className="text-5xl lg:text-6xl xl:text-7xl font-display font-bold text-foreground uppercase tracking-tight drop-shadow-2xl">
-            {backgroundContent.title}
+          <h1 className={cn(
+            "text-5xl lg:text-6xl xl:text-7xl font-display font-bold text-foreground uppercase tracking-tight drop-shadow-2xl transition-opacity duration-500",
+            isTransitioning ? "opacity-0" : "opacity-100"
+          )}>
+            {displayContent.title}
           </h1>
-          <p className="text-muted-foreground text-lg mt-2">
-            {backgroundContent.contentType === "movie" ? "Movie" : "TV Series"}
+          <p className={cn(
+            "text-muted-foreground text-lg mt-2 transition-opacity duration-500",
+            isTransitioning ? "opacity-0" : "opacity-100"
+          )}>
+            {displayContent.contentType === "movie" ? "Movie" : "TV Series"}
           </p>
         </div>
       </div>

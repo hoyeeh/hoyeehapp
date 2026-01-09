@@ -1,9 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-const PROFILE_BG_KEY = "hoyeeh-profile-background";
-const PROFILE_BG_EXPIRY = 6 * 60 * 60 * 1000; // 6 hours
+const ROTATION_INTERVAL = 6000; // 6 seconds
 
 export interface ProfileBackgroundContent {
   id: string;
@@ -13,6 +12,8 @@ export interface ProfileBackgroundContent {
 }
 
 export const useProfileBackground = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   // Fetch top 10 content
   const { data: top10Data = [] } = useQuery({
     queryKey: ["profile-bg-top10"],
@@ -41,8 +42,8 @@ export const useProfileBackground = () => {
     },
   });
 
-  // Combine and select random content
-  const backgroundContent = useMemo((): ProfileBackgroundContent | null => {
+  // Combine and deduplicate content
+  const allContent = useMemo((): ProfileBackgroundContent[] => {
     const top10Items = top10Data
       .filter((item: any) => item.content)
       .map((item: any) => ({
@@ -60,40 +61,31 @@ export const useProfileBackground = () => {
     }));
 
     // Combine and deduplicate
-    const allContent = [...top10Items];
+    const combined = [...top10Items];
     mostViewedItems.forEach((item) => {
-      if (!allContent.find((c) => c.id === item.id)) {
-        allContent.push(item);
+      if (!combined.find((c) => c.id === item.id)) {
+        combined.push(item);
       }
     });
 
-    if (allContent.length === 0) return null;
-
-    // Check localStorage for persisted selection
-    try {
-      const stored = localStorage.getItem(PROFILE_BG_KEY);
-      if (stored) {
-        const { contentId, timestamp } = JSON.parse(stored);
-        if (Date.now() - timestamp < PROFILE_BG_EXPIRY) {
-          const found = allContent.find((c) => c.id === contentId);
-          if (found) return found;
-        }
-      }
-    } catch {}
-
-    // Select random content and persist
-    const randomIndex = Math.floor(Math.random() * allContent.length);
-    const selected = allContent[randomIndex];
-
-    try {
-      localStorage.setItem(
-        PROFILE_BG_KEY,
-        JSON.stringify({ contentId: selected.id, timestamp: Date.now() })
-      );
-    } catch {}
-
-    return selected;
+    return combined;
   }, [top10Data, mostViewedData]);
+
+  // Rotate background every 6 seconds
+  useEffect(() => {
+    if (allContent.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % allContent.length);
+    }, ROTATION_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [allContent.length]);
+
+  const backgroundContent = useMemo((): ProfileBackgroundContent | null => {
+    if (allContent.length === 0) return null;
+    return allContent[currentIndex % allContent.length] || allContent[0];
+  }, [allContent, currentIndex]);
 
   return { backgroundContent };
 };
