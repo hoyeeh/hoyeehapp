@@ -1,4 +1,5 @@
 import { useProfileBackground, ProfileBackgroundContent } from "@/hooks/useProfileBackground";
+import { useBannerVideoPreview } from "@/hooks/useBannerVideoPreview";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -15,6 +16,22 @@ export const ProfileBackgroundBanner = ({
   const { backgroundContent } = useProfileBackground();
   const [displayContent, setDisplayContent] = useState<ProfileBackgroundContent | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Video preview hook for profile backgrounds
+  const {
+    videoRef,
+    isVideoPlaying,
+    isLooping,
+    hasError,
+  } = useBannerVideoPreview({
+    videoUrl: displayContent?.videoUrl || undefined,
+    enabled: !!displayContent?.videoUrl && isLoaded,
+    delay: 2000,
+    startTime: displayContent?.videoStartTime || 0,
+    duration: displayContent?.videoDuration || undefined,
+    fadeOnLoop: true,
+  });
 
   // Handle smooth transition between backgrounds
   useEffect(() => {
@@ -27,6 +44,7 @@ export const ProfileBackgroundBanner = ({
 
     if (backgroundContent.id !== displayContent.id) {
       setIsTransitioning(true);
+      setIsLoaded(false);
       const timeout = setTimeout(() => {
         setDisplayContent(backgroundContent);
         setIsTransitioning(false);
@@ -48,9 +66,26 @@ export const ProfileBackgroundBanner = ({
     ? displayContent.mobileImageUrl 
     : displayContent.desktopImageUrl;
 
+  const showVideo = isVideoPlaying && !hasError && displayContent.videoUrl;
+
   if (variant === "mobile") {
     return (
       <div className="min-h-screen relative overflow-hidden">
+        {/* Video Preview */}
+        {displayContent.videoUrl && (
+          <video
+            ref={videoRef}
+            src={displayContent.videoUrl}
+            muted
+            playsInline
+            className={cn(
+              "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
+              showVideo && !isLooping ? "opacity-100" : "opacity-0"
+            )}
+            onLoadedData={() => setIsLoaded(true)}
+          />
+        )}
+
         {/* Background Image - Poster for mobile */}
         <div className="absolute inset-0">
           <img
@@ -58,8 +93,9 @@ export const ProfileBackgroundBanner = ({
             alt={displayContent.title}
             className={cn(
               "w-full h-full object-cover transition-opacity duration-500",
-              isTransitioning ? "opacity-0" : "opacity-100"
+              isTransitioning || (showVideo && !isLooping) ? "opacity-0" : "opacity-100"
             )}
+            onLoad={() => !displayContent.videoUrl && setIsLoaded(true)}
           />
           {/* Dark gradient overlay from bottom */}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
@@ -99,6 +135,21 @@ export const ProfileBackgroundBanner = ({
   // Desktop variant - matching hero banner dimensions
   return (
     <div className="min-h-screen h-[85vh] relative overflow-hidden">
+      {/* Video Preview */}
+      {displayContent.videoUrl && (
+        <video
+          ref={videoRef}
+          src={displayContent.videoUrl}
+          muted
+          playsInline
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
+            showVideo && !isLooping ? "opacity-100" : "opacity-0"
+          )}
+          onLoadedData={() => setIsLoaded(true)}
+        />
+      )}
+
       {/* Background Image - Backdrop for desktop */}
       <div className="absolute inset-0">
         <img
@@ -106,8 +157,9 @@ export const ProfileBackgroundBanner = ({
           alt={displayContent.title}
           className={cn(
             "w-full h-full object-cover transition-opacity duration-500",
-            isTransitioning ? "opacity-0" : "opacity-100"
+            isTransitioning || (showVideo && !isLooping) ? "opacity-0" : "opacity-100"
           )}
+          onLoad={() => !displayContent.videoUrl && setIsLoaded(true)}
         />
         {/* Dark gradient overlay - stronger on left for profiles, matching hero banner */}
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-background/30" />
