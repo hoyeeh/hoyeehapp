@@ -1784,6 +1784,8 @@ export type Database = {
           subtitle: string | null
           title: string
           updated_at: string
+          video_duration: number | null
+          video_start_time: number | null
           video_url: string | null
         }
         Insert: {
@@ -1801,6 +1803,8 @@ export type Database = {
           subtitle?: string | null
           title: string
           updated_at?: string
+          video_duration?: number | null
+          video_start_time?: number | null
           video_url?: string | null
         }
         Update: {
@@ -1818,6 +1822,8 @@ export type Database = {
           subtitle?: string | null
           title?: string
           updated_at?: string
+          video_duration?: number | null
+          video_start_time?: number | null
           video_url?: string | null
         }
         Relationships: [
@@ -2482,36 +2488,51 @@ export type Database = {
           created_at: string | null
           desktop_image_url: string | null
           display_order: number | null
+          end_date: string | null
           id: string
           is_active: boolean | null
           mobile_image_url: string | null
+          start_date: string | null
           title: string
           tmdb_id: number | null
           updated_at: string | null
+          video_duration: number | null
+          video_start_time: number | null
+          video_url: string | null
         }
         Insert: {
           content_type?: string | null
           created_at?: string | null
           desktop_image_url?: string | null
           display_order?: number | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           mobile_image_url?: string | null
+          start_date?: string | null
           title: string
           tmdb_id?: number | null
           updated_at?: string | null
+          video_duration?: number | null
+          video_start_time?: number | null
+          video_url?: string | null
         }
         Update: {
           content_type?: string | null
           created_at?: string | null
           desktop_image_url?: string | null
           display_order?: number | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           mobile_image_url?: string | null
+          start_date?: string | null
           title?: string
           tmdb_id?: number | null
           updated_at?: string | null
+          video_duration?: number | null
+          video_start_time?: number | null
+          video_url?: string | null
         }
         Relationships: []
       }

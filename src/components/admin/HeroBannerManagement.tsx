@@ -41,6 +41,8 @@ export const HeroBannerManagement = () => {
     description: "",
     image_url: "",
     video_url: "",
+    video_start_time: 0,
+    video_duration: null as number | null,
     cta_text: "Watch Now",
     cta_link: "",
     content_id: "",
@@ -82,6 +84,7 @@ export const HeroBannerManagement = () => {
       const { error } = await supabase.from("hero_banners").insert({
         ...formData,
         content_id: formData.content_id && formData.content_id !== "none" ? formData.content_id : null,
+        video_duration: formData.video_duration || null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
       });
@@ -105,6 +108,7 @@ export const HeroBannerManagement = () => {
         .update({
           ...formData,
           content_id: formData.content_id && formData.content_id !== "none" ? formData.content_id : null,
+          video_duration: formData.video_duration || null,
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
         })
@@ -173,6 +177,8 @@ export const HeroBannerManagement = () => {
       description: "",
       image_url: "",
       video_url: "",
+      video_start_time: 0,
+      video_duration: null,
       cta_text: "Watch Now",
       cta_link: "",
       content_id: "",
@@ -193,6 +199,8 @@ export const HeroBannerManagement = () => {
       description: item.description || "",
       image_url: item.image_url || "",
       video_url: item.video_url || "",
+      video_start_time: item.video_start_time || 0,
+      video_duration: item.video_duration || null,
       cta_text: item.cta_text || "Watch Now",
       cta_link: item.cta_link || "",
       content_id: item.content_id || "",
@@ -309,6 +317,34 @@ export const HeroBannerManagement = () => {
                   placeholder="https://... (mp4 format recommended)"
                 />
               </div>
+
+              {/* Video Preview Settings - Only show when video URL is provided */}
+              {formData.video_url && (
+                <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-lg">
+                  <div className="space-y-2">
+                    <Label>Video Start Time (seconds)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.video_start_time}
+                      onChange={(e) => setFormData({ ...formData, video_start_time: parseInt(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">e.g., 1200 = 20 minutes</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Video Duration (seconds)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={formData.video_duration || ""}
+                      onChange={(e) => setFormData({ ...formData, video_duration: e.target.value ? parseInt(e.target.value) : null })}
+                      placeholder="Full video"
+                    />
+                    <p className="text-xs text-muted-foreground">Leave empty for full</p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

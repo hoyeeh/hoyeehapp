@@ -6,6 +6,7 @@ interface UseBannerVideoPreviewOptions {
   delay?: number; // ms before starting video
   startTime?: number; // seconds into video to start
   duration?: number; // how long to play before looping (seconds)
+  fadeOnLoop?: boolean; // whether to fade out/in when looping
 }
 
 export const useBannerVideoPreview = ({
@@ -14,8 +15,10 @@ export const useBannerVideoPreview = ({
   delay = 2000,
   startTime = 0,
   duration,
+  fadeOnLoop = true,
 }: UseBannerVideoPreviewOptions) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isLooping, setIsLooping] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -67,8 +70,17 @@ export const useBannerVideoPreview = ({
 
     const handleTimeUpdate = () => {
       // If duration is set, loop back to startTime after duration
-      if (duration && video.currentTime >= startTime + duration) {
-        video.currentTime = startTime;
+      if (duration && video.currentTime >= startTime + duration - 0.5) {
+        if (fadeOnLoop && !isLooping) {
+          setIsLooping(true);
+          // Fade out, then reset position, then fade in
+          setTimeout(() => {
+            video.currentTime = startTime;
+            setIsLooping(false);
+          }, 300);
+        } else if (!fadeOnLoop) {
+          video.currentTime = startTime;
+        }
       }
     };
 
@@ -89,7 +101,7 @@ export const useBannerVideoPreview = ({
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("ended", handleEnded);
     };
-  }, [enabled, videoUrl, delay, hasError, startTime, duration]);
+  }, [enabled, videoUrl, delay, hasError, startTime, duration, fadeOnLoop, isLooping]);
 
   const toggleMute = useCallback(() => {
     if (videoRef.current) {
@@ -120,6 +132,7 @@ export const useBannerVideoPreview = ({
     isVideoReady,
     isVideoPlaying,
     isMuted,
+    isLooping,
     hasError,
     toggleMute,
     pauseVideo,

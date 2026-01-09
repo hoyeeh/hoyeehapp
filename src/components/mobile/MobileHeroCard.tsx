@@ -60,10 +60,11 @@ export function MobileHeroCard({
   const [scrollY, setScrollY] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Video preview hook - starts at 20 minutes, plays for 20 seconds, loops
+  // Video preview hook - starts at 20 minutes, plays for 20 seconds, loops with fade
   const {
     videoRef,
     isVideoPlaying,
+    isLooping,
     hasError,
   } = useBannerVideoPreview({
     videoUrl: videoPreviewUrl,
@@ -71,6 +72,7 @@ export function MobileHeroCard({
     delay: 2000,
     startTime: 1200, // 20 minutes
     duration: 20,    // 20 seconds
+    fadeOnLoop: true,
   });
 
   // Track scroll for parallax effect
@@ -103,8 +105,8 @@ export function MobileHeroCard({
             muted
             playsInline
             className={cn(
-              "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
-              showVideo ? "opacity-100" : "opacity-0"
+              "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
+              showVideo && !isLooping ? "opacity-100" : "opacity-0"
             )}
             style={{ transform: `translateY(${parallaxOffset}px) scale(1.1)` }}
           />
@@ -115,8 +117,8 @@ export function MobileHeroCard({
           src={content.thumbnailUrl}
           alt={content.title}
           className={cn(
-            "absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out",
-            showVideo ? "opacity-0" : "opacity-100"
+            "absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out",
+            showVideo && !isLooping ? "opacity-0" : "opacity-100"
           )}
           style={{ transform: `translateY(${parallaxOffset}px) scale(1.1)` }}
           onLoad={() => setIsLoaded(true)}

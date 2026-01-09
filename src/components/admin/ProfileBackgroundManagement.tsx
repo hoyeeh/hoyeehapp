@@ -8,8 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, Monitor, Smartphone } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, Monitor, Smartphone, Video, Calendar } from "lucide-react";
 
 interface ProfileBackground {
   id: string;
@@ -18,6 +19,11 @@ interface ProfileBackground {
   content_type: string;
   desktop_image_url: string | null;
   mobile_image_url: string | null;
+  video_url: string | null;
+  video_start_time: number;
+  video_duration: number | null;
+  start_date: string | null;
+  end_date: string | null;
   is_active: boolean;
   display_order: number;
 }
@@ -46,6 +52,11 @@ export const ProfileBackgroundManagement = () => {
     content_type: "movie",
     desktop_image_url: "",
     mobile_image_url: "",
+    video_url: "",
+    video_start_time: 0,
+    video_duration: null as number | null,
+    start_date: "",
+    end_date: "",
     is_active: true,
     display_order: 0,
   });
@@ -64,16 +75,23 @@ export const ProfileBackgroundManagement = () => {
 
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      const payload = {
+        ...data,
+        video_url: data.video_url || null,
+        video_duration: data.video_duration || null,
+        start_date: data.start_date || null,
+        end_date: data.end_date || null,
+      };
       if (editingBackground) {
         const { error } = await supabase
           .from("profile_backgrounds")
-          .update(data)
+          .update(payload)
           .eq("id", editingBackground.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("profile_backgrounds")
-          .insert(data);
+          .insert(payload);
         if (error) throw error;
       }
     },
@@ -156,6 +174,11 @@ export const ProfileBackgroundManagement = () => {
       content_type: background.content_type,
       desktop_image_url: background.desktop_image_url || "",
       mobile_image_url: background.mobile_image_url || "",
+      video_url: background.video_url || "",
+      video_start_time: background.video_start_time || 0,
+      video_duration: background.video_duration,
+      start_date: background.start_date?.split("T")[0] || "",
+      end_date: background.end_date?.split("T")[0] || "",
       is_active: background.is_active,
       display_order: background.display_order,
     });
@@ -170,6 +193,11 @@ export const ProfileBackgroundManagement = () => {
       content_type: "movie",
       desktop_image_url: "",
       mobile_image_url: "",
+      video_url: "",
+      video_start_time: 0,
+      video_duration: null,
+      start_date: "",
+      end_date: "",
       is_active: true,
       display_order: backgrounds.length,
     });
@@ -349,6 +377,82 @@ export const ProfileBackgroundManagement = () => {
                 )}
               </div>
 
+              <Separator className="my-4" />
+
+              {/* Video Preview Settings */}
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Video className="h-4 w-4" /> Video Preview (Optional)
+                </h4>
+                
+                <div className="space-y-2">
+                  <Label>Video URL</Label>
+                  <Input
+                    value={formData.video_url}
+                    onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
+                    placeholder="https://... (mp4 format recommended)"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Start Time (seconds)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.video_start_time}
+                      onChange={(e) => setFormData({ ...formData, video_start_time: parseInt(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">Where to start playing (e.g., 1200 = 20 min)</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration (seconds)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={formData.video_duration || ""}
+                      onChange={(e) => setFormData({ ...formData, video_duration: e.target.value ? parseInt(e.target.value) : null })}
+                      placeholder="Leave empty for full video"
+                    />
+                    <p className="text-xs text-muted-foreground">How long to play before looping</p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="my-4" />
+
+              {/* Scheduling */}
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4" /> Scheduling (Optional)
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Input
+                      type="date"
+                      value={formData.start_date}
+                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Input
+                      type="date"
+                      value={formData.end_date}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Leave empty for no scheduling. Background will show when dates match.
+                </p>
+              </div>
+
+              <Separator className="my-4" />
+
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.is_active}
@@ -447,13 +551,23 @@ export const ProfileBackgroundManagement = () => {
                     </div>
                   )}
                 </div>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <span className={`text-xs px-2 py-1 rounded ${bg.is_active ? "bg-green-500/20 text-green-500" : "bg-muted text-muted-foreground"}`}>
                     {bg.is_active ? "Active" : "Inactive"}
                   </span>
                   <span className="text-xs px-2 py-1 rounded bg-muted">
                     {bg.content_type}
                   </span>
+                  {bg.video_url && (
+                    <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-500 flex items-center gap-1">
+                      <Video className="h-3 w-3" /> Video
+                    </span>
+                  )}
+                  {(bg.start_date || bg.end_date) && (
+                    <span className="text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-500 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> Scheduled
+                    </span>
+                  )}
                 </div>
               </CardContent>
             </Card>
