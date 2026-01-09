@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Play, Plus, Check, Info, Volume2, VolumeX } from "lucide-react";
+import { Play, Plus, Check, Info } from "lucide-react";
 import { Content } from "@/types";
 import { cn } from "@/lib/utils";
 import badge from "@/assets/hoyeeh-badge.png";
@@ -60,17 +60,17 @@ export function MobileHeroCard({
   const [scrollY, setScrollY] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Video preview hook
+  // Video preview hook - starts at 20 minutes, plays for 20 seconds, loops
   const {
     videoRef,
     isVideoPlaying,
-    isMuted,
-    toggleMute,
     hasError,
   } = useBannerVideoPreview({
     videoUrl: videoPreviewUrl,
     enabled: !!videoPreviewUrl && isLoaded,
     delay: 2000,
+    startTime: 1200, // 20 minutes
+    duration: 20,    // 20 seconds
   });
 
   // Track scroll for parallax effect
@@ -143,26 +143,6 @@ export function MobileHeroCard({
             }}
           />
         </div>
-
-        {/* Mute/Unmute Button - Only show when video is playing */}
-        {showVideo && (
-          <button
-            onClick={toggleMute}
-            className={cn(
-              "absolute top-3 right-4 z-10 w-10 h-10 rounded-full",
-              "bg-black/40 backdrop-blur-sm border border-white/20",
-              "flex items-center justify-center",
-              "active:scale-90 transition-transform"
-            )}
-            aria-label={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? (
-              <VolumeX className="h-5 w-5 text-white" />
-            ) : (
-              <Volume2 className="h-5 w-5 text-white" />
-            )}
-          </button>
-        )}
 
         {/* Content Info */}
         <div className="absolute bottom-0 left-0 right-0 p-5 space-y-3">
