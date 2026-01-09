@@ -143,10 +143,12 @@ const Auth = () => {
             sessionStorage.removeItem('pinAuthData');
           }
         } else {
-          toast.success("Account created successfully! Welcome to Hoyeeh.");
+        toast.success("Account created successfully! Welcome to Hoyeeh.");
         }
         
-        navigate("/");
+        // Clear current profile to force profile selection
+        localStorage.removeItem("hoyeeh_current_profile");
+        navigate("/profiles");
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
@@ -156,8 +158,10 @@ const Auth = () => {
             toast.error(error.message);
           }
         } else {
+          // Clear current profile to force profile selection
+          localStorage.removeItem("hoyeeh_current_profile");
           toast.success("Welcome back to Hoyeeh!");
-          navigate("/");
+          navigate("/profiles");
         }
       }
     } catch (err) {

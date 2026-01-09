@@ -137,10 +137,12 @@ export const MobileAuth = () => {
             toast.success("Account created successfully!");
           }
           
-          sessionStorage.removeItem('pinAuthData');
+        sessionStorage.removeItem('pinAuthData');
         }
         
-        navigate("/");
+        // Clear current profile to force profile selection
+        localStorage.removeItem("hoyeeh_current_profile");
+        navigate("/profiles");
         return;
       }
       
@@ -157,7 +159,9 @@ export const MobileAuth = () => {
         }
         
         toast.success("Account created successfully!");
-        navigate("/");
+        // Clear current profile to force profile selection
+        localStorage.removeItem("hoyeeh_current_profile");
+        navigate("/profiles");
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
@@ -167,8 +171,10 @@ export const MobileAuth = () => {
             toast.error(error.message);
           }
         } else {
+          // Clear current profile to force profile selection
+          localStorage.removeItem("hoyeeh_current_profile");
           toast.success("Welcome back!");
-          navigate("/");
+          navigate("/profiles");
         }
       }
     } catch (err) {
