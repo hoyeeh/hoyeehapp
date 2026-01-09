@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -7,69 +7,40 @@ const ROTATION_INTERVAL = 6000; // 6 seconds
 export interface ProfileBackgroundContent {
   id: string;
   title: string;
-  thumbnailUrl: string;
+  desktopImageUrl: string;
+  mobileImageUrl: string;
   contentType: "movie" | "series";
 }
 
 export const useProfileBackground = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Fetch top 10 content
-  const { data: top10Data = [] } = useQuery({
-    queryKey: ["profile-bg-top10"],
+  // Fetch admin-managed backgrounds
+  const { data: backgroundsData = [] } = useQuery({
+    queryKey: ["profile-backgrounds"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("top_10")
-        .select(`content:content_id (id, title, thumbnail_url, content_type)`)
-        .order("rank")
-        .limit(10);
+        .from("profile_backgrounds")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order");
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Fetch most viewed content
-  const { data: mostViewedData = [] } = useQuery({
-    queryKey: ["profile-bg-most-viewed"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, thumbnail_url, content_type")
-        .order("view_count", { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Combine and deduplicate content
+  // Transform to ProfileBackgroundContent
   const allContent = useMemo((): ProfileBackgroundContent[] => {
-    const top10Items = top10Data
-      .filter((item: any) => item.content)
+    return backgroundsData
+      .filter((item: any) => item.desktop_image_url || item.mobile_image_url)
       .map((item: any) => ({
-        id: item.content.id,
-        title: item.content.title,
-        thumbnailUrl: item.content.thumbnail_url || "",
-        contentType: item.content.content_type as "movie" | "series",
+        id: item.id,
+        title: item.title,
+        desktopImageUrl: item.desktop_image_url || "",
+        mobileImageUrl: item.mobile_image_url || "",
+        contentType: item.content_type as "movie" | "series",
       }));
-
-    const mostViewedItems = mostViewedData.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      thumbnailUrl: item.thumbnail_url || "",
-      contentType: item.content_type as "movie" | "series",
-    }));
-
-    // Combine and deduplicate
-    const combined = [...top10Items];
-    mostViewedItems.forEach((item) => {
-      if (!combined.find((c) => c.id === item.id)) {
-        combined.push(item);
-      }
-    });
-
-    return combined;
-  }, [top10Data, mostViewedData]);
+  }, [backgroundsData]);
 
   // Rotate background every 6 seconds
   useEffect(() => {

@@ -43,13 +43,18 @@ export const ProfileBackgroundBanner = ({
     );
   }
 
+  // Get the appropriate image URL based on variant
+  const imageUrl = variant === "mobile" 
+    ? displayContent.mobileImageUrl 
+    : displayContent.desktopImageUrl;
+
   if (variant === "mobile") {
     return (
       <div className="min-h-screen relative overflow-hidden">
-        {/* Background Image */}
+        {/* Background Image - Poster for mobile */}
         <div className="absolute inset-0">
           <img
-            src={displayContent.thumbnailUrl}
+            src={imageUrl || displayContent.desktopImageUrl}
             alt={displayContent.title}
             className={cn(
               "w-full h-full object-cover transition-opacity duration-500",
@@ -91,26 +96,26 @@ export const ProfileBackgroundBanner = ({
     );
   }
 
-  // Desktop variant
+  // Desktop variant - matching hero banner dimensions
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background Image */}
+    <div className="min-h-screen h-[85vh] relative overflow-hidden">
+      {/* Background Image - Backdrop for desktop */}
       <div className="absolute inset-0">
         <img
-          src={displayContent.thumbnailUrl}
+          src={imageUrl || displayContent.mobileImageUrl}
           alt={displayContent.title}
           className={cn(
             "w-full h-full object-cover transition-opacity duration-500",
             isTransitioning ? "opacity-0" : "opacity-100"
           )}
         />
-        {/* Dark gradient overlay - stronger on left for profiles */}
+        {/* Dark gradient overlay - stronger on left for profiles, matching hero banner */}
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-background/30" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-background/50" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 min-h-screen flex">
+      <div className="relative z-10 h-full flex">
         {/* Left side - Logo and Profiles */}
         <div className="flex-1 flex flex-col p-8 lg:p-12 max-w-xl">
           {/* Logo */}
