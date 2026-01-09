@@ -614,14 +614,14 @@ const Index = () => {
     );
   }
 
-  // Profile Picker (logged in but no profile selected)
-  if (user && profiles.length > 0 && !currentProfile) {
-    return <ProfilePicker onProfileSelected={setCurrentProfile} />;
-  }
-
-  // No profiles yet - auto-create first profile
-  if (user && profiles.length === 0 && !profilesLoading) {
-    return <ProfilePicker onProfileSelected={setCurrentProfile} />;
+  // Redirect to profile picker if no profile selected
+  if (user && !currentProfile && !profilesLoading) {
+    navigate("/profiles", { replace: true });
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner size="lg" text="Loading profiles..." />
+      </div>
+    );
   }
 
   // Main App (logged in) - Wrap with KidsInterface for kids profiles

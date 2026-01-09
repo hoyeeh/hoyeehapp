@@ -26,6 +26,7 @@ import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { PusherNotificationHandler } from "@/components/PusherNotificationHandler";
 import Index from "./pages/Index";
+import Profiles from "./pages/Profiles";
 import Auth from "./pages/Auth";
 import PinAuth from "./pages/PinAuth";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -234,6 +235,7 @@ const App = () => (
                       <PersistentWatchPartyPanel />
                       <Routes>
                         <Route path="/" element={<Index />} />
+                        <Route path="/profiles" element={<Profiles />} />
                         <Route path="/auth" element={<Auth />} />
                         <Route path="/pin-auth" element={<PinAuth />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
