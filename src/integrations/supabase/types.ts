@@ -2476,6 +2476,45 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_backgrounds: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          desktop_image_url: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          mobile_image_url: string | null
+          title: string
+          tmdb_id: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          desktop_image_url?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          mobile_image_url?: string | null
+          title: string
+          tmdb_id?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          desktop_image_url?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          mobile_image_url?: string | null
+          title?: string
+          tmdb_id?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profile_watch_preferences: {
         Row: {
           created_at: string
