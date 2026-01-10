@@ -217,15 +217,8 @@ export const MobileProfilePicker = ({ onProfileSelected }: MobileProfilePickerPr
 
   return (
     <ProfileBackgroundBanner variant="mobile">
-      {/* Logo */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-6"
-      >
-        <Logo className="scale-110" />
-      </motion.div>
+          {/* Spacing where logo was removed for cleaner mobile look */}
+          <div className="mb-6" />
 
       {/* Title */}
       <motion.h1 

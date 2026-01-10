@@ -29,7 +29,8 @@ import {
   BellRing,
   Store,
   Brush,
-  ShoppingBag
+  ShoppingBag,
+  RefreshCw
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
@@ -57,6 +58,7 @@ import { useIsCreator } from "@/hooks/useCreator";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { SupportChat } from "@/components/SupportChat";
 import { MobileSupportChat } from "./MobileSupportChat";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 // Import centralized avatars
 import { AVATARS } from "@/lib/avatars";
@@ -82,8 +84,16 @@ export function MobileProfile() {
   const { data: profile, refetch } = useProfile();
   const { data: isCreator } = useIsCreator();
   const { data: isAdmin } = useIsAdmin();
+  const { setCurrentProfile } = useProfileContext();
   const { lightTap, successFeedback, selectionTap, mediumTap } = useHaptics();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSwitchProfile = () => {
+    lightTap();
+    localStorage.removeItem("hoyeeh_current_profile");
+    setCurrentProfile(null as any);
+    navigate("/profiles");
+  };
 
   const [displayName, setDisplayName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -213,6 +223,7 @@ export function MobileProfile() {
     {
       title: "Account",
       items: [
+        { icon: RefreshCw, label: "Switch Profile", action: handleSwitchProfile },
         { icon: Users, label: "Manage Profiles", modalKey: "profiles" },
         { icon: CreditCard, label: "Subscription", path: "/subscription", value: profile?.is_subscribed ? "Premium" : "Free" },
         { icon: ShoppingBag, label: "My Purchases", path: "/my-purchases" },

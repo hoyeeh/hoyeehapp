@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { Content } from "@/types";
 import { Play, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
@@ -50,22 +51,24 @@ interface WatchHistoryItem {
 
 export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowProps) => {
   const { user } = useAuth();
+  const { currentProfile } = useProfileContext();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Fetch watch history for both movies and episodes
+  // Fetch watch history for both movies and episodes - filtered by profile
   const { data: watchHistory = [] } = useQuery({
-    queryKey: ["continue-watching-enhanced", user?.id],
+    queryKey: ["continue-watching-enhanced", user?.id, currentProfile?.id],
     queryFn: async () => {
       if (!user) return [];
       
-      // First, fetch movie watch history
-      const { data: movieHistory, error: movieError } = await supabase
+      // Build base query for movies
+      let movieQuery = supabase
         .from("watch_history")
         .select(`
           id,
           content_id,
           progress,
           last_watched,
+          profile_id,
           content:content_id (
             id,
             title,
@@ -83,6 +86,13 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
         .gt("progress", 0)
         .order("last_watched", { ascending: false })
         .limit(30);
+      
+      // Filter by profile if one is selected
+      if (currentProfile?.id) {
+        movieQuery = movieQuery.eq("profile_id", currentProfile.id);
+      }
+
+      const { data: movieHistory, error: movieError } = await movieQuery;
 
       if (movieError) throw movieError;
 
@@ -91,14 +101,20 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
         return item.content && item.content.content_type === 'movie';
       });
 
-      // Now fetch episode watch history
-      const { data: episodeHistory, error: episodeError } = await supabase
+      // Now fetch episode watch history - also filtered by profile
+      let episodeQuery = supabase
         .from("watch_history")
-        .select("id, content_id, progress, last_watched")
+        .select("id, content_id, progress, last_watched, profile_id")
         .eq("user_id", user.id)
         .gt("progress", 0)
         .order("last_watched", { ascending: false })
         .limit(50);
+      
+      if (currentProfile?.id) {
+        episodeQuery = episodeQuery.eq("profile_id", currentProfile.id);
+      }
+
+      const { data: episodeHistory, error: episodeError } = await episodeQuery;
 
       if (episodeError) throw episodeError;
 
@@ -173,7 +189,7 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
       // Limit to 10 items for display
       return combinedHistory.slice(0, 10);
     },
-    enabled: !!user,
+    enabled: !!user && !!currentProfile,
   });
 
   const scroll = (direction: "left" | "right") => {
