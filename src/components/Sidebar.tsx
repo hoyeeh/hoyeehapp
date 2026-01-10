@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell, MessageCircle, Youtube, Clock, Store, Palette, Users } from "lucide-react";
+import { Home, Film, Tv, List, LogOut, CreditCard, Shield, User, LayoutDashboard, Download, Search, Layers, ChevronDown, ChevronUp, Baby, Bell, MessageCircle, Youtube, Clock, Store, Palette, Users, RefreshCw } from "lucide-react";
 import { ViewState } from "@/types";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -231,6 +231,19 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
                 <span className="hidden md:inline text-sm">Admin Panel</span>
               </button>
             )}
+
+            {/* Switch Profile Button */}
+            <button
+              onClick={() => {
+                localStorage.removeItem("hoyeeh_current_profile");
+                setCurrentProfile(null as any);
+                navigate("/profiles");
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+            >
+              <RefreshCw className="h-4 w-4 flex-shrink-0 ml-1" />
+              <span className="hidden md:inline text-sm">Switch Profile</span>
+            </button>
 
             {/* Profile Switcher */}
             <div className="px-1 py-1">

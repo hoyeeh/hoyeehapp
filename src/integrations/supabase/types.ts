@@ -3433,6 +3433,7 @@ export type Database = {
           content_id: string
           id: string
           last_watched: string | null
+          profile_id: string | null
           progress: number | null
           user_id: string
         }
@@ -3440,6 +3441,7 @@ export type Database = {
           content_id: string
           id?: string
           last_watched?: string | null
+          profile_id?: string | null
           progress?: number | null
           user_id: string
         }
@@ -3447,6 +3449,7 @@ export type Database = {
           content_id?: string
           id?: string
           last_watched?: string | null
+          profile_id?: string | null
           progress?: number | null
           user_id?: string
         }
@@ -3456,6 +3459,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watch_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
         ]

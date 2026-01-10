@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/useHaptics";
 import { toast } from "sonner";
@@ -28,35 +29,51 @@ interface MobileWatchHistoryProps {
 export function MobileWatchHistory({ open, onClose }: MobileWatchHistoryProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentProfile } = useProfileContext();
   const { lightTap, mediumTap } = useHaptics();
   const queryClient = useQueryClient();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
   const { data: watchHistory = [], isLoading } = useQuery({
-    queryKey: ["mobile-watch-history", user?.id],
+    queryKey: ["mobile-watch-history", user?.id, currentProfile?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from("watch_history")
         .select("*, content:content_id(*)")
         .eq("user_id", user.id)
         .order("last_watched", { ascending: false })
         .limit(50);
+      
+      // Filter by profile if one is selected
+      if (currentProfile?.id) {
+        query = query.eq("profile_id", currentProfile.id);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id && open,
+    enabled: !!user?.id && open && !!currentProfile,
   });
 
   const handleClearHistory = async () => {
     if (!user?.id) return;
     setIsClearing(true);
     try {
-      const { error } = await supabase
+      let query = supabase
         .from("watch_history")
         .delete()
         .eq("user_id", user.id);
+      
+      // Only clear for current profile if one is selected
+      if (currentProfile?.id) {
+        query = query.eq("profile_id", currentProfile.id);
+      }
+      
+      const { error } = await query;
       
       if (error) throw error;
       

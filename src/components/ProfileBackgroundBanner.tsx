@@ -105,9 +105,8 @@ export const ProfileBackgroundBanner = ({
         {/* Content */}
         <div className="relative z-10 min-h-screen flex flex-col items-center pt-safe">
           {/* Logo at top center */}
-          <div className="pt-12 pb-4">
-            <Logo className="h-10" />
-          </div>
+          {/* Logo removed for cleaner mobile look */}
+          <div className="pt-8 pb-4" />
 
           {/* Title in middle */}
           <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-20">

@@ -67,8 +67,8 @@ export function createAnalyticsAdapter(options: AnalyticsOptions): AnalyticsAdap
         .from('watch_history')
         .upsert({
           user_id: userId,
-          content_id: contentId,
-          episode_id: episodeId || null,
+          content_id: episodeId || contentId,
+          profile_id: profileId || null,
           progress,
           last_watched: new Date().toISOString(),
         }, {
@@ -99,8 +99,8 @@ export function createAnalyticsAdapter(options: AnalyticsOptions): AnalyticsAdap
           .from('watch_history')
           .upsert({
             user_id: userId,
-            content_id: contentId,
-            episode_id: episodeId || null,
+            content_id: episodeId || contentId,
+            profile_id: profileId || null,
             progress,
             last_watched: new Date().toISOString(),
           }, {

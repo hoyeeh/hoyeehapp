@@ -1,17 +1,24 @@
 // Centralized avatar definitions for the entire app
-import hoyeehBlack from "@/assets/avatars/hoyeeh-black.png";
-import hoyeehBlue from "@/assets/avatars/hoyeeh-blue.png";
-import hoyeehBrown from "@/assets/avatars/hoyeeh-brown.png";
-import hoyeehGreen from "@/assets/avatars/hoyeeh-green.png";
-import hoyeehLilac from "@/assets/avatars/hoyeeh-lilac.png";
-import hoyeehPurple from "@/assets/avatars/hoyeeh-purple.png";
-import hoyeehRed from "@/assets/avatars/hoyeeh-red.png";
-import hoyeehYellow from "@/assets/avatars/hoyeeh-yellow.png";
+import badibadi from "@/assets/avatars/badibadi.png";
+import camel from "@/assets/avatars/camel.png";
+import ehma from "@/assets/avatars/ehma.png";
+import horse from "@/assets/avatars/horse.png";
+import lydi from "@/assets/avatars/lydi.png";
+import maki from "@/assets/avatars/maki.png";
+import rons from "@/assets/avatars/rons.png";
+import rooster from "@/assets/avatars/rooster.png";
+import shon from "@/assets/avatars/shon.png";
+import zebra from "@/assets/avatars/zebra.png";
+import deer from "@/assets/avatars/deer.png";
+import panther from "@/assets/avatars/panther.png";
+
+export type AvatarCategory = "animals" | "characters";
 
 export interface Avatar {
   src: string;       // ES6 bundled import path for display
   urlPath: string;   // URL path for database storage
   name: string;
+  category: AvatarCategory;
   isKidsOnly?: boolean;
 }
 
@@ -35,45 +42,78 @@ export const AVATAR_RINGS: AvatarRing[] = [
   { id: "rainbow", name: "Rainbow", className: "ring-4", gradient: "conic-gradient(from 0deg, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff0080, #ff0000)" },
 ];
 
-// Mapping from URL paths to ES6 imports
-const URL_TO_IMPORT: Record<string, string> = {
-  "/avatars/hoyeeh-black.png": hoyeehBlack,
-  "/avatars/hoyeeh-blue.png": hoyeehBlue,
-  "/avatars/hoyeeh-brown.png": hoyeehBrown,
-  "/avatars/hoyeeh-green.png": hoyeehGreen,
-  "/avatars/hoyeeh-lilac.png": hoyeehLilac,
-  "/avatars/hoyeeh-purple.png": hoyeehPurple,
-  "/avatars/hoyeeh-red.png": hoyeehRed,
-  "/avatars/hoyeeh-yellow.png": hoyeehYellow,
-};
-
-// Main avatars for all users
-export const AVATARS: Avatar[] = [
-  { src: hoyeehBlack, urlPath: "/avatars/hoyeeh-black.png", name: "Monster Black" },
-  { src: hoyeehBlue, urlPath: "/avatars/hoyeeh-blue.png", name: "Monster Blue" },
-  { src: hoyeehBrown, urlPath: "/avatars/hoyeeh-brown.png", name: "Monster Brown" },
-  { src: hoyeehGreen, urlPath: "/avatars/hoyeeh-green.png", name: "Monster Green" },
-  { src: hoyeehLilac, urlPath: "/avatars/hoyeeh-lilac.png", name: "Monster Lilac" },
-  { src: hoyeehPurple, urlPath: "/avatars/hoyeeh-purple.png", name: "Monster Purple" },
-  { src: hoyeehRed, urlPath: "/avatars/hoyeeh-red.png", name: "Monster Red" },
-  { src: hoyeehYellow, urlPath: "/avatars/hoyeeh-yellow.png", name: "Monster Yellow" },
+// Category metadata for UI display
+export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; icon: string }[] = [
+  { id: "animals", label: "Animals", icon: "🦁" },
+  { id: "characters", label: "Characters", icon: "😊" },
 ];
 
-// Kids-specific avatars with friendly characters
+// Mapping from URL paths to ES6 imports
+const URL_TO_IMPORT: Record<string, string> = {
+  "/avatars/badibadi.png": badibadi,
+  "/avatars/camel.png": camel,
+  "/avatars/ehma.png": ehma,
+  "/avatars/horse.png": horse,
+  "/avatars/lydi.png": lydi,
+  "/avatars/maki.png": maki,
+  "/avatars/rons.png": rons,
+  "/avatars/rooster.png": rooster,
+  "/avatars/shon.png": shon,
+  "/avatars/zebra.png": zebra,
+  "/avatars/deer.png": deer,
+  "/avatars/panther.png": panther,
+};
+
+// Main avatars for all users (12 total)
+export const AVATARS: Avatar[] = [
+  { src: badibadi, urlPath: "/avatars/badibadi.png", name: "BadiBadi", category: "characters" },
+  { src: camel, urlPath: "/avatars/camel.png", name: "Camel", category: "animals" },
+  { src: deer, urlPath: "/avatars/deer.png", name: "Deer", category: "animals" },
+  { src: ehma, urlPath: "/avatars/ehma.png", name: "Ehma", category: "characters" },
+  { src: horse, urlPath: "/avatars/horse.png", name: "Horse", category: "animals" },
+  { src: lydi, urlPath: "/avatars/lydi.png", name: "Lydi", category: "characters" },
+  { src: maki, urlPath: "/avatars/maki.png", name: "Maki", category: "characters" },
+  { src: panther, urlPath: "/avatars/panther.png", name: "Panther", category: "animals" },
+  { src: rons, urlPath: "/avatars/rons.png", name: "Rons", category: "characters" },
+  { src: rooster, urlPath: "/avatars/rooster.png", name: "Rooster", category: "animals" },
+  { src: shon, urlPath: "/avatars/shon.png", name: "Shon", category: "characters" },
+  { src: zebra, urlPath: "/avatars/zebra.png", name: "Zebra", category: "animals" },
+];
+
+// Kids-specific avatars with friendly character names
 export const KIDS_AVATARS: Avatar[] = [
-  { src: hoyeehYellow, urlPath: "/avatars/hoyeeh-yellow.png", name: "Sunny", isKidsOnly: true },
-  { src: hoyeehGreen, urlPath: "/avatars/hoyeeh-green.png", name: "Sprout", isKidsOnly: true },
-  { src: hoyeehBlue, urlPath: "/avatars/hoyeeh-blue.png", name: "Bubble", isKidsOnly: true },
-  { src: hoyeehLilac, urlPath: "/avatars/hoyeeh-lilac.png", name: "Dreamy", isKidsOnly: true },
-  { src: hoyeehPurple, urlPath: "/avatars/hoyeeh-purple.png", name: "Magic", isKidsOnly: true },
-  { src: hoyeehBrown, urlPath: "/avatars/hoyeeh-brown.png", name: "Cocoa", isKidsOnly: true },
-  { src: hoyeehRed, urlPath: "/avatars/hoyeeh-red.png", name: "Cherry", isKidsOnly: true },
-  { src: hoyeehBlack, urlPath: "/avatars/hoyeeh-black.png", name: "Shadow", isKidsOnly: true },
+  { src: lydi, urlPath: "/avatars/lydi.png", name: "Sunny", category: "characters", isKidsOnly: true },
+  { src: ehma, urlPath: "/avatars/ehma.png", name: "Sprout", category: "characters", isKidsOnly: true },
+  { src: rons, urlPath: "/avatars/rons.png", name: "Buddy", category: "characters", isKidsOnly: true },
+  { src: shon, urlPath: "/avatars/shon.png", name: "Star", category: "characters", isKidsOnly: true },
+  { src: camel, urlPath: "/avatars/camel.png", name: "Sandy", category: "animals", isKidsOnly: true },
+  { src: zebra, urlPath: "/avatars/zebra.png", name: "Zippy", category: "animals", isKidsOnly: true },
+  { src: horse, urlPath: "/avatars/horse.png", name: "Clover", category: "animals", isKidsOnly: true },
+  { src: rooster, urlPath: "/avatars/rooster.png", name: "Sunrise", category: "animals", isKidsOnly: true },
+  { src: maki, urlPath: "/avatars/maki.png", name: "Spark", category: "characters", isKidsOnly: true },
+  { src: badibadi, urlPath: "/avatars/badibadi.png", name: "Hero", category: "characters", isKidsOnly: true },
+  { src: deer, urlPath: "/avatars/deer.png", name: "Bambi", category: "animals", isKidsOnly: true },
+  { src: panther, urlPath: "/avatars/panther.png", name: "Shadow", category: "animals", isKidsOnly: true },
 ];
 
 // Get avatars based on profile type
 export const getAvatarsForProfile = (isKids: boolean): Avatar[] => {
   return isKids ? KIDS_AVATARS : AVATARS;
+};
+
+// Get avatars grouped by category
+export const getAvatarsByCategory = (isKids: boolean): Record<AvatarCategory, Avatar[]> => {
+  const avatars = getAvatarsForProfile(isKids);
+  const grouped: Record<AvatarCategory, Avatar[]> = {
+    animals: [],
+    characters: [],
+  };
+  
+  avatars.forEach(avatar => {
+    grouped[avatar.category].push(avatar);
+  });
+  
+  return grouped;
 };
 
 // Helper function to get a random avatar URL path (for database storage)

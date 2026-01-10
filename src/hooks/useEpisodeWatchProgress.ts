@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 export interface EpisodeProgress {
   episodeId: string;
@@ -10,18 +11,26 @@ export interface EpisodeProgress {
 
 export const useEpisodeWatchProgress = (episodeIds: string[]) => {
   const { user } = useAuth();
+  const { currentProfile } = useProfileContext();
 
   return useQuery({
-    queryKey: ["episode-watch-progress", user?.id, episodeIds],
+    queryKey: ["episode-watch-progress", user?.id, currentProfile?.id, episodeIds],
     queryFn: async (): Promise<Record<string, EpisodeProgress>> => {
       if (!user || episodeIds.length === 0) return {};
 
-      // Watch history uses content_id, but for episodes we store the episode ID as content_id
-      const { data, error } = await supabase
+      // Build query with profile filter
+      let query = supabase
         .from("watch_history")
         .select("content_id, progress, last_watched")
         .eq("user_id", user.id)
         .in("content_id", episodeIds);
+      
+      // Filter by profile if one is selected
+      if (currentProfile?.id) {
+        query = query.eq("profile_id", currentProfile.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Failed to fetch episode progress:", error);
@@ -39,7 +48,7 @@ export const useEpisodeWatchProgress = (episodeIds: string[]) => {
 
       return progressMap;
     },
-    enabled: !!user && episodeIds.length > 0,
+    enabled: !!user && !!currentProfile && episodeIds.length > 0,
     staleTime: 30000, // Cache for 30 seconds
   });
 };
