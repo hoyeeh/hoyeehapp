@@ -1103,18 +1103,7 @@ export const VideoPlayer = ({
         </div>
       )}
 
-      {/* Skip Intro Button */}
-      {showSkipIntro && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSkipIntro();
-          }}
-          className="absolute bottom-32 right-4 sm:right-8 z-20 px-6 py-3 bg-white/90 text-background font-semibold rounded-md hover:bg-white transition-colors shadow-lg"
-        >
-          Skip Intro
-        </button>
-      )}
+      {/* Skip Intro Button - Hidden, managed by admin */}
 
       {/* Skip Recap Button */}
       {showSkipRecap && (
