@@ -433,15 +433,7 @@ export const MobilePlayer = ({
             className="absolute inset-0 pointer-events-none"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Skip Intro Button */}
-            {showSkipIntro && !showNextEpisode && !showSkipRecap && (
-              <button
-                onClick={(e) => { e.stopPropagation(); skipIntro(); }}
-                className="absolute bottom-28 right-4 px-5 py-2.5 bg-foreground/90 text-background rounded-lg font-semibold z-10 pointer-events-auto"
-              >
-                Skip Intro
-              </button>
-            )}
+            {/* Skip Intro Button - Hidden, managed by admin */}
 
             {/* Skip Recap Button */}
             {showSkipRecap && !showNextEpisode && (

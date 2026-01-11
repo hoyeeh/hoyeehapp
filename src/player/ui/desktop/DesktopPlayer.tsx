@@ -431,15 +431,7 @@ export const DesktopPlayer = ({
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Skip Intro Button */}
-        {showSkipIntro && !showNextEpisode && !showSkipRecap && (
-          <button
-            onClick={(e) => { e.stopPropagation(); skipIntro(); }}
-            className="absolute bottom-32 right-8 px-6 py-3 bg-foreground/90 text-background rounded-lg font-semibold hover:bg-foreground transition-colors z-10 pointer-events-auto"
-          >
-            Skip Intro
-          </button>
-        )}
+        {/* Skip Intro Button - Hidden, managed by admin */}
 
         {/* Skip Recap Button */}
         {showSkipRecap && !showNextEpisode && (

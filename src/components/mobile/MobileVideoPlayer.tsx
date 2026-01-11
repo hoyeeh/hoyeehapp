@@ -1409,23 +1409,7 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
-      {/* Skip Intro Button */}
-      <AnimatePresence>
-        {showSkipIntro && (
-          <motion.button
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            className="absolute bottom-32 right-4 px-6 py-3 bg-white/90 text-black rounded-md font-semibold shadow-lg"
-            onClick={(e) => {
-              e.stopPropagation();
-              skipIntro();
-            }}
-          >
-            Skip Intro
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Skip Intro Button - Hidden, managed by admin */}
 
       {/* Skip Recap Button */}
       <AnimatePresence>
