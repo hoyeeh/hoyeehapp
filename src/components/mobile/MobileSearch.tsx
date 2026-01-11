@@ -87,6 +87,13 @@ export function MobileSearch() {
     return Array.from(actorSet).sort();
   }, [content]);
 
+  // Calculate content type counts
+  const contentCounts = useMemo(() => {
+    const movieCount = content.filter((c) => c.contentType === "movie").length;
+    const seriesCount = content.filter((c) => c.contentType === "series").length;
+    return { movieCount, seriesCount, totalCount: content.length };
+  }, [content]);
+
   // Filter and sort content
   const filteredContent = useMemo(() => {
     let filtered = content;
@@ -98,7 +105,12 @@ export function MobileSearch() {
         (c) =>
           c.title.toLowerCase().includes(q) ||
           c.genre?.toLowerCase().includes(q) ||
-          c.description?.toLowerCase().includes(q)
+          c.description?.toLowerCase().includes(q) ||
+          // Also search cast members
+          (() => {
+            const cast = parseCastMembers((c as any).cast_members);
+            return cast.some((member: any) => member.name?.toLowerCase().includes(q));
+          })()
       );
     }
 
@@ -264,14 +276,14 @@ export function MobileSearch() {
               className="overflow-hidden"
             >
               <div className="px-4 py-3 space-y-3 border-t border-border/20">
-                {/* Content Type */}
+                {/* Content Type with Counts */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Type</p>
                   <div className="flex gap-2">
                     {[
-                      { value: "all", label: "All" },
-                      { value: "movie", label: "Movies", icon: Film },
-                      { value: "series", label: "Series", icon: Tv },
+                      { value: "all", label: "All", count: contentCounts.totalCount },
+                      { value: "movie", label: "Movies", icon: Film, count: contentCounts.movieCount },
+                      { value: "series", label: "TV Shows", icon: Tv, count: contentCounts.seriesCount },
                     ].map((type) => (
                       <button
                         key={type.value}
@@ -288,6 +300,14 @@ export function MobileSearch() {
                       >
                         {type.icon && <type.icon className="h-3 w-3" />}
                         {type.label}
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full",
+                          selectedType === type.value
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {type.count}
+                        </span>
                       </button>
                     ))}
                   </div>
