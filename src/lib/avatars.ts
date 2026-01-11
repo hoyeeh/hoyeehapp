@@ -18,7 +18,7 @@ const rooster = `${STORAGE_URL}/Rooster.png`;
 const shon = `${STORAGE_URL}/Shon.png`;
 const zebra = `${STORAGE_URL}/Zebra.png`;
 
-export type AvatarCategory = "animals";
+export type AvatarCategory = "animals" | "humans";
 
 export interface Avatar {
   src: string;       // URL for display
@@ -50,37 +50,42 @@ export const AVATAR_RINGS: AvatarRing[] = [
 
 // Category metadata for UI display
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; icon: string }[] = [
+  { id: "humans", label: "Humans", icon: "👤" },
   { id: "animals", label: "Animals", icon: "🦁" },
 ];
 
 // Main avatars for all users (12 total)
 export const AVATARS: Avatar[] = [
-  { src: badibadi, urlPath: badibadi, name: "BadiBadi", category: "animals" },
+  // Human characters
+  { src: badibadi, urlPath: badibadi, name: "BadiBadi", category: "humans" },
+  { src: ehma, urlPath: ehma, name: "Ehma", category: "humans" },
+  { src: lydi, urlPath: lydi, name: "Lydi", category: "humans" },
+  { src: rons, urlPath: rons, name: "Rons", category: "humans" },
+  { src: shon, urlPath: shon, name: "Shon", category: "humans" },
+  { src: maki, urlPath: maki, name: "Maki", category: "humans" },
+  // Animal characters
   { src: camel, urlPath: camel, name: "Camel", category: "animals" },
   { src: deer, urlPath: deer, name: "Deer", category: "animals" },
-  { src: ehma, urlPath: ehma, name: "Ehma", category: "animals" },
   { src: horse, urlPath: horse, name: "Horse", category: "animals" },
-  { src: lydi, urlPath: lydi, name: "Lydi", category: "animals" },
-  { src: maki, urlPath: maki, name: "Maki", category: "animals" },
   { src: panther, urlPath: panther, name: "Panther", category: "animals" },
-  { src: rons, urlPath: rons, name: "Rons", category: "animals" },
   { src: rooster, urlPath: rooster, name: "Rooster", category: "animals" },
-  { src: shon, urlPath: shon, name: "Shon", category: "animals" },
   { src: zebra, urlPath: zebra, name: "Zebra", category: "animals" },
 ];
 
 // Kids-specific avatars with friendly character names
 export const KIDS_AVATARS: Avatar[] = [
-  { src: lydi, urlPath: lydi, name: "Sunny", category: "animals", isKidsOnly: true },
-  { src: ehma, urlPath: ehma, name: "Sprout", category: "animals", isKidsOnly: true },
-  { src: rons, urlPath: rons, name: "Buddy", category: "animals", isKidsOnly: true },
-  { src: shon, urlPath: shon, name: "Star", category: "animals", isKidsOnly: true },
+  // Human characters with kid-friendly names
+  { src: lydi, urlPath: lydi, name: "Sunny", category: "humans", isKidsOnly: true },
+  { src: ehma, urlPath: ehma, name: "Sprout", category: "humans", isKidsOnly: true },
+  { src: rons, urlPath: rons, name: "Buddy", category: "humans", isKidsOnly: true },
+  { src: shon, urlPath: shon, name: "Star", category: "humans", isKidsOnly: true },
+  { src: maki, urlPath: maki, name: "Spark", category: "humans", isKidsOnly: true },
+  { src: badibadi, urlPath: badibadi, name: "Hero", category: "humans", isKidsOnly: true },
+  // Animal characters with kid-friendly names
   { src: camel, urlPath: camel, name: "Sandy", category: "animals", isKidsOnly: true },
   { src: zebra, urlPath: zebra, name: "Zippy", category: "animals", isKidsOnly: true },
   { src: horse, urlPath: horse, name: "Clover", category: "animals", isKidsOnly: true },
   { src: rooster, urlPath: rooster, name: "Sunrise", category: "animals", isKidsOnly: true },
-  { src: maki, urlPath: maki, name: "Spark", category: "animals", isKidsOnly: true },
-  { src: badibadi, urlPath: badibadi, name: "Hero", category: "animals", isKidsOnly: true },
   { src: panther, urlPath: panther, name: "Shadow", category: "animals", isKidsOnly: true },
   { src: deer, urlPath: deer, name: "Bambi", category: "animals", isKidsOnly: true },
 ];
@@ -94,6 +99,7 @@ export const getAvatarsForProfile = (isKids: boolean): Avatar[] => {
 export const getAvatarsByCategory = (isKids: boolean): Record<AvatarCategory, Avatar[]> => {
   const avatars = getAvatarsForProfile(isKids);
   const grouped: Record<AvatarCategory, Avatar[]> = {
+    humans: [],
     animals: [],
   };
   
