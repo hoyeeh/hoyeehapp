@@ -1,20 +1,27 @@
 // Centralized avatar definitions for the entire app
-import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
-import avatarBlue from "@/assets/avatars/avatar-blue.png";
-import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
-import avatarGold from "@/assets/avatars/avatar-gold.png";
-import avatarGreen from "@/assets/avatars/avatar-green.png";
-import avatarPurple from "@/assets/avatars/avatar-purple.png";
-import avatarRed from "@/assets/avatars/avatar-red.png";
-import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
-import avatarYellow from "@/assets/avatars/avatar-yellow.png";
-import deer from "@/assets/avatars/deer.png";
-import panther from "@/assets/avatars/panther.png";
+// Using cloud storage URLs instead of local imports
 
-export type AvatarCategory = "animals" | "characters";
+// Cloud storage base URL
+const STORAGE_URL = "https://astugmzoxhxcyipxsojl.supabase.co/storage/v1/object/public/avatars";
+
+// Avatar URLs from cloud storage
+const badibadi = `${STORAGE_URL}/BadiBadi.png`;
+const camel = `${STORAGE_URL}/Camel.png`;
+const deer = `${STORAGE_URL}/Deer.png`;
+const ehma = `${STORAGE_URL}/Ehma.png`;
+const horse = `${STORAGE_URL}/Horse.png`;
+const lydi = `${STORAGE_URL}/Lydi.png`;
+const maki = `${STORAGE_URL}/Maki.png`;
+const panther = `${STORAGE_URL}/Panther.png`;
+const rons = `${STORAGE_URL}/Rons.png`;
+const rooster = `${STORAGE_URL}/Rooster.png`;
+const shon = `${STORAGE_URL}/Shon.png`;
+const zebra = `${STORAGE_URL}/Zebra.png`;
+
+export type AvatarCategory = "animals";
 
 export interface Avatar {
-  src: string;       // ES6 bundled import path for display
+  src: string;       // URL for display
   urlPath: string;   // URL path for database storage
   name: string;
   category: AvatarCategory;
@@ -44,52 +51,38 @@ export const AVATAR_RINGS: AvatarRing[] = [
 // Category metadata for UI display
 export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; icon: string }[] = [
   { id: "animals", label: "Animals", icon: "🦁" },
-  { id: "characters", label: "Characters", icon: "😊" },
 ];
 
-// Mapping from URL paths to ES6 imports
-const URL_TO_IMPORT: Record<string, string> = {
-  "/avatars/avatar-basketball.png": avatarBasketball,
-  "/avatars/avatar-blue.png": avatarBlue,
-  "/avatars/avatar-cowboy.png": avatarCowboy,
-  "/avatars/avatar-gold.png": avatarGold,
-  "/avatars/avatar-green.png": avatarGreen,
-  "/avatars/avatar-purple.png": avatarPurple,
-  "/avatars/avatar-red.png": avatarRed,
-  "/avatars/avatar-unicorn.png": avatarUnicorn,
-  "/avatars/avatar-yellow.png": avatarYellow,
-  "/avatars/deer.png": deer,
-  "/avatars/panther.png": panther,
-};
-
-// Main avatars for all users (11 total)
+// Main avatars for all users (12 total)
 export const AVATARS: Avatar[] = [
-  { src: avatarBasketball, urlPath: "/avatars/avatar-basketball.png", name: "Basketball", category: "characters" },
-  { src: avatarBlue, urlPath: "/avatars/avatar-blue.png", name: "Blue", category: "characters" },
-  { src: avatarCowboy, urlPath: "/avatars/avatar-cowboy.png", name: "Cowboy", category: "characters" },
-  { src: avatarGold, urlPath: "/avatars/avatar-gold.png", name: "Gold", category: "characters" },
-  { src: avatarGreen, urlPath: "/avatars/avatar-green.png", name: "Green", category: "characters" },
-  { src: avatarPurple, urlPath: "/avatars/avatar-purple.png", name: "Purple", category: "characters" },
-  { src: avatarRed, urlPath: "/avatars/avatar-red.png", name: "Red", category: "characters" },
-  { src: avatarUnicorn, urlPath: "/avatars/avatar-unicorn.png", name: "Unicorn", category: "characters" },
-  { src: avatarYellow, urlPath: "/avatars/avatar-yellow.png", name: "Yellow", category: "characters" },
-  { src: deer, urlPath: "/avatars/deer.png", name: "Deer", category: "animals" },
-  { src: panther, urlPath: "/avatars/panther.png", name: "Panther", category: "animals" },
+  { src: badibadi, urlPath: badibadi, name: "BadiBadi", category: "animals" },
+  { src: camel, urlPath: camel, name: "Camel", category: "animals" },
+  { src: deer, urlPath: deer, name: "Deer", category: "animals" },
+  { src: ehma, urlPath: ehma, name: "Ehma", category: "animals" },
+  { src: horse, urlPath: horse, name: "Horse", category: "animals" },
+  { src: lydi, urlPath: lydi, name: "Lydi", category: "animals" },
+  { src: maki, urlPath: maki, name: "Maki", category: "animals" },
+  { src: panther, urlPath: panther, name: "Panther", category: "animals" },
+  { src: rons, urlPath: rons, name: "Rons", category: "animals" },
+  { src: rooster, urlPath: rooster, name: "Rooster", category: "animals" },
+  { src: shon, urlPath: shon, name: "Shon", category: "animals" },
+  { src: zebra, urlPath: zebra, name: "Zebra", category: "animals" },
 ];
 
 // Kids-specific avatars with friendly character names
 export const KIDS_AVATARS: Avatar[] = [
-  { src: avatarUnicorn, urlPath: "/avatars/avatar-unicorn.png", name: "Sparkle", category: "characters", isKidsOnly: true },
-  { src: avatarBasketball, urlPath: "/avatars/avatar-basketball.png", name: "Sporty", category: "characters", isKidsOnly: true },
-  { src: avatarCowboy, urlPath: "/avatars/avatar-cowboy.png", name: "Ranger", category: "characters", isKidsOnly: true },
-  { src: avatarBlue, urlPath: "/avatars/avatar-blue.png", name: "Sky", category: "characters", isKidsOnly: true },
-  { src: avatarGreen, urlPath: "/avatars/avatar-green.png", name: "Leaf", category: "characters", isKidsOnly: true },
-  { src: avatarPurple, urlPath: "/avatars/avatar-purple.png", name: "Grape", category: "characters", isKidsOnly: true },
-  { src: avatarRed, urlPath: "/avatars/avatar-red.png", name: "Cherry", category: "characters", isKidsOnly: true },
-  { src: avatarYellow, urlPath: "/avatars/avatar-yellow.png", name: "Sunny", category: "characters", isKidsOnly: true },
-  { src: avatarGold, urlPath: "/avatars/avatar-gold.png", name: "Star", category: "characters", isKidsOnly: true },
-  { src: deer, urlPath: "/avatars/deer.png", name: "Bambi", category: "animals", isKidsOnly: true },
-  { src: panther, urlPath: "/avatars/panther.png", name: "Shadow", category: "animals", isKidsOnly: true },
+  { src: lydi, urlPath: lydi, name: "Sunny", category: "animals", isKidsOnly: true },
+  { src: ehma, urlPath: ehma, name: "Sprout", category: "animals", isKidsOnly: true },
+  { src: rons, urlPath: rons, name: "Buddy", category: "animals", isKidsOnly: true },
+  { src: shon, urlPath: shon, name: "Star", category: "animals", isKidsOnly: true },
+  { src: camel, urlPath: camel, name: "Sandy", category: "animals", isKidsOnly: true },
+  { src: zebra, urlPath: zebra, name: "Zippy", category: "animals", isKidsOnly: true },
+  { src: horse, urlPath: horse, name: "Clover", category: "animals", isKidsOnly: true },
+  { src: rooster, urlPath: rooster, name: "Sunrise", category: "animals", isKidsOnly: true },
+  { src: maki, urlPath: maki, name: "Spark", category: "animals", isKidsOnly: true },
+  { src: badibadi, urlPath: badibadi, name: "Hero", category: "animals", isKidsOnly: true },
+  { src: panther, urlPath: panther, name: "Shadow", category: "animals", isKidsOnly: true },
+  { src: deer, urlPath: deer, name: "Bambi", category: "animals", isKidsOnly: true },
 ];
 
 // Get avatars based on profile type
@@ -102,7 +95,6 @@ export const getAvatarsByCategory = (isKids: boolean): Record<AvatarCategory, Av
   const avatars = getAvatarsForProfile(isKids);
   const grouped: Record<AvatarCategory, Avatar[]> = {
     animals: [],
-    characters: [],
   };
   
   avatars.forEach(avatar => {
@@ -152,24 +144,13 @@ export const resolveAvatarSrc = (url: string | null | undefined): string => {
   if (!url) return AVATARS[0].src;
   const basePath = url.split("?")[0];
   
-  // Check if it's a known URL path and convert to ES6 import
-  if (URL_TO_IMPORT[basePath]) {
-    return URL_TO_IMPORT[basePath];
-  }
-  
-  // Check if it matches an avatar's urlPath
-  const avatar = [...AVATARS, ...KIDS_AVATARS].find(a => a.urlPath === basePath);
+  // Check if it matches an avatar's urlPath or src
+  const avatar = [...AVATARS, ...KIDS_AVATARS].find(a => a.urlPath === basePath || a.src === basePath);
   if (avatar) {
     return avatar.src;
   }
   
-  // Check if it already matches an avatar's src (ES6 import)
-  const avatarBySrc = [...AVATARS, ...KIDS_AVATARS].find(a => a.src === basePath);
-  if (avatarBySrc) {
-    return avatarBySrc.src;
-  }
-  
-  // Return as-is (could be external URL or other valid path)
+  // Return as-is (could be external URL or custom avatar)
   return basePath;
 };
 
