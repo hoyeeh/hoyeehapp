@@ -62,6 +62,7 @@ import { useProfileContext } from "@/contexts/ProfileContext";
 
 // Import centralized avatars
 import { AVATARS } from "@/lib/avatars";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 interface MenuSection {
   title: string;
@@ -100,6 +101,10 @@ export function MobileProfile() {
   const [isSaving, setIsSaving] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+  
+  // Avatar crop state
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   
   // Modal states
   const [showManageProfiles, setShowManageProfiles] = useState(false);
@@ -165,17 +170,32 @@ export function MobileProfile() {
     setSelectedAvatar(avatarSrc);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    
+    // Create a URL for the selected image and open crop dialog
+    const imageUrl = URL.createObjectURL(file);
+    setImageToCrop(imageUrl);
+    setCropDialogOpen(true);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
-    const fileExt = file.name.split(".").pop();
-    const filePath = `${user.id}/avatar.${fileExt}`;
-
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
+    
+    setCropDialogOpen(false);
+    
+    const filePath = `${user.id}/avatar-${Date.now()}.png`;
+    
     try {
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, croppedBlob, { upsert: true, contentType: "image/png" });
 
       if (uploadError) throw uploadError;
 
@@ -188,6 +208,11 @@ export function MobileProfile() {
       toast.success("Avatar uploaded!");
     } catch (error) {
       toast.error("Failed to upload avatar");
+    } finally {
+      if (imageToCrop) {
+        URL.revokeObjectURL(imageToCrop);
+        setImageToCrop(null);
+      }
     }
   };
 
@@ -589,7 +614,7 @@ export function MobileProfile() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={handleImageUpload}
+                  onChange={handleImageSelect}
                   className="hidden"
                 />
 
@@ -773,6 +798,22 @@ export function MobileProfile() {
         open={showSupportChat} 
         onClose={() => setShowSupportChat(false)} 
       />
+
+      {/* Avatar Crop Dialog */}
+      {imageToCrop && (
+        <AvatarCropDialog
+          imageSrc={imageToCrop}
+          open={cropDialogOpen}
+          onClose={() => {
+            setCropDialogOpen(false);
+            if (imageToCrop) {
+              URL.revokeObjectURL(imageToCrop);
+              setImageToCrop(null);
+            }
+          }}
+          onCropComplete={handleCropComplete}
+        />
+      )}
 
       {/* Bottom Nav */}
       <MobileBottomNav />
