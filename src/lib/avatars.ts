@@ -1,14 +1,13 @@
 // Centralized avatar definitions for the entire app
-import badibadi from "@/assets/avatars/badibadi.png";
-import camel from "@/assets/avatars/camel.png";
-import ehma from "@/assets/avatars/ehma.png";
-import horse from "@/assets/avatars/horse.png";
-import lydi from "@/assets/avatars/lydi.png";
-import maki from "@/assets/avatars/maki.png";
-import rons from "@/assets/avatars/rons.png";
-import rooster from "@/assets/avatars/rooster.png";
-import shon from "@/assets/avatars/shon.png";
-import zebra from "@/assets/avatars/zebra.png";
+import avatarBasketball from "@/assets/avatars/avatar-basketball.png";
+import avatarBlue from "@/assets/avatars/avatar-blue.png";
+import avatarCowboy from "@/assets/avatars/avatar-cowboy.png";
+import avatarGold from "@/assets/avatars/avatar-gold.png";
+import avatarGreen from "@/assets/avatars/avatar-green.png";
+import avatarPurple from "@/assets/avatars/avatar-purple.png";
+import avatarRed from "@/assets/avatars/avatar-red.png";
+import avatarUnicorn from "@/assets/avatars/avatar-unicorn.png";
+import avatarYellow from "@/assets/avatars/avatar-yellow.png";
 import deer from "@/assets/avatars/deer.png";
 import panther from "@/assets/avatars/panther.png";
 
@@ -50,48 +49,45 @@ export const AVATAR_CATEGORIES: { id: AvatarCategory; label: string; icon: strin
 
 // Mapping from URL paths to ES6 imports
 const URL_TO_IMPORT: Record<string, string> = {
-  "/avatars/badibadi.png": badibadi,
-  "/avatars/camel.png": camel,
-  "/avatars/ehma.png": ehma,
-  "/avatars/horse.png": horse,
-  "/avatars/lydi.png": lydi,
-  "/avatars/maki.png": maki,
-  "/avatars/rons.png": rons,
-  "/avatars/rooster.png": rooster,
-  "/avatars/shon.png": shon,
-  "/avatars/zebra.png": zebra,
+  "/avatars/avatar-basketball.png": avatarBasketball,
+  "/avatars/avatar-blue.png": avatarBlue,
+  "/avatars/avatar-cowboy.png": avatarCowboy,
+  "/avatars/avatar-gold.png": avatarGold,
+  "/avatars/avatar-green.png": avatarGreen,
+  "/avatars/avatar-purple.png": avatarPurple,
+  "/avatars/avatar-red.png": avatarRed,
+  "/avatars/avatar-unicorn.png": avatarUnicorn,
+  "/avatars/avatar-yellow.png": avatarYellow,
   "/avatars/deer.png": deer,
   "/avatars/panther.png": panther,
 };
 
-// Main avatars for all users (12 total)
+// Main avatars for all users (11 total)
 export const AVATARS: Avatar[] = [
-  { src: badibadi, urlPath: "/avatars/badibadi.png", name: "BadiBadi", category: "characters" },
-  { src: camel, urlPath: "/avatars/camel.png", name: "Camel", category: "animals" },
+  { src: avatarBasketball, urlPath: "/avatars/avatar-basketball.png", name: "Basketball", category: "characters" },
+  { src: avatarBlue, urlPath: "/avatars/avatar-blue.png", name: "Blue", category: "characters" },
+  { src: avatarCowboy, urlPath: "/avatars/avatar-cowboy.png", name: "Cowboy", category: "characters" },
+  { src: avatarGold, urlPath: "/avatars/avatar-gold.png", name: "Gold", category: "characters" },
+  { src: avatarGreen, urlPath: "/avatars/avatar-green.png", name: "Green", category: "characters" },
+  { src: avatarPurple, urlPath: "/avatars/avatar-purple.png", name: "Purple", category: "characters" },
+  { src: avatarRed, urlPath: "/avatars/avatar-red.png", name: "Red", category: "characters" },
+  { src: avatarUnicorn, urlPath: "/avatars/avatar-unicorn.png", name: "Unicorn", category: "characters" },
+  { src: avatarYellow, urlPath: "/avatars/avatar-yellow.png", name: "Yellow", category: "characters" },
   { src: deer, urlPath: "/avatars/deer.png", name: "Deer", category: "animals" },
-  { src: ehma, urlPath: "/avatars/ehma.png", name: "Ehma", category: "characters" },
-  { src: horse, urlPath: "/avatars/horse.png", name: "Horse", category: "animals" },
-  { src: lydi, urlPath: "/avatars/lydi.png", name: "Lydi", category: "characters" },
-  { src: maki, urlPath: "/avatars/maki.png", name: "Maki", category: "characters" },
   { src: panther, urlPath: "/avatars/panther.png", name: "Panther", category: "animals" },
-  { src: rons, urlPath: "/avatars/rons.png", name: "Rons", category: "characters" },
-  { src: rooster, urlPath: "/avatars/rooster.png", name: "Rooster", category: "animals" },
-  { src: shon, urlPath: "/avatars/shon.png", name: "Shon", category: "characters" },
-  { src: zebra, urlPath: "/avatars/zebra.png", name: "Zebra", category: "animals" },
 ];
 
 // Kids-specific avatars with friendly character names
 export const KIDS_AVATARS: Avatar[] = [
-  { src: lydi, urlPath: "/avatars/lydi.png", name: "Sunny", category: "characters", isKidsOnly: true },
-  { src: ehma, urlPath: "/avatars/ehma.png", name: "Sprout", category: "characters", isKidsOnly: true },
-  { src: rons, urlPath: "/avatars/rons.png", name: "Buddy", category: "characters", isKidsOnly: true },
-  { src: shon, urlPath: "/avatars/shon.png", name: "Star", category: "characters", isKidsOnly: true },
-  { src: camel, urlPath: "/avatars/camel.png", name: "Sandy", category: "animals", isKidsOnly: true },
-  { src: zebra, urlPath: "/avatars/zebra.png", name: "Zippy", category: "animals", isKidsOnly: true },
-  { src: horse, urlPath: "/avatars/horse.png", name: "Clover", category: "animals", isKidsOnly: true },
-  { src: rooster, urlPath: "/avatars/rooster.png", name: "Sunrise", category: "animals", isKidsOnly: true },
-  { src: maki, urlPath: "/avatars/maki.png", name: "Spark", category: "characters", isKidsOnly: true },
-  { src: badibadi, urlPath: "/avatars/badibadi.png", name: "Hero", category: "characters", isKidsOnly: true },
+  { src: avatarUnicorn, urlPath: "/avatars/avatar-unicorn.png", name: "Sparkle", category: "characters", isKidsOnly: true },
+  { src: avatarBasketball, urlPath: "/avatars/avatar-basketball.png", name: "Sporty", category: "characters", isKidsOnly: true },
+  { src: avatarCowboy, urlPath: "/avatars/avatar-cowboy.png", name: "Ranger", category: "characters", isKidsOnly: true },
+  { src: avatarBlue, urlPath: "/avatars/avatar-blue.png", name: "Sky", category: "characters", isKidsOnly: true },
+  { src: avatarGreen, urlPath: "/avatars/avatar-green.png", name: "Leaf", category: "characters", isKidsOnly: true },
+  { src: avatarPurple, urlPath: "/avatars/avatar-purple.png", name: "Grape", category: "characters", isKidsOnly: true },
+  { src: avatarRed, urlPath: "/avatars/avatar-red.png", name: "Cherry", category: "characters", isKidsOnly: true },
+  { src: avatarYellow, urlPath: "/avatars/avatar-yellow.png", name: "Sunny", category: "characters", isKidsOnly: true },
+  { src: avatarGold, urlPath: "/avatars/avatar-gold.png", name: "Star", category: "characters", isKidsOnly: true },
   { src: deer, urlPath: "/avatars/deer.png", name: "Bambi", category: "animals", isKidsOnly: true },
   { src: panther, urlPath: "/avatars/panther.png", name: "Shadow", category: "animals", isKidsOnly: true },
 ];
