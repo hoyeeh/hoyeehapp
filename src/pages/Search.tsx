@@ -119,6 +119,13 @@ const Search = () => {
     return uniqueRatings.sort();
   }, [content]);
 
+  // Calculate content type counts
+  const contentCounts = useMemo(() => {
+    const movieCount = content.filter((c) => c.contentType === "movie").length;
+    const seriesCount = content.filter((c) => c.contentType === "series").length;
+    return { movieCount, seriesCount, totalCount: content.length };
+  }, [content]);
+
   // Get unique actors from content
   const actors = useMemo(() => {
     const actorSet = new Set<string>();
@@ -377,7 +384,7 @@ const Search = () => {
                   </Select>
                 </div>
 
-                {/* Content Type */}
+                {/* Content Type with Counts */}
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Type</label>
                   <Select value={selectedType} onValueChange={setSelectedType}>
@@ -385,9 +392,9 @@ const Search = () => {
                       <SelectValue placeholder="All Types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="movie">Movies</SelectItem>
-                      <SelectItem value="series">TV Shows</SelectItem>
+                      <SelectItem value="all">All Types ({contentCounts.totalCount})</SelectItem>
+                      <SelectItem value="movie">Movies ({contentCounts.movieCount})</SelectItem>
+                      <SelectItem value="series">TV Shows ({contentCounts.seriesCount})</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Play, Plus, Check, ThumbsUp, Share2, Download, ChevronDown, Star, RotateCcw, Cast, Users } from "lucide-react";
 import { Content } from "@/types";
@@ -39,6 +39,8 @@ export function MobileContentDetail({
   );
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
+  const [selectedSeason, setSelectedSeason] = useState(1);
+  const [showSeasonSelector, setShowSeasonSelector] = useState(false);
   const { lightTap, mediumTap, successFeedback, selectionTap } = useHaptics();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -232,8 +234,22 @@ export function MobileContentDetail({
     enabled: content.contentType === "series",
   });
 
-  // Get first season episodes for display
-  const episodes = allEpisodes.filter((ep: any) => ep.season_number === 1);
+  // Get unique available seasons
+  const availableSeasons = useMemo(() => {
+    const seasonSet = new Set<number>();
+    allEpisodes.forEach((ep: any) => seasonSet.add(ep.season_number));
+    return Array.from(seasonSet).sort((a, b) => a - b);
+  }, [allEpisodes]);
+
+  // Auto-select first available season when content loads
+  useEffect(() => {
+    if (availableSeasons.length > 0 && !availableSeasons.includes(selectedSeason)) {
+      setSelectedSeason(availableSeasons[0]);
+    }
+  }, [availableSeasons, selectedSeason]);
+
+  // Filter episodes by selected season
+  const episodes = allEpisodes.filter((ep: any) => ep.season_number === selectedSeason);
 
   const handleClose = () => {
     lightTap();
@@ -650,10 +666,67 @@ export function MobileContentDetail({
           {/* Episodes List */}
           {content.contentType === "series" && activeTab === "episodes" && (
             <div className="space-y-4">
-              <button className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-md active:scale-95 transition-transform">
-                <span className="text-sm font-medium">Season 1</span>
-                <ChevronDown className="h-4 w-4" />
-              </button>
+              {/* Season Selector */}
+              <div className="relative">
+                <button 
+                  onClick={() => {
+                    selectionTap();
+                    setShowSeasonSelector(!showSeasonSelector);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-md active:scale-95 transition-transform"
+                >
+                  <span className="text-sm font-medium">
+                    Season {selectedSeason}
+                    {availableSeasons.length > 1 && (
+                      <span className="text-muted-foreground ml-1">
+                        ({episodes.length} episodes)
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", showSeasonSelector && "rotate-180")} />
+                </button>
+                
+                {/* Season Dropdown */}
+                <AnimatePresence>
+                  {showSeasonSelector && availableSeasons.length > 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full left-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+                    >
+                      {availableSeasons.map((seasonNum) => {
+                        const seasonEpisodeCount = allEpisodes.filter((ep: any) => ep.season_number === seasonNum).length;
+                        return (
+                          <button
+                            key={seasonNum}
+                            onClick={() => {
+                              selectionTap();
+                              setSelectedSeason(seasonNum);
+                              setShowSeasonSelector(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center justify-between px-4 py-3 text-sm transition-colors",
+                              selectedSeason === seasonNum 
+                                ? "bg-primary text-primary-foreground" 
+                                : "hover:bg-secondary"
+                            )}
+                          >
+                            <span className="font-medium">Season {seasonNum}</span>
+                            <span className={cn(
+                              "text-xs",
+                              selectedSeason === seasonNum ? "text-primary-foreground/80" : "text-muted-foreground"
+                            )}>
+                              {seasonEpisodeCount} episodes
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               
               {episodes.length > 0 ? (
                 <div className="space-y-4">

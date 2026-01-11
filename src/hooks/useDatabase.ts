@@ -3,19 +3,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Content } from "@/types";
 
-// Fetch all content
+// Fetch all content with pagination to get all items (Supabase default limit is 1000)
 export const useContent = () => {
   return useQuery({
     queryKey: ["content"],
     queryFn: async (): Promise<Content[]> => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let page = 0;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const from = page * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        
+        const { data, error } = await supabase
+          .from("content")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(from, to);
 
-      return (data || []).map((item) => ({
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          hasMore = data.length === PAGE_SIZE;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return allData.map((item) => ({
         id: item.id,
         title: item.title,
         description: item.description || "",
@@ -29,6 +48,8 @@ export const useContent = () => {
         rating: item.rating || undefined,
         contentRating: item.content_rating || undefined,
         createdAt: item.created_at || undefined,
+        cast_members: item.cast_members || undefined,
+        ageLimit: item.age_limit || undefined,
       }));
     },
   });
