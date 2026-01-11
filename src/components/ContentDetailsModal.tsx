@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Content } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { X, Play, Plus, Check, Clock, User, PlayCircle, ChevronRight } from "lucide-react";
+import { X, Play, Plus, Check, Clock, User, PlayCircle, ChevronRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DownloadButton } from "./DownloadButton";
@@ -13,12 +13,24 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CastMember {
   id: number;
   name: string;
   character: string;
   profile_path: string | null;
+}
+
+interface Season {
+  id: string;
+  season_number: number;
+  title: string | null;
 }
 
 interface Episode {
@@ -29,6 +41,8 @@ interface Episode {
   video_url: string | null;
   duration: number | null;
   description: string | null;
+  season_id: string;
+  season_number?: number;
 }
 
 interface ContentDetailsModalProps {
@@ -61,6 +75,7 @@ export const ContentDetailsModal = ({
 }: ContentDetailsModalProps) => {
   const navigate = useNavigate();
   const [playingFirstEpisode, setPlayingFirstEpisode] = useState(false);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -71,32 +86,50 @@ export const ContentDetailsModal = ({
   const cast = parseCast((content as any).cast_members);
   const director = (content as any).director;
 
-  // Fetch episodes for TV series
-  const { data: episodes = [], isLoading: episodesLoading } = useQuery({
-    queryKey: ["modal-episodes", content.id],
+  // Fetch all seasons for this content
+  const { data: seasons = [], isLoading: seasonsLoading } = useQuery({
+    queryKey: ["modal-seasons", content.id],
     queryFn: async () => {
-      // Get first season
-      const { data: seasons } = await supabase
+      const { data } = await supabase
         .from("seasons")
-        .select("id")
+        .select("id, season_number, title")
         .eq("content_id", content.id)
-        .order("season_number")
-        .limit(1);
+        .order("season_number");
       
-      if (!seasons?.length) return [];
+      return (data || []) as Season[];
+    },
+    enabled: content.contentType === "series",
+  });
 
-      // Get episodes from first season
+  // Auto-select first season when seasons load
+  useEffect(() => {
+    if (seasons.length > 0 && !selectedSeasonId) {
+      setSelectedSeasonId(seasons[0].id);
+    }
+  }, [seasons, selectedSeasonId]);
+
+  // Fetch episodes for selected season
+  const { data: episodes = [], isLoading: episodesLoading } = useQuery({
+    queryKey: ["modal-episodes", selectedSeasonId],
+    queryFn: async () => {
+      if (!selectedSeasonId) return [];
+
       const { data: eps } = await supabase
         .from("episodes")
-        .select("id, title, episode_number, thumbnail_url, video_url, duration, description")
-        .eq("season_id", seasons[0].id)
+        .select("id, title, episode_number, thumbnail_url, video_url, duration, description, season_id")
+        .eq("season_id", selectedSeasonId)
         .order("episode_number")
         .limit(6);
       
       return (eps || []) as Episode[];
     },
-    enabled: content.contentType === "series",
+    enabled: content.contentType === "series" && !!selectedSeasonId,
   });
+
+  // Get current selected season object
+  const selectedSeason = useMemo(() => {
+    return seasons.find(s => s.id === selectedSeasonId);
+  }, [seasons, selectedSeasonId]);
 
   const handleActorClick = (actorName: string) => {
     onClose();
@@ -132,8 +165,9 @@ export const ContentDetailsModal = ({
       return;
     }
     
+    const seasonNum = selectedSeason?.season_number || 1;
     if (onPlayEpisode) {
-      onPlayEpisode(content, episode.video_url, `S1E${episode.episode_number}: ${episode.title}`);
+      onPlayEpisode(content, episode.video_url, `S${seasonNum}E${episode.episode_number}: ${episode.title}`);
     } else {
       navigate(`/content/${content.id}?episode=${episode.id}&autoplay=true`);
       onClose();
@@ -143,6 +177,10 @@ export const ContentDetailsModal = ({
   const handleViewAllEpisodes = () => {
     onClose();
     navigate(`/content/${content.id}`);
+  };
+
+  const handleSeasonChange = (seasonId: string) => {
+    setSelectedSeasonId(seasonId);
   };
 
   return (
@@ -213,7 +251,31 @@ export const ContentDetailsModal = ({
             {content.contentType === "series" && (
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">Episodes - Season 1</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-medium">Episodes</h3>
+                    {seasons.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-1.5 h-8">
+                            Season {selectedSeason?.season_number || 1}
+                            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {seasons.map((season) => (
+                            <DropdownMenuItem
+                              key={season.id}
+                              onClick={() => handleSeasonChange(season.id)}
+                              className={selectedSeasonId === season.id ? "bg-accent" : ""}
+                            >
+                              Season {season.season_number}
+                              {season.title && ` - ${season.title}`}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                   <button
                     onClick={handleViewAllEpisodes}
                     className="flex items-center gap-1 text-sm text-brand hover:underline"
@@ -222,7 +284,7 @@ export const ContentDetailsModal = ({
                   </button>
                 </div>
                 
-                {episodesLoading ? (
+                {(episodesLoading || seasonsLoading) ? (
                   <div className="flex gap-3 overflow-x-auto pb-2">
                     {[1, 2, 3].map((i) => (
                       <div key={i} className="flex-shrink-0 w-48">
