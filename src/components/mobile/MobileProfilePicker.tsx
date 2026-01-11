@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ProfileBackgroundBanner } from "@/components/ProfileBackgroundBanner";
-import { Logo } from "@/components/Logo";
+import { AvatarCategoryGrid } from "@/components/AvatarCategoryGrid";
 import { 
   AVATAR_RINGS,
   getRandomRing,
@@ -426,35 +426,12 @@ export const MobileProfilePicker = ({ onProfileSelected }: MobileProfilePickerPr
               </div>
             </motion.div>
 
-            {/* Avatar Grid */}
-            <div>
-              <Label className="text-sm text-muted-foreground mb-2 block">
-                {isKids ? "Kids Avatars" : "Choose Avatar"}
-              </Label>
-              <div className="grid grid-cols-4 gap-2">
-                {currentAvatars.map((avatar, i) => (
-                  <motion.button
-                    key={avatar.name}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.03 }}
-                    className={cn(
-                      "w-12 h-12 rounded-lg overflow-hidden transition-all",
-                      selectedAvatarSrc === avatar.src 
-                        ? "ring-2 ring-offset-2 ring-brand scale-105" 
-                        : "opacity-70"
-                    )}
-                    onClick={() => setSelectedAvatarSrc(avatar.src)}
-                  >
-                    <img 
-                      src={avatar.src} 
-                      alt={avatar.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </motion.button>
-                ))}
-              </div>
-            </div>
+            {/* Avatar Grid with Categories */}
+            <AvatarCategoryGrid
+              isKids={isKids}
+              selectedAvatarSrc={selectedAvatarSrc}
+              onSelect={(avatar) => setSelectedAvatarSrc(avatar.src)}
+            />
 
             {/* Ring Selection */}
             <div>

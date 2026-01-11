@@ -32,6 +32,8 @@ import {
   resolveAvatarSrc,
   getAvatarUrlPath
 } from "@/lib/avatars";
+import { AvatarCategoryGrid } from "@/components/AvatarCategoryGrid";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 interface MobileManageProfilesProps {
   onClose: () => void;
@@ -61,6 +63,10 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<UserProfile | null>(null);
+  
+  // Avatar crop state
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   
   // Form state
   const [name, setName] = useState("");
@@ -179,17 +185,32 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
     onClose();
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    
+    // Create a URL for the selected image and open crop dialog
+    const imageUrl = URL.createObjectURL(file);
+    setImageToCrop(imageUrl);
+    setCropDialogOpen(true);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
-    const fileExt = file.name.split(".").pop();
-    const filePath = `${user.id}/profile-${Date.now()}.${fileExt}`;
-
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
+    
+    setCropDialogOpen(false);
+    
+    const filePath = `${user.id}/profile-${Date.now()}.png`;
+    
     try {
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, croppedBlob, { upsert: true, contentType: "image/png" });
 
       if (uploadError) throw uploadError;
 
@@ -202,6 +223,11 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
       toast.success("Avatar uploaded!");
     } catch (error) {
       toast.error("Failed to upload avatar");
+    } finally {
+      if (imageToCrop) {
+        URL.revokeObjectURL(imageToCrop);
+        setImageToCrop(null);
+      }
     }
   };
 
@@ -281,49 +307,22 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleImageUpload}
+                onChange={handleImageSelect}
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">Tap camera to upload custom image</p>
           </div>
 
-          {/* Avatar Grid */}
+          {/* Avatar Grid with Categories */}
           <div className="mb-6">
-            <Label className="text-sm text-muted-foreground mb-3 block">
-              {isKids ? "Kids Avatars" : "Choose Avatar"}
-            </Label>
-            <div className="grid grid-cols-4 gap-3">
-              {currentAvatars.map((avatar, i) => (
-                <motion.button
-                  key={avatar.name}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.03 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    selectionTap();
-                    setSelectedAvatarSrc(avatar.src);
-                  }}
-                  className={cn(
-                    "relative w-16 h-16 rounded-xl overflow-hidden bg-muted/30 transition-all mx-auto",
-                    selectedAvatarSrc === avatar.src && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                  )}
-                >
-                  <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover" />
-                  {selectedAvatarSrc === avatar.src && (
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 bg-primary/20 flex items-center justify-center"
-                    >
-                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <Check className="w-3 h-3 text-primary-foreground" />
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.button>
-              ))}
-            </div>
+            <AvatarCategoryGrid
+              isKids={isKids}
+              selectedAvatarSrc={selectedAvatarSrc}
+              onSelect={(avatar) => {
+                selectionTap();
+                setSelectedAvatarSrc(avatar.src);
+              }}
+            />
           </div>
 
           {/* Ring/Frame Selection */}
@@ -542,6 +541,22 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Avatar Crop Dialog */}
+      {imageToCrop && (
+        <AvatarCropDialog
+          imageSrc={imageToCrop}
+          open={cropDialogOpen}
+          onClose={() => {
+            setCropDialogOpen(false);
+            if (imageToCrop) {
+              URL.revokeObjectURL(imageToCrop);
+              setImageToCrop(null);
+            }
+          }}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </motion.div>
   );
 }

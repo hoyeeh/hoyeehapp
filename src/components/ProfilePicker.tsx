@@ -16,10 +16,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProfileBackgroundBanner } from "./ProfileBackgroundBanner";
+import { AvatarCategoryGrid } from "./AvatarCategoryGrid";
 import { 
-  AVATARS, 
   AVATAR_RINGS,
-  getRandomAvatar, 
   getRandomRing,
   isPresetAvatar,
   getAvatarsForProfile,
@@ -428,37 +427,12 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
               </div>
             </motion.div>
 
-            {/* Avatar Selection Grid */}
-            <div>
-              <Label className="text-sm text-muted-foreground mb-3 block">
-                {isKids ? "Kids Avatars" : "Choose Avatar"}
-              </Label>
-              <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                {currentAvatars.map((avatar, i) => (
-                  <motion.button
-                    key={avatar.name}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.05 }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={cn(
-                      "w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden transition-all",
-                      selectedAvatarSrc === avatar.src 
-                        ? "ring-2 ring-offset-2 ring-brand scale-110" 
-                        : "opacity-70 hover:opacity-100"
-                    )}
-                    onClick={() => setSelectedAvatarSrc(avatar.src)}
-                  >
-                    <img 
-                      src={avatar.src} 
-                      alt={avatar.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </motion.button>
-                ))}
-              </div>
-            </div>
+            {/* Avatar Selection Grid with Categories */}
+            <AvatarCategoryGrid
+              isKids={isKids}
+              selectedAvatarSrc={selectedAvatarSrc}
+              onSelect={(avatar) => setSelectedAvatarSrc(avatar.src)}
+            />
 
             {/* Ring/Frame Selection */}
             <div>
@@ -512,7 +486,8 @@ export const ProfilePicker = ({ onProfileSelected }: ProfilePickerProps) => {
                 onCheckedChange={(checked) => {
                   setIsKids(checked);
                   // Switch to appropriate avatar set
-                  setSelectedAvatarSrc(getRandomAvatar(checked));
+                  const avatars = getAvatarsForProfile(checked);
+                  setSelectedAvatarSrc(avatars[Math.floor(Math.random() * avatars.length)].src);
                 }}
               />
             </div>
