@@ -176,3 +176,6 @@ verify_jwt = false
 
 [functions.translate-subtitles]
 verify_jwt = true
+
+[functions.get-kyc-document-url]
+verify_jwt = true
