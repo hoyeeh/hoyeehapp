@@ -148,6 +148,18 @@ const LANGUAGE_LABELS: Record<string, string> = {
   ig: 'Igbo',
 };
 
+// Trigger auto-fetch from external sources (fire and forget)
+async function triggerAutoFetch(contentId: string, episodeId?: string) {
+  try {
+    console.log('[Subtitles] Auto-fetching from external sources...');
+    await supabase.functions.invoke('auto-fetch-subtitles', {
+      body: { contentId, episodeId, languages: ['en', 'fr'] },
+    });
+  } catch (error) {
+    console.error('[Subtitles] Auto-fetch error:', error);
+  }
+}
+
 export function useSubtitles(contentId: string, episodeId?: string) {
   const [state, setState] = useState<SubtitleState>({
     isLoading: false,
@@ -209,7 +221,11 @@ export function useSubtitles(contentId: string, episodeId?: string) {
           loadSubtitleCues(defaultTrack);
         }
       } else {
-        // No subtitles in database, try legacy storage
+        // No subtitles in database, try auto-fetch from external sources
+        console.log('[Subtitles] No subtitles found, triggering auto-fetch...');
+        triggerAutoFetch(contentId, episodeId);
+        
+        // Also try legacy storage as fallback
         await fetchLegacySubtitles();
       }
     } catch (error) {

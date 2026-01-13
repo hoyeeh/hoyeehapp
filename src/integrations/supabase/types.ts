@@ -3031,10 +3031,16 @@ export type Database = {
           created_by: string | null
           duration_seconds: number | null
           episode_id: string | null
+          external_id: string | null
+          external_metadata: Json | null
+          external_source: string | null
+          fetch_attempts: number | null
           id: string
           is_translated: boolean | null
           language_code: string
           language_label: string
+          last_fetch_attempt: string | null
+          match_confidence: number | null
           source_subtitle_id: string | null
           source_type: string | null
           subtitle_url: string
@@ -3048,10 +3054,16 @@ export type Database = {
           created_by?: string | null
           duration_seconds?: number | null
           episode_id?: string | null
+          external_id?: string | null
+          external_metadata?: Json | null
+          external_source?: string | null
+          fetch_attempts?: number | null
           id?: string
           is_translated?: boolean | null
           language_code: string
           language_label: string
+          last_fetch_attempt?: string | null
+          match_confidence?: number | null
           source_subtitle_id?: string | null
           source_type?: string | null
           subtitle_url: string
@@ -3065,10 +3077,16 @@ export type Database = {
           created_by?: string | null
           duration_seconds?: number | null
           episode_id?: string | null
+          external_id?: string | null
+          external_metadata?: Json | null
+          external_source?: string | null
+          fetch_attempts?: number | null
           id?: string
           is_translated?: boolean | null
           language_code?: string
           language_label?: string
+          last_fetch_attempt?: string | null
+          match_confidence?: number | null
           source_subtitle_id?: string | null
           source_type?: string | null
           subtitle_url?: string
