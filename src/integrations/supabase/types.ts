@@ -3023,6 +3023,78 @@ export type Database = {
         }
         Relationships: []
       }
+      subtitle_sync_jobs: {
+        Row: {
+          completed_at: string | null
+          content_types: string[] | null
+          created_at: string | null
+          created_by: string | null
+          current_content_id: string | null
+          current_episode_id: string | null
+          error_log: Json | null
+          failed_items: number | null
+          id: string
+          languages: string[] | null
+          processed_items: number | null
+          skipped_items: number | null
+          started_at: string | null
+          status: string
+          successful_items: number | null
+          total_items: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          content_types?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          current_content_id?: string | null
+          current_episode_id?: string | null
+          error_log?: Json | null
+          failed_items?: number | null
+          id?: string
+          languages?: string[] | null
+          processed_items?: number | null
+          skipped_items?: number | null
+          started_at?: string | null
+          status?: string
+          successful_items?: number | null
+          total_items?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          content_types?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          current_content_id?: string | null
+          current_episode_id?: string | null
+          error_log?: Json | null
+          failed_items?: number | null
+          id?: string
+          languages?: string[] | null
+          processed_items?: number | null
+          skipped_items?: number | null
+          started_at?: string | null
+          status?: string
+          successful_items?: number | null
+          total_items?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtitle_sync_jobs_current_content_id_fkey"
+            columns: ["current_content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtitle_sync_jobs_current_episode_id_fkey"
+            columns: ["current_episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subtitles: {
         Row: {
           cdn_url: string | null

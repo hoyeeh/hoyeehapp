@@ -56,6 +56,7 @@ import { EmailTemplateManagement } from "@/components/admin/EmailTemplateManagem
 import { BatchSubtitleGenerator } from "@/components/admin/BatchSubtitleGenerator";
 import { SubtitleManagement } from "@/components/admin/SubtitleManagement";
 import { ProfileBackgroundManagement } from "@/components/admin/ProfileBackgroundManagement";
+import { BatchSubtitleSync } from "@/components/admin/BatchSubtitleSync";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -715,6 +716,7 @@ const Admin = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Subtitle Management</h2>
             <SubtitleManagement />
+            <BatchSubtitleSync />
             <BatchSubtitleGenerator />
           </div>
         );
