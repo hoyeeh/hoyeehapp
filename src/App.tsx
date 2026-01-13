@@ -26,6 +26,7 @@ import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { PusherNotificationHandler } from "@/components/PusherNotificationHandler";
 import { GlobalRightClickGuard } from "@/components/security/GlobalRightClickGuard";
+import { GlobalKeyboardGuard } from "@/components/security/GlobalKeyboardGuard";
 import Index from "./pages/Index";
 import Profiles from "./pages/Profiles";
 import Auth from "./pages/Auth";
@@ -221,7 +222,8 @@ const App = () => (
                 <TooltipProvider>
                   <Toaster />
                   <Sonner />
-                  <GlobalRightClickGuard />
+<GlobalRightClickGuard />
+                  <GlobalKeyboardGuard />
                   <SubscriptionExpiryChecker />
                   <OfflineIndicator />
                   <AppUpdateBanner />
