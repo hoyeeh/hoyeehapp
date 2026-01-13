@@ -269,7 +269,7 @@ export const ContentDetailsModal = ({
                             <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
+                        <DropdownMenuContent align="start" className="z-[150] bg-popover border-border">
                           {seasons.map((season) => (
                             <DropdownMenuItem
                               key={season.id}
