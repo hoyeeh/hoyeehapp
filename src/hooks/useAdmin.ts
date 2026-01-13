@@ -30,8 +30,9 @@ export const useAllUsers = () => {
   return useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
+      // Use profiles_safe view to exclude sensitive fields (pin_code, secret_word, etc.)
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_safe")
         .select("*")
         .order("created_at", { ascending: false });
 

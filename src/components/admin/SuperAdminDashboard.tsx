@@ -290,9 +290,9 @@ export const SuperAdminDashboard = () => {
                   <div key={user.id} className="flex items-center justify-between p-2 bg-secondary rounded">
                     <div>
                       <span className="font-medium">{user.display_name || "Unknown"}</span>
-                      {user.mobile_number && (
+                      {user.mobile_number_masked && (
                         <span className="text-sm text-muted-foreground ml-2">
-                          ({user.mobile_number})
+                          ({user.mobile_number_masked})
                         </span>
                       )}
                     </div>
