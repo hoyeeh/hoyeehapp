@@ -101,6 +101,13 @@ export const ContentDetailsModal = ({
     enabled: content.contentType === "series",
   });
 
+  // Reset and auto-select first season when content changes
+  useEffect(() => {
+    // Reset selection when content changes
+    setSelectedSeasonId(null);
+    setPlayingFirstEpisode(false);
+  }, [content.id]);
+
   // Auto-select first season when seasons load
   useEffect(() => {
     if (seasons.length > 0 && !selectedSeasonId) {
@@ -151,8 +158,9 @@ export const ContentDetailsModal = ({
     }
 
     setPlayingFirstEpisode(true);
+    const seasonNum = selectedSeason?.season_number || 1;
     if (onPlayEpisode) {
-      onPlayEpisode(content, firstWithVideo.video_url!, `S1E${firstWithVideo.episode_number}: ${firstWithVideo.title}`);
+      onPlayEpisode(content, firstWithVideo.video_url!, `S${seasonNum}E${firstWithVideo.episode_number}: ${firstWithVideo.title}`);
     } else {
       navigate(`/content/${content.id}?episode=${firstWithVideo.id}&autoplay=true`);
       onClose();

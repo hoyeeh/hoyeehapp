@@ -205,6 +205,20 @@ export function MobileContentDetail({
     },
   });
 
+  // Fetch seasons directly from database for series
+  const { data: seasonsList = [] } = useQuery({
+    queryKey: ["mobile-seasons", content.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("seasons")
+        .select("id, season_number, title")
+        .eq("content_id", content.id)
+        .order("season_number");
+      return data || [];
+    },
+    enabled: content.contentType === "series",
+  });
+
   // Fetch ALL episodes if TV series (for next episode functionality)
   const { data: allEpisodes = [] } = useQuery({
     queryKey: ["content-all-episodes", content.id],
@@ -234,14 +248,17 @@ export function MobileContentDetail({
     enabled: content.contentType === "series",
   });
 
-  // Get unique available seasons
+  // Get available seasons from the seasons table (not inferred from episodes)
   const availableSeasons = useMemo(() => {
-    const seasonSet = new Set<number>();
-    allEpisodes.forEach((ep: any) => seasonSet.add(ep.season_number));
-    return Array.from(seasonSet).sort((a, b) => a - b);
-  }, [allEpisodes]);
+    return seasonsList.map(s => s.season_number).sort((a, b) => a - b);
+  }, [seasonsList]);
 
-  // Auto-select first available season when content loads
+  // Reset season selection when content changes
+  useEffect(() => {
+    setSelectedSeason(1); // Reset to 1, will be corrected by next effect
+  }, [content.id]);
+
+  // Auto-select first available season when seasons load
   useEffect(() => {
     if (availableSeasons.length > 0 && !availableSeasons.includes(selectedSeason)) {
       setSelectedSeason(availableSeasons[0]);
