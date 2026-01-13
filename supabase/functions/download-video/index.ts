@@ -167,7 +167,7 @@ serve(async (req) => {
       );
     }
 
-    const { videoUrl } = await req.json();
+    const { videoUrl, rangeStart } = await req.json();
     
     if (!videoUrl) {
       return new Response(
@@ -203,12 +203,19 @@ serve(async (req) => {
       );
     }
 
-    console.log('Proxying video download for user:', user.id, 'URL:', videoUrl);
+    console.log('Proxying video download for user:', user.id, 'URL:', videoUrl, 'rangeStart:', rangeStart);
+
+    // Build fetch headers for range request if resuming
+    const fetchHeaders: Record<string, string> = {};
+    if (rangeStart && rangeStart > 0) {
+      fetchHeaders['Range'] = `bytes=${rangeStart}-`;
+      console.log('Requesting range:', fetchHeaders['Range']);
+    }
 
     // Fetch the video from the CDN
-    const videoResponse = await fetch(videoUrl);
+    const videoResponse = await fetch(videoUrl, { headers: fetchHeaders });
     
-    if (!videoResponse.ok) {
+    if (!videoResponse.ok && videoResponse.status !== 206) {
       console.error('Failed to fetch video:', videoResponse.status, videoResponse.statusText);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch video from source' }),
@@ -217,6 +224,7 @@ serve(async (req) => {
     }
 
     const contentLength = videoResponse.headers.get('content-length');
+    const contentRange = videoResponse.headers.get('content-range');
     const contentType = videoResponse.headers.get('content-type') || 'video/mp4';
 
     // Build response headers with rate limit info
@@ -231,11 +239,15 @@ serve(async (req) => {
     if (contentLength) {
       responseHeaders['Content-Length'] = contentLength;
     }
+    if (contentRange) {
+      responseHeaders['Content-Range'] = contentRange;
+    }
 
-    console.log('Streaming video, size:', contentLength, 'type:', contentType, 'rate limit remaining:', rateLimit.remaining);
+    const statusCode = rangeStart && rangeStart > 0 ? 206 : 200;
+    console.log('Streaming video, size:', contentLength, 'range:', contentRange, 'type:', contentType, 'rate limit remaining:', rateLimit.remaining);
 
     return new Response(videoResponse.body, {
-      status: 200,
+      status: statusCode,
       headers: responseHeaders,
     });
   } catch (error) {

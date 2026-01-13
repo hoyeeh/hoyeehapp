@@ -1,12 +1,14 @@
 // Netflix-style Download Storage with WebCrypto Encryption
 // Stores encrypted video segments in IndexedDB for offline playback
+// Supports partial downloads for true resume functionality
 
 const DB_NAME = 'hoyeeh-offline-downloads';
-const DB_VERSION = 2;
+const DB_VERSION = 3; // Bumped for new partial-downloads store
 const STORE_SEGMENTS = 'encrypted-segments';
 const STORE_METADATA = 'download-metadata';
 const STORE_LICENSES = 'download-licenses';
 const STORE_KEYS = 'device-keys';
+const STORE_PARTIAL = 'partial-downloads'; // New store for resume support
 
 export interface DownloadMetadata {
   id: string; // contentId or contentId_episodeId
@@ -30,6 +32,7 @@ export interface DownloadMetadata {
   eta?: number; // estimated time remaining in seconds
   startedAt?: number; // timestamp when download started
   contentRating?: string; // For filtering kids content
+  videoUrl?: string; // Store URL for resume
 }
 
 export interface DownloadLicense {
@@ -47,6 +50,15 @@ export interface EncryptedSegment {
   segmentIndex: number;
   iv: Uint8Array;
   ciphertext: ArrayBuffer;
+  size: number;
+}
+
+// Partial download chunk for resume support
+export interface PartialDownloadChunk {
+  contentId: string;
+  chunkIndex: number;
+  data: ArrayBuffer;
+  offset: number; // byte offset in the full file
   size: number;
 }
 
@@ -80,6 +92,12 @@ function openDB(): Promise<IDBDatabase> {
       // Device keys store
       if (!db.objectStoreNames.contains(STORE_KEYS)) {
         db.createObjectStore(STORE_KEYS, { keyPath: 'id' });
+      }
+
+      // Partial downloads store for resume support
+      if (!db.objectStoreNames.contains(STORE_PARTIAL)) {
+        const partialStore = db.createObjectStore(STORE_PARTIAL, { keyPath: ['contentId', 'chunkIndex'] });
+        partialStore.createIndex('contentId', 'contentId', { unique: false });
       }
     };
   });
@@ -374,4 +392,96 @@ export function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// ============ Partial Download Support for True Resume ============
+
+// Save a partial download chunk
+export async function savePartialChunk(
+  contentId: string,
+  chunkIndex: number,
+  data: ArrayBuffer,
+  offset: number
+): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_PARTIAL, 'readwrite');
+    const store = transaction.objectStore(STORE_PARTIAL);
+
+    const chunk: PartialDownloadChunk = {
+      contentId,
+      chunkIndex,
+      data,
+      offset,
+      size: data.byteLength,
+    };
+
+    const request = store.put(chunk);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Get all partial chunks for a content
+export async function getPartialChunks(contentId: string): Promise<PartialDownloadChunk[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_PARTIAL, 'readonly');
+    const store = transaction.objectStore(STORE_PARTIAL);
+    const index = store.index('contentId');
+    const request = index.getAll(contentId);
+
+    request.onsuccess = () => {
+      const chunks = (request.result || []) as PartialDownloadChunk[];
+      // Sort by offset to ensure correct order
+      chunks.sort((a, b) => a.offset - b.offset);
+      resolve(chunks);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Get total downloaded bytes from partial chunks
+export async function getPartialDownloadedSize(contentId: string): Promise<number> {
+  const chunks = await getPartialChunks(contentId);
+  return chunks.reduce((total, chunk) => total + chunk.size, 0);
+}
+
+// Delete partial chunks after successful download
+export async function deletePartialChunks(contentId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_PARTIAL, 'readwrite');
+    const store = transaction.objectStore(STORE_PARTIAL);
+    const index = store.index('contentId');
+
+    const request = index.openCursor(contentId);
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      } else {
+        resolve();
+      }
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Combine partial chunks into a single ArrayBuffer
+export async function combinePartialChunks(contentId: string): Promise<ArrayBuffer | null> {
+  const chunks = await getPartialChunks(contentId);
+  if (chunks.length === 0) return null;
+
+  const totalSize = chunks.reduce((sum, c) => sum + c.size, 0);
+  const combined = new Uint8Array(totalSize);
+  
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(new Uint8Array(chunk.data), offset);
+    offset += chunk.size;
+  }
+
+  return combined.buffer;
 }
