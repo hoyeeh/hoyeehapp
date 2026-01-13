@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { ViewState, Content } from "@/types";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { SecureVideoWrapper } from "@/components/security/SecureVideoWrapper";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/useDatabase";
 import { Download, Trash2, Play, HardDrive, Loader2, Settings2 } from "lucide-react";
@@ -134,16 +135,18 @@ const Downloads = () => {
 
   if (playingContent) {
     return (
-      <VideoPlayer
-        src={playingContent.offlineUrl}
-        title={playingContent.content.title}
-        contentId={playingContent.content.id}
-        onBack={() => {
-          // Revoke blob URL to free memory
-          URL.revokeObjectURL(playingContent.offlineUrl);
-          setPlayingContent(null);
-        }}
-      />
+      <SecureVideoWrapper>
+        <VideoPlayer
+          src={playingContent.offlineUrl}
+          title={playingContent.content.title}
+          contentId={playingContent.content.id}
+          onBack={() => {
+            // Revoke blob URL to free memory
+            URL.revokeObjectURL(playingContent.offlineUrl);
+            setPlayingContent(null);
+          }}
+        />
+      </SecureVideoWrapper>
     );
   }
 
