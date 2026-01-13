@@ -182,3 +182,6 @@ verify_jwt = true
 
 [functions.stream-video]
 verify_jwt = false
+
+[functions.auto-fetch-subtitles]
+verify_jwt = false
