@@ -21,6 +21,12 @@ import {
   isLicenseValid,
   getDownloadId,
   formatBytes,
+  // Partial download support
+  savePartialChunk,
+  getPartialChunks,
+  getPartialDownloadedSize,
+  deletePartialChunks,
+  combinePartialChunks,
   type DownloadMetadata,
   type DownloadLicense,
 } from '@/lib/downloadStorage';
@@ -374,27 +380,34 @@ export function useDownloadManager() {
     }
   }, [user, activeDownloads]);
 
+  // Download video with partial file support for true resume
   const downloadVideo = async (
     videoUrl: string,
     downloadId: string,
     metadata: DownloadMetadata,
     deviceKey: CryptoKey,
-    signal: AbortSignal
+    signal: AbortSignal,
+    resumeFromByte: number = 0
   ) => {
     try {
-      // Use edge function to proxy the download
       const { data: { session } } = await supabase.auth.getSession();
       
+      // Build headers for range request (resume support)
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`,
+        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      };
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || ''}`,
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ videoUrl }),
+          headers,
+          body: JSON.stringify({ 
+            videoUrl,
+            rangeStart: resumeFromByte > 0 ? resumeFromByte : undefined 
+          }),
           signal,
         }
       );
@@ -404,17 +417,36 @@ export function useDownloadManager() {
       }
 
       const contentLength = response.headers.get('content-length');
-      const totalSize = contentLength ? parseInt(contentLength, 10) : metadata.totalSize;
+      const contentRange = response.headers.get('content-range');
+      
+      // Parse total size from Content-Range header if resuming
+      let totalSize: number;
+      if (contentRange) {
+        // Format: bytes 0-999/1000 or bytes 500-999/1000
+        const match = contentRange.match(/bytes \d+-\d+\/(\d+)/);
+        totalSize = match ? parseInt(match[1], 10) : metadata.totalSize;
+      } else {
+        totalSize = contentLength ? parseInt(contentLength, 10) + resumeFromByte : metadata.totalSize;
+      }
 
-      // Read as stream for progress tracking
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
-      const chunks: Uint8Array[] = [];
-      let downloadedSize = 0;
+      let downloadedSize = resumeFromByte;
       const startedAt = Date.now();
       let lastUpdateTime = startedAt;
-      let lastDownloadedSize = 0;
+      let lastDownloadedSize = downloadedSize;
+      let chunkIndex = 0;
+
+      // Get existing chunks count if resuming
+      if (resumeFromByte > 0) {
+        const existingChunks = await getPartialChunks(downloadId);
+        chunkIndex = existingChunks.length;
+      }
+
+      const CHUNK_SIZE = 1024 * 1024; // 1MB chunks for partial storage
+      let currentChunk: Uint8Array[] = [];
+      let currentChunkSize = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -423,20 +455,36 @@ export function useDownloadManager() {
         
         if (signal.aborted) {
           reader.cancel();
+          // Save any remaining partial data before throwing
+          if (currentChunkSize > 0) {
+            const chunkData = combineChunkArray(currentChunk, currentChunkSize);
+            await savePartialChunk(downloadId, chunkIndex, chunkData, downloadedSize - currentChunkSize);
+          }
           throw new Error('Download cancelled');
         }
 
-        chunks.push(value);
+        currentChunk.push(value);
+        currentChunkSize += value.length;
         downloadedSize += value.length;
 
+        // Save chunk to IndexedDB when it reaches CHUNK_SIZE (for resume support)
+        if (currentChunkSize >= CHUNK_SIZE) {
+          const chunkData = combineChunkArray(currentChunk, currentChunkSize);
+          await savePartialChunk(downloadId, chunkIndex, chunkData, downloadedSize - currentChunkSize);
+          chunkIndex++;
+          currentChunk = [];
+          currentChunkSize = 0;
+        }
+
         const now = Date.now();
-        const timeSinceStart = (now - startedAt) / 1000; // seconds
+        const timeSinceStart = (now - startedAt) / 1000;
         const timeSinceLastUpdate = (now - lastUpdateTime) / 1000;
 
-        // Calculate speed (bytes per second) - use rolling average
-        const overallSpeed = timeSinceStart > 0 ? downloadedSize / timeSinceStart : 0;
+        // Calculate speed
+        const bytesDownloadedThisSession = downloadedSize - resumeFromByte;
+        const overallSpeed = timeSinceStart > 0 ? bytesDownloadedThisSession / timeSinceStart : 0;
         const recentSpeed = timeSinceLastUpdate > 0 ? (downloadedSize - lastDownloadedSize) / timeSinceLastUpdate : overallSpeed;
-        const speed = Math.round((overallSpeed + recentSpeed) / 2); // Average of overall and recent
+        const speed = Math.round((overallSpeed + recentSpeed) / 2);
 
         // Calculate ETA
         const remainingBytes = totalSize - downloadedSize;
@@ -455,10 +503,11 @@ export function useDownloadManager() {
           startedAt,
           status: 'downloading',
           updatedAt: now,
+          videoUrl, // Store for resume
         };
         await saveMetadata(updatedMetadata);
         
-        // Update state more frequently for speed/ETA (every 2% or 500ms)
+        // Update state periodically
         if (progress % 2 === 0 || timeSinceLastUpdate >= 0.5) {
           setDownloads(prev => 
             prev.map(d => d.id === downloadId ? updatedMetadata : d)
@@ -469,26 +518,32 @@ export function useDownloadManager() {
         }
       }
 
-      // Combine chunks
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      const videoData = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        videoData.set(chunk, offset);
-        offset += chunk.length;
+      // Save any remaining partial chunk
+      if (currentChunkSize > 0) {
+        const chunkData = combineChunkArray(currentChunk, currentChunkSize);
+        await savePartialChunk(downloadId, chunkIndex, chunkData, downloadedSize - currentChunkSize);
+      }
+
+      // Combine all partial chunks into final video
+      const videoData = await combinePartialChunks(downloadId);
+      if (!videoData) {
+        throw new Error('Failed to combine downloaded chunks');
       }
 
       // Encrypt the video data
-      const { iv, ciphertext } = await encryptSegment(videoData.buffer, deviceKey);
+      const { iv, ciphertext } = await encryptSegment(videoData, deviceKey);
 
       // Store encrypted video
-      await saveSegment(downloadId, 0, iv, ciphertext, totalLength);
+      await saveSegment(downloadId, 0, iv, ciphertext, videoData.byteLength);
+
+      // Delete partial chunks (no longer needed)
+      await deletePartialChunks(downloadId);
 
       // Update metadata as completed
       const completedMetadata: DownloadMetadata = {
         ...metadata,
-        downloadedSize: totalLength,
-        totalSize: totalLength,
+        downloadedSize: videoData.byteLength,
+        totalSize: videoData.byteLength,
         downloadedSegments: 1,
         progress: 100,
         status: 'completed',
@@ -505,7 +560,7 @@ export function useDownloadManager() {
           .update({ 
             status: 'completed', 
             downloaded_at: new Date().toISOString(),
-            total_size: totalLength,
+            total_size: videoData.byteLength,
           })
           .eq('content_id', metadata.contentId)
           .eq('device_id', deviceId)
@@ -524,11 +579,32 @@ export function useDownloadManager() {
 
     } catch (error: any) {
       if (error.message === 'Download cancelled') {
-        toast.info('Download cancelled');
+        // Save current progress for resume
+        const currentMetadata = await getMetadata(downloadId);
+        if (currentMetadata) {
+          await saveMetadata({ 
+            ...currentMetadata, 
+            status: 'paused', 
+            updatedAt: Date.now() 
+          });
+          await loadDownloads();
+        }
+        toast.info('Download paused - can be resumed later');
         return;
       }
       throw error;
     }
+  };
+
+  // Helper to combine array of Uint8Arrays
+  const combineChunkArray = (chunks: Uint8Array[], totalSize: number): ArrayBuffer => {
+    const combined = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return combined.buffer;
   };
 
   const pauseDownload = useCallback(async (contentId: string, episodeId?: string) => {
@@ -561,51 +637,103 @@ export function useDownloadManager() {
       return;
     }
 
-    // For now, restart the download (true resume would need partial file support)
+    // Check if we have partial data to resume from
+    const partialSize = await getPartialDownloadedSize(downloadId);
+    
     const license = await getLicense(downloadId);
     if (!license) {
       toast.error('Download license not found. Please start a new download.');
       return;
     }
 
-    // Re-fetch content info and restart
-    const { data: content } = await supabase
-      .from('content')
-      .select('*')
-      .eq('id', contentId)
-      .single();
-
-    if (!content) {
-      toast.error('Content not found');
+    // Check if license is still valid
+    if (license.expiresAt < Date.now()) {
+      toast.error('Download license expired. Please start a new download.');
       return;
     }
 
-    // Reset metadata and restart
+    // Check Wi-Fi only setting
+    const wifiOnlyEnabled = localStorage.getItem('hoyeeh-wifi-only-downloads') === 'true';
+    if (wifiOnlyEnabled) {
+      const connection = (navigator as any).connection || 
+                        (navigator as any).mozConnection || 
+                        (navigator as any).webkitConnection;
+      if (connection) {
+        const mobileTypes = ['cellular', '2g', '3g', '4g', '5g'];
+        const connectionType = connection.type || '';
+        const effectiveType = connection.effectiveType || '';
+        if (mobileTypes.includes(connectionType) || mobileTypes.includes(effectiveType)) {
+          toast.error('Wi-Fi only mode is enabled. Connect to Wi-Fi to resume.');
+          return;
+        }
+      }
+    }
+
+    // Initialize device key
+    if (!deviceKeyRef.current) {
+      deviceKeyRef.current = await initDeviceKey();
+    }
+
+    // Get video URL from metadata or fetch fresh
+    let videoUrl = metadata.videoUrl;
+    if (!videoUrl) {
+      // Fetch content info to get video URL
+      if (episodeId) {
+        const { data: episode } = await supabase
+          .from('episodes')
+          .select('video_url')
+          .eq('id', episodeId)
+          .single();
+        videoUrl = episode?.video_url || '';
+      } else {
+        const { data: content } = await supabase
+          .from('content')
+          .select('video_url')
+          .eq('id', contentId)
+          .single();
+        videoUrl = content?.video_url || '';
+      }
+    }
+
+    if (!videoUrl) {
+      toast.error('Video URL not available');
+      return;
+    }
+
+    // Update metadata to downloading
     await saveMetadata({ 
       ...metadata, 
       status: 'downloading', 
-      progress: 0,
-      downloadedSize: 0,
-      updatedAt: Date.now() 
+      updatedAt: Date.now(),
+      videoUrl,
     });
-    
-    const contentObj = {
-      id: content.id,
-      title: content.title,
-      description: content.description || '',
-      thumbnailUrl: content.thumbnail_url || '',
-      videoUrl: content.video_url || '',
-      contentType: content.content_type as any,
-      genre: content.genre || '',
-      year: content.year || 0,
-      rating: content.rating || '',
-      duration: content.duration || 0,
-      isPremium: content.is_premium || false,
-      contentRating: content.content_rating || 'PG',
-    };
+    await loadDownloads();
 
-    startDownload(contentObj, episodeId, metadata.episodeTitle, metadata.quality);
-  }, [startDownload]);
+    // Create abort controller for this download
+    const abortController = new AbortController();
+    setActiveDownloads(prev => new Map(prev).set(downloadId, abortController));
+
+    try {
+      toast.info(`Resuming download from ${formatBytes(partialSize)}`);
+      
+      // Resume download from where we left off
+      await downloadVideo(
+        videoUrl,
+        downloadId,
+        { ...metadata, videoUrl },
+        deviceKeyRef.current,
+        abortController.signal,
+        partialSize // Resume from this byte position
+      );
+    } catch (error) {
+      console.error('Resume download error:', error);
+      toast.error('Failed to resume download');
+      
+      // Revert to paused status
+      await saveMetadata({ ...metadata, status: 'paused', updatedAt: Date.now() });
+      await loadDownloads();
+    }
+  }, [activeDownloads]);
 
   const cancelDownload = useCallback(async (contentId: string, episodeId?: string) => {
     const downloadId = getDownloadId(contentId, episodeId);
