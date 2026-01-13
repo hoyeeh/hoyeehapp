@@ -334,3 +334,34 @@
 .text-shadow-netflix {
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
+
+/* Video Security CSS - Anti-DevTools Obfuscation */
+.secure-video-container video {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.secure-video-container video::after {
+  content: '' !important;
+}
+
+.secure-video-container source {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Prevent video dragging */
+.secure-video-container video {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* Hide video controls context menu hint */
+.secure-video-container video::-webkit-media-controls {
+  -webkit-touch-callout: none;
+}

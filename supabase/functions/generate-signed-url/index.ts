@@ -13,8 +13,11 @@ const SIGNING_SECRET = Deno.env.get("DO_SPACES_SECRET") || "default-secret-key";
 // CDN endpoint for DigitalOcean Spaces
 const CDN_ENDPOINT = Deno.env.get("DO_SPACES_CDN_ENDPOINT") || "";
 
-// URL expiry time in seconds (default: 4 hours for typical viewing session)
-const DEFAULT_EXPIRY_SECONDS = 4 * 60 * 60;
+// URL expiry time in seconds (default: 30 minutes for streaming security)
+const DEFAULT_EXPIRY_SECONDS = 30 * 60;
+
+// Download URL expiry: 4 hours (reduced from 7 days)
+const DOWNLOAD_EXPIRY_SECONDS = 4 * 60 * 60;
 
 // Allowed referrers for hotlink protection
 const ALLOWED_REFERRERS = [
@@ -319,8 +322,8 @@ serve(async (req) => {
       );
     }
 
-    // For downloads, use longer expiry (7 days)
-    const expirySeconds = forDownload ? 7 * 24 * 60 * 60 : DEFAULT_EXPIRY_SECONDS;
+    // For downloads, use 4 hours expiry (reduced from 7 days)
+    const expirySeconds = forDownload ? DOWNLOAD_EXPIRY_SECONDS : DEFAULT_EXPIRY_SECONDS;
     const expiresAt = Date.now() + (expirySeconds * 1000);
     
     // Generate signed token with IP binding

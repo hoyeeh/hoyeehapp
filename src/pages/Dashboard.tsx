@@ -4,6 +4,7 @@ import { useProfile } from "@/hooks/useDatabase";
 import { Sidebar } from "@/components/Sidebar";
 import { UserDashboard } from "@/components/UserDashboard";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { SecureVideoWrapper } from "@/components/security/SecureVideoWrapper";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { useState, useEffect } from "react";
 import { Content } from "@/types";
@@ -53,12 +54,14 @@ const Dashboard = () => {
 
   if (playingContent && playingContent.videoUrl) {
     return (
-      <VideoPlayer
-        src={playingContent.videoUrl}
-        title={playingContent.title}
-        contentId={playingContent.id}
-        onBack={() => setPlayingContent(null)}
-      />
+      <SecureVideoWrapper>
+        <VideoPlayer
+          src={playingContent.videoUrl}
+          title={playingContent.title}
+          contentId={playingContent.id}
+          onBack={() => setPlayingContent(null)}
+        />
+      </SecureVideoWrapper>
     );
   }
 

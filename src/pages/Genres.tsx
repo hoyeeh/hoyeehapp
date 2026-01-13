@@ -9,6 +9,7 @@ import { Content } from "@/types";
 import { ContentCard } from "@/components/ContentCard";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { SecureVideoWrapper } from "@/components/security/SecureVideoWrapper";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Grid, List, Loader2 } from "lucide-react";
@@ -148,13 +149,15 @@ const DesktopGenres = () => {
 
   if (playingContent) {
     return (
-      <VideoPlayer
-        src={playingContent.content.videoUrl}
-        title={playingContent.content.title}
-        contentId={playingContent.content.id}
-        initialProgress={playingContent.progress}
-        onBack={() => setPlayingContent(null)}
-      />
+      <SecureVideoWrapper>
+        <VideoPlayer
+          src={playingContent.content.videoUrl}
+          title={playingContent.content.title}
+          contentId={playingContent.content.id}
+          initialProgress={playingContent.progress}
+          onBack={() => setPlayingContent(null)}
+        />
+      </SecureVideoWrapper>
     );
   }
 

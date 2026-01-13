@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Play, Trash2, Loader2, List, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { SecureVideoWrapper } from "@/components/security/SecureVideoWrapper";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileMyList } from "@/components/mobile/MobileMyList";
@@ -61,12 +62,14 @@ const MyList = () => {
 
   if (playingContent) {
     return (
-      <VideoPlayer
-        src={playingContent.videoUrl}
-        title={playingContent.title}
-        contentId={playingContent.id}
-        onBack={() => setPlayingContent(null)}
-      />
+      <SecureVideoWrapper>
+        <VideoPlayer
+          src={playingContent.videoUrl}
+          title={playingContent.title}
+          contentId={playingContent.id}
+          onBack={() => setPlayingContent(null)}
+        />
+      </SecureVideoWrapper>
     );
   }
 

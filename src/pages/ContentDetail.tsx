@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { SecureVideoWrapper } from "@/components/security/SecureVideoWrapper";
 import { PreviouslyOnRecap } from "@/components/PreviouslyOnRecap";
 import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { CastQueuePanel } from "@/components/CastQueuePanel";
@@ -712,36 +713,40 @@ const ContentDetail = () => {
     const epData = playingEpisode as any;
 
     return (
-      <VideoPlayer
-        src={playingEpisode.video_url || ''}
-        title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
-        contentId={content.id}
-        episodeId={playingEpisode.id}
-        initialProgress={episodeResumeAt}
-        introStartTime={epData.intro_start_time ?? 0}
-        introEndTime={epData.intro_end_time ?? 90}
-        recapStartTime={epData.recap_start_time ?? undefined}
-        recapEndTime={epData.recap_end_time ?? undefined}
-        onBack={() => {
-          setPlayingEpisode(null);
-          setEpisodeResumeAt(0);
-        }}
-        nextEpisode={nextEpisodeInfo}
-        onPlayNextEpisode={handlePlayNextEpisode}
-      />
+      <SecureVideoWrapper>
+        <VideoPlayer
+          src={playingEpisode.video_url || ''}
+          title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
+          contentId={content.id}
+          episodeId={playingEpisode.id}
+          initialProgress={episodeResumeAt}
+          introStartTime={epData.intro_start_time ?? 0}
+          introEndTime={epData.intro_end_time ?? 90}
+          recapStartTime={epData.recap_start_time ?? undefined}
+          recapEndTime={epData.recap_end_time ?? undefined}
+          onBack={() => {
+            setPlayingEpisode(null);
+            setEpisodeResumeAt(0);
+          }}
+          nextEpisode={nextEpisodeInfo}
+          onPlayNextEpisode={handlePlayNextEpisode}
+        />
+      </SecureVideoWrapper>
     );
   }
 
   // Playing main content (movie or TV show trailer) - only desktop
   if (playing && content && !isMobile) {
     return (
-      <VideoPlayer
-        src={content.videoUrl}
-        title={content.title}
-        contentId={content.id}
-        initialProgress={0}
-        onBack={() => setPlaying(false)}
-      />
+      <SecureVideoWrapper>
+        <VideoPlayer
+          src={content.videoUrl}
+          title={content.title}
+          contentId={content.id}
+          initialProgress={0}
+          onBack={() => setPlaying(false)}
+        />
+      </SecureVideoWrapper>
     );
   }
 
