@@ -39,6 +39,26 @@ export function useCreatorKYC() {
   });
 }
 
+// Hook to get secure signed URL for KYC document (admin use only)
+export function useSecureKYCDocumentUrl(creatorId: string | null) {
+  return useQuery({
+    queryKey: ['kyc-document-url', creatorId],
+    queryFn: async () => {
+      if (!creatorId) return null;
+      
+      const { data, error } = await supabase.functions.invoke('get-kyc-document-url', {
+        body: { creatorId },
+      });
+      
+      if (error) throw error;
+      return data as { signedUrl: string; expiresAt: string; expiresInSeconds: number };
+    },
+    enabled: !!creatorId,
+    staleTime: 10 * 60 * 1000, // 10 minutes (less than 15 min expiry)
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useSubmitKYC() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
