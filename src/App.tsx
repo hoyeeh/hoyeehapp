@@ -25,6 +25,7 @@ import { migrateLegacyKeys, initializeCacheManagement } from "@/utils/cacheManag
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { PusherNotificationHandler } from "@/components/PusherNotificationHandler";
+import { GlobalRightClickGuard } from "@/components/security/GlobalRightClickGuard";
 import Index from "./pages/Index";
 import Profiles from "./pages/Profiles";
 import Auth from "./pages/Auth";
@@ -220,6 +221,7 @@ const App = () => (
                 <TooltipProvider>
                   <Toaster />
                   <Sonner />
+                  <GlobalRightClickGuard />
                   <SubscriptionExpiryChecker />
                   <OfflineIndicator />
                   <AppUpdateBanner />
