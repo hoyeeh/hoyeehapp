@@ -407,8 +407,8 @@ export function MobileProfile() {
     <MobileSwipeWrapper>
       <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/10">
-        <div className="flex items-center justify-between px-4 h-14 pt-safe">
+      <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-background/80 backdrop-blur-xl border-b border-border/10">
+        <div className="flex items-center justify-between px-4 h-14">
           <button
             onClick={handleBack}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-muted/50 active:scale-95 transition-all"
@@ -429,7 +429,7 @@ export function MobileProfile() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-20 pb-28 px-4">
+      <main className="pb-28 px-4" style={{ paddingTop: 'calc(80px + env(safe-area-inset-top, 20px))' }}>
         {/* Profile Card */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -438,10 +438,10 @@ export function MobileProfile() {
         >
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Avatar className="w-6 h-6 ring-2 ring-primary/20 shadow-md">
+              <Avatar className="w-8 h-8 ring-2 ring-primary/20 shadow-md">
                 <AvatarImage src={selectedAvatar || ""} />
-                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/40 text-xs">
-                  <User className="w-3 h-3 text-primary" />
+                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/40 text-sm">
+                  <User className="w-4 h-4 text-primary" />
                 </AvatarFallback>
               </Avatar>
               {isEditing && (
@@ -450,9 +450,9 @@ export function MobileProfile() {
                     lightTap();
                     setShowAvatarPicker(true);
                   }}
-                  className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform"
+                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform"
                 >
-                  <Camera className="w-2 h-2 text-primary-foreground" />
+                  <Camera className="w-2.5 h-2.5 text-primary-foreground" />
                 </button>
               )}
             </div>
