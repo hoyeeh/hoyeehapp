@@ -513,7 +513,7 @@ export const MobilePlayer = ({
             )}
 
             {/* Top Controls */}
-            <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto safe-area-inset-top">
+            <div className="absolute top-0 left-0 right-0 p-4 pt-8 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto safe-area-inset-top">
               <div className="flex items-center justify-between">
                 <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2 text-white">
                   <ChevronLeft className="h-6 w-6" />

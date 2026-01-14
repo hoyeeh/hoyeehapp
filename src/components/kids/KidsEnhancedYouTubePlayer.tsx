@@ -517,7 +517,7 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
           initial={{ opacity: 0 }}
           animate={{ opacity: showControls ? 1 : 0 }}
           transition={{ duration: 0.2 }}
-          className="absolute top-0 left-0 right-0 z-30 p-3 sm:p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top"
+          className="absolute top-0 left-0 right-0 z-30 p-3 sm:p-4 pt-6 sm:pt-8 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top"
         >
           <div className="flex items-center justify-between max-w-7xl mx-auto gap-2">
             {/* Back Button */}

@@ -600,7 +600,7 @@ export const KidsPlayer = ({
       </div>
 
       {/* Top Header */}
-      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top z-10">
+      <div className="absolute top-0 left-0 right-0 p-4 pt-8 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
