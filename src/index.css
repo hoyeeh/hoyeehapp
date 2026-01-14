@@ -305,7 +305,28 @@
 }
 
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: env(safe-area-inset-top, 20px);
+}
+
+/* Safe area inset classes with proper fallbacks */
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top, 20px);
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 20px);
+}
+
+.mt-safe {
+  margin-top: env(safe-area-inset-top, 20px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .safe-area-bottom {

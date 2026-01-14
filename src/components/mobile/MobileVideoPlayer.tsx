@@ -1658,7 +1658,7 @@ export function MobileVideoPlayer({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Bar - Back button and title - Responsive */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3 sm:p-4 pt-safe z-40">
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3 sm:p-4 pt-6 sm:pt-8 safe-area-inset-top z-40">
               {/* Back Button */}
               <button
                 onClick={(e) => {

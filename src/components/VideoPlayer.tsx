@@ -1169,7 +1169,7 @@ export const VideoPlayer = ({
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/90 to-transparent" />
 
         {/* Top Bar */}
-        <div className="absolute top-0 left-0 right-0 p-2 sm:p-4 flex items-center gap-2 sm:gap-4 safe-area-inset-top">
+        <div className="absolute top-0 left-0 right-0 p-2 sm:p-4 pt-6 sm:pt-8 flex items-center gap-2 sm:gap-4 safe-area-inset-top">
           <button
             onClick={(e) => {
               e.stopPropagation();
