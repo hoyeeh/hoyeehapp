@@ -436,12 +436,12 @@ export function MobileProfile() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-3xl p-6 mb-6 border border-border/10"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="relative">
-              <Avatar className="w-20 h-20 ring-4 ring-primary/20 shadow-xl">
+              <Avatar className="w-6 h-6 ring-2 ring-primary/20 shadow-md">
                 <AvatarImage src={selectedAvatar || ""} />
-                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/40 text-2xl">
-                  <User className="w-8 h-8 text-primary" />
+                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/40 text-xs">
+                  <User className="w-3 h-3 text-primary" />
                 </AvatarFallback>
               </Avatar>
               {isEditing && (
@@ -450,9 +450,9 @@ export function MobileProfile() {
                     lightTap();
                     setShowAvatarPicker(true);
                   }}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                  className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform"
                 >
-                  <Camera className="w-4 h-4 text-primary-foreground" />
+                  <Camera className="w-2 h-2 text-primary-foreground" />
                 </button>
               )}
             </div>
