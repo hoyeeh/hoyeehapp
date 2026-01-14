@@ -3,7 +3,8 @@ import { PlayableGame, useIncrementPlayCount } from "@/hooks/usePlayableGames";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ExternalGameLauncher } from "./ExternalGameLauncher";
 import { IframeGamePlayer } from "./IframeGamePlayer";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface PlayableGameModalProps {
   game: PlayableGame | null;
@@ -17,10 +18,27 @@ const MOBILE_EXTERNAL_ONLY_DOMAINS = [
   "www.crazygames.com",
 ];
 
+// Domains that always open externally (on all devices)
+const ALWAYS_EXTERNAL_DOMAINS = [
+  "beinternetawesome.withgoogle.com",
+  "withgoogle.com",
+];
+
 function shouldOpenExternalOnMobile(url: string): boolean {
   try {
     const urlObj = new URL(url);
     return MOBILE_EXTERNAL_ONLY_DOMAINS.some(domain => 
+      urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function shouldAlwaysOpenExternal(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    return ALWAYS_EXTERNAL_DOMAINS.some(domain => 
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
   } catch {
@@ -36,23 +54,47 @@ function isMobileDevice(): boolean {
 
 export const PlayableGameModal = ({ game, isOpen, onClose }: PlayableGameModalProps) => {
   const incrementPlayCount = useIncrementPlayCount();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const launchedRef = useRef(false);
 
   const isMobile = useMemo(() => isMobileDevice(), []);
   
-  // Check if this game should open externally on mobile
+  // Check if this game should open externally
   const shouldOpenExternal = useMemo(() => {
     if (!game) return false;
+    // Always open external for certain domains
+    if (shouldAlwaysOpenExternal(game.embed_url)) return true;
+    // Open external on mobile for mobile-restricted domains
     return isMobile && shouldOpenExternalOnMobile(game.embed_url);
   }, [game, isMobile]);
 
-  // Auto-launch external games on mobile when modal opens
+  // Reset launch ref when game changes
   useEffect(() => {
-    if (isOpen && game && shouldOpenExternal) {
+    launchedRef.current = false;
+  }, [game?.id]);
+
+  // Auto-launch external games when modal opens
+  useEffect(() => {
+    if (isOpen && game && shouldOpenExternal && !launchedRef.current) {
+      launchedRef.current = true;
       incrementPlayCount.mutate(game.id);
+      
+      // Open in new tab
       window.open(game.embed_url, "_blank", "noopener,noreferrer");
+      
+      // Close modal and ensure user stays on current page
       onClose();
+      
+      // If somehow navigated away, go back home
+      if (location.pathname !== '/' && location.pathname !== '/home') {
+        // Small delay to let the modal close first
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 100);
+      }
     }
-  }, [isOpen, game, shouldOpenExternal, incrementPlayCount, onClose]);
+  }, [isOpen, game, shouldOpenExternal, incrementPlayCount, onClose, navigate, location.pathname]);
 
   const handleExternalLaunch = () => {
     if (game) {
@@ -70,7 +112,7 @@ export const PlayableGameModal = ({ game, isOpen, onClose }: PlayableGameModalPr
 
   if (!game) return null;
 
-  // If on mobile and game should open externally, don't render anything (effect handles it)
+  // If game should open externally, don't render modal (effect handles launch)
   if (shouldOpenExternal) {
     return null;
   }
