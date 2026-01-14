@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { sendPusherNotification } from "../_shared/pusher-notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,7 @@ interface GenerateRequest {
   contentId: string;
   episodeId?: string;
   title: string;
+  userId?: string; // Optional: for sending notifications to specific user
 }
 
 interface VttCue {
@@ -140,7 +142,7 @@ serve(async (req) => {
   let logId: string | null = null;
 
   try {
-    const { videoUrl, contentId, episodeId, title }: GenerateRequest = await req.json();
+    const { videoUrl, contentId, episodeId, title, userId }: GenerateRequest = await req.json();
     
     console.log(`Starting auto subtitle generation for: ${title}`);
     console.log(`Content ID: ${contentId}, Episode ID: ${episodeId || 'N/A'}`);
@@ -148,6 +150,35 @@ serve(async (req) => {
     if (!openaiKey) {
       throw new Error("OPENAI_API_KEY not configured");
     }
+
+    // Send "started" notification via Pusher
+    if (userId) {
+      await sendPusherNotification({
+        channel: `user-${userId}`,
+        event: "subtitle-progress",
+        data: {
+          title: "Subtitle Generation Started",
+          body: `Generating subtitles for "${title}"...`,
+          type: "subtitle_generation",
+          contentId,
+          episodeId,
+          status: "started",
+        },
+      });
+    }
+
+    // Also send to admin channel for monitoring
+    await sendPusherNotification({
+      channel: "admin-notifications",
+      event: "subtitle-progress",
+      data: {
+        title: "Subtitle Generation Started",
+        body: `Processing "${title}"`,
+        contentId,
+        episodeId,
+        status: "started",
+      },
+    });
 
     // Create log entry
     const { data: logEntry, error: logError } = await supabase
@@ -385,6 +416,33 @@ serve(async (req) => {
         })
         .eq("id", logId);
     }
+
+    // Send "completed" notification via Pusher
+    if (userId) {
+      await sendPusherNotification({
+        channel: `user-${userId}`,
+        event: "subtitle-progress",
+        data: {
+          title: "Subtitles Ready! 🎉",
+          body: `Subtitles for "${title}" are now available`,
+          type: "subtitle_generation",
+          contentId,
+          episodeId,
+          status: "completed",
+        },
+      });
+    }
+
+    await sendPusherNotification({
+      channel: "admin-notifications",
+      event: "subtitle-progress",
+      data: {
+        title: "Subtitles Complete",
+        body: `"${title}" - ${cues.length} segments`,
+        contentId,
+        status: "completed",
+      },
+    });
 
     console.log("Subtitle generation completed successfully");
 
