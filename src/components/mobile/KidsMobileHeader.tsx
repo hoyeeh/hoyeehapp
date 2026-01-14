@@ -76,8 +76,8 @@ export const KidsMobileHeader = () => {
 
   return (
     <>
-<header className="fixed top-0 left-0 right-0 z-50">
-        <div className="bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4 pt-safe">
+<header className="fixed top-0 left-0 right-0 z-50 pt-safe">
+        <div className="bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4">
           <div className="flex items-center justify-between">
             <motion.div 
               className="flex items-center gap-3"

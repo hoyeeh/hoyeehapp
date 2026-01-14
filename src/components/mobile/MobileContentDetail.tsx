@@ -483,7 +483,7 @@ export function MobileContentDetail({
         
         {/* Countdown Timer */}
         {content.videoUrl && isPreviewPlaying && previewTimer > 0 && (
-          <div className="absolute left-4 bg-background/70 backdrop-blur-sm px-2 py-1 rounded-full" style={{ top: 'calc(16px + env(safe-area-inset-top, 0px))' }}>
+          <div className="absolute left-4 bg-background/70 backdrop-blur-sm px-2 py-1 rounded-full" style={{ top: 'calc(16px + env(safe-area-inset-top, 20px))' }}>
             <span className="text-xs font-medium">{previewTimer}s</span>
           </div>
         )}
@@ -516,7 +516,7 @@ export function MobileContentDetail({
         <button
           onClick={handleClose}
           className="absolute right-4 p-2 bg-background/50 backdrop-blur-sm rounded-full hover:bg-background/70 transition-colors active:scale-95"
-          style={{ top: 'calc(16px + env(safe-area-inset-top, 0px))' }}
+          style={{ top: 'calc(16px + env(safe-area-inset-top, 20px))' }}
         >
           <X className="h-5 w-5" />
         </button>

@@ -70,7 +70,7 @@ export default function KidsProfile() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 pt-[calc(80px+env(safe-area-inset-top,0px))] pb-[calc(100px+env(safe-area-inset-bottom,0px))] px-6">
+      <main className="relative z-10 pt-[calc(80px+env(safe-area-inset-top,20px))] pb-[calc(100px+env(safe-area-inset-bottom,0px))] px-6">
         {/* Avatar Section */}
         <motion.div 
           className="flex flex-col items-center mb-8"
