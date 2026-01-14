@@ -15,6 +15,14 @@ interface PusherNotification {
   contentId?: string;
 }
 
+interface SubtitleProgressData {
+  title: string;
+  body: string;
+  contentId?: string;
+  episodeId?: string;
+  status: 'started' | 'completed' | 'failed';
+}
+
 /**
  * Global Pusher notification handler that:
  * 1. Connects to Pusher when user is authenticated
@@ -57,6 +65,19 @@ export function PusherNotificationHandler() {
     }
   }, [queryClient, navigate]);
 
+  // Handle subtitle generation progress notifications
+  const handleSubtitleProgress = useCallback((data: SubtitleProgressData) => {
+    if (data.status === 'started') {
+      toast.info(data.title, { description: data.body });
+    } else if (data.status === 'completed') {
+      toast.success(data.title, { description: data.body });
+      queryClient.invalidateQueries({ queryKey: ['subtitles'] });
+      queryClient.invalidateQueries({ queryKey: ['subtitle-generation-logs'] });
+    } else if (data.status === 'failed') {
+      toast.error(data.title, { description: data.body });
+    }
+  }, [queryClient]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -95,6 +116,7 @@ export function PusherNotificationHandler() {
         // Subscribe to user-specific channel for personal notifications
         const userChannel = pusherInstance.subscribe(`user-${user.id}`);
         userChannel.bind("notification", handleNotification);
+        userChannel.bind("subtitle-progress", handleSubtitleProgress);
 
         pusherInstance.connection.bind("connected", () => {
           console.log("[Pusher] Connected for real-time notifications");
@@ -146,7 +168,7 @@ export function PusherNotificationHandler() {
     return () => {
       cleanup?.();
     };
-  }, [user, handleNotification]);
+  }, [user, handleNotification, handleSubtitleProgress]);
 
   // This component doesn't render anything
   return null;

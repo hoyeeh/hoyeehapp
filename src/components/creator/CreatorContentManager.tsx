@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { 
   Plus, Film, Edit, Trash2, Eye, DollarSign, 
-  ExternalLink, MoreVertical, Youtube, Download 
+  ExternalLink, MoreVertical, Youtube, Download, Subtitles 
 } from "lucide-react";
 import { 
   DropdownMenu, 
@@ -21,6 +21,9 @@ import { useCreatorContent, useCreatorPaidContent, useCreatePaidContent, useUpda
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { YouTubeImportModal } from "./YouTubeImportModal";
+import { SubtitleEditor } from "./SubtitleEditor";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface CreatorContentManagerProps {
   creatorProfile: any;
@@ -38,6 +41,26 @@ export function CreatorContentManager({ creatorProfile }: CreatorContentManagerP
   const [selectedContent, setSelectedContent] = useState<any>(null);
   const [price, setPrice] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [subtitleEditorContent, setSubtitleEditorContent] = useState<{ subtitleId: string; videoUrl: string } | null>(null);
+
+  // Fetch subtitles for all creator content
+  const { data: contentSubtitles = [] } = useQuery({
+    queryKey: ['creator-content-subtitles', creatorContent.map(c => c.id)],
+    queryFn: async () => {
+      if (creatorContent.length === 0) return [];
+      const { data } = await supabase
+        .from('subtitles')
+        .select('id, content_id, language_code')
+        .in('content_id', creatorContent.map(c => c.id))
+        .eq('language_code', 'eng');
+      return data || [];
+    },
+    enabled: creatorContent.length > 0,
+  });
+
+  const getSubtitleForContent = (contentId: string) => {
+    return contentSubtitles.find((s: any) => s.content_id === contentId);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -224,6 +247,17 @@ export function CreatorContentManager({ creatorProfile }: CreatorContentManagerP
                               <DollarSign className="h-4 w-4 mr-2" />
                               {paidInfo ? 'Edit Price' : 'Set Price'}
                             </DropdownMenuItem>
+                            {getSubtitleForContent(content.id) && content.video_url && (
+                              <DropdownMenuItem 
+                                onClick={() => setSubtitleEditorContent({
+                                  subtitleId: getSubtitleForContent(content.id).id,
+                                  videoUrl: content.video_url
+                                })}
+                              >
+                                <Subtitles className="h-4 w-4 mr-2" />
+                                Edit Subtitles
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem>
                               <Eye className="h-4 w-4 mr-2" />
                               View Analytics
@@ -307,6 +341,19 @@ export function CreatorContentManager({ creatorProfile }: CreatorContentManagerP
         onOpenChange={setShowYouTubeImport}
         creatorId={creatorProfile?.id}
       />
+
+      {/* Subtitle Editor Dialog */}
+      <Dialog open={!!subtitleEditorContent} onOpenChange={(open) => !open && setSubtitleEditorContent(null)}>
+        <DialogContent className="max-w-6xl h-[90vh] p-0">
+          {subtitleEditorContent && (
+            <SubtitleEditor
+              subtitleId={subtitleEditorContent.subtitleId}
+              videoUrl={subtitleEditorContent.videoUrl}
+              onClose={() => setSubtitleEditorContent(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
