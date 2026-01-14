@@ -1,4 +1,4 @@
-import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone, Mail, HeartPulse, Youtube, Palette, Cast, Sparkles, Timer, Languages, UserCircle } from "lucide-react";
+import { Film, Users, CreditCard, Shield, BarChart3, Bell, Settings, Home, Tv, Upload, Clapperboard, Tag, Trophy, LayoutGrid, Clock, Image, Send, Crown, Baby, MessageCircle, Smartphone, Mail, HeartPulse, Youtube, Palette, Cast, Sparkles, Timer, Languages, UserCircle, Gamepad2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 import { useIsSuperAdmin } from "@/hooks/useSuperAdmin";
@@ -48,6 +48,7 @@ const menuItems = [
   { id: "email-templates", label: "Email Templates", icon: Mail },
   { id: "email-analytics", label: "Email Analytics", icon: BarChart3 },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "playables", label: "Playables", icon: Gamepad2 },
 ];
 
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {

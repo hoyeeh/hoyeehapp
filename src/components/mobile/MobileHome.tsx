@@ -36,6 +36,7 @@ import { MobilePaidContentRow } from "./MobilePaidContentRow";
 import { MobilePurchasesShortcut } from "./MobilePurchasesShortcut";
 import { MobileComingSoonRow } from "./MobileComingSoonRow";
 import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
+import { MobilePlayablesRow } from "@/components/playables/MobilePlayablesRow";
 
 export function MobileHome() {
   const navigate = useNavigate();
@@ -582,6 +583,11 @@ export function MobileHome() {
           {/* Coming Soon Row */}
           <FadeIn delay={135}>
             <MobileComingSoonRow />
+          </FadeIn>
+
+          {/* Hoyeeh Playables Row */}
+          <FadeIn delay={140}>
+            <MobilePlayablesRow />
           </FadeIn>
 
           {/* Dynamic sections from database - filtered by activeFilter */}

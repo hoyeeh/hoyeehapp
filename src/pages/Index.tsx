@@ -48,6 +48,7 @@ import { HomeYouTubeRow } from "@/components/HomeYouTubeRow";
 import { HomepageSpotlight } from "@/components/spotlight/HomepageSpotlight";
 import { PaidContentRow } from "@/components/PaidContentRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
+import { PlayablesSection } from "@/components/playables";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -784,6 +785,9 @@ const Index = () => {
                     onDetails={handleDetails}
                     userList={watchlistIds}
                   />
+
+                  {/* Hoyeeh Playables Section */}
+                  <PlayablesSection className="mt-6" />
 
                   {/* Coming Soon Row - Above Top 10 */}
                   <ComingSoonRow />

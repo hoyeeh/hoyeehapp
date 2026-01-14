@@ -2443,6 +2443,72 @@ export type Database = {
         }
         Relationships: []
       }
+      playable_games: {
+        Row: {
+          age_group: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          embed_type: string
+          embed_url: string
+          health_status: string | null
+          id: string
+          is_active: boolean | null
+          is_verified: boolean | null
+          languages: string[] | null
+          last_health_check: string | null
+          play_count: number | null
+          source: string
+          subject: string | null
+          tags: string[] | null
+          thumbnail_url: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          age_group?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          embed_type: string
+          embed_url: string
+          health_status?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          languages?: string[] | null
+          last_health_check?: string | null
+          play_count?: number | null
+          source: string
+          subject?: string | null
+          tags?: string[] | null
+          thumbnail_url: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          age_group?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          embed_type?: string
+          embed_url?: string
+          health_status?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          languages?: string[] | null
+          last_health_check?: string | null
+          play_count?: number | null
+          source?: string
+          subject?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       premium_conversion_tracking: {
         Row: {
           created_at: string
