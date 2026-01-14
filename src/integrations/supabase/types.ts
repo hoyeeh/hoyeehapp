@@ -2137,6 +2137,54 @@ export type Database = {
           },
         ]
       }
+      kids_content_restrictions: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          parent_user_id: string
+          profile_id: string
+          restriction_type: string
+          updated_at: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          parent_user_id: string
+          profile_id: string
+          restriction_type: string
+          updated_at?: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          parent_user_id?: string
+          profile_id?: string
+          restriction_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_content_restrictions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kids_content_restrictions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kids_viewing_history: {
         Row: {
           completed: boolean | null

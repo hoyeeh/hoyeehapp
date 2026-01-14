@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { 
   ChevronLeft, Clock, Eye, Calendar, 
-  Trash2, Moon, TrendingUp, Film, User
+  Trash2, Moon, TrendingUp, Film, User, ShieldCheck, ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { MobileContentApproval } from "./MobileContentApproval";
 
 interface KidsMobileParentalDashboardProps {
   onBack: () => void;
@@ -21,6 +22,7 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [showContentApproval, setShowContentApproval] = useState(false);
 
   const { data: kidsProfiles = [] } = useQuery({
     queryKey: ["kids-profiles", user?.id],
@@ -299,6 +301,27 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
               </div>
             </section>
 
+            {/* Content Approval */}
+            <section className="space-y-4">
+              <button
+                onClick={() => setShowContentApproval(true)}
+                className="w-full bg-white/[0.04] rounded-2xl p-4 border border-white/[0.06] flex items-center justify-between active:scale-[0.98] transition-transform"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                    <ShieldCheck className="h-5 w-5 text-green-400" strokeWidth={1.5} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[15px] font-semibold text-white">Content Approval</p>
+                    <p className="text-[12px] text-white/40 font-medium">
+                      Pre-approve or block specific content
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-white/30" />
+              </button>
+            </section>
+
             {/* History */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
@@ -359,6 +382,17 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
           </>
         )}
       </div>
+
+      {/* Content Approval Modal */}
+      <AnimatePresence>
+        {showContentApproval && selectedProfile && (
+          <MobileContentApproval
+            profileId={selectedProfile.id}
+            profileName={selectedProfile.name}
+            onBack={() => setShowContentApproval(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
