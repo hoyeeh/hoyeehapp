@@ -135,9 +135,10 @@ export const useMyTipHistory = () => {
     queryFn: async () => {
       if (!user) return [];
       
+      // Use public view for creator data to exclude sensitive financial fields
       const { data, error } = await supabase
         .from("creator_tips")
-        .select("*, creator_profiles(display_name, avatar_url)")
+        .select("*, creator_profiles_public(display_name, avatar_url)")
         .eq("tipper_user_id", user.id)
         .order("created_at", { ascending: false });
       
