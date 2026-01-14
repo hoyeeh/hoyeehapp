@@ -130,9 +130,10 @@ export const useMyFollowedCreators = () => {
     queryFn: async () => {
       if (!user) return [];
       
+      // Use public view for creator data to exclude sensitive financial fields
       const { data, error } = await supabase
         .from("creator_followers")
-        .select("creator_id, creator_profiles(id, display_name, avatar_url, is_verified, follower_count)")
+        .select("creator_id, creator_profiles_public(id, display_name, avatar_url, is_verified, follower_count)")
         .eq("follower_user_id", user.id)
         .order("followed_at", { ascending: false });
       

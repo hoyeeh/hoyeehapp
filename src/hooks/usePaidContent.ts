@@ -90,10 +90,10 @@ export const useCreatorsWithContent = () => {
   return useQuery({
     queryKey: ["creators-with-content"],
     queryFn: async () => {
+      // Use public view that excludes sensitive financial data
       const { data, error } = await supabase
-        .from('creator_profiles')
+        .from('creator_profiles_public')
         .select('id, display_name, avatar_url, is_verified')
-        .eq('is_active', true)
         .order('display_name');
       
       if (error) throw error;
@@ -317,11 +317,11 @@ export const useCreatorProfileById = (creatorId: string) => {
   return useQuery({
     queryKey: ["creator-profile", creatorId],
     queryFn: async () => {
+      // Use public view that excludes sensitive financial data
       const { data, error } = await supabase
-        .from('creator_profiles')
+        .from('creator_profiles_public')
         .select('*')
         .eq('id', creatorId)
-        .eq('is_active', true)
         .maybeSingle();
       
       if (error) throw error;
