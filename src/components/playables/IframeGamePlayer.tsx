@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { X, Gamepad2, Loader2, AlertTriangle, ExternalLink, Maximize2 } from "lucide-react";
+import { X, Gamepad2, Loader2, AlertTriangle, ExternalLink, Maximize2, Shield } from "lucide-react";
 import { PlayableGame } from "@/hooks/usePlayableGames";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,9 +11,39 @@ interface IframeGamePlayerProps {
   onPlayCountIncrement: () => void;
 }
 
+// Domains that support proxying for iframe embedding
+const PROXY_SUPPORTED_DOMAINS = [
+  "crazygames.com",
+  "poki.com",
+  "kizi.com",
+  "gameflare.com",
+  "silvergames.com",
+];
+
+function canUseProxy(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    return PROXY_SUPPORTED_DOMAINS.some(domain => 
+      urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: IframeGamePlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [useProxy, setUseProxy] = useState(false);
+
+  // Determine the game URL - use proxy if needed and supported
+  const gameUrl = useMemo(() => {
+    if (useProxy && canUseProxy(game.embed_url)) {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      return `${supabaseUrl}/functions/v1/game-proxy?url=${encodeURIComponent(game.embed_url)}&gameId=${game.id}`;
+    }
+    return game.embed_url;
+  }, [game.embed_url, game.id, useProxy]);
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -22,7 +52,14 @@ export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: Iframe
 
   const handleIframeError = () => {
     setIsLoading(false);
-    setHasError(true);
+    // If direct embedding failed and proxy is available, try proxy
+    if (!useProxy && canUseProxy(game.embed_url)) {
+      console.log("Direct embed failed, trying proxy...");
+      setIsLoading(true);
+      setUseProxy(true);
+    } else {
+      setHasError(true);
+    }
   };
 
   const handleOpenExternal = () => {
@@ -74,6 +111,12 @@ export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: Iframe
           )}
         </div>
         <div className="flex items-center gap-2">
+          {useProxy && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 rounded-full">
+              <Shield className="h-3 w-3 text-green-500" />
+              <span className="text-xs text-green-500">Proxied</span>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -137,7 +180,8 @@ export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: Iframe
 
       {/* Iframe with enhanced permissions */}
       <iframe
-        src={game.embed_url}
+        key={gameUrl} // Force remount when URL changes
+        src={gameUrl}
         className={cn(
           "h-full w-full border-0 pt-16",
           (isLoading || hasError) && "invisible"
