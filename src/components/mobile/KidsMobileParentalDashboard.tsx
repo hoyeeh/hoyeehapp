@@ -110,7 +110,7 @@ export const KidsMobileParentalDashboard = ({ onBack }: KidsMobileParentalDashbo
   return (
     <div className="min-h-screen bg-[#0A0A0F]">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4">
+      <div className="sticky top-0 z-50 bg-[#0A0A0F]/95 backdrop-blur-2xl border-b border-white/[0.06] px-5 py-4 pt-safe">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
