@@ -358,9 +358,8 @@ serve(async (req) => {
 
     console.log(`Uploading VTT to DO Spaces: ${subtitlePath}`);
 
-    // Parse the endpoint to get the host
-    const endpointUrl = new URL(spacesEndpoint);
-    const host = `${spacesBucket}.${endpointUrl.host}`;
+    // Construct the host directly from bucket and region
+    const host = `${spacesBucket}.${spacesRegion}.digitaloceanspaces.com`;
 
     // Convert VTT content to Uint8Array
     const encoder = new TextEncoder();
