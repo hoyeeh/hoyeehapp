@@ -124,7 +124,7 @@ serve(async (req) => {
     switch (type) {
       case 'video.asset.ready': {
         const passthrough = JSON.parse(data.passthrough || '{}');
-        const { episodeId, jobId } = passthrough;
+        const { episodeId, jobId, contentId } = passthrough;
         
         if (!episodeId) {
           console.log('No episodeId in passthrough, skipping');
@@ -148,6 +148,8 @@ serve(async (req) => {
           .single();
 
         let showTitle = '';
+        let resolvedContentId = contentId;
+        
         if (episodeData?.season_id) {
           const { data: seasonData } = await supabase
             .from('seasons')
@@ -156,6 +158,7 @@ serve(async (req) => {
             .single();
           
           if (seasonData?.content_id) {
+            resolvedContentId = seasonData.content_id;
             const { data: contentData } = await supabase
               .from('content')
               .select('title')
@@ -186,6 +189,36 @@ serve(async (req) => {
           await sendTranscodingNotification(supabaseUrl, supabaseServiceKey, jobId, "completed", episodeData?.title, showTitle);
         }
         console.log(`Episode ${episodeId} updated with HLS URL`);
+
+        // Trigger automatic subtitle generation in background (fire and forget)
+        if (resolvedContentId && hlsUrl) {
+          console.log('Triggering automatic subtitle generation...');
+          // Use setTimeout to make this non-blocking
+          setTimeout(async () => {
+            try {
+              const res = await fetch(`${supabaseUrl}/functions/v1/generate-subtitles-auto`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  videoUrl: hlsUrl,
+                  contentId: resolvedContentId,
+                  episodeId,
+                  title: episodeData?.title || showTitle || 'Untitled Episode'
+                })
+              });
+              if (res.ok) {
+                console.log('Subtitle generation triggered successfully');
+              } else {
+                console.error('Subtitle generation trigger failed:', res.status);
+              }
+            } catch (err) {
+              console.error('Failed to trigger subtitle generation:', err);
+            }
+          }, 100);
+        }
         break;
       }
 

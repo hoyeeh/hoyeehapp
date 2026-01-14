@@ -4,6 +4,7 @@ import { useVideoUploadSpaces } from "@/hooks/useVideoUploadSpaces";
 import { getVideoDuration } from "@/utils/videoDuration";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useSubtitleGeneration } from "@/hooks/useSubtitleGeneration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,7 @@ interface TMDBDetails extends TMDBResult {
 export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
   const createContent = useCreateContent();
   const { uploadVideo, uploading, progress, error: uploadError, resetProgress } = useVideoUploadSpaces();
+  const { triggerSubtitleGeneration } = useSubtitleGeneration();
 
   const [activeTab, setActiveTab] = useState<"search" | "manual">("search");
   
@@ -229,28 +231,13 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     }
   };
 
-  // Trigger subtitle generation in background (fire-and-forget)
-  const triggerSubtitleGeneration = async (contentId: string, videoUrl: string, title: string) => {
-    try {
-      const { error } = await supabase.functions.invoke("generate-subtitles", {
-        body: {
-          contentId,
-          audioUrl: videoUrl,
-          languageCode: "fra", // Default to French
-        },
-      });
-      
-      if (error) {
-        console.error("Background subtitle generation failed:", error);
-      } else {
-        toast.info(`French subtitles are being generated for "${title}"`, {
-          description: "This may take a few minutes",
-          duration: 5000,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to trigger subtitle generation:", error);
-    }
+  // Trigger automatic subtitle generation (English + French)
+  const triggerAutoSubtitles = (contentId: string, videoUrl: string, title: string) => {
+    triggerSubtitleGeneration({
+      contentId,
+      videoUrl,
+      title
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -296,9 +283,9 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
 
       toast.success("Content created successfully!");
       
-      // Trigger automatic French subtitle generation if video was uploaded
+      // Trigger automatic subtitle generation (English + French) if video was uploaded
       if (videoUrl && createdContent?.id && formData.content_type === "movie") {
-        triggerSubtitleGeneration(createdContent.id, videoUrl, formData.title);
+        triggerAutoSubtitles(createdContent.id, videoUrl, formData.title);
       }
       
       onClose();
