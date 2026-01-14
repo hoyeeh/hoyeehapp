@@ -615,54 +615,82 @@ async function uploadToSpaces(
   content: string,
   contentId: string,
   episodeId: string | null,
-  languageCode: string
-): Promise<string | null> {
+  languageCode: string,
+  supabase: any
+): Promise<{ url: string; provider: string } | null> {
   const spacesEndpoint = Deno.env.get('DO_SPACES_ENDPOINT');
   const spacesKey = Deno.env.get('DO_SPACES_KEY');
   const spacesSecret = Deno.env.get('DO_SPACES_SECRET');
   const spacesBucket = Deno.env.get('DO_SPACES_BUCKET');
   const cdnEndpoint = Deno.env.get('DO_SPACES_CDN_ENDPOINT');
   
-  if (!spacesEndpoint || !spacesKey || !spacesSecret || !spacesBucket) {
-    console.error('[Upload] Missing DigitalOcean Spaces credentials');
-    return null;
-  }
-  
   const path = episodeId 
     ? `subtitles/${contentId}/${episodeId}/${languageCode}.vtt`
     : `subtitles/${contentId}/${languageCode}.vtt`;
   
+  // Try DO Spaces first
+  if (spacesEndpoint && spacesKey && spacesSecret && spacesBucket) {
+    try {
+      // Create AWS-style signature for S3-compatible upload
+      const { S3Client, PutObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.490.0");
+      
+      const s3Client = new S3Client({
+        endpoint: spacesEndpoint,
+        region: Deno.env.get('DO_SPACES_REGION') || 'nyc3',
+        credentials: {
+          accessKeyId: spacesKey,
+          secretAccessKey: spacesSecret,
+        },
+      });
+      
+      const command = new PutObjectCommand({
+        Bucket: spacesBucket,
+        Key: path,
+        Body: content,
+        ContentType: 'text/vtt',
+        ACL: 'public-read',
+      });
+      
+      await s3Client.send(command);
+      
+      const cdnUrl = cdnEndpoint 
+        ? `${cdnEndpoint}/${path}`
+        : `${spacesEndpoint}/${spacesBucket}/${path}`;
+      
+      console.log(`[Upload] Successfully uploaded to DO Spaces: ${cdnUrl}`);
+      return { url: cdnUrl, provider: 'do_spaces' };
+    } catch (error) {
+      console.warn('[Upload] DO Spaces failed, falling back to Supabase Storage:', error);
+    }
+  } else {
+    console.warn('[Upload] DO Spaces credentials not configured, using Supabase Storage');
+  }
+  
+  // Fallback to Supabase Storage
   try {
-    // Create AWS-style signature for S3-compatible upload
-    const { S3Client, PutObjectCommand } = await import("https://esm.sh/@aws-sdk/client-s3@3.490.0");
+    const encoder = new TextEncoder();
+    const contentBytes = encoder.encode(content);
     
-    const s3Client = new S3Client({
-      endpoint: spacesEndpoint,
-      region: Deno.env.get('DO_SPACES_REGION') || 'nyc3',
-      credentials: {
-        accessKeyId: spacesKey,
-        secretAccessKey: spacesSecret,
-      },
-    });
+    const { error: storageError } = await supabase.storage
+      .from('subtitles')
+      .upload(path, contentBytes, {
+        contentType: 'text/vtt',
+        upsert: true
+      });
     
-    const command = new PutObjectCommand({
-      Bucket: spacesBucket,
-      Key: path,
-      Body: content,
-      ContentType: 'text/vtt',
-      ACL: 'public-read',
-    });
+    if (storageError) {
+      console.error('[Upload] Supabase Storage also failed:', storageError);
+      return null;
+    }
     
-    await s3Client.send(command);
+    const { data: { publicUrl } } = supabase.storage
+      .from('subtitles')
+      .getPublicUrl(path);
     
-    const cdnUrl = cdnEndpoint 
-      ? `${cdnEndpoint}/${path}`
-      : `${spacesEndpoint}/${spacesBucket}/${path}`;
-    
-    console.log(`[Upload] Successfully uploaded to: ${cdnUrl}`);
-    return cdnUrl;
+    console.log(`[Upload] Successfully uploaded to Supabase Storage: ${publicUrl}`);
+    return { url: publicUrl, provider: 'supabase' };
   } catch (error) {
-    console.error('[Upload] Failed:', error);
+    console.error('[Upload] Supabase Storage failed:', error);
     return null;
   }
 }
@@ -852,18 +880,22 @@ serve(async (req) => {
         subtitleContent = convertSrtToVtt(subtitleContent);
       }
       
-      // Upload to DigitalOcean Spaces
-      const cdnUrl = await uploadToSpaces(
+      // Upload to DigitalOcean Spaces with Supabase Storage fallback
+      const uploadResult = await uploadToSpaces(
         subtitleContent,
         contentId,
         episodeId || null,
-        lang === 'en' ? 'eng' : lang === 'fr' ? 'fra' : lang
+        lang === 'en' ? 'eng' : lang === 'fr' ? 'fra' : lang,
+        supabase
       );
       
-      if (!cdnUrl) {
-        results.failed.push({ language: lang, error: 'Upload failed' });
+      if (!uploadResult) {
+        results.failed.push({ language: lang, error: 'Upload failed to both DO Spaces and Supabase Storage' });
         continue;
       }
+      
+      const { url: cdnUrl, provider: storageProvider } = uploadResult;
+      console.log(`[AutoFetch] Uploaded ${lang} subtitle using ${storageProvider}`);
       
       // Save to database
       const { error: insertError } = await supabase

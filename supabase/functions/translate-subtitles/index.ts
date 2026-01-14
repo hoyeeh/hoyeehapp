@@ -84,11 +84,12 @@ function cuesToVtt(cues: VttCue[]): string {
   return vtt;
 }
 
-// Upload to DigitalOcean Spaces
+// Upload to DigitalOcean Spaces with Supabase Storage fallback
 async function uploadToSpaces(
   content: string,
-  filename: string
-): Promise<string> {
+  filename: string,
+  supabase: any
+): Promise<{ url: string; provider: string }> {
   const endpoint = Deno.env.get("DO_SPACES_ENDPOINT");
   const bucket = Deno.env.get("DO_SPACES_BUCKET");
   const region = Deno.env.get("DO_SPACES_REGION") || "nyc3";
@@ -96,55 +97,76 @@ async function uploadToSpaces(
   const secretKey = Deno.env.get("DO_SPACES_SECRET");
   const cdnEndpoint = Deno.env.get("DO_SPACES_CDN_ENDPOINT");
 
-  if (!endpoint || !bucket || !accessKey || !secretKey) {
-    throw new Error("DigitalOcean Spaces credentials not configured");
-  }
-
   const encoder = new TextEncoder();
   const contentBytes = encoder.encode(content);
   const contentType = "text/vtt";
   const key = `subtitles/${filename}`;
-  const date = new Date().toUTCString();
-  const host = `${bucket}.${region}.digitaloceanspaces.com`;
-  
-  // Simple AWS Signature for PUT
-  const stringToSign = `PUT\n\n${contentType}\n${date}\n/${bucket}/${key}`;
-  
-  const keyData = encoder.encode(secretKey);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"]
-  );
-  
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(stringToSign));
-  const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
-  
-  const response = await fetch(`https://${host}/${key}`, {
-    method: "PUT",
-    headers: {
-      "Host": host,
-      "Date": date,
-      "Content-Type": contentType,
-      "Content-Length": contentBytes.length.toString(),
-      "x-amz-acl": "public-read",
-      "Authorization": `AWS ${accessKey}:${signatureBase64}`,
-    },
-    body: contentBytes,
-  });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to upload to Spaces: ${error}`);
+  // Try DO Spaces first
+  if (endpoint && bucket && accessKey && secretKey) {
+    try {
+      const date = new Date().toUTCString();
+      const host = `${bucket}.${region}.digitaloceanspaces.com`;
+      
+      // Simple AWS Signature for PUT
+      const stringToSign = `PUT\n\n${contentType}\n${date}\n/${bucket}/${key}`;
+      
+      const keyData = encoder.encode(secretKey);
+      const cryptoKey = await crypto.subtle.importKey(
+        "raw",
+        keyData,
+        { name: "HMAC", hash: "SHA-1" },
+        false,
+        ["sign"]
+      );
+      
+      const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(stringToSign));
+      const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+      
+      const response = await fetch(`https://${host}/${key}`, {
+        method: "PUT",
+        headers: {
+          "Host": host,
+          "Date": date,
+          "Content-Type": contentType,
+          "Content-Length": contentBytes.length.toString(),
+          "x-amz-acl": "public-read",
+          "Authorization": `AWS ${accessKey}:${signatureBase64}`,
+        },
+        body: contentBytes,
+      });
+
+      if (response.ok) {
+        const url = cdnEndpoint ? `${cdnEndpoint}/${key}` : `https://${host}/${key}`;
+        return { url, provider: 'do_spaces' };
+      }
+      
+      const error = await response.text();
+      console.warn(`DO Spaces upload failed: ${error}, falling back to Supabase Storage`);
+    } catch (doError) {
+      console.warn(`DO Spaces upload error: ${doError}, falling back to Supabase Storage`);
+    }
+  } else {
+    console.warn("DO Spaces credentials not configured, using Supabase Storage");
   }
 
-  // Return CDN URL if available, otherwise direct URL
-  if (cdnEndpoint) {
-    return `${cdnEndpoint}/${key}`;
+  // Fallback to Supabase Storage
+  const { error: storageError } = await supabase.storage
+    .from('subtitles')
+    .upload(key, contentBytes, {
+      contentType: 'text/vtt',
+      upsert: true
+    });
+  
+  if (storageError) {
+    throw new Error(`Failed to upload to both DO Spaces and Supabase Storage: ${storageError.message}`);
   }
-  return `https://${host}/${key}`;
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('subtitles')
+    .getPublicUrl(key);
+  
+  return { url: publicUrl, provider: 'supabase' };
 }
 
 serve(async (req) => {
@@ -289,9 +311,9 @@ Example output:
       ? `${contentId}_${episodeId}_${targetLanguageCode}_${timestamp}.vtt`
       : `${contentId}_${targetLanguageCode}_${timestamp}.vtt`;
 
-    // Upload to Spaces
-    const cdnUrl = await uploadToSpaces(translatedVtt, filename);
-    console.log(`Uploaded translated subtitle to: ${cdnUrl}`);
+    // Upload to Spaces with fallback
+    const { url: cdnUrl, provider: storageProvider } = await uploadToSpaces(translatedVtt, filename, supabase);
+    console.log(`Uploaded translated subtitle to ${storageProvider}: ${cdnUrl}`);
 
     // Count words
     const wordCount = translatedCues.reduce((count, cue) => {

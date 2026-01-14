@@ -365,6 +365,11 @@ serve(async (req) => {
     const encoder = new TextEncoder();
     const vttBytes = encoder.encode(vttContent);
 
+    // Try DO Spaces first, fallback to Supabase Storage
+    let publicUrl: string;
+    let cdnUrl: string;
+    let storageProvider = 'do_spaces';
+
     // Upload to DO Spaces
     const uploadResult = await uploadToSpaces(
       spacesKey,
@@ -377,21 +382,45 @@ serve(async (req) => {
       host
     );
 
-    if (!uploadResult.success) {
-      console.error("DO Spaces upload error:", uploadResult.error);
-      return new Response(
-        JSON.stringify({ error: "Failed to upload subtitle file", details: uploadResult.error }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (uploadResult.success) {
+      // Construct URLs for DO Spaces
+      publicUrl = `https://${host}/${subtitlePath}`;
+      cdnUrl = spacesCdnEndpoint 
+        ? `${spacesCdnEndpoint.replace(/\/$/, '')}/${subtitlePath}`
+        : publicUrl.replace('.digitaloceanspaces.com', '.cdn.digitaloceanspaces.com');
+      console.log(`Subtitle uploaded successfully to DO Spaces: ${cdnUrl}`);
+    } else {
+      // Fallback to Supabase Storage
+      console.warn("DO Spaces upload failed, using Supabase Storage fallback:", uploadResult.error);
+      storageProvider = 'supabase';
+      
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const { error: storageError } = await supabaseClient.storage
+        .from('subtitles')
+        .upload(subtitlePath, vttBytes, {
+          contentType: 'text/vtt',
+          upsert: true
+        });
+      
+      if (storageError) {
+        console.error("Supabase Storage upload also failed:", storageError);
+        return new Response(
+          JSON.stringify({ error: "Failed to upload subtitle file to both DO Spaces and Supabase Storage", details: storageError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const { data: { publicUrl: supabasePublicUrl } } = supabaseClient.storage
+        .from('subtitles')
+        .getPublicUrl(subtitlePath);
+      
+      publicUrl = supabasePublicUrl;
+      cdnUrl = supabasePublicUrl;
+      console.log(`Subtitle uploaded successfully to Supabase Storage: ${cdnUrl}`);
     }
-
-    // Construct URLs
-    const publicUrl = `https://${host}/${subtitlePath}`;
-    const cdnUrl = spacesCdnEndpoint 
-      ? `${spacesCdnEndpoint.replace(/\/$/, '')}/${subtitlePath}`
-      : publicUrl.replace('.digitaloceanspaces.com', '.cdn.digitaloceanspaces.com');
-
-    console.log(`Subtitle uploaded successfully to DO Spaces: ${cdnUrl}`);
 
     // Save subtitle record to database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
