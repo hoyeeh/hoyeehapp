@@ -72,6 +72,7 @@ const SECTION_TYPES = [
   { value: "creator_store", label: "Hoyeeh Studio (Paid Content)" },
   { value: "by_year", label: "By Year (Movies by release year)" },
   { value: "series", label: "TV Series (by genre and/or year)" },
+  { value: "playables", label: "Hoyeeh Playables (Games)" },
 ];
 
 const CARD_STYLES = [

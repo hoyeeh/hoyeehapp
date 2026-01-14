@@ -30,6 +30,9 @@ export const usePlayableGames = () => {
       const { data, error } = await supabase
         .from("playable_games")
         .select("*")
+        .eq("is_verified", true)
+        .eq("is_active", true)
+        .neq("health_status", "broken")
         .order("display_order", { ascending: true });
 
       if (error) throw error;
