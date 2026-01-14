@@ -243,8 +243,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
         className="fixed inset-0 z-50 bg-background"
       >
-        <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/10">
-          <div className="flex items-center justify-between px-4 h-14 pt-safe">
+        <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-background/80 backdrop-blur-xl border-b border-border/10">
+          <div className="flex items-center justify-between px-4 h-14">
             <button onClick={handleBack} className="text-muted-foreground">
               Cancel
             </button>
@@ -257,7 +257,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
           </div>
         </header>
 
-        <main className="pt-20 pb-8 px-4 overflow-y-auto max-h-screen">
+        <main className="pb-8 px-4 overflow-y-auto max-h-screen" style={{ paddingTop: 'calc(80px + env(safe-area-inset-top, 20px))' }}>
           {/* Avatar Selection with Ring */}
           <div className="flex flex-col items-center mb-6">
             <div className="relative">
@@ -411,8 +411,8 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-background"
     >
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/10">
-        <div className="flex items-center justify-between px-4 h-14 pt-safe">
+      <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-background/80 backdrop-blur-xl border-b border-border/10">
+        <div className="flex items-center justify-between px-4 h-14">
           <button onClick={handleBack} className="w-10 h-10 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -421,7 +421,7 @@ export function MobileManageProfiles({ onClose }: MobileManageProfilesProps) {
         </div>
       </header>
 
-      <main className="pt-20 pb-8 px-4">
+      <main className="pb-8 px-4" style={{ paddingTop: 'calc(80px + env(safe-area-inset-top, 20px))' }}>
         <p className="text-sm text-muted-foreground mb-6">
           Tap a profile to switch, or tap edit to modify.
         </p>

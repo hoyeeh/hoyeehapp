@@ -61,8 +61,8 @@ export function MobileLanguageSettings({ onClose }: MobileLanguageSettingsProps)
       transition={{ type: "spring", damping: 25, stiffness: 300 }}
       className="fixed inset-0 z-50 bg-background"
     >
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/10">
-        <div className="flex items-center justify-between px-4 h-14 pt-safe">
+      <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-background/80 backdrop-blur-xl border-b border-border/10">
+        <div className="flex items-center justify-between px-4 h-14">
           <button onClick={handleBack} className="w-10 h-10 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -71,7 +71,7 @@ export function MobileLanguageSettings({ onClose }: MobileLanguageSettingsProps)
         </div>
       </header>
 
-      <main className="pt-20 pb-8 px-4 overflow-y-auto h-screen">
+      <main className="pb-8 px-4 overflow-y-auto h-screen" style={{ paddingTop: 'calc(80px + env(safe-area-inset-top, 20px))' }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
