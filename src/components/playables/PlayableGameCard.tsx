@@ -15,7 +15,7 @@ export const PlayableGameCard = ({ game, onClick, className }: PlayableGameCardP
       className={cn(
         "relative cursor-pointer overflow-hidden rounded-2xl bg-card",
         "shadow-md hover:shadow-xl transition-shadow duration-300",
-        "aspect-[3/4] min-w-[140px] max-w-[180px]",
+        "aspect-[2/3] min-w-[150px] max-w-[200px]",
         className
       )}
       onClick={() => onClick(game)}
