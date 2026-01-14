@@ -3023,6 +3023,44 @@ export type Database = {
         }
         Relationships: []
       }
+      subtitle_edit_history: {
+        Row: {
+          created_at: string
+          edit_type: string
+          edited_by: string
+          id: string
+          new_content: string | null
+          previous_content: string | null
+          subtitle_id: string
+        }
+        Insert: {
+          created_at?: string
+          edit_type: string
+          edited_by: string
+          id?: string
+          new_content?: string | null
+          previous_content?: string | null
+          subtitle_id: string
+        }
+        Update: {
+          created_at?: string
+          edit_type?: string
+          edited_by?: string
+          id?: string
+          new_content?: string | null
+          previous_content?: string | null
+          subtitle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtitle_edit_history_subtitle_id_fkey"
+            columns: ["subtitle_id"]
+            isOneToOne: false
+            referencedRelation: "subtitles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subtitle_generation_logs: {
         Row: {
           completed_at: string | null
@@ -3088,6 +3126,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subtitle_language_options: {
+        Row: {
+          code: string
+          display_order: number | null
+          is_african: boolean | null
+          label: string
+          native_label: string | null
+          region: string | null
+        }
+        Insert: {
+          code: string
+          display_order?: number | null
+          is_african?: boolean | null
+          label: string
+          native_label?: string | null
+          region?: string | null
+        }
+        Update: {
+          code?: string
+          display_order?: number | null
+          is_african?: boolean | null
+          label?: string
+          native_label?: string | null
+          region?: string | null
+        }
+        Relationships: []
       }
       subtitle_sync_jobs: {
         Row: {
@@ -3168,6 +3233,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           duration_seconds: number | null
+          edited_at: string | null
+          edited_by: string | null
           episode_id: string | null
           external_id: string | null
           external_metadata: Json | null
@@ -3178,9 +3245,12 @@ export type Database = {
           language_code: string
           language_label: string
           last_fetch_attempt: string | null
+          manually_edited: boolean | null
           match_confidence: number | null
           source_subtitle_id: string | null
           source_type: string | null
+          speaker_labels: Json | null
+          storage_provider: string | null
           subtitle_url: string
           updated_at: string
           word_count: number | null
@@ -3191,6 +3261,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration_seconds?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           episode_id?: string | null
           external_id?: string | null
           external_metadata?: Json | null
@@ -3201,9 +3273,12 @@ export type Database = {
           language_code: string
           language_label: string
           last_fetch_attempt?: string | null
+          manually_edited?: boolean | null
           match_confidence?: number | null
           source_subtitle_id?: string | null
           source_type?: string | null
+          speaker_labels?: Json | null
+          storage_provider?: string | null
           subtitle_url: string
           updated_at?: string
           word_count?: number | null
@@ -3214,6 +3289,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration_seconds?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           episode_id?: string | null
           external_id?: string | null
           external_metadata?: Json | null
@@ -3224,9 +3301,12 @@ export type Database = {
           language_code?: string
           language_label?: string
           last_fetch_attempt?: string | null
+          manually_edited?: boolean | null
           match_confidence?: number | null
           source_subtitle_id?: string | null
           source_type?: string | null
+          speaker_labels?: Json | null
+          storage_provider?: string | null
           subtitle_url?: string
           updated_at?: string
           word_count?: number | null
