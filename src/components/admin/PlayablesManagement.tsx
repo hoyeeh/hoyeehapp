@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { 
   Gamepad2, Plus, Pencil, Trash2, Check, X, ExternalLink, 
-  Globe, AlertTriangle, CheckCircle, HelpCircle, Search, Eye, EyeOff
+  Globe, AlertTriangle, CheckCircle, HelpCircle, Search, Eye, EyeOff,
+  Upload, Link, Loader2, Image as ImageIcon
 } from "lucide-react";
 import { useAllPlayableGames, useCreatePlayableGame, useUpdatePlayableGame, useDeletePlayableGame, PlayableGame } from "@/hooks/usePlayableGames";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const defaultFormData = {
   title: "",
@@ -46,6 +49,11 @@ export const PlayablesManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState(defaultFormData);
   const [tagsInput, setTagsInput] = useState("");
+  const [thumbnailMode, setThumbnailMode] = useState<"url" | "upload">("url");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredGames = games?.filter(game =>
     game.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,6 +63,8 @@ export const PlayablesManagement = () => {
   const resetForm = () => {
     setFormData(defaultFormData);
     setTagsInput("");
+    setThumbnailMode("url");
+    setPreviewUrl(null);
   };
 
   const handleOpenAdd = () => {
@@ -80,7 +90,89 @@ export const PlayablesManagement = () => {
       health_status: game.health_status,
     });
     setTagsInput((game.tags || []).join(", "));
+    setPreviewUrl(game.thumbnail_url);
+    setThumbnailMode("url");
     setEditingGame(game);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Allowed: JPG, PNG, GIF, WebP, SVG");
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 5MB");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('playable-covers')
+        .upload(fileName, file, { contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('playable-covers')
+        .getPublicUrl(fileName);
+
+      setFormData({ ...formData, thumbnail_url: publicUrl });
+      setPreviewUrl(publicUrl);
+      toast.success("Cover image uploaded successfully");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleAutoFetch = async () => {
+    if (!formData.embed_url) {
+      toast.error("Please enter an embed URL first");
+      return;
+    }
+
+    setIsFetching(true);
+    try {
+      // Try to extract thumbnail from known sources
+      let thumbnailUrl = "";
+
+      if (formData.embed_url.includes("crazygames.com")) {
+        // Extract game slug from CrazyGames URL
+        const match = formData.embed_url.match(/crazygames\.com\/(?:embed\/|game\/)?([^/?]+)/);
+        if (match) {
+          const gameSlug = match[1];
+          thumbnailUrl = `https://images.crazygames.com/${gameSlug}/cover-1.png`;
+        }
+      } else if (formData.embed_url.includes("withgoogle.com")) {
+        // Google Interland-style games
+        thumbnailUrl = "https://beinternetawesome.withgoogle.com/images/interland/hero-land-treasure.svg";
+      }
+
+      if (thumbnailUrl) {
+        setFormData({ ...formData, thumbnail_url: thumbnailUrl });
+        setPreviewUrl(thumbnailUrl);
+        toast.success("Cover image fetched successfully");
+      } else {
+        toast.error("Could not auto-fetch cover. Please enter URL manually or upload.");
+      }
+    } catch (error) {
+      toast.error("Failed to fetch cover image");
+    } finally {
+      setIsFetching(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -217,13 +309,100 @@ export const PlayablesManagement = () => {
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="thumbnail_url">Thumbnail URL *</Label>
-        <Input
-          id="thumbnail_url"
-          value={formData.thumbnail_url}
-          onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-          placeholder="https://..."
-        />
+        <Label>Cover Image *</Label>
+        <Tabs value={thumbnailMode} onValueChange={(v) => setThumbnailMode(v as "url" | "upload")} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="url" className="gap-1.5">
+              <Link className="h-3.5 w-3.5" />
+              URL
+            </TabsTrigger>
+            <TabsTrigger value="upload" className="gap-1.5">
+              <Upload className="h-3.5 w-3.5" />
+              Upload
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="url" className="space-y-2 mt-2">
+            <div className="flex gap-2">
+              <Input
+                value={formData.thumbnail_url}
+                onChange={(e) => {
+                  setFormData({ ...formData, thumbnail_url: e.target.value });
+                  setPreviewUrl(e.target.value);
+                }}
+                placeholder="https://..."
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleAutoFetch}
+                disabled={isFetching || !formData.embed_url}
+                title="Auto-fetch from embed URL"
+              >
+                {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Enter URL or click the icon to auto-fetch from embed source
+            </p>
+          </TabsContent>
+          <TabsContent value="upload" className="space-y-2 mt-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Choose Image
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Supports JPG, PNG, GIF, WebP, SVG (max 5MB)
+            </p>
+          </TabsContent>
+        </Tabs>
+
+        {/* Preview */}
+        {previewUrl && (
+          <div className="mt-2 relative">
+            <img
+              src={previewUrl}
+              alt="Cover preview"
+              className="h-24 w-auto rounded-lg border object-cover"
+              onError={() => setPreviewUrl(null)}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute top-1 right-1 h-6 w-6 bg-background/80"
+              onClick={() => {
+                setPreviewUrl(null);
+                setFormData({ ...formData, thumbnail_url: "" });
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
