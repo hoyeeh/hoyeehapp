@@ -59,6 +59,7 @@ import { ProfileBackgroundManagement } from "@/components/admin/ProfileBackgroun
 import { BatchSubtitleSync } from "@/components/admin/BatchSubtitleSync";
 import { SubtitleGenerationStatus } from "@/components/admin/SubtitleGenerationStatus";
 import { SubtitleLanguageConfig } from "@/components/admin/SubtitleLanguageConfig";
+import { PlayablesManagement } from "@/components/admin/PlayablesManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -728,6 +729,9 @@ const Admin = () => {
       case "analytics":
         navigate("/analytics");
         return null;
+      
+      case "playables":
+        return <PlayablesManagement />;
       
       default:
         return <AdminOverview users={users} content={content} subscriptions={subscriptions} onNavigate={setActiveTab} />;
