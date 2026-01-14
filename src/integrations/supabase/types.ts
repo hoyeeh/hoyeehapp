@@ -3023,6 +3023,72 @@ export type Database = {
         }
         Relationships: []
       }
+      subtitle_generation_logs: {
+        Row: {
+          completed_at: string | null
+          content_id: string | null
+          created_at: string | null
+          episode_id: string | null
+          error_message: string | null
+          id: string
+          languages_generated: string[] | null
+          metadata: Json | null
+          started_at: string | null
+          status: string
+          transcription_model: string | null
+          updated_at: string | null
+          video_duration_seconds: number | null
+          video_url: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          content_id?: string | null
+          created_at?: string | null
+          episode_id?: string | null
+          error_message?: string | null
+          id?: string
+          languages_generated?: string[] | null
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string
+          transcription_model?: string | null
+          updated_at?: string | null
+          video_duration_seconds?: number | null
+          video_url?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          content_id?: string | null
+          created_at?: string | null
+          episode_id?: string | null
+          error_message?: string | null
+          id?: string
+          languages_generated?: string[] | null
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string
+          transcription_model?: string | null
+          updated_at?: string | null
+          video_duration_seconds?: number | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtitle_generation_logs_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtitle_generation_logs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subtitle_sync_jobs: {
         Row: {
           completed_at: string | null

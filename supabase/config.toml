@@ -188,3 +188,6 @@ verify_jwt = false
 
 [functions.batch-fetch-subtitles]
 verify_jwt = false
+
+[functions.generate-subtitles-auto]
+verify_jwt = false

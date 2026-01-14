@@ -57,6 +57,7 @@ import { BatchSubtitleGenerator } from "@/components/admin/BatchSubtitleGenerato
 import { SubtitleManagement } from "@/components/admin/SubtitleManagement";
 import { ProfileBackgroundManagement } from "@/components/admin/ProfileBackgroundManagement";
 import { BatchSubtitleSync } from "@/components/admin/BatchSubtitleSync";
+import { SubtitleGenerationStatus } from "@/components/admin/SubtitleGenerationStatus";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -715,6 +716,7 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Subtitle Management</h2>
+            <SubtitleGenerationStatus />
             <SubtitleManagement />
             <BatchSubtitleSync />
             <BatchSubtitleGenerator />
