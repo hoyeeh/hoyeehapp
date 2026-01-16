@@ -463,7 +463,12 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
             setParty(updated);
             
             if (!updated.is_active) {
-              toast.info("Watch party has ended");
+              toast.info("The host has ended the watch party", {
+                icon: "👋",
+                duration: 5000
+              });
+              // Dispatch event for video players to handle
+              window.dispatchEvent(new CustomEvent('watchPartyEnded'));
               setParty(null);
               setMembers([]);
               setMessages([]);

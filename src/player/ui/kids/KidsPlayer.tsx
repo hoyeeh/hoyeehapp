@@ -15,6 +15,11 @@ import { Button } from "@/components/ui/button";
 import { useSubtitles } from "@/hooks/useSubtitles";
 import { SubtitleDisplay } from "@/components/SubtitleDisplay";
 import { SubtitleSettings } from "@/components/SubtitleSettings";
+import { useWatchPartyContextSafe } from "@/contexts/WatchPartyContext";
+import { WatchPartyMembersOverlay } from "@/components/watch-party/WatchPartyMembersOverlay";
+import { WatchPartyChatOverlay } from "@/components/watch-party/WatchPartyChatOverlay";
+import { WatchPartyEndedOverlay } from "@/components/watch-party/WatchPartyEndedOverlay";
+import { MobileWatchPartyReactions } from "@/components/mobile/MobileWatchPartyReactions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,6 +92,7 @@ export const KidsPlayer = ({
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(10);
   const [bingeMode, setBingeMode] = useState(() => localStorage.getItem('kidsPlayer_bingeMode') === 'true');
   const [showSkipRecap, setShowSkipRecap] = useState(false);
+  const [showPartyEndedOverlay, setShowPartyEndedOverlay] = useState(false);
 
   // Logo opener hook
   const { showOpener, openerComplete, markOpenerComplete } = useLogoOpener({
@@ -103,6 +109,31 @@ export const KidsPlayer = ({
     updateCurrentCue,
     hasSubtitles,
   } = useSubtitles(contentId, episodeId);
+
+  // Watch Party context (safe - returns null if not available)
+  const watchPartyContext = useWatchPartyContextSafe();
+  const party = watchPartyContext?.party ?? null;
+  const members = watchPartyContext?.members ?? [];
+  const messages = watchPartyContext?.messages ?? [];
+
+  // Listen for watch party ended event
+  useEffect(() => {
+    const handlePartyEnded = () => {
+      if (playerRef.current) {
+        playerRef.current.pause();
+      }
+      setShowPartyEndedOverlay(true);
+    };
+    
+    window.addEventListener('watchPartyEnded', handlePartyEnded);
+    return () => window.removeEventListener('watchPartyEnded', handlePartyEnded);
+  }, []);
+
+  // Handle closing after party ends
+  const handlePartyEndedClose = useCallback(() => {
+    setShowPartyEndedOverlay(false);
+    onClose();
+  }, [onClose]);
 
   // Initialize player engine
   useEffect(() => {
@@ -330,6 +361,30 @@ export const KidsPlayer = ({
 
           {/* Subtitle Display */}
           {activeSubtitleTrack && <SubtitleDisplay cue={currentCue} />}
+
+          {/* Watch Party Overlays */}
+          {party && (
+            <>
+              <WatchPartyMembersOverlay members={members} isKidsMode />
+              <WatchPartyChatOverlay 
+                messages={messages} 
+                isKidsMode
+                onExpandChat={() => {
+                  window.dispatchEvent(new CustomEvent('toggleWatchParty', {
+                    detail: { contentId, episodeId, contentTitle: title }
+                  }));
+                }}
+              />
+              <MobileWatchPartyReactions />
+            </>
+          )}
+
+          {/* Watch Party Ended Overlay */}
+          <AnimatePresence>
+            {showPartyEndedOverlay && (
+              <WatchPartyEndedOverlay onClose={handlePartyEndedClose} isKidsMode />
+            )}
+          </AnimatePresence>
 
           {/* Buffering Indicator */}
           {isBuffering && (
