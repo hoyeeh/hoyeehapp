@@ -29,6 +29,10 @@ import { useIsAdmin } from "@/hooks/useAdmin";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { useSubtitles } from "@/hooks/useSubtitles";
 import { SubtitleDisplay } from "@/components/SubtitleDisplay";
+import { MobileWatchPartyReactions } from "./MobileWatchPartyReactions";
+import { WatchPartyMembersOverlay } from "@/components/watch-party/WatchPartyMembersOverlay";
+import { WatchPartyChatOverlay } from "@/components/watch-party/WatchPartyChatOverlay";
+import { WatchPartyEndedOverlay } from "@/components/watch-party/WatchPartyEndedOverlay";
 
 interface NextEpisodeInfo {
   id: string;
@@ -158,6 +162,9 @@ export function MobileVideoPlayer({
   // Swipe right to go back state
   const [swipeX, setSwipeX] = useState(0);
   const [isSwipingRight, setIsSwipingRight] = useState(false);
+  
+  // Watch party ended overlay state
+  const [showPartyEndedOverlay, setShowPartyEndedOverlay] = useState(false);
 
   // Store loaded progress for later use when duration is available
   const loadedProgressRef = useRef<number | null>(null);
@@ -227,9 +234,30 @@ export function MobileVideoPlayer({
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   
   // Watch Party sync
-  const { party, isHost, isWatchPartyGuest, isSyncing, updatePlayback, syncToParty } = useWatchPartyContext();
+  const { party, members, messages, isHost, isWatchPartyGuest, isSyncing, updatePlayback, syncToParty } = useWatchPartyContext();
   const lastPartySyncRef = useRef<number>(0);
   const initialPartySyncDoneRef = useRef<boolean>(false);
+
+  // Listen for watch party ended event
+  useEffect(() => {
+    const handlePartyEnded = () => {
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+        setIsPlaying(false);
+      }
+      setShowPartyEndedOverlay(true);
+    };
+    
+    window.addEventListener('watchPartyEnded', handlePartyEnded);
+    return () => window.removeEventListener('watchPartyEnded', handlePartyEnded);
+  }, []);
+
+  // Handle closing after party ends
+  const handlePartyEndedClose = useCallback(() => {
+    setShowPartyEndedOverlay(false);
+    onClose();
+  }, [onClose]);
 
   // Save intro times to database (for admins)
   const handleSaveIntroTimes = useCallback(async () => {
@@ -1169,6 +1197,29 @@ export function MobileVideoPlayer({
       {subtitles.isSubtitlesEnabled && (
         <SubtitleDisplay cue={subtitles.currentCue} />
       )}
+
+      {/* Watch Party Overlays */}
+      {party && (
+        <>
+          <WatchPartyMembersOverlay members={members} />
+          <WatchPartyChatOverlay 
+            messages={messages} 
+            onExpandChat={() => {
+              window.dispatchEvent(new CustomEvent('toggleWatchParty', {
+                detail: { contentId: content.id, episodeId, contentTitle: title }
+              }));
+            }}
+          />
+          <MobileWatchPartyReactions />
+        </>
+      )}
+
+      {/* Watch Party Ended Overlay */}
+      <AnimatePresence>
+        {showPartyEndedOverlay && (
+          <WatchPartyEndedOverlay onClose={handlePartyEndedClose} />
+        )}
+      </AnimatePresence>
 
       {/* Error Overlay */}
       <AnimatePresence>

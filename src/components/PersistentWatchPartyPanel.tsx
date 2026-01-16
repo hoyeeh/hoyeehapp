@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useWatchPartyContextSafe } from "@/contexts/WatchPartyContext";
 import { WatchPartyChat } from "@/components/WatchPartyChat";
@@ -14,6 +14,13 @@ import { Users, Copy, LogOut, Check, Loader2, UserPlus, MessageCircle, Radio, Pl
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
+
+// Detect if device is mobile/tablet
+const isMobileOrTablet = () => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+    || (window.innerWidth <= 1024);
+};
 
 interface ContentInfo {
   contentId: string;
@@ -216,10 +223,13 @@ export const PersistentWatchPartyPanel = () => {
 
   const contentTitle = currentContent?.contentTitle || "this content";
 
+  // Only show global reactions on desktop (mobile/kids have in-player reactions)
+  const isMobile = useMemo(() => isMobileOrTablet(), []);
+
   return (
     <>
-      {/* Render reactions overlay when in party and on content page */}
-      {party && isOnContentPage() && <WatchPartyReactions />}
+      {/* Render reactions overlay only on desktop when in party and on content page */}
+      {party && isOnContentPage() && !isMobile && <WatchPartyReactions />}
       
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetContent className="flex flex-col p-0 z-[200]">
