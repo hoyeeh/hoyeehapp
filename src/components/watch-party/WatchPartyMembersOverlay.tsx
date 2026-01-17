@@ -33,59 +33,61 @@ export const WatchPartyMembersOverlay = ({
   if (members.length === 0) return null;
 
   return (
-    <div className="absolute bottom-32 left-4 z-40">
-      {/* Collapsed view - stacked avatars */}
+    <div className="absolute bottom-20 left-4 z-40">
+      {/* Collapsed view - horizontal avatars */}
       <div 
-        className="flex flex-col-reverse gap-1 cursor-pointer"
+        className="flex flex-row items-center gap-2 cursor-pointer"
         onClick={(e) => {
           e.stopPropagation();
           setIsExpanded(!isExpanded);
         }}
       >
         {/* Live indicator */}
-        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 mb-1">
+        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
           </span>
           <span className="text-[10px] text-white font-medium">
-            {members.length} watching
+            {members.length}
           </span>
         </div>
 
-        {/* Member avatars */}
-        <AnimatePresence>
-          {visibleMembers.map((member, index) => {
-            const displayName = member.display_name || "Guest";
-            const initials = displayName.slice(0, 2).toUpperCase();
-            
-            return (
-              <motion.div
-                key={member.id}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="relative"
-              >
-                <Avatar className={`h-8 w-8 border-2 ${isKidsMode ? 'border-violet-500' : 'border-brand'} shadow-lg`}>
-                  <AvatarImage src={member.avatar_url} alt={displayName} />
-                  <AvatarFallback className={`text-xs ${isKidsMode ? 'bg-violet-500/30 text-violet-200' : 'bg-brand/20 text-brand'}`}>
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                {/* Ready indicator dot */}
-                {member.is_ready && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
-                )}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+        {/* Member avatars - horizontal stack */}
+        <div className="flex flex-row -space-x-2">
+          <AnimatePresence>
+            {visibleMembers.map((member, index) => {
+              const displayName = member.display_name || "Guest";
+              const initials = displayName.slice(0, 2).toUpperCase();
+              
+              return (
+                <motion.div
+                  key={member.id}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="relative"
+                  style={{ zIndex: visibleMembers.length - index }}
+                >
+                  <Avatar className={`h-7 w-7 border-2 ${isKidsMode ? 'border-violet-500' : 'border-brand'} shadow-lg`}>
+                    <AvatarImage src={member.avatar_url} alt={displayName} />
+                    <AvatarFallback className={`text-xs ${isKidsMode ? 'bg-violet-500/30 text-violet-200' : 'bg-brand/20 text-brand'}`}>
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  {member.is_ready && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-black" />
+                  )}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
 
         {/* Remaining count badge */}
         {remainingCount > 0 && (
-          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-black/70 border-2 border-white/30 text-white text-xs font-bold">
+          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-black/70 border border-white/30 text-white text-[10px] font-bold -ml-1">
             +{remainingCount}
           </div>
         )}

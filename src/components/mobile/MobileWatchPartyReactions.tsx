@@ -71,21 +71,21 @@ export const MobileWatchPartyReactions = () => {
         ))}
       </div>
 
-      {/* Compact Reaction Buttons - positioned at bottom left */}
-      <div className="absolute bottom-24 left-4 z-40 flex flex-col gap-1.5 bg-black/60 backdrop-blur-sm rounded-2xl px-2 py-2">
+      {/* Horizontal Reaction Buttons - positioned at bottom center like desktop */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex flex-row gap-3 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2">
         {REACTION_EMOJIS.map(({ emoji, label }) => (
           <Button
             key={emoji}
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 rounded-full hover:bg-white/20 hover:scale-110 transition-all"
+            className="h-10 w-10 p-0 rounded-full hover:bg-white/20 hover:scale-125 transition-all"
             onClick={(e) => {
               e.stopPropagation();
               sendReaction?.(emoji);
             }}
             title={label}
           >
-            <span className="text-lg">{emoji}</span>
+            <span className="text-2xl">{emoji}</span>
           </Button>
         ))}
       </div>
