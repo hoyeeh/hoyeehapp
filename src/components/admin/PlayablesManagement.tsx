@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { 
   Gamepad2, Plus, Pencil, Trash2, Check, X, ExternalLink, 
   Globe, AlertTriangle, CheckCircle, HelpCircle, Search, Eye, EyeOff,
-  Upload, Link, Loader2, Image as ImageIcon
+  Upload, Link, Loader2, Image as ImageIcon, Store
 } from "lucide-react";
 import { useAllPlayableGames, useCreatePlayableGame, useUpdatePlayableGame, useDeletePlayableGame, PlayableGame } from "@/hooks/usePlayableGames";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { CrazyGamesSearch } from "./CrazyGamesSearch";
 
 const defaultFormData = {
   title: "",
@@ -471,6 +472,8 @@ export const PlayablesManagement = () => {
     </div>
   );
 
+  const [activeTab, setActiveTab] = useState<"library" | "browse">("library");
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -490,16 +493,34 @@ export const PlayablesManagement = () => {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search games..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      {/* Tabs for Library vs Browse */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "library" | "browse")}>
+        <TabsList>
+          <TabsTrigger value="library" className="gap-2">
+            <Gamepad2 className="h-4 w-4" />
+            My Library ({games?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="browse" className="gap-2">
+            <Store className="h-4 w-4" />
+            Browse CrazyGames
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="browse" className="mt-4">
+          <CrazyGamesSearch />
+        </TabsContent>
+
+        <TabsContent value="library" className="mt-4 space-y-4">
+          {/* Search */}
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search games..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
       {/* Table */}
       <div className="rounded-lg border bg-card">
@@ -625,7 +646,9 @@ export const PlayablesManagement = () => {
             )}
           </TableBody>
         </Table>
-      </div>
+        </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Add Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
