@@ -240,14 +240,15 @@ export const PlayablesManagement = () => {
     }
   };
 
-  const FormContent = () => (
+  // Form content rendered inline to prevent re-mount on state change (fixes typing issue)
+  const formContent = (
     <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
       <div className="grid gap-2">
         <Label htmlFor="title">Title *</Label>
         <Input
           id="title"
           value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
           placeholder="Game title"
         />
       </div>
@@ -257,7 +258,7 @@ export const PlayablesManagement = () => {
         <Textarea
           id="description"
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
           placeholder="Brief description"
           rows={2}
         />
@@ -303,7 +304,7 @@ export const PlayablesManagement = () => {
         <Input
           id="embed_url"
           value={formData.embed_url}
-          onChange={(e) => setFormData({ ...formData, embed_url: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, embed_url: e.target.value }))}
           placeholder="https://..."
         />
       </div>
@@ -326,8 +327,9 @@ export const PlayablesManagement = () => {
               <Input
                 value={formData.thumbnail_url}
                 onChange={(e) => {
-                  setFormData({ ...formData, thumbnail_url: e.target.value });
-                  setPreviewUrl(e.target.value);
+                  const val = e.target.value;
+                  setFormData(prev => ({ ...prev, thumbnail_url: val }));
+                  setPreviewUrl(val);
                 }}
                 placeholder="https://..."
                 className="flex-1"
@@ -411,7 +413,7 @@ export const PlayablesManagement = () => {
           <Input
             id="age_group"
             value={formData.age_group}
-            onChange={(e) => setFormData({ ...formData, age_group: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, age_group: e.target.value }))}
             placeholder="7+, 7-12, etc."
           />
         </div>
@@ -421,7 +423,7 @@ export const PlayablesManagement = () => {
           <Input
             id="subject"
             value={formData.subject}
-            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
             placeholder="Logic, Safety, etc."
           />
         </div>
@@ -634,7 +636,7 @@ export const PlayablesManagement = () => {
               Add New Game
             </DialogTitle>
           </DialogHeader>
-          <FormContent />
+          {formContent}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
               Cancel
@@ -655,7 +657,7 @@ export const PlayablesManagement = () => {
               Edit Game
             </DialogTitle>
           </DialogHeader>
-          <FormContent />
+          {formContent}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingGame(null)}>
               Cancel

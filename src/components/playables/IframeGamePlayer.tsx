@@ -34,7 +34,8 @@ function canUseProxy(url: string): boolean {
 export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: IframeGamePlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [useProxy, setUseProxy] = useState(false);
+  // Start with proxy enabled for CrazyGames since they block direct iframe embedding
+  const [useProxy, setUseProxy] = useState(() => canUseProxy(game.embed_url));
 
   // Determine the game URL - use proxy if needed and supported
   const gameUrl = useMemo(() => {
