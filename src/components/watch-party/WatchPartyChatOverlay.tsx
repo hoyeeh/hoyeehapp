@@ -53,7 +53,7 @@ export const WatchPartyChatOverlay = ({
 
   return (
     <div 
-      className="absolute bottom-48 left-4 z-40 max-w-[200px] cursor-pointer"
+      className="absolute bottom-20 right-4 z-40 max-w-[220px] cursor-pointer"
       onClick={(e) => {
         e.stopPropagation();
         onExpandChat?.();
