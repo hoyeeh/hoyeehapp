@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle } from "lucide-react";
 
 interface PartyMessage {
   id: string;
@@ -20,7 +19,7 @@ interface WatchPartyChatOverlayProps {
 
 export const WatchPartyChatOverlay = ({ 
   messages, 
-  maxVisible = 4,
+  maxVisible = 5,
   onExpandChat,
   isKidsMode = false
 }: WatchPartyChatOverlayProps) => {
@@ -41,10 +40,10 @@ export const WatchPartyChatOverlay = ({
           return updated;
         });
 
-        // Remove after 5 seconds
+        // Remove after 6 seconds
         setTimeout(() => {
           setVisibleMessages(prev => prev.filter(m => m.id !== msg.id));
-        }, 5000);
+        }, 6000);
       }
     });
   }, [messages, maxVisible]);
@@ -53,42 +52,51 @@ export const WatchPartyChatOverlay = ({
 
   return (
     <div 
-      className="absolute bottom-20 right-4 z-40 max-w-[220px] cursor-pointer"
+      className="absolute bottom-24 left-4 right-4 z-40 pointer-events-none"
       onClick={(e) => {
         e.stopPropagation();
         onExpandChat?.();
       }}
     >
-      {/* Chat bubble indicator */}
-      <div className="flex items-center gap-1.5 mb-2">
-        <MessageCircle className="h-3.5 w-3.5 text-white/70" />
-        <span className="text-[10px] text-white/60">Tap for full chat</span>
-      </div>
-
-      {/* Floating chat messages */}
-      <div className="space-y-1.5">
+      {/* Floating chat messages - Snapchat style from bottom left */}
+      <div className="flex flex-col gap-2 max-w-[85%]">
         <AnimatePresence mode="popLayout">
-          {visibleMessages.map((msg) => (
+          {visibleMessages.map((msg, index) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, x: -20, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -10, scale: 0.95 }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              className={`rounded-xl px-3 py-2 backdrop-blur-md shadow-lg ${
+              initial={{ opacity: 0, y: 20, x: -30 }}
+              animate={{ 
+                opacity: 1 - (index * 0.1), // Fade older messages slightly
+                y: 0, 
+                x: 0,
+              }}
+              exit={{ opacity: 0, y: -10, x: -20 }}
+              transition={{ 
+                type: "spring", 
+                damping: 25, 
+                stiffness: 400,
+                mass: 0.8
+              }}
+              className={`rounded-2xl px-3.5 py-2 backdrop-blur-md shadow-lg pointer-events-auto cursor-pointer ${
                 isKidsMode 
-                  ? 'bg-violet-500/70' 
-                  : 'bg-black/70'
+                  ? 'bg-gradient-to-r from-violet-500/80 to-fuchsia-500/80' 
+                  : 'bg-black/60 border border-white/10'
               }`}
+              style={{
+                // Stagger effect for stacked messages
+                transform: `translateY(${index * 2}px)`,
+              }}
             >
-              <p className={`text-[10px] font-semibold mb-0.5 ${
-                isKidsMode ? 'text-yellow-200' : 'text-brand'
-              }`}>
-                {msg.user_name || 'Guest'}
-              </p>
-              <p className="text-xs text-white leading-tight line-clamp-2">
-                {msg.message}
-              </p>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-[11px] font-bold shrink-0 ${
+                  isKidsMode ? 'text-yellow-200' : 'text-brand'
+                }`}>
+                  {msg.user_name || 'Guest'}
+                </span>
+                <p className="text-[13px] text-white leading-snug">
+                  {msg.message}
+                </p>
+              </div>
             </motion.div>
           ))}
         </AnimatePresence>

@@ -33,6 +33,7 @@ import { MobileWatchPartyReactions } from "./MobileWatchPartyReactions";
 import { WatchPartyMembersOverlay } from "@/components/watch-party/WatchPartyMembersOverlay";
 import { WatchPartyChatOverlay } from "@/components/watch-party/WatchPartyChatOverlay";
 import { WatchPartyEndedOverlay } from "@/components/watch-party/WatchPartyEndedOverlay";
+import { FloatingChatInput } from "@/components/watch-party/FloatingChatInput";
 
 interface NextEpisodeInfo {
   id: string;
@@ -1204,6 +1205,7 @@ export function MobileVideoPlayer({
           <WatchPartyMembersOverlay members={members} />
           <WatchPartyChatOverlay 
             messages={messages} 
+            isKidsMode={isKidsMode}
             onExpandChat={() => {
               window.dispatchEvent(new CustomEvent('toggleWatchParty', {
                 detail: { contentId: content.id, episodeId, contentTitle: title }
@@ -1211,6 +1213,7 @@ export function MobileVideoPlayer({
             }}
           />
           <MobileWatchPartyReactions />
+          <FloatingChatInput isKidsMode={isKidsMode} />
         </>
       )}
 
