@@ -20,6 +20,7 @@ import { WatchPartyMembersOverlay } from "@/components/watch-party/WatchPartyMem
 import { WatchPartyChatOverlay } from "@/components/watch-party/WatchPartyChatOverlay";
 import { WatchPartyEndedOverlay } from "@/components/watch-party/WatchPartyEndedOverlay";
 import { MobileWatchPartyReactions } from "@/components/mobile/MobileWatchPartyReactions";
+import { FloatingChatInput } from "@/components/watch-party/FloatingChatInput";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -376,6 +377,7 @@ export const KidsPlayer = ({
                 }}
               />
               <MobileWatchPartyReactions />
+              <FloatingChatInput isKidsMode />
             </>
           )}
 

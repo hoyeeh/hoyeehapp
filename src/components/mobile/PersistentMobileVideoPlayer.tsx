@@ -80,6 +80,7 @@ export function PersistentMobileVideoPlayer() {
         className="fixed inset-0 z-[100] bg-black"
       >
         <MobileVideoPlayer
+          key={`${playerState.content.id}-${playerState.episodeId || 'movie'}`}
           content={playerState.content}
           videoUrl={playerState.videoUrl}
           title={playerState.title}
