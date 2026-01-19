@@ -91,8 +91,7 @@ export function MobileProfile() {
 
   const handleSwitchProfile = () => {
     lightTap();
-    localStorage.removeItem("hoyeeh_current_profile");
-    setCurrentProfile(null as any);
+    setCurrentProfile(null);
     navigate("/profiles");
   };
 

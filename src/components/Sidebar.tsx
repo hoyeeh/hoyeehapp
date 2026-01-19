@@ -235,8 +235,7 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
             {/* Switch Profile Button */}
             <button
               onClick={() => {
-                localStorage.removeItem("hoyeeh_current_profile");
-                setCurrentProfile(null as any);
+                setCurrentProfile(null);
                 navigate("/profiles");
               }}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
@@ -249,8 +248,7 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
             <div className="px-1 py-1">
               <ProfileSwitcher 
                 onManageProfiles={() => {
-                  localStorage.removeItem("hoyeeh_current_profile");
-                  setCurrentProfile(null as any);
+                  setCurrentProfile(null);
                   navigate("/");
                 }}
               />
