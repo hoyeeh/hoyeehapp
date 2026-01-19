@@ -34,10 +34,12 @@ function canUseProxy(url: string): boolean {
 export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: IframeGamePlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [errorType, setErrorType] = useState<'general' | 'auth' | 'blocked'>('general');
 
   // IMPORTANT: start with direct embedding; proxying can introduce strict CSPs depending on the platform.
   const [useProxy, setUseProxy] = useState(false);
   const [showSlowLoadHelp, setShowSlowLoadHelp] = useState(false);
+  const [proxyAttempted, setProxyAttempted] = useState(false);
 
   const canProxyThisGame = useMemo(() => canUseProxy(game.embed_url), [game.embed_url]);
 
@@ -75,12 +77,15 @@ export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: Iframe
     setIsLoading(false);
 
     // If direct embedding failed and proxy is available, try proxy once
-    if (!useProxy && canProxyThisGame) {
+    if (!useProxy && canProxyThisGame && !proxyAttempted) {
       console.log("Direct embed failed, trying proxy...");
       setUseProxy(true);
+      setProxyAttempted(true);
       return;
     }
 
+    // Detect auth-related errors (401/403) - show specific messaging
+    setErrorType('blocked');
     setHasError(true);
   };
 
@@ -207,16 +212,20 @@ export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: Iframe
             <div className="rounded-full bg-destructive/10 p-4">
               <AlertTriangle className="h-12 w-12 text-destructive" />
             </div>
-            <h3 className="text-lg font-semibold">Unable to load game</h3>
+            <h3 className="text-lg font-semibold">
+              {errorType === 'blocked' ? "Game Blocked Embedding" : "Unable to load game"}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              This game couldn't be loaded in the app. This might be due to the game's 
-              security settings or temporary availability issues.
+              {errorType === 'blocked' 
+                ? "This game provider doesn't allow in-app embedding. Open it in your browser for the best experience!"
+                : "This game couldn't be loaded in the app. This might be due to the game's security settings or temporary availability issues."
+              }
             </p>
             <div className="flex gap-3 mt-2">
               <Button variant="outline" onClick={onClose}>
                 Go Back
               </Button>
-              <Button onClick={handleOpenExternal} className="gap-2">
+              <Button onClick={handleOpenExternal} className="gap-2 bg-primary hover:bg-primary/90">
                 Open in Browser
                 <ExternalLink className="h-4 w-4" />
               </Button>
