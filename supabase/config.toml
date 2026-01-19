@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.game-proxy]
 verify_jwt = false
+
+[functions.notify-admin-support]
+verify_jwt = true
