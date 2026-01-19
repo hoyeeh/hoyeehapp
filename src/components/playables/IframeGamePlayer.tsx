@@ -181,15 +181,6 @@ export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: Iframe
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleOpenExternal}
-            className="rounded-full"
-            title="Open in new tab"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
             onClick={onClose}
             className="rounded-full"
           >
