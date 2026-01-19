@@ -15,7 +15,7 @@ interface ProfileContextType {
   profiles: UserProfile[];
   currentProfile: UserProfile | null;
   loading: boolean;
-  setCurrentProfile: (profile: UserProfile) => void;
+  setCurrentProfile: (profile: UserProfile | null) => void;
   createProfile: (name: string, isKids: boolean, avatarUrl?: string) => Promise<void>;
   updateProfile: (id: string, data: Partial<UserProfile>) => Promise<void>;
   deleteProfile: (id: string) => Promise<void>;
@@ -76,9 +76,13 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     refreshProfiles();
   }, [user]);
 
-  const setCurrentProfile = (profile: UserProfile) => {
+  const setCurrentProfile = (profile: UserProfile | null) => {
     setCurrentProfileState(profile);
-    localStorage.setItem(PROFILE_STORAGE_KEY, profile.id);
+    if (profile) {
+      localStorage.setItem(PROFILE_STORAGE_KEY, profile.id);
+    } else {
+      localStorage.removeItem(PROFILE_STORAGE_KEY);
+    }
   };
 
   const createProfile = async (name: string, isKids: boolean, avatarUrl?: string) => {
