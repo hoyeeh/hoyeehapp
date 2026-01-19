@@ -47,6 +47,8 @@ interface ParsedUser {
   mobile_number?: string;
   country?: string;
   password?: string;
+  avatar_url?: string;
+  is_subscribed?: boolean;
 }
 
 interface ColumnMapping {
@@ -55,6 +57,10 @@ interface ColumnMapping {
   mobile_number: string;
   country: string;
   password: string;
+  avatar_url: string;
+  is_subscribed: string;
+  first_name: string;
+  last_name: string;
 }
 
 interface ImportResult {
@@ -76,13 +82,21 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
     display_name: "",
     mobile_number: "",
     country: "",
-    password: ""
+    password: "",
+    avatar_url: "",
+    is_subscribed: "",
+    first_name: "",
+    last_name: ""
   });
   const [options, setOptions] = useState({
     skipDuplicates: true,
     sendWelcomeEmail: false,
     requirePasswordReset: true,
-    dryRun: false
+    dryRun: false,
+    useDefaultCredentials: true,
+    defaultPin: "123456",
+    defaultPassword: "Pa55w0rd",
+    defaultSecretWord: "hoyeeh2024"
   });
   const [progress, setProgress] = useState(0);
   const [isImporting, setIsImporting] = useState(false);
@@ -267,16 +281,26 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
         
         const emailPatterns = ['email', 'e-mail', 'email_address', 'user_email'];
         const namePatterns = ['name', 'display_name', 'displayname', 'username', 'user_name', 'full_name'];
+        const firstNamePatterns = ['first_name', 'firstname', 'fname'];
+        const lastNamePatterns = ['last_name', 'lastname', 'lname'];
         const phonePatterns = ['phone', 'mobile', 'mobile_number', 'phone_number', 'telephone'];
-        const countryPatterns = ['country', 'location', 'region'];
+        const countryPatterns = ['country', 'location', 'region', 'address'];
         const passwordPatterns = ['password', 'pass', 'pwd', 'password_hash'];
+        const avatarPatterns = ['avatar', 'avatar_url', 'file_url', 'profile_image', 'photo'];
+        const subscribePatterns = ['is_subscribe', 'is_subscribed', 'subscribed', 'subscription'];
 
         lowerHeaders.forEach((h, i) => {
           if (emailPatterns.some(p => h.includes(p))) newMapping.email = parsed[0][i];
-          if (namePatterns.some(p => h.includes(p))) newMapping.display_name = parsed[0][i];
+          if (namePatterns.some(p => h.includes(p)) && !firstNamePatterns.some(p => h.includes(p)) && !lastNamePatterns.some(p => h.includes(p))) {
+            newMapping.display_name = parsed[0][i];
+          }
+          if (firstNamePatterns.some(p => h.includes(p))) newMapping.first_name = parsed[0][i];
+          if (lastNamePatterns.some(p => h.includes(p))) newMapping.last_name = parsed[0][i];
           if (phonePatterns.some(p => h.includes(p))) newMapping.mobile_number = parsed[0][i];
           if (countryPatterns.some(p => h.includes(p))) newMapping.country = parsed[0][i];
           if (passwordPatterns.some(p => h.includes(p))) newMapping.password = parsed[0][i];
+          if (avatarPatterns.some(p => h.includes(p))) newMapping.avatar_url = parsed[0][i];
+          if (subscribePatterns.some(p => h.includes(p))) newMapping.is_subscribed = parsed[0][i];
         });
 
         setColumnMapping(newMapping);
@@ -335,13 +359,30 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
       errors: []
     };
 
-    const users: ParsedUser[] = fileData.map(row => ({
-      email: getValueByMapping(row, columnMapping.email),
-      display_name: columnMapping.display_name ? getValueByMapping(row, columnMapping.display_name) : undefined,
-      mobile_number: columnMapping.mobile_number ? getValueByMapping(row, columnMapping.mobile_number) : undefined,
-      country: columnMapping.country ? getValueByMapping(row, columnMapping.country) : undefined,
-      password: columnMapping.password ? getValueByMapping(row, columnMapping.password) : undefined
-    })).filter(u => u.email);
+    const users: ParsedUser[] = fileData.map(row => {
+      const firstName = columnMapping.first_name ? getValueByMapping(row, columnMapping.first_name) : "";
+      const lastName = columnMapping.last_name ? getValueByMapping(row, columnMapping.last_name) : "";
+      let displayName = columnMapping.display_name ? getValueByMapping(row, columnMapping.display_name) : undefined;
+      
+      // Combine first_name + last_name if display_name is not mapped
+      if (!displayName && (firstName || lastName)) {
+        displayName = `${firstName} ${lastName}`.trim();
+      }
+
+      // Parse is_subscribed from string to boolean
+      const isSubscribedValue = columnMapping.is_subscribed ? getValueByMapping(row, columnMapping.is_subscribed) : "";
+      const isSubscribed = isSubscribedValue === "1" || isSubscribedValue.toLowerCase() === "true" || isSubscribedValue.toLowerCase() === "yes";
+
+      return {
+        email: getValueByMapping(row, columnMapping.email),
+        display_name: displayName,
+        mobile_number: columnMapping.mobile_number ? getValueByMapping(row, columnMapping.mobile_number) : undefined,
+        country: columnMapping.country ? getValueByMapping(row, columnMapping.country) : undefined,
+        password: columnMapping.password ? getValueByMapping(row, columnMapping.password) : undefined,
+        avatar_url: columnMapping.avatar_url ? getValueByMapping(row, columnMapping.avatar_url) : undefined,
+        is_subscribed: columnMapping.is_subscribed ? isSubscribed : undefined
+      };
+    }).filter(u => u.email);
 
     const batchSize = 10;
     const batches = Math.ceil(users.length / batchSize);
@@ -374,7 +415,10 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
               options: {
                 skipDuplicates: options.skipDuplicates,
                 sendWelcomeEmail: options.sendWelcomeEmail,
-                requirePasswordReset: options.requirePasswordReset
+                requirePasswordReset: options.requirePasswordReset,
+                defaultPin: options.useDefaultCredentials ? options.defaultPin : undefined,
+                defaultPassword: options.useDefaultCredentials ? options.defaultPassword : undefined,
+                defaultSecretWord: options.useDefaultCredentials ? options.defaultSecretWord : undefined
               }
             }
           });
@@ -518,7 +562,7 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
       <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
         <p className="text-sm font-medium">Map your columns to database fields</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Email is required. Other fields are optional.
+          Email is required. Use first_name + last_name if display_name is not available.
         </p>
       </div>
 
@@ -526,9 +570,13 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
         {[
           { key: 'email', label: 'Email Address', required: true },
           { key: 'display_name', label: 'Display Name', required: false },
+          { key: 'first_name', label: 'First Name', required: false },
+          { key: 'last_name', label: 'Last Name', required: false },
           { key: 'mobile_number', label: 'Phone Number', required: false },
-          { key: 'country', label: 'Country', required: false },
-          { key: 'password', label: 'Password', required: false }
+          { key: 'country', label: 'Country/Address', required: false },
+          { key: 'avatar_url', label: 'Avatar URL', required: false },
+          { key: 'is_subscribed', label: 'Is Subscribed', required: false },
+          { key: 'password', label: 'Password (optional)', required: false }
         ].map(({ key, label, required }) => (
           <div key={key} className="space-y-2">
             <Label className="flex items-center gap-2">
@@ -557,6 +605,75 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
 
   const renderOptionsStep = () => (
     <div className="space-y-6">
+      {/* Default Credentials Section */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Default Credentials for Imported Users
+          </CardTitle>
+          <CardDescription>
+            Set default PIN and password for all imported users
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="useDefaultCredentials"
+              checked={options.useDefaultCredentials}
+              onCheckedChange={(checked) => 
+                setOptions(prev => ({ ...prev, useDefaultCredentials: checked === true }))
+              }
+            />
+            <div className="flex-1">
+              <Label htmlFor="useDefaultCredentials" className="cursor-pointer font-medium">
+                Use default credentials
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                All imported users will receive the same PIN and password below
+              </p>
+            </div>
+          </div>
+          
+          {options.useDefaultCredentials && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="defaultPin">Default PIN (6 digits)</Label>
+                <Input
+                  id="defaultPin"
+                  value={options.defaultPin}
+                  onChange={(e) => setOptions(prev => ({ ...prev, defaultPin: e.target.value }))}
+                  placeholder="123456"
+                  maxLength={6}
+                  className="bg-secondary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defaultPassword">Default Password</Label>
+                <Input
+                  id="defaultPassword"
+                  value={options.defaultPassword}
+                  onChange={(e) => setOptions(prev => ({ ...prev, defaultPassword: e.target.value }))}
+                  placeholder="Pa55w0rd"
+                  className="bg-secondary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defaultSecretWord">Default Secret Word</Label>
+                <Input
+                  id="defaultSecretWord"
+                  value={options.defaultSecretWord}
+                  onChange={(e) => setOptions(prev => ({ ...prev, defaultSecretWord: e.target.value }))}
+                  placeholder="hoyeeh2024"
+                  className="bg-secondary"
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Other Options */}
       <div className="space-y-4">
         {[
           {
@@ -583,7 +700,7 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
           <div key={id} className="flex items-start space-x-3 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors">
             <Checkbox
               id={id}
-              checked={options[id as keyof typeof options]}
+              checked={options[id as 'skipDuplicates' | 'sendWelcomeEmail' | 'requirePasswordReset' | 'dryRun']}
               onCheckedChange={(checked) => 
                 setOptions(prev => ({ ...prev, [id]: checked === true }))
               }
@@ -605,7 +722,11 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
             <div>
               <p className="font-medium">Ready to import {fileData.length} users</p>
               <p className="text-sm text-muted-foreground">
-                {options.dryRun ? "This is a test run - no data will be modified" : "Users will be created in the database"}
+                {options.dryRun ? "This is a test run - no data will be modified" : 
+                  options.useDefaultCredentials ? 
+                    `Users will be created with PIN: ${options.defaultPin}, Password: ${options.defaultPassword}` :
+                    "Users will be created in the database"
+                }
               </p>
             </div>
           </div>

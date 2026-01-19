@@ -11,12 +11,17 @@ interface UserData {
   mobile_number?: string;
   country?: string;
   password?: string;
+  avatar_url?: string;
+  is_subscribed?: boolean;
 }
 
 interface ImportOptions {
   skipDuplicates: boolean;
   sendWelcomeEmail: boolean;
   requirePasswordReset: boolean;
+  defaultPin?: string;
+  defaultPassword?: string;
+  defaultSecretWord?: string;
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -103,7 +108,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const password = user.password || crypto.randomUUID().slice(0, 16) + "Aa1!";
+    // Use default password if provided, otherwise generate one
+    const password = options.defaultPassword || user.password || crypto.randomUUID().slice(0, 16) + "Aa1!";
 
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email: user.email,
@@ -122,20 +128,56 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    if (user.display_name || user.mobile_number || user.country) {
-      await adminClient.from("profiles").update({
-        display_name: user.display_name || user.email.split("@")[0],
-        mobile_number: user.mobile_number || null,
-        country: user.country || null
-      }).eq("id", newUser.user.id);
+    // Build profile update data
+    const profileData: Record<string, unknown> = {
+      display_name: user.display_name || user.email.split("@")[0],
+      mobile_number: user.mobile_number || null,
+      country: user.country || null,
+    };
+
+    // Add avatar_url if provided
+    if (user.avatar_url) {
+      profileData.avatar_url = user.avatar_url;
     }
 
+    // Add is_subscribed if provided
+    if (typeof user.is_subscribed === 'boolean') {
+      profileData.is_subscribed = user.is_subscribed;
+    }
+
+    // Add default PIN if provided (will be auto-hashed by database trigger)
+    if (options.defaultPin) {
+      profileData.pin_code = options.defaultPin;
+    }
+
+    // Add default secret word if provided (will be auto-hashed by database trigger)
+    if (options.defaultSecretWord) {
+      profileData.secret_word = options.defaultSecretWord.toLowerCase();
+    }
+
+    // Update profile with all data
+    const { error: profileError } = await adminClient
+      .from("profiles")
+      .update(profileData)
+      .eq("id", newUser.user.id);
+
+    if (profileError) {
+      console.warn("Profile update error:", profileError);
+    }
+
+    // Log the import action
     await adminClient.from("audit_logs").insert({
       admin_id: callingUser.id,
       action: "create",
       resource_type: "user",
       resource_id: newUser.user.id,
-      details: { action: "user_import", email: user.email }
+      details: { 
+        action: "user_import", 
+        email: user.email,
+        source: "mysql",
+        has_default_pin: !!options.defaultPin,
+        has_default_password: !!options.defaultPassword
+      }
     });
 
     if (options.sendWelcomeEmail) {
@@ -152,7 +194,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
               from: "Hoyeeh <info@hoyeeh.com>",
               to: [user.email],
               subject: "Welcome to Hoyeeh!",
-              html: `<div style="font-family:Arial;padding:20px;background:#0a0a0a;"><p style="color:#ff6300;font-size:36px;text-align:center;">Hoyeeh</p><div style="background:#141414;border-radius:12px;padding:32px;"><h1 style="color:#fff;">Welcome!</h1><p style="color:#e0e0e0;">Hello ${user.display_name || user.email.split("@")[0]}, your account has been created.</p></div></div>`,
+              html: `<div style="font-family:Arial;padding:20px;background:#0a0a0a;"><p style="color:#ff6300;font-size:36px;text-align:center;">Hoyeeh</p><div style="background:#141414;border-radius:12px;padding:32px;"><h1 style="color:#fff;">Welcome!</h1><p style="color:#e0e0e0;">Hello ${user.display_name || user.email.split("@")[0]}, your account has been created.</p><p style="color:#e0e0e0;">Your temporary password is: <strong>${password}</strong></p><p style="color:#e0e0e0;">Please login and change your password.</p></div></div>`,
             }),
           });
         } catch (e) {
