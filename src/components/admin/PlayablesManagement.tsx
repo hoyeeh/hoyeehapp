@@ -35,7 +35,7 @@ const defaultFormData = {
   is_verified: false,
   is_active: true,
   display_order: 0,
-  health_status: "unknown" as "healthy" | "broken" | "unknown",
+  health_status: "unknown" as "healthy" | "broken" | "unknown" | "timeout",
 };
 
 export const PlayablesManagement = () => {

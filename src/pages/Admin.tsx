@@ -60,6 +60,7 @@ import { BatchSubtitleSync } from "@/components/admin/BatchSubtitleSync";
 import { SubtitleGenerationStatus } from "@/components/admin/SubtitleGenerationStatus";
 import { SubtitleLanguageConfig } from "@/components/admin/SubtitleLanguageConfig";
 import { PlayablesManagement } from "@/components/admin/PlayablesManagement";
+import { GameHealthMonitor } from "@/components/admin/GameHealthMonitor";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -732,6 +733,9 @@ const Admin = () => {
       
       case "playables":
         return <PlayablesManagement />;
+      
+      case "game-health":
+        return <GameHealthMonitor />;
       
       default:
         return <AdminOverview users={users} content={content} subscriptions={subscriptions} onNavigate={setActiveTab} />;

@@ -16,7 +16,7 @@ export interface PlayableGame {
   is_verified: boolean;
   is_active: boolean;
   display_order: number;
-  health_status: "healthy" | "broken" | "unknown";
+  health_status: "healthy" | "broken" | "unknown" | "timeout";
   last_health_check: string | null;
   play_count: number;
   created_at: string;
