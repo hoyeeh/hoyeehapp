@@ -9,6 +9,7 @@ const corsHeaders = {
 // Allowlist of domains that can be proxied
 // Only add domains that explicitly allow embedding or have compatible licenses
 const ALLOWED_DOMAINS = [
+  // Popular game portals
   "crazygames.com",
   "www.crazygames.com",
   "games.crazygames.com",
@@ -21,6 +22,70 @@ const ALLOWED_DOMAINS = [
   "www.gameflare.com",
   "silvergames.com",
   "www.silvergames.com",
+  
+  // itch.io - indie games platform
+  "itch.io",
+  "html-classic.itch.zone",
+  "html.itch.zone",
+  "v6p9d9t4.ssl.hwcdn.net", // itch.io CDN
+  
+  // PBS Kids - educational games
+  "pbskids.org",
+  "www.pbskids.org",
+  "cms-assets.pbskids.org",
+  
+  // Educational game portals
+  "education.com",
+  "www.education.com",
+  "abcya.com",
+  "www.abcya.com",
+  "coolmathgames.com",
+  "www.coolmathgames.com",
+  "funbrain.com",
+  "www.funbrain.com",
+  "brainpop.com",
+  "www.brainpop.com",
+  "starfall.com",
+  "www.starfall.com",
+  "typingclub.com",
+  "www.typingclub.com",
+  "typing.com",
+  "www.typing.com",
+  
+  // National Geographic Kids
+  "kids.nationalgeographic.com",
+  "nationalgeographic.com",
+  
+  // Scratch - MIT coding games
+  "scratch.mit.edu",
+  
+  // Code.org games
+  "studio.code.org",
+  "code.org",
+  
+  // Additional educational
+  "mathplayground.com",
+  "www.mathplayground.com",
+  "sheppardsoftware.com",
+  "www.sheppardsoftware.com",
+  "arcademics.com",
+  "www.arcademics.com",
+  
+  // More game portals
+  "armorgames.com",
+  "www.armorgames.com",
+  "kongregate.com",
+  "www.kongregate.com",
+  "newgrounds.com",
+  "www.newgrounds.com",
+  "gamesgames.com",
+  "www.gamesgames.com",
+  "miniclip.com",
+  "www.miniclip.com",
+  
+  // Google games
+  "beinternetawesome.withgoogle.com",
+  "interland.withgoogle.com",
 ];
 
 function isAllowedDomain(url: string): boolean {
