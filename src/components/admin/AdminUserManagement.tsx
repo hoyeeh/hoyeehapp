@@ -404,8 +404,8 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
       </TabsList>
 
       <TabsContent value="users" className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {users.map((user) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {users.map((user) => (
           <div key={user.id} className="space-y-2">
             {/* Detailed User Card with Health Status */}
             <UserDetailsCard
