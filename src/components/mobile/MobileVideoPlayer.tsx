@@ -746,11 +746,9 @@ export function MobileVideoPlayer({
     setIsMuted(video.muted);
     setShowUnmutePrompt(false);
     
-    // Show volume indicator animation
+    // No volume indicator - just update state silently
     if (!video.muted) {
       setVolumeLevel(Math.round(video.volume * 100));
-      setShowVolumeIndicator(true);
-      setTimeout(() => setShowVolumeIndicator(false), 1500);
     }
     
     resetControlsTimeout();
@@ -1288,30 +1286,7 @@ export function MobileVideoPlayer({
         )}
       </AnimatePresence>
 
-      {/* Volume Indicator Animation */}
-      <AnimatePresence>
-        {showVolumeIndicator && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute inset-0 flex items-center justify-center pointer-events-none z-40"
-          >
-            <div className="flex flex-col items-center gap-3 bg-black/70 backdrop-blur-sm rounded-2xl px-8 py-6">
-              <Volume2 className="h-12 w-12 text-white" />
-              <div className="w-32 h-2 bg-white/30 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-white rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${volumeLevel}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-              <span className="text-white text-sm font-medium">{volumeLevel}%</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Volume Indicator Animation - Removed to prevent blocking playback */}
 
       {/* Brightness/Volume gesture indicators removed */}
 
