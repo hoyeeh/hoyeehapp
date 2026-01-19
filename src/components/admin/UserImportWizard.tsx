@@ -334,8 +334,9 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
   };
 
   const getValueByMapping = (row: string[], header: string): string => {
+    if (!header || header === "__none__") return "";
     const index = headers.indexOf(header);
-    return index >= 0 ? row[index] : "";
+    return index >= 0 ? (row[index] || "") : "";
   };
 
   const validateEmail = (email: string): boolean => {
@@ -584,16 +585,16 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
               {required && <Badge variant="destructive" className="text-xs">Required</Badge>}
             </Label>
             <Select
-              value={columnMapping[key as keyof ColumnMapping]}
-              onValueChange={(value) => setColumnMapping(prev => ({ ...prev, [key]: value }))}
+              value={columnMapping[key as keyof ColumnMapping] || "__none__"}
+              onValueChange={(value) => setColumnMapping(prev => ({ ...prev, [key]: value === "__none__" ? "" : value }))}
             >
               <SelectTrigger className="bg-secondary">
                 <SelectValue placeholder="Select column..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">-- None --</SelectItem>
-                {headers.map((h) => (
-                  <SelectItem key={h} value={h}>{h}</SelectItem>
+                <SelectItem value="__none__">-- None --</SelectItem>
+                {headers.map((h, idx) => (
+                  <SelectItem key={`${h}-${idx}`} value={h || `column_${idx}`}>{h || `Column ${idx + 1}`}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
