@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, Loader2, Gamepad2, Filter, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,10 +100,10 @@ export const CrazyGamesSearch = () => {
     }
   };
 
-  // Load initial results
-  useState(() => {
+  // Load initial results on mount
+  useEffect(() => {
     handleSearch("", "");
-  });
+  }, []);
 
   return (
     <div className="space-y-4">
