@@ -41,6 +41,26 @@ export const usePlayableGames = () => {
   });
 };
 
+// Hook to fetch featured/curated games
+export const useFeaturedGames = () => {
+  return useQuery({
+    queryKey: ["featured-games"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("playable_games")
+        .select("*")
+        .eq("is_verified", true)
+        .eq("is_active", true)
+        .eq("featured", true)
+        .neq("health_status", "broken")
+        .order("display_order", { ascending: true });
+
+      if (error) throw error;
+      return data as PlayableGame[];
+    },
+  });
+};
+
 export const useAllPlayableGames = () => {
   return useQuery({
     queryKey: ["all-playable-games"],
