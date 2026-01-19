@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -18,7 +19,9 @@ import {
   Phone,
   Lock,
   Mail,
-  Pencil
+  Pencil,
+  Users,
+  Activity
 } from "lucide-react";
 import {
   Dialog,
@@ -40,6 +43,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { UserDetailsCard, UserProfile, calculateHealthStatus } from "./UserDetailsCard";
+import { UserHealthAudit } from "./UserHealthAudit";
 
 interface Profile {
   id: string;
@@ -49,6 +54,14 @@ interface Profile {
   mobile_number: string | null;
   country: string | null;
   email?: string | null;
+  avatar_url?: string | null;
+  subscription_expiry?: string | null;
+  updated_at?: string | null;
+  last_login_at?: string | null;
+  pin_locked_until?: string | null;
+  lockout_count?: number | null;
+  parental_controls_enabled?: boolean | null;
+  active_session_id?: string | null;
 }
 
 interface AdminUserManagementProps {
@@ -64,6 +77,107 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [authEmails, setAuthEmails] = useState<Map<string, string>>(new Map());
+  const [editValues, setEditValues] = useState({
+    display_name: "",
+    email: "",
+    mobile_number: "",
+    country: ""
+  });
+  const [isAuditRunning, setIsAuditRunning] = useState(false);
+
+  // Fetch auth emails for all users on mount
+  useEffect(() => {
+    const fetchAuthDetails = async () => {
+      if (users.length === 0) return;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-get-user-auth-details', {
+          body: { userIds: users.map(u => u.id) }
+        });
+
+        if (!error && data?.users) {
+          const emailMap = new Map<string, string>();
+          Object.entries(data.users).forEach(([userId, details]: [string, any]) => {
+            if (details.email) {
+              emailMap.set(userId, details.email);
+            }
+          });
+          setAuthEmails(emailMap);
+        }
+      } catch (err) {
+        console.error('Failed to fetch auth details:', err);
+      }
+    };
+
+    fetchAuthDetails();
+  }, [users]);
+
+  const handleStartEdit = (user: Profile) => {
+    setSelectedUser(user.id);
+    setEditValues({
+      display_name: user.display_name || "",
+      email: authEmails.get(user.id) || user.email || "",
+      mobile_number: user.mobile_number || "",
+      country: user.country || ""
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setSelectedUser(null);
+    setEditValues({ display_name: "", email: "", mobile_number: "", country: "" });
+  };
+
+  const handleSaveEdit = async (userId: string, userName?: string) => {
+    setIsLoading(true);
+    try {
+      // Update profile fields
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          display_name: editValues.display_name || null,
+          mobile_number: editValues.mobile_number || null,
+          country: editValues.country || null
+        })
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      // Update email via edge function if changed
+      const currentEmail = authEmails.get(userId);
+      if (editValues.email && editValues.email !== currentEmail) {
+        const { data, error } = await supabase.functions.invoke('admin-update-user-details', {
+          body: { 
+            targetUserId: userId,
+            newEmail: editValues.email,
+            newPhoneNumber: editValues.mobile_number || undefined
+          }
+        });
+
+        if (error) throw error;
+        if (!data?.success) {
+          toast.error(data?.error || "Failed to update email");
+          return;
+        }
+      }
+
+      toast.success(`User details updated for ${userName || "user"}`);
+      setSelectedUser(null);
+      setEditValues({ display_name: "", email: "", mobile_number: "", country: "" });
+      onRefresh();
+    } catch (error: any) {
+      console.error("Update error:", error);
+      toast.error(error?.message || "Failed to update user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRunAudit = () => {
+    setIsAuditRunning(true);
+    setTimeout(() => setIsAuditRunning(false), 1000);
+  };
 
   const handleUpdateUserDetails = async (userId: string, userName?: string) => {
     if (!editEmail && !editPhone) {
@@ -257,299 +371,304 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     }
   };
 
+  // Convert Profile to UserProfile for components
+  const toUserProfile = (user: Profile): UserProfile => ({
+    id: user.id,
+    display_name: user.display_name,
+    email: authEmails.get(user.id) || user.email,
+    mobile_number: user.mobile_number,
+    country: user.country,
+    avatar_url: user.avatar_url || null,
+    is_subscribed: user.is_subscribed,
+    subscription_expiry: user.subscription_expiry || null,
+    created_at: user.created_at,
+    updated_at: user.updated_at || null,
+    last_login_at: user.last_login_at || null,
+    pin_locked_until: user.pin_locked_until || null,
+    lockout_count: user.lockout_count || null,
+    parental_controls_enabled: user.parental_controls_enabled || null,
+    active_session_id: user.active_session_id || null
+  });
+
   return (
-    <div className="space-y-4">
-      {users.map((user) => (
-        <Card key={user.id} className="bg-card">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                  {user.display_name?.charAt(0).toUpperCase() || "U"}
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    {user.display_name || "Unknown User"}
-                    {user.is_subscribed && (
-                      <Badge variant="default" className="bg-brand text-xs">Premium</Badge>
-                    )}
-                  </h3>
-                  {user.mobile_number && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Phone className="h-3 w-3" />
-                      {user.mobile_number}
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    Joined {new Date(user.created_at || "").toLocaleDateString()}
-                  </p>
-                  {user.country && (
-                    <p className="text-sm text-muted-foreground">
-                      {user.country}
-                    </p>
-                  )}
-                </div>
-              </div>
+    <Tabs defaultValue="users" className="space-y-4">
+      <TabsList className="bg-secondary">
+        <TabsTrigger value="users" className="gap-1">
+          <Users className="h-4 w-4" />
+          All Users
+        </TabsTrigger>
+        <TabsTrigger value="audit" className="gap-1">
+          <Activity className="h-4 w-4" />
+          Health Audit
+        </TabsTrigger>
+      </TabsList>
 
-              <div className="flex flex-wrap gap-2 justify-end">
-                {/* Edit User Details */}
-                <Dialog 
-                  open={editDetailsDialog === user.id} 
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      setEditDetailsDialog(null);
-                      setEditEmail("");
-                      setEditPhone("");
-                    } else {
-                      setEditDetailsDialog(user.id);
-                      setEditEmail(user.email || "");
-                      setEditPhone(user.mobile_number || "");
-                    }
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1"
-                      title="Edit user email and phone number"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Edit Details
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit User Details</DialogTitle>
-                      <DialogDescription>
-                        Update contact information for {user.display_name || "this user"}. The user will be notified via email about any changes.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
-                        <p className="text-sm text-primary font-medium">📧 Email Notification</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          The user will receive an email notification with the updated details. If email is changed, both old and new addresses will be notified.
-                        </p>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-email">Email Address</Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="edit-email"
-                            type="email"
-                            placeholder="Enter new email address"
-                            value={editEmail}
-                            onChange={(e) => setEditEmail(e.target.value)}
-                            className="pl-10 bg-secondary"
-                          />
+      <TabsContent value="users" className="space-y-4">
+        {users.map((user) => (
+          <div key={user.id} className="space-y-2">
+            {/* Detailed User Card with Health Status */}
+            <UserDetailsCard
+              user={toUserProfile(user)}
+              isEditing={selectedUser === user.id}
+              editValues={editValues}
+              onEditChange={(field, value) => setEditValues(prev => ({ ...prev, [field]: value }))}
+              onStartEdit={() => handleStartEdit(user)}
+              onCancelEdit={handleCancelEdit}
+              onSaveEdit={() => handleSaveEdit(user.id, user.display_name || undefined)}
+              isLoading={isLoading}
+              healthStatus={calculateHealthStatus(toUserProfile(user), authEmails.get(user.id))}
+            />
+
+            {/* Action Buttons Card */}
+            <Card className="bg-card/50 border-border">
+              <CardContent className="p-3">
+                <div className="flex flex-wrap gap-2">
+                  {/* Edit User Details Dialog */}
+                  <Dialog 
+                    open={editDetailsDialog === user.id} 
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setEditDetailsDialog(null);
+                        setEditEmail("");
+                        setEditPhone("");
+                      } else {
+                        setEditDetailsDialog(user.id);
+                        setEditEmail(authEmails.get(user.id) || user.email || "");
+                        setEditPhone(user.mobile_number || "");
+                      }
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Pencil className="h-3 w-3" />
+                        Quick Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Edit User Details</DialogTitle>
+                        <DialogDescription>
+                          Update contact information for {user.display_name || "this user"}. The user will be notified via email about any changes.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+                          <p className="text-sm text-primary font-medium">📧 Email Notification</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            The user will receive an email notification with the updated details.
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-email">Email Address</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="edit-email"
+                              type="email"
+                              placeholder="Enter new email address"
+                              value={editEmail}
+                              onChange={(e) => setEditEmail(e.target.value)}
+                              className="pl-10 bg-secondary"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-phone">Phone Number</Label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="edit-phone"
+                              type="tel"
+                              placeholder="Enter new phone number"
+                              value={editPhone}
+                              onChange={(e) => setEditPhone(e.target.value)}
+                              className="pl-10 bg-secondary"
+                            />
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-phone">Phone Number</Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="edit-phone"
-                            type="tel"
-                            placeholder="Enter new phone number"
-                            value={editPhone}
-                            onChange={(e) => setEditPhone(e.target.value)}
-                            className="pl-10 bg-secondary"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <DialogFooter className="pt-4">
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setEditDetailsDialog(null);
-                          setEditEmail("");
-                          setEditPhone("");
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="brand"
-                        onClick={() => handleUpdateUserDetails(user.id, user.display_name || undefined)}
-                        disabled={isLoading || (!editEmail && !editPhone)}
-                      >
-                        Save Changes
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Toggle Subscription */}
-                <Button
-                  variant={user.is_subscribed ? "destructive" : "default"}
-                  size="sm"
-                  onClick={() => handleToggleSubscription(user.id, user.is_subscribed || false)}
-                  disabled={isLoading}
-                  className="gap-1"
-                >
-                  <CreditCard className="h-3 w-3" />
-                  {user.is_subscribed ? "Revoke" : "Grant"} Premium
-                </Button>
-
-                {/* Reset PIN - Requires Super Admin */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleResetPin(user.id, user.display_name || undefined)}
-                  disabled={isLoading}
-                  className="gap-1"
-                  title="Requires Super Admin role"
-                >
-                  <Key className="h-3 w-3" />
-                  Reset PIN
-                </Button>
-
-                {/* Reset Secret Word - Requires Super Admin */}
-                <Dialog 
-                  open={resetSecretDialog === user.id} 
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      setResetSecretDialog(null);
-                      setNewSecretWord("");
-                    }
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setResetSecretDialog(user.id)}
-                      disabled={isLoading}
-                      className="gap-1"
-                      title="Requires Super Admin role"
-                    >
-                      <Shield className="h-3 w-3" />
-                      Reset Secret
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Reset Secret Word</DialogTitle>
-                      <DialogDescription>
-                        Set a new secret word for {user.display_name}. The user will need this to reset their PIN.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md mb-4">
-                        <p className="text-sm text-destructive font-medium">⚠️ Super Admin Required</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          This action requires Super Admin privileges, is logged and rate-limited. The secret word must be at least 8 characters and cannot be a common word. The user will be notified via email.
-                        </p>
-                      </div>
-                      <Input
-                        type="text"
-                        placeholder="Enter new secret word (min 8 characters)"
-                        value={newSecretWord}
-                        onChange={(e) => setNewSecretWord(e.target.value)}
-                        className="bg-secondary"
-                        minLength={8}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {newSecretWord.length}/8 characters minimum
-                      </p>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setResetSecretDialog(null);
-                            setNewSecretWord("");
-                          }}
-                        >
+                      <DialogFooter className="pt-4">
+                        <Button variant="ghost" onClick={() => { setEditDetailsDialog(null); setEditEmail(""); setEditPhone(""); }}>
                           Cancel
                         </Button>
                         <Button
                           variant="brand"
-                          onClick={() => handleResetSecret(user.id, user.display_name || undefined)}
-                          disabled={isLoading || newSecretWord.length < 8}
+                          onClick={() => handleUpdateUserDetails(user.id, user.display_name || undefined)}
+                          disabled={isLoading || (!editEmail && !editPhone)}
                         >
-                          Reset Secret Word
+                          Save Changes
                         </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
 
-                {/* Reset Password - Requires Super Admin */}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                      className="gap-1"
-                      title="Reset password and send new one via email - Requires Super Admin"
-                    >
-                      <Lock className="h-3 w-3" />
-                      Reset Password
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Reset User Password</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        <div className="space-y-3">
-                          <p>
-                            This will generate a new secure password for <strong>{user.display_name || "this user"}</strong> and send it to their email address.
-                          </p>
-                          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                            <p className="text-sm text-destructive font-medium">⚠️ Super Admin Required</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              This action requires Super Admin privileges, is logged and rate-limited. The user will receive their new password via email.
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Mail className="h-4 w-4" />
-                            <span>New password will be sent via email</span>
-                          </div>
-                        </div>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleResetPassword(user.id, user.display_name || undefined)}
+                  {/* Toggle Subscription */}
+                  <Button
+                    variant={user.is_subscribed ? "destructive" : "default"}
+                    size="sm"
+                    onClick={() => handleToggleSubscription(user.id, user.is_subscribed || false)}
+                    disabled={isLoading}
+                    className="gap-1"
+                  >
+                    <CreditCard className="h-3 w-3" />
+                    {user.is_subscribed ? "Revoke" : "Grant"} Premium
+                  </Button>
+
+                  {/* Reset PIN */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResetPin(user.id, user.display_name || undefined)}
+                    disabled={isLoading}
+                    className="gap-1"
+                    title="Requires Super Admin role"
+                  >
+                    <Key className="h-3 w-3" />
+                    Reset PIN
+                  </Button>
+
+                  {/* Reset Secret Word */}
+                  <Dialog 
+                    open={resetSecretDialog === user.id} 
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setResetSecretDialog(null);
+                        setNewSecretWord("");
+                      }
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setResetSecretDialog(user.id)}
                         disabled={isLoading}
-                        className="bg-primary hover:bg-primary/90"
+                        className="gap-1"
+                        title="Requires Super Admin role"
                       >
-                        Reset & Send Email
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                        <Shield className="h-3 w-3" />
+                        Reset Secret
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reset Secret Word</DialogTitle>
+                        <DialogDescription>
+                          Set a new secret word for {user.display_name}. The user will need this to reset their PIN.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md mb-4">
+                          <p className="text-sm text-destructive font-medium">⚠️ Super Admin Required</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            This action requires Super Admin privileges and is logged.
+                          </p>
+                        </div>
+                        <Input
+                          type="text"
+                          placeholder="Enter new secret word (min 8 characters)"
+                          value={newSecretWord}
+                          onChange={(e) => setNewSecretWord(e.target.value)}
+                          className="bg-secondary"
+                          minLength={8}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {newSecretWord.length}/8 characters minimum
+                        </p>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" onClick={() => { setResetSecretDialog(null); setNewSecretWord(""); }}>
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="brand"
+                            onClick={() => handleResetSecret(user.id, user.display_name || undefined)}
+                            disabled={isLoading || newSecretWord.length < 8}
+                          >
+                            Reset Secret Word
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
-                {/* Unlock Account */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleUnlockAccount(user.id)}
-                  disabled={isLoading}
-                  className="gap-1"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Unlock
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                  {/* Reset Password */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        className="gap-1"
+                        title="Reset password and send new one via email"
+                      >
+                        <Lock className="h-3 w-3" />
+                        Reset Password
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reset User Password</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          <div className="space-y-3">
+                            <p>
+                              This will generate a new secure password for <strong>{user.display_name || "this user"}</strong> and send it to their email address.
+                            </p>
+                            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                              <p className="text-sm text-destructive font-medium">⚠️ Super Admin Required</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                This action is logged and rate-limited.
+                              </p>
+                            </div>
+                          </div>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleResetPassword(user.id, user.display_name || undefined)}
+                          disabled={isLoading}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          Reset & Send Email
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
 
-      {users.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          No users found
-        </div>
-      )}
-    </div>
+                  {/* Unlock Account */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleUnlockAccount(user.id)}
+                    disabled={isLoading}
+                    className="gap-1"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Unlock
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ))}
+
+        {users.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            No users found
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="audit">
+        <UserHealthAudit
+          users={users.map(toUserProfile)}
+          authEmails={authEmails}
+          onRunAudit={handleRunAudit}
+          isRunning={isAuditRunning}
+        />
+      </TabsContent>
+    </Tabs>
   );
 };

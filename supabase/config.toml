@@ -209,3 +209,6 @@ verify_jwt = false
 
 [functions.send-admin-action-notification]
 verify_jwt = true
+
+[functions.admin-get-user-auth-details]
+verify_jwt = true
