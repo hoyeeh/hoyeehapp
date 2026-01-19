@@ -2499,6 +2499,7 @@ export type Database = {
           display_order: number | null
           embed_type: string
           embed_url: string
+          featured: boolean | null
           health_status: string | null
           id: string
           is_active: boolean | null
@@ -2520,6 +2521,7 @@ export type Database = {
           display_order?: number | null
           embed_type: string
           embed_url: string
+          featured?: boolean | null
           health_status?: string | null
           id?: string
           is_active?: boolean | null
@@ -2541,6 +2543,7 @@ export type Database = {
           display_order?: number | null
           embed_type?: string
           embed_url?: string
+          featured?: boolean | null
           health_status?: string | null
           id?: string
           is_active?: boolean | null
