@@ -125,9 +125,7 @@ const EpisodeList = ({
                       <Clock className="h-3 w-3" />
                       {formatDuration(episode.duration)}
                     </span>
-                    {episode.is_premium && (
-                      <span className="text-brand text-xs font-medium">PREMIUM</span>
-                    )}
+                    {/* Premium badge hidden per user request */}
                     {episode.video_url ? (
                       <Badge variant="secondary" className="h-5 px-2 text-[10px]">Available</Badge>
                     ) : (

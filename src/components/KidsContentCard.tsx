@@ -38,16 +38,16 @@ export const KidsContentCard = ({ content, onPlay, onDetails, index, hasNewEpiso
             </div>
           )}
 
-          {/* New Season Badge */}
+          {/* New Season Badge - Compact single line */}
           {hasNewSeason && content.contentType === 'series' && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
+            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[9px] font-bold rounded-full whitespace-nowrap">
               NEW SEASON
             </div>
           )}
 
-          {/* New Episode Badge */}
+          {/* New Episode Badge - Compact single line */}
           {hasNewEpisode && !hasNewSeason && content.contentType === 'series' && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
+            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[9px] font-bold rounded-full whitespace-nowrap">
               NEW EPISODE
             </div>
           )}
