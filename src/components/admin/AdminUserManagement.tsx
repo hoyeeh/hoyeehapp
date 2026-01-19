@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,9 @@ import {
   Mail,
   Pencil,
   Users,
-  Activity
+  Activity,
+  Search,
+  Upload
 } from "lucide-react";
 import {
   Dialog,
@@ -45,6 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { UserDetailsCard, UserProfile, calculateHealthStatus } from "./UserDetailsCard";
 import { UserHealthAudit } from "./UserHealthAudit";
+import { UserImportWizard } from "./UserImportWizard";
 
 interface Profile {
   id: string;
@@ -86,6 +89,20 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     country: ""
   });
   const [isAuditRunning, setIsAuditRunning] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showImportWizard, setShowImportWizard] = useState(false);
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const query = searchQuery.toLowerCase().trim();
+    return users.filter(user => {
+      const email = authEmails.get(user.id)?.toLowerCase() || user.email?.toLowerCase() || '';
+      const name = user.display_name?.toLowerCase() || '';
+      const phone = user.mobile_number || '';
+      return name.includes(query) || email.includes(query) || phone.includes(query);
+    });
+  }, [users, searchQuery, authEmails]);
 
   // Fetch auth emails for all users on mount
   useEffect(() => {
@@ -404,8 +421,56 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
       </TabsList>
 
       <TabsContent value="users" className="space-y-6">
+        {/* Search Bar and Import Button */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-secondary"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Badge variant="outline" className="py-2 px-3 whitespace-nowrap">
+              {filteredUsers.length} of {users.length} users
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImportWizard(true)}
+              className="gap-1 whitespace-nowrap"
+            >
+              <Upload className="h-4 w-4" />
+              Import Users
+            </Button>
+          </div>
+        </div>
+
+        {/* Import Wizard Dialog */}
+        {showImportWizard && (
+          <UserImportWizard
+            onClose={() => setShowImportWizard(false)}
+            onSuccess={() => {
+              setShowImportWizard(false);
+              onRefresh();
+            }}
+          />
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {users.map((user) => (
+          {filteredUsers.map((user) => (
           <div key={user.id} className="space-y-2">
             {/* Detailed User Card with Health Status */}
             <UserDetailsCard
@@ -656,9 +721,9 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
         ))}
         </div>
 
-        {users.length === 0 && (
+        {filteredUsers.length === 0 && (
           <div className="text-center py-12 text-muted-foreground col-span-full">
-            No users found
+            {searchQuery ? `No users match "${searchQuery}"` : "No users found"}
           </div>
         )}
       </TabsContent>
