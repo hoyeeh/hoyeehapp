@@ -200,3 +200,9 @@ verify_jwt = false
 
 [functions.notify-admin-support]
 verify_jwt = true
+
+[functions.admin-reset-password]
+verify_jwt = false
+
+[functions.send-admin-action-notification]
+verify_jwt = true
