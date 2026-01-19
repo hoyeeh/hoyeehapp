@@ -1,5 +1,8 @@
 project_id = "astugmzoxhxcyipxsojl"
 
+[functions.admin-update-user-details]
+verify_jwt = true
+
 [functions.generate-subtitles]
 verify_jwt = true
 

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -16,7 +17,8 @@ import {
   Check,
   Phone,
   Lock,
-  Mail
+  Mail,
+  Pencil
 } from "lucide-react";
 import {
   Dialog,
@@ -25,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -45,6 +48,7 @@ interface Profile {
   created_at: string | null;
   mobile_number: string | null;
   country: string | null;
+  email?: string | null;
 }
 
 interface AdminUserManagementProps {
@@ -55,8 +59,52 @@ interface AdminUserManagementProps {
 export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementProps) => {
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [resetSecretDialog, setResetSecretDialog] = useState<string | null>(null);
+  const [editDetailsDialog, setEditDetailsDialog] = useState<string | null>(null);
   const [newSecretWord, setNewSecretWord] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleUpdateUserDetails = async (userId: string, userName?: string) => {
+    if (!editEmail && !editPhone) {
+      toast.error("Please enter at least one field to update");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-update-user-details', {
+        body: { 
+          targetUserId: userId,
+          newEmail: editEmail || undefined,
+          newPhoneNumber: editPhone || undefined
+        }
+      });
+
+      if (error) throw error;
+      
+      if (!data?.success) {
+        toast.error(data?.error || "Failed to update user details");
+        return;
+      }
+      
+      if (data.emailSent) {
+        toast.success(`User details updated. Notification sent to ${userName || "user"}`);
+      } else {
+        toast.warning("User details updated but notification email could not be sent");
+      }
+      
+      setEditDetailsDialog(null);
+      setEditEmail("");
+      setEditPhone("");
+      onRefresh();
+    } catch (error: any) {
+      console.error("Update details error:", error);
+      toast.error(error?.message || "Failed to update user details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleToggleSubscription = async (userId: string, currentStatus: boolean) => {
     setIsLoading(true);
@@ -244,6 +292,99 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
               </div>
 
               <div className="flex flex-wrap gap-2 justify-end">
+                {/* Edit User Details */}
+                <Dialog 
+                  open={editDetailsDialog === user.id} 
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setEditDetailsDialog(null);
+                      setEditEmail("");
+                      setEditPhone("");
+                    } else {
+                      setEditDetailsDialog(user.id);
+                      setEditEmail(user.email || "");
+                      setEditPhone(user.mobile_number || "");
+                    }
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      title="Edit user email and phone number"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit Details
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Edit User Details</DialogTitle>
+                      <DialogDescription>
+                        Update contact information for {user.display_name || "this user"}. The user will be notified via email about any changes.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+                        <p className="text-sm text-primary font-medium">📧 Email Notification</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          The user will receive an email notification with the updated details. If email is changed, both old and new addresses will be notified.
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-email">Email Address</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="edit-email"
+                            type="email"
+                            placeholder="Enter new email address"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            className="pl-10 bg-secondary"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-phone">Phone Number</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="edit-phone"
+                            type="tel"
+                            placeholder="Enter new phone number"
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                            className="pl-10 bg-secondary"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter className="pt-4">
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setEditDetailsDialog(null);
+                          setEditEmail("");
+                          setEditPhone("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="brand"
+                        onClick={() => handleUpdateUserDetails(user.id, user.display_name || undefined)}
+                        disabled={isLoading || (!editEmail && !editPhone)}
+                      >
+                        Save Changes
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
                 {/* Toggle Subscription */}
                 <Button
                   variant={user.is_subscribed ? "destructive" : "default"}
