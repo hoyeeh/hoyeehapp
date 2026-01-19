@@ -2508,6 +2508,8 @@ export type Database = {
           last_health_check: string | null
           play_count: number | null
           source: string
+          source_id: string | null
+          source_url: string | null
           subject: string | null
           tags: string[] | null
           thumbnail_url: string
@@ -2530,6 +2532,8 @@ export type Database = {
           last_health_check?: string | null
           play_count?: number | null
           source: string
+          source_id?: string | null
+          source_url?: string | null
           subject?: string | null
           tags?: string[] | null
           thumbnail_url: string
@@ -2552,6 +2556,8 @@ export type Database = {
           last_health_check?: string | null
           play_count?: number | null
           source?: string
+          source_id?: string | null
+          source_url?: string | null
           subject?: string | null
           tags?: string[] | null
           thumbnail_url?: string

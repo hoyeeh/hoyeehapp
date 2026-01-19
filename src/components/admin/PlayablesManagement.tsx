@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { CrazyGamesSearch } from "./CrazyGamesSearch";
+import { GameSourceSearch } from "./GameSourceSearch";
 
 const defaultFormData = {
   title: "",
@@ -293,6 +293,14 @@ export const PlayablesManagement = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="CrazyGames">CrazyGames</SelectItem>
+              <SelectItem value="itch.io">itch.io</SelectItem>
+              <SelectItem value="PBS Kids">PBS Kids</SelectItem>
+              <SelectItem value="ABCya">ABCya</SelectItem>
+              <SelectItem value="Coolmath Games">Coolmath Games</SelectItem>
+              <SelectItem value="Code.org">Code.org</SelectItem>
+              <SelectItem value="Scratch">Scratch</SelectItem>
+              <SelectItem value="Math Playground">Math Playground</SelectItem>
+              <SelectItem value="National Geographic Kids">National Geographic Kids</SelectItem>
               <SelectItem value="Google">Google</SelectItem>
               <SelectItem value="Custom">Custom</SelectItem>
             </SelectContent>
@@ -502,12 +510,36 @@ export const PlayablesManagement = () => {
           </TabsTrigger>
           <TabsTrigger value="browse" className="gap-2">
             <Store className="h-4 w-4" />
-            Browse CrazyGames
+            Browse Games
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse" className="mt-4">
-          <CrazyGamesSearch />
+          <GameSourceSearch 
+            onAddGame={async (game) => {
+              try {
+                await createGame.mutateAsync({
+                  title: game.title,
+                  description: game.description,
+                  thumbnail_url: game.thumbnail_url,
+                  embed_url: game.embed_url,
+                  source: game.source,
+                  embed_type: game.embed_type as "iframe" | "external",
+                  age_group: game.age_group || "",
+                  tags: game.tags,
+                  languages: ["en"],
+                  subject: "",
+                  is_verified: true,
+                  is_active: true,
+                  display_order: (games?.length || 0) + 1,
+                  health_status: "unknown",
+                });
+              } catch (error) {
+                console.error("Failed to add game:", error);
+              }
+            }}
+            existingUrls={games?.map(g => g.embed_url) || []}
+          />
         </TabsContent>
 
         <TabsContent value="library" className="mt-4 space-y-4">
