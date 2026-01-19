@@ -233,11 +233,7 @@ export function RecentlyWatchedRow({ onPlay, onDetails }: RecentlyWatchedRowProp
                 </div>
               )}
 
-              {item.isPremium && (
-                <div className="absolute bottom-2 left-2 bg-brand px-2 py-0.5 rounded text-xs font-semibold text-primary-foreground">
-                  PREMIUM
-                </div>
-              )}
+              {/* Premium badge hidden per user request */}
 
               {/* Hover Play Button */}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
