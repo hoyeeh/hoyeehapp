@@ -121,13 +121,13 @@ export const CrazyGamesSearch = () => {
         </div>
         
         {results?.categories && (
-          <Select value={category} onValueChange={(v) => { setCategory(v); handleSearch(query, v); }}>
+          <Select value={category || "all"} onValueChange={(v) => { const val = v === "all" ? "" : v; setCategory(val); handleSearch(query, val); }}>
             <SelectTrigger className="w-[160px]">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               {results.categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>{cat}</SelectItem>
               ))}
