@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Play, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
@@ -29,6 +30,7 @@ export function MobileOfflineContinueWatching({
   onDetails,
 }: MobileOfflineContinueWatchingProps) {
   const { user } = useAuth();
+  const { currentProfile } = useProfileContext();
   const [localItems, setLocalItems] = useState<ContinueWatchingItem[]>([]);
   const [isLoadingLocal, setIsLoadingLocal] = useState(true);
 
@@ -63,19 +65,26 @@ export function MobileOfflineContinueWatching({
     loadLocalProgress();
   }, []);
 
-  // Fetch server data when online
+  // Fetch server data when online - filtered by profile
   const { data: serverItems = [] } = useQuery({
-    queryKey: ["mobile-continue-watching", user?.id],
+    queryKey: ["mobile-continue-watching", user?.id, currentProfile?.id],
     queryFn: async () => {
       if (!user) return [];
 
-      // Fetch watch history
-      const { data: watchHistory, error } = await supabase
+      // Build query for watch history
+      let query = supabase
         .from("watch_history")
-        .select("content_id, progress, last_watched")
+        .select("content_id, progress, last_watched, profile_id")
         .eq("user_id", user.id)
         .order("last_watched", { ascending: false })
         .limit(20);
+      
+      // Filter by profile if one is selected
+      if (currentProfile?.id) {
+        query = query.eq("profile_id", currentProfile.id);
+      }
+      
+      const { data: watchHistory, error } = await query;
 
       if (error) throw error;
       if (!watchHistory?.length) return [];
