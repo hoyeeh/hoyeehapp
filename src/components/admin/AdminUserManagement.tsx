@@ -14,7 +14,9 @@ import {
   Edit2, 
   X, 
   Check,
-  Phone
+  Phone,
+  Lock,
+  Mail
 } from "lucide-react";
 import {
   Dialog,
@@ -24,6 +26,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Profile {
   id: string;
@@ -164,6 +177,38 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     }
   };
 
+  const handleResetPassword = async (userId: string, userName?: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: { 
+          targetUserId: userId,
+          sendEmail: true
+        }
+      });
+
+      if (error) throw error;
+      
+      if (!data?.success) {
+        toast.error(data?.error || "Failed to reset password");
+        return;
+      }
+      
+      if (data.emailSent) {
+        toast.success(`Password reset successfully. New password sent to ${data.userEmail}`);
+      } else {
+        toast.warning("Password reset but email could not be sent. Please provide the new password manually.");
+      }
+      
+      onRefresh();
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast.error(error?.message || "Failed to reset password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {users.map((user) => (
@@ -293,6 +338,54 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                {/* Reset Password - Requires Super Admin */}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading}
+                      className="gap-1"
+                      title="Reset password and send new one via email - Requires Super Admin"
+                    >
+                      <Lock className="h-3 w-3" />
+                      Reset Password
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reset User Password</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        <div className="space-y-3">
+                          <p>
+                            This will generate a new secure password for <strong>{user.display_name || "this user"}</strong> and send it to their email address.
+                          </p>
+                          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                            <p className="text-sm text-destructive font-medium">⚠️ Super Admin Required</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              This action requires Super Admin privileges, is logged and rate-limited. The user will receive their new password via email.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Mail className="h-4 w-4" />
+                            <span>New password will be sent via email</span>
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleResetPassword(user.id, user.display_name || undefined)}
+                        disabled={isLoading}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        Reset & Send Email
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
 
                 {/* Unlock Account */}
                 <Button
