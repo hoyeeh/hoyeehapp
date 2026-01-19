@@ -173,10 +173,19 @@ Deno.serve(async (req) => {
     }
 
     const contentType = response.headers.get("content-type") || "";
+    const body = await response.arrayBuffer();
+
+    // Some providers return HTML with text/plain content-type.
+    // Sniff the beginning of the body to detect HTML reliably.
+    const sniff = new TextDecoder().decode(body.slice(0, 256)).toLowerCase();
+    const looksLikeHtml =
+      contentType.includes("text/html") ||
+      sniff.includes("<!doctype html") ||
+      sniff.includes("<html");
 
     // For HTML content, we need to process it
-    if (contentType.includes("text/html")) {
-      let html = await response.text();
+    if (looksLikeHtml) {
+      let html = new TextDecoder().decode(body);
 
       // Rewrite URLs to be absolute
       const proxyBaseUrl = `${url.origin}${url.pathname}`;
@@ -188,20 +197,33 @@ Deno.serve(async (req) => {
         `<head$1><base href="${targetUrl.origin}/">`
       );
 
+      // Allow the embedded app to load its assets/scripts.
+      // Note: this runs inside a sandboxed iframe on our side.
+      const permissiveCsp = [
+        "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'",
+        "script-src * data: blob: 'unsafe-inline' 'unsafe-eval'",
+        "style-src * 'unsafe-inline'",
+        "img-src * data: blob:",
+        "font-src * data:",
+        "connect-src * data: blob:",
+        "media-src * data: blob:",
+        "frame-src *",
+        "frame-ancestors *",
+      ].join("; ");
+
       return new Response(html, {
         headers: {
           ...corsHeaders,
           "Content-Type": "text/html; charset=utf-8",
           // Remove blocking headers
           "X-Frame-Options": "ALLOWALL",
-          "Content-Security-Policy": "frame-ancestors *",
+          "Content-Security-Policy": permissiveCsp,
+          "Cross-Origin-Resource-Policy": "cross-origin",
         },
       });
     }
 
     // For other content types (JS, CSS, images), pass through
-    const body = await response.arrayBuffer();
-    
     return new Response(body, {
       headers: {
         ...corsHeaders,
