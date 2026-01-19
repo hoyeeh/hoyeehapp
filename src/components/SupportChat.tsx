@@ -106,6 +106,29 @@ export const SupportChat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Notify admins about support activity
+  const notifyAdmins = async (
+    ticketId: string,
+    ticketSubject: string,
+    ticketType: string,
+    message: string,
+    isNewTicket: boolean
+  ) => {
+    try {
+      await supabase.functions.invoke("notify-admin-support", {
+        body: {
+          ticketId,
+          ticketSubject,
+          ticketType,
+          message,
+          isNewTicket,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to notify admins:", error);
+    }
+  };
+
   // Create new ticket
   const createTicket = useMutation({
     mutationFn: async () => {
@@ -137,6 +160,9 @@ export const SupportChat = () => {
         });
 
       if (messageError) throw messageError;
+
+      // Notify admins about new ticket
+      await notifyAdmins(ticket.id, newTicketSubject, newTicketType, newTicketMessage, true);
 
       return ticket;
     },
@@ -170,6 +196,12 @@ export const SupportChat = () => {
         });
 
       if (error) throw error;
+
+      // Find ticket details for notification
+      const ticket = tickets?.find(t => t.id === selectedTicket);
+      if (ticket) {
+        await notifyAdmins(selectedTicket, ticket.subject, ticket.ticket_type, newMessage.trim(), false);
+      }
     },
     onSuccess: () => {
       setNewMessage("");

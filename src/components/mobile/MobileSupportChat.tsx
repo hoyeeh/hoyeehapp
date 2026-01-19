@@ -119,6 +119,29 @@ export function MobileSupportChat({ open, onClose }: MobileSupportChatProps) {
     }
   }, [open]);
 
+  // Notify admins about support activity
+  const notifyAdmins = async (
+    ticketId: string,
+    ticketSubject: string,
+    ticketType: string,
+    message: string,
+    isNewTicket: boolean
+  ) => {
+    try {
+      await supabase.functions.invoke("notify-admin-support", {
+        body: {
+          ticketId,
+          ticketSubject,
+          ticketType,
+          message,
+          isNewTicket,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to notify admins:", error);
+    }
+  };
+
   // Create new ticket
   const createTicket = useMutation({
     mutationFn: async () => {
@@ -148,6 +171,9 @@ export function MobileSupportChat({ open, onClose }: MobileSupportChatProps) {
         });
 
       if (messageError) throw messageError;
+
+      // Notify admins about new ticket
+      await notifyAdmins(ticket.id, newTicketSubject, newTicketType, newTicketMessage, true);
 
       return ticket;
     },
@@ -182,6 +208,12 @@ export function MobileSupportChat({ open, onClose }: MobileSupportChatProps) {
         });
 
       if (error) throw error;
+
+      // Find ticket details for notification
+      const ticket = tickets?.find(t => t.id === selectedTicket);
+      if (ticket) {
+        await notifyAdmins(selectedTicket, ticket.subject, ticket.ticket_type, newMessage.trim(), false);
+      }
     },
     onSuccess: () => {
       successFeedback();
