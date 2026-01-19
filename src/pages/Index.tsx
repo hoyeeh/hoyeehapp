@@ -255,8 +255,8 @@ const Index = () => {
       return;
     }
     
-    // Check parental controls
-    if (profile?.parental_controls_enabled && profile?.parental_pin) {
+    // Check parental controls (use has_parental_pin flag from safe view)
+    if (profile?.parental_controls_enabled && profile?.has_parental_pin) {
       if (isRestrictedByParentalControls(item.contentRating, profile?.parental_rating_limit)) {
         setPinModalContent(item);
         return;
@@ -964,7 +964,7 @@ const Index = () => {
       )}
 
       {/* Parental Pin Modal */}
-      {pinModalContent && profile?.parental_pin && user && (
+      {pinModalContent && profile?.has_parental_pin && user && (
         <ParentalPinModal
           isOpen={!!pinModalContent}
           onClose={() => setPinModalContent(null)}

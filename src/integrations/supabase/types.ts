@@ -4273,6 +4273,7 @@ export type Database = {
           country: string | null
           created_at: string | null
           display_name: string | null
+          has_parental_pin: boolean | null
           id: string | null
           is_subscribed: boolean | null
           last_login_at: string | null
@@ -4290,6 +4291,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           display_name?: string | null
+          has_parental_pin?: never
           id?: string | null
           is_subscribed?: boolean | null
           last_login_at?: string | null
@@ -4307,6 +4309,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           display_name?: string | null
+          has_parental_pin?: never
           id?: string | null
           is_subscribed?: boolean | null
           last_login_at?: string | null

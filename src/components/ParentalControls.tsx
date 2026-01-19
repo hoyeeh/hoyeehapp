@@ -85,7 +85,7 @@ export const ParentalControls = () => {
     }
   };
 
-  const hasExistingPin = !!(profile as any)?.parental_pin;
+  const hasExistingPin = !!(profile as any)?.has_parental_pin;
 
   return (
     <Card className="bg-card">

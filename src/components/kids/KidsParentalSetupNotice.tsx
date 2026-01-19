@@ -36,10 +36,10 @@ export const KidsParentalSetupNotice = () => {
       }
 
       try {
-        // Check if parental PIN is set in profiles table
+        // Check if parental PIN is set using profiles_safe view (has_parental_pin flag)
         const { data: profileData } = await supabase
-          .from("profiles")
-          .select("parental_pin")
+          .from("profiles_safe")
+          .select("has_parental_pin")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -51,7 +51,7 @@ export const KidsParentalSetupNotice = () => {
           .maybeSingle();
 
         setSetupStatus({
-          hasPinSet: !!profileData?.parental_pin,
+          hasPinSet: !!profileData?.has_parental_pin,
           hasTimeLimitSet: !!kidsProfile?.daily_time_limit_minutes && kidsProfile.daily_time_limit_minutes > 0,
         });
       } catch (error) {
