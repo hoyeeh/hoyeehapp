@@ -101,35 +101,40 @@ export const UserDetailsCard = ({
   };
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xl">
+    <Card className="bg-card border-border h-full">
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
               {user.display_name?.charAt(0).toUpperCase() || "U"}
             </div>
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
+            <div className="min-w-0">
+              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                 {user.display_name || "Unknown User"}
                 {user.is_subscribed && (
                   <Badge variant="default" className="bg-brand text-xs">Premium</Badge>
                 )}
               </CardTitle>
-              <p className="text-sm text-muted-foreground">ID: {user.id.slice(0, 8)}...</p>
+              {/* Email displayed prominently */}
+              <p className="text-sm text-primary font-medium flex items-center gap-1 truncate">
+                <Mail className="h-3 w-3 shrink-0" />
+                {user.email || <span className="text-muted-foreground italic">No email</span>}
+              </p>
+              <p className="text-xs text-muted-foreground">ID: {user.id.slice(0, 8)}...</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 shrink-0">
             {getHealthBadge()}
             {!isEditing ? (
-              <Button variant="outline" size="sm" onClick={onStartEdit} className="gap-1">
+              <Button variant="outline" size="sm" onClick={onStartEdit} className="gap-1 h-8">
                 <Edit3 className="h-3 w-3" /> Edit
               </Button>
             ) : (
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={onCancelEdit} disabled={isLoading}>
+                <Button variant="ghost" size="sm" onClick={onCancelEdit} disabled={isLoading} className="h-8">
                   <X className="h-4 w-4" />
                 </Button>
-                <Button variant="brand" size="sm" onClick={onSaveEdit} disabled={isLoading} className="gap-1">
+                <Button variant="brand" size="sm" onClick={onSaveEdit} disabled={isLoading} className="gap-1 h-8">
                   <Save className="h-3 w-3" /> Save
                 </Button>
               </div>
@@ -156,8 +161,8 @@ export const UserDetailsCard = ({
 
         <Separator />
 
-        {/* Contact Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Contact Information - Compact Grid */}
+        <div className="grid grid-cols-1 gap-3">
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-1">
               <User className="h-4 w-4" /> Contact Information
@@ -289,28 +294,19 @@ export const UserDetailsCard = ({
 
         <Separator />
 
-        {/* Timestamps */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Registered</p>
-              <p className="text-sm">{formatDate(user.created_at)}</p>
-            </div>
+        {/* Timestamps - Compact */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="p-2 bg-secondary/30 rounded">
+            <p className="text-xs text-muted-foreground">Registered</p>
+            <p className="text-xs font-medium">{formatDate(user.created_at)}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Last Login</p>
-              <p className="text-sm">{formatDate(user.last_login_at)}</p>
-            </div>
+          <div className="p-2 bg-secondary/30 rounded">
+            <p className="text-xs text-muted-foreground">Last Login</p>
+            <p className="text-xs font-medium">{formatDate(user.last_login_at)}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Last Updated</p>
-              <p className="text-sm">{formatDate(user.updated_at)}</p>
-            </div>
+          <div className="p-2 bg-secondary/30 rounded">
+            <p className="text-xs text-muted-foreground">Updated</p>
+            <p className="text-xs font-medium">{formatDate(user.updated_at)}</p>
           </div>
         </div>
       </CardContent>

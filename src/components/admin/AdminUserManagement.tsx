@@ -403,7 +403,8 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="users" className="space-y-4">
+      <TabsContent value="users" className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {users.map((user) => (
           <div key={user.id} className="space-y-2">
             {/* Detailed User Card with Health Status */}
@@ -653,9 +654,10 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
             </Card>
           </div>
         ))}
+        </div>
 
         {users.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-muted-foreground col-span-full">
             No users found
           </div>
         )}

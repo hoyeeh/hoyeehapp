@@ -211,4 +211,4 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.admin-get-user-auth-details]
-verify_jwt = true
+verify_jwt = false
