@@ -48,8 +48,9 @@ export function MobileContentCard({
   const [badgeError, setBadgeError] = useState(false);
   const { isOnline } = useNetworkStatus();
   
+  // Show NEW badge only for content added within 5 days
   const isNewlyAdded = content.createdAt && 
-    new Date(content.createdAt) > subDays(new Date(), 14);
+    new Date(content.createdAt) > subDays(new Date(), 5);
   
   // Show offline badge when device is offline and content is downloaded
   const showOfflineBadge = !isOnline && isDownloaded;
@@ -289,28 +290,28 @@ export function MobileContentCard({
             </div>
           )}
 
-          {/* New Season Badge */}
+          {/* New Season Badge - Compact */}
           {hasNewSeason && content.contentType === 'series' && (
             <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
-              <span className="block text-center text-[8px] font-bold text-destructive-foreground">
+              <span className="block text-center text-[7px] font-bold text-destructive-foreground whitespace-nowrap">
                 NEW SEASON
               </span>
             </div>
           )}
 
-          {/* New Episode Badge */}
+          {/* New Episode Badge - Compact */}
           {hasNewEpisode && !hasNewSeason && content.contentType === 'series' && (
             <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
-              <span className="block text-center text-[8px] font-bold text-destructive-foreground">
+              <span className="block text-center text-[7px] font-bold text-destructive-foreground whitespace-nowrap">
                 NEW EPISODE
               </span>
             </div>
           )}
 
-          {/* New Badge */}
+          {/* New Badge - Compact */}
           {showNewBadge && isNewlyAdded && !hasNewSeason && !hasNewEpisode && (
             <div className="absolute bottom-0 left-0 right-0 bg-primary py-0.5">
-              <span className="block text-center text-[8px] font-bold text-primary-foreground">
+              <span className="block text-center text-[7px] font-bold text-primary-foreground whitespace-nowrap">
                 NEW
               </span>
             </div>
@@ -387,19 +388,19 @@ export function MobileContentCard({
           </div>
         )}
 
-        {/* New Season Badge */}
+        {/* New Season Badge - Compact */}
         {hasNewSeason && content.contentType === 'series' && (
           <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
-            <span className="block text-center text-[9px] font-bold text-destructive-foreground">
+            <span className="block text-center text-[8px] font-bold text-destructive-foreground whitespace-nowrap">
               NEW SEASON
             </span>
           </div>
         )}
 
-        {/* New Episode Badge */}
+        {/* New Episode Badge - Compact */}
         {hasNewEpisode && !hasNewSeason && content.contentType === 'series' && (
           <div className="absolute bottom-0 left-0 right-0 bg-destructive py-0.5">
-            <span className="block text-center text-[9px] font-bold text-destructive-foreground">
+            <span className="block text-center text-[8px] font-bold text-destructive-foreground whitespace-nowrap">
               NEW EPISODE
             </span>
           </div>

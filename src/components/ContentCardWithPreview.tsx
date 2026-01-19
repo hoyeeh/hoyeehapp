@@ -40,7 +40,7 @@ export const ContentCardWithPreview = ({
   isRestricted = false,
   showTop10Badge = false,
   showJustAddedBadge = false,
-  justAddedDays = 2, // Default 2 days for most sections
+  justAddedDays = 5, // Default 5 days for most sections
   isPaidContent = false,
   paidPrice,
   paidCurrency = 'XAF',
@@ -276,24 +276,24 @@ export const ContentCardWithPreview = ({
             </div>
           )}
 
-          {/* New Season Badge - Centered with rounded edges (priority over New Episode) */}
+          {/* New Season Badge - Compact single line */}
           {hasNewSeason && !showTop10Badge && content.contentType === 'series' && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
+            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[9px] font-bold rounded-full whitespace-nowrap">
               NEW SEASON
             </div>
           )}
 
-          {/* New Episode Badge - Centered with rounded edges */}
+          {/* New Episode Badge - Compact single line */}
           {hasNewEpisode && !hasNewSeason && !showTop10Badge && content.contentType === 'series' && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
+            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[9px] font-bold rounded-full whitespace-nowrap">
               NEW EPISODE
             </div>
           )}
 
-          {/* Just Added Badge - Centered with rounded edges */}
+          {/* Just Added Badge - Compact single line */}
           {shouldShowJustAdded && !showTop10Badge && !hasNewSeason && !hasNewEpisode && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-3 py-1 text-xs font-bold rounded-full">
-              JUST ADDED
+            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[9px] font-bold rounded-full whitespace-nowrap">
+              NEW RELEASE
             </div>
           )}
 

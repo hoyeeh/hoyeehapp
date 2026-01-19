@@ -163,11 +163,7 @@ export const AIRecommendationsRow = ({
                   loading="lazy"
                 />
                 
-                {/* AI Badge */}
-                <div className="absolute top-2 right-2 bg-brand/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  <span className="text-[10px] font-semibold">HY PICKS</span>
-                </div>
+                {/* AI Badge - Hidden per user request */}
 
                 {/* Hover overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
