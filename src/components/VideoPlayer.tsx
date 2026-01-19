@@ -1008,15 +1008,7 @@ export const VideoPlayer = ({
             setIsMuted(false);
             if (videoRef.current) {
               videoRef.current.muted = false;
-              // Show volume indicator animation
-              setVolumeIndicatorLevel(Math.round(volume * 100));
-              setShowVolumeIndicator(true);
-              if (volumeIndicatorTimeoutRef.current) {
-                clearTimeout(volumeIndicatorTimeoutRef.current);
-              }
-              volumeIndicatorTimeoutRef.current = setTimeout(() => {
-                setShowVolumeIndicator(false);
-              }, 1500);
+              // No volume indicator - just unmute silently
             }
           }}
         >
@@ -1025,23 +1017,7 @@ export const VideoPlayer = ({
         </button>
       )}
       
-      {/* Volume Indicator Animation */}
-      {showVolumeIndicator && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none animate-scale-in">
-          <div className="bg-background/90 backdrop-blur-md rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-3">
-            <div className="relative">
-              <Volume2 className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${volumeIndicatorLevel}%` }}
-              />
-            </div>
-            <span className="text-sm font-medium text-foreground">{volumeIndicatorLevel}%</span>
-          </div>
-        </div>
-      )}
+      {/* Volume Indicator Animation - Removed to prevent blocking playback */}
       
       {/* Resume Playback Prompt */}
       {showResumePrompt && (
