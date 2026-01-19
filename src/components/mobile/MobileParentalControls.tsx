@@ -57,7 +57,7 @@ export function MobileParentalControls({ onClose }: MobileParentalControlsProps)
   const handleEnableToggle = (checked: boolean) => {
     selectionTap();
     if (checked) {
-      const hasExistingPin = !!(profile as any)?.parental_pin;
+      const hasExistingPin = !!(profile as any)?.has_parental_pin;
       if (!hasExistingPin) {
         setShowPinSetup(true);
         setPinStep("enter");
@@ -139,7 +139,7 @@ export function MobileParentalControls({ onClose }: MobileParentalControlsProps)
     }
   };
 
-  const hasExistingPin = !!(profile as any)?.parental_pin;
+  const hasExistingPin = !!(profile as any)?.has_parental_pin;
 
   return (
     <motion.div
