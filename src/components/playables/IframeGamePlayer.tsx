@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Gamepad2, Loader2, AlertTriangle, ExternalLink, Maximize2, Shield } from "lucide-react";
 import { PlayableGame } from "@/hooks/usePlayableGames";
@@ -23,7 +23,7 @@ const PROXY_SUPPORTED_DOMAINS = [
 function canUseProxy(url: string): boolean {
   try {
     const urlObj = new URL(url);
-    return PROXY_SUPPORTED_DOMAINS.some(domain => 
+    return PROXY_SUPPORTED_DOMAINS.some((domain) =>
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
   } catch {
@@ -34,43 +34,70 @@ function canUseProxy(url: string): boolean {
 export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: IframeGamePlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  // Start with proxy enabled for CrazyGames since they block direct iframe embedding
-  const [useProxy, setUseProxy] = useState(() => canUseProxy(game.embed_url));
 
-  // Determine the game URL - use proxy if needed and supported
+  // IMPORTANT: start with direct embedding; proxying can introduce strict CSPs depending on the platform.
+  const [useProxy, setUseProxy] = useState(false);
+  const [showSlowLoadHelp, setShowSlowLoadHelp] = useState(false);
+
+  const canProxyThisGame = useMemo(() => canUseProxy(game.embed_url), [game.embed_url]);
+
+  // Determine the game URL - use proxy if toggled and supported
   const gameUrl = useMemo(() => {
-    if (useProxy && canUseProxy(game.embed_url)) {
+    if (useProxy && canProxyThisGame) {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       return `${supabaseUrl}/functions/v1/game-proxy?url=${encodeURIComponent(game.embed_url)}&gameId=${game.id}`;
     }
     return game.embed_url;
-  }, [game.embed_url, game.id, useProxy]);
+  }, [canProxyThisGame, game.embed_url, game.id, useProxy]);
+
+  // Reset UI state when the iframe URL changes (game change, proxy toggle)
+  useEffect(() => {
+    setIsLoading(true);
+    setHasError(false);
+    setShowSlowLoadHelp(false);
+  }, [gameUrl]);
+
+  // If loading takes too long, surface troubleshooting actions
+  useEffect(() => {
+    if (!isLoading) return;
+    const t = window.setTimeout(() => setShowSlowLoadHelp(true), 8000);
+    return () => window.clearTimeout(t);
+  }, [isLoading, gameUrl]);
 
   const handleIframeLoad = () => {
     setIsLoading(false);
+    setHasError(false);
+    setShowSlowLoadHelp(false);
     onPlayCountIncrement();
   };
 
   const handleIframeError = () => {
     setIsLoading(false);
-    // If direct embedding failed and proxy is available, try proxy
-    if (!useProxy && canUseProxy(game.embed_url)) {
+
+    // If direct embedding failed and proxy is available, try proxy once
+    if (!useProxy && canProxyThisGame) {
       console.log("Direct embed failed, trying proxy...");
-      setIsLoading(true);
       setUseProxy(true);
-    } else {
-      setHasError(true);
+      return;
     }
+
+    setHasError(true);
   };
 
   const handleOpenExternal = () => {
     window.open(game.embed_url, "_blank", "noopener,noreferrer");
   };
 
+  const handleToggleProxy = () => {
+    if (!canProxyThisGame) return;
+    setUseProxy((prev) => !prev);
+  };
+
   // Enhanced sandbox permissions for better game compatibility
+  // SECURITY NOTE: when proxied, avoid allow-same-origin to prevent the proxied page from becoming same-origin with our app.
   const sandboxPermissions = [
     "allow-scripts",
-    "allow-same-origin",
+    ...(useProxy ? [] : ["allow-same-origin"]),
     "allow-popups",
     "allow-forms",
     "allow-modals",
@@ -150,6 +177,25 @@ export const IframeGamePlayer = ({ game, onClose, onPlayCountIncrement }: Iframe
             </motion.div>
             <p className="text-sm text-muted-foreground">Loading game...</p>
             <p className="text-xs text-muted-foreground/60">This may take a moment</p>
+
+            {showSlowLoadHelp && (
+              <div className="mt-2 flex flex-col items-center gap-2">
+                <p className="text-xs text-muted-foreground/70">
+                  Still stuck? Try an alternative launch.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {canProxyThisGame && (
+                    <Button size="sm" variant="outline" onClick={handleToggleProxy}>
+                      {useProxy ? "Try Direct" : "Try Proxied"}
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={handleOpenExternal} className="gap-2">
+                    Open in Browser
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
