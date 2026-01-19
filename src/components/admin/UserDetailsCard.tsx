@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   User, 
   Mail, 
@@ -21,7 +22,9 @@ import {
   X,
   AlertTriangle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -84,232 +87,220 @@ export const UserDetailsCard = ({
   isLoading,
   healthStatus
 }: UserDetailsCardProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   const formatDate = (date: string | null) => {
     if (!date) return "Never";
-    return format(new Date(date), "PPp");
+    return format(new Date(date), "PP");
   };
 
   const getHealthBadge = () => {
     switch (healthStatus.overallHealth) {
       case 'good':
-        return <Badge className="bg-green-500/20 text-green-400 gap-1"><CheckCircle2 className="h-3 w-3" /> Healthy</Badge>;
+        return <Badge className="bg-green-500/20 text-green-400 gap-1 text-xs"><CheckCircle2 className="h-3 w-3" /></Badge>;
       case 'warning':
-        return <Badge className="bg-yellow-500/20 text-yellow-400 gap-1"><AlertTriangle className="h-3 w-3" /> Issues</Badge>;
+        return <Badge className="bg-yellow-500/20 text-yellow-400 gap-1 text-xs"><AlertTriangle className="h-3 w-3" /></Badge>;
       case 'critical':
-        return <Badge className="bg-red-500/20 text-red-400 gap-1"><XCircle className="h-3 w-3" /> Critical</Badge>;
+        return <Badge className="bg-red-500/20 text-red-400 gap-1 text-xs"><XCircle className="h-3 w-3" /></Badge>;
     }
   };
 
   return (
-    <Card className="bg-card border-border h-full">
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-              {user.display_name?.charAt(0).toUpperCase() || "U"}
+    <Card className="bg-card border-border">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CardHeader className="p-3 pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                {user.display_name?.charAt(0).toUpperCase() || "U"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <CardTitle className="text-sm truncate">
+                    {user.display_name || "Unknown"}
+                  </CardTitle>
+                  {user.is_subscribed && (
+                    <Badge variant="default" className="bg-brand text-[10px] px-1.5 py-0">Pro</Badge>
+                  )}
+                  {getHealthBadge()}
+                </div>
+                <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  {user.email || "No email"}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-                {user.display_name || "Unknown User"}
-                {user.is_subscribed && (
-                  <Badge variant="default" className="bg-brand text-xs">Premium</Badge>
-                )}
-              </CardTitle>
-              {/* Email displayed prominently */}
-              <p className="text-sm text-primary font-medium flex items-center gap-1 truncate">
-                <Mail className="h-3 w-3 shrink-0" />
-                {user.email || <span className="text-muted-foreground italic">No email</span>}
-              </p>
-              <p className="text-xs text-muted-foreground">ID: {user.id.slice(0, 8)}...</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {getHealthBadge()}
-            {!isEditing ? (
-              <Button variant="outline" size="sm" onClick={onStartEdit} className="gap-1 h-8">
-                <Edit3 className="h-3 w-3" /> Edit
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
-            ) : (
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={onCancelEdit} disabled={isLoading} className="h-8">
-                  <X className="h-4 w-4" />
-                </Button>
-                <Button variant="brand" size="sm" onClick={onSaveEdit} disabled={isLoading} className="gap-1 h-8">
-                  <Save className="h-3 w-3" /> Save
-                </Button>
+            </CollapsibleTrigger>
+          </div>
+        </CardHeader>
+
+        <CollapsibleContent>
+          <CardContent className="p-3 pt-0 space-y-3">
+            <Separator />
+
+            {/* Health Issues Alert */}
+            {healthStatus.issues.length > 0 && (
+              <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                <ul className="text-xs text-muted-foreground space-y-0.5">
+                  {healthStatus.issues.slice(0, 3).map((issue, i) => (
+                    <li key={i} className="flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
+                      <span className="truncate">{issue}</span>
+                    </li>
+                  ))}
+                  {healthStatus.issues.length > 3 && (
+                    <li className="text-destructive text-xs">+{healthStatus.issues.length - 3} more issues</li>
+                  )}
+                </ul>
               </div>
             )}
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {/* Health Issues Alert */}
-        {healthStatus.issues.length > 0 && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-            <p className="text-sm font-medium text-destructive mb-2">Health Issues Detected:</p>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              {healthStatus.issues.map((issue, i) => (
-                <li key={i} className="flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3 text-destructive" />
-                  {issue}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
-        <Separator />
-
-        {/* Contact Information - Compact Grid */}
-        <div className="grid grid-cols-1 gap-3">
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-1">
-              <User className="h-4 w-4" /> Contact Information
-            </h4>
-            
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24">Display Name</Label>
-                {isEditing ? (
-                  <Input 
-                    value={editValues.display_name}
-                    onChange={(e) => onEditChange('display_name', e.target.value)}
-                    className="h-8 text-sm bg-secondary"
-                    placeholder="Enter display name"
-                  />
-                ) : (
-                  <span className="text-sm">{user.display_name || <span className="text-muted-foreground italic">Not set</span>}</span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24 flex items-center gap-1">
-                  <Mail className="h-3 w-3" /> Email
-                </Label>
-                {isEditing ? (
-                  <Input 
-                    type="email"
-                    value={editValues.email}
-                    onChange={(e) => onEditChange('email', e.target.value)}
-                    className="h-8 text-sm bg-secondary"
-                    placeholder="Enter email"
-                  />
-                ) : (
-                  <span className="text-sm">{user.email || <span className="text-muted-foreground italic">Not set</span>}</span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24 flex items-center gap-1">
-                  <Phone className="h-3 w-3" /> Phone
-                </Label>
-                {isEditing ? (
-                  <Input 
-                    type="tel"
-                    value={editValues.mobile_number}
-                    onChange={(e) => onEditChange('mobile_number', e.target.value)}
-                    className="h-8 text-sm bg-secondary"
-                    placeholder="Enter phone number"
-                  />
-                ) : (
-                  <span className="text-sm">{user.mobile_number || <span className="text-muted-foreground italic">Not set</span>}</span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24 flex items-center gap-1">
-                  <MapPin className="h-3 w-3" /> Country
-                </Label>
-                {isEditing ? (
-                  <Input 
-                    value={editValues.country}
-                    onChange={(e) => onEditChange('country', e.target.value)}
-                    className="h-8 text-sm bg-secondary"
-                    placeholder="Enter country"
-                  />
-                ) : (
-                  <span className="text-sm">{user.country || <span className="text-muted-foreground italic">Not set</span>}</span>
-                )}
-              </div>
+            {/* Edit/View Toggle */}
+            <div className="flex justify-end gap-1">
+              {!isEditing ? (
+                <Button variant="outline" size="sm" onClick={onStartEdit} className="gap-1 h-7 text-xs">
+                  <Edit3 className="h-3 w-3" /> Edit
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" size="sm" onClick={onCancelEdit} disabled={isLoading} className="h-7">
+                    <X className="h-3 w-3" />
+                  </Button>
+                  <Button variant="brand" size="sm" onClick={onSaveEdit} disabled={isLoading} className="gap-1 h-7 text-xs">
+                    <Save className="h-3 w-3" /> Save
+                  </Button>
+                </>
+              )}
             </div>
-          </div>
 
-          {/* Account Status */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-1">
-              <Activity className="h-4 w-4" /> Account Status
-            </h4>
-            
+            {/* Contact Information */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24 flex items-center gap-1">
-                  <CreditCard className="h-3 w-3" /> Subscription
-                </Label>
+              <h4 className="text-xs font-semibold text-muted-foreground">Contact Info</h4>
+              
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  {user.is_subscribed ? (
-                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+                  <Label className="text-xs text-muted-foreground w-16 shrink-0">Name</Label>
+                  {isEditing ? (
+                    <Input 
+                      value={editValues.display_name}
+                      onChange={(e) => onEditChange('display_name', e.target.value)}
+                      className="h-7 text-xs bg-secondary"
+                      placeholder="Display name"
+                    />
                   ) : (
-                    <Badge variant="secondary">Free</Badge>
+                    <span className="text-xs truncate">{user.display_name || <span className="italic text-muted-foreground">Not set</span>}</span>
                   )}
-                  {user.subscription_expiry && (
-                    <span className="text-xs text-muted-foreground">
-                      Expires: {formatDate(user.subscription_expiry)}
-                    </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground w-16 shrink-0">Email</Label>
+                  {isEditing ? (
+                    <Input 
+                      type="email"
+                      value={editValues.email}
+                      onChange={(e) => onEditChange('email', e.target.value)}
+                      className="h-7 text-xs bg-secondary"
+                      placeholder="Email"
+                    />
+                  ) : (
+                    <span className="text-xs truncate">{user.email || <span className="italic text-muted-foreground">Not set</span>}</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground w-16 shrink-0">Phone</Label>
+                  {isEditing ? (
+                    <Input 
+                      type="tel"
+                      value={editValues.mobile_number}
+                      onChange={(e) => onEditChange('mobile_number', e.target.value)}
+                      className="h-7 text-xs bg-secondary"
+                      placeholder="Phone"
+                    />
+                  ) : (
+                    <span className="text-xs truncate">{user.mobile_number || <span className="italic text-muted-foreground">Not set</span>}</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground w-16 shrink-0">Country</Label>
+                  {isEditing ? (
+                    <Input 
+                      value={editValues.country}
+                      onChange={(e) => onEditChange('country', e.target.value)}
+                      className="h-7 text-xs bg-secondary"
+                      placeholder="Country"
+                    />
+                  ) : (
+                    <span className="text-xs truncate">{user.country || <span className="italic text-muted-foreground">Not set</span>}</span>
                   )}
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24 flex items-center gap-1">
-                  <Lock className="h-3 w-3" /> Account Lock
-                </Label>
-                {user.pin_locked_until && new Date(user.pin_locked_until) > new Date() ? (
-                  <Badge className="bg-red-500/20 text-red-400">Locked until {formatDate(user.pin_locked_until)}</Badge>
-                ) : (
-                  <Badge className="bg-green-500/20 text-green-400">Unlocked</Badge>
-                )}
-              </div>
+            <Separator />
 
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> Lockouts
-                </Label>
-                <span className="text-sm">{user.lockout_count || 0} times</span>
-              </div>
+            {/* Account Status */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground">Account Status</h4>
+              
+              <div className="grid grid-cols-2 gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <CreditCard className="h-3 w-3 text-muted-foreground" />
+                  {user.is_subscribed ? (
+                    <Badge className="bg-green-500/20 text-green-400 text-[10px]">Premium</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px]">Free</Badge>
+                  )}
+                </div>
 
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24 flex items-center gap-1">
-                  <Shield className="h-3 w-3" /> Parental
-                </Label>
-                {user.parental_controls_enabled ? (
-                  <Badge className="bg-blue-500/20 text-blue-400">Enabled</Badge>
-                ) : (
-                  <Badge variant="secondary">Disabled</Badge>
-                )}
+                <div className="flex items-center gap-1.5">
+                  <Lock className="h-3 w-3 text-muted-foreground" />
+                  {user.pin_locked_until && new Date(user.pin_locked_until) > new Date() ? (
+                    <Badge className="bg-red-500/20 text-red-400 text-[10px]">Locked</Badge>
+                  ) : (
+                    <Badge className="bg-green-500/20 text-green-400 text-[10px]">OK</Badge>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-3 w-3 text-muted-foreground" />
+                  <span>{user.lockout_count || 0} lockouts</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <Shield className="h-3 w-3 text-muted-foreground" />
+                  {user.parental_controls_enabled ? (
+                    <Badge className="bg-blue-500/20 text-blue-400 text-[10px]">Parental</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">No controls</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <Separator />
+            <Separator />
 
-        {/* Timestamps - Compact */}
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="p-2 bg-secondary/30 rounded">
-            <p className="text-xs text-muted-foreground">Registered</p>
-            <p className="text-xs font-medium">{formatDate(user.created_at)}</p>
-          </div>
-          <div className="p-2 bg-secondary/30 rounded">
-            <p className="text-xs text-muted-foreground">Last Login</p>
-            <p className="text-xs font-medium">{formatDate(user.last_login_at)}</p>
-          </div>
-          <div className="p-2 bg-secondary/30 rounded">
-            <p className="text-xs text-muted-foreground">Updated</p>
-            <p className="text-xs font-medium">{formatDate(user.updated_at)}</p>
-          </div>
-        </div>
-      </CardContent>
+            {/* Timestamps - Compact */}
+            <div className="grid grid-cols-2 gap-1.5 text-xs">
+              <div>
+                <span className="text-muted-foreground">Joined: </span>
+                <span>{formatDate(user.created_at)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Last login: </span>
+                <span>{formatDate(user.last_login_at)}</span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-muted-foreground">ID: {user.id}</p>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 };
@@ -319,55 +310,48 @@ export const calculateHealthStatus = (user: UserProfile, authEmail?: string): Us
   let criticalCount = 0;
   let warningCount = 0;
 
-  // Check for email
   const hasEmail = !!authEmail || !!user.email;
   if (!hasEmail) {
-    issues.push("No email address configured");
+    issues.push("No email address");
     criticalCount++;
   }
 
-  // Check for phone
   const hasPhone = !!user.mobile_number;
   if (!hasPhone) {
-    issues.push("No phone number set");
+    issues.push("No phone number");
     warningCount++;
   }
 
-  // Check for display name
   const hasDisplayName = !!user.display_name;
   if (!hasDisplayName) {
-    issues.push("Display name not set");
+    issues.push("No display name");
     warningCount++;
   }
 
-  // Check if account is locked
   const isAccountLocked = user.pin_locked_until ? new Date(user.pin_locked_until) > new Date() : false;
   if (isAccountLocked) {
-    issues.push("Account is currently locked");
+    issues.push("Account locked");
     criticalCount++;
   }
 
-  // Check subscription expiry
   const isSubscriptionExpired = user.is_subscribed && user.subscription_expiry 
     ? new Date(user.subscription_expiry) < new Date() 
     : false;
   if (isSubscriptionExpired) {
-    issues.push("Subscription has expired but still marked as subscribed");
+    issues.push("Subscription expired");
     warningCount++;
   }
 
-  // Check for recent login (within last 30 days)
   const hasRecentLogin = user.last_login_at 
     ? new Date(user.last_login_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     : false;
   if (!hasRecentLogin && user.last_login_at) {
-    issues.push("User hasn't logged in for 30+ days");
+    issues.push("Inactive 30+ days");
   }
 
-  // Check for multiple lockouts
   const hasMultipleLockouts = (user.lockout_count || 0) > 3;
   if (hasMultipleLockouts) {
-    issues.push(`User has been locked out ${user.lockout_count} times`);
+    issues.push(`${user.lockout_count} lockouts`);
     warningCount++;
   }
 
