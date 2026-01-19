@@ -13,11 +13,39 @@ interface IframeGamePlayerProps {
 
 // Domains that support proxying for iframe embedding
 const PROXY_SUPPORTED_DOMAINS = [
+  // Popular game portals
   "crazygames.com",
   "poki.com",
   "kizi.com",
   "gameflare.com",
   "silvergames.com",
+  // itch.io - indie games
+  "itch.io",
+  "html-classic.itch.zone",
+  "html.itch.zone",
+  // Educational portals
+  "pbskids.org",
+  "education.com",
+  "abcya.com",
+  "coolmathgames.com",
+  "funbrain.com",
+  "brainpop.com",
+  "starfall.com",
+  "typingclub.com",
+  "typing.com",
+  "kids.nationalgeographic.com",
+  "scratch.mit.edu",
+  "studio.code.org",
+  "mathplayground.com",
+  "sheppardsoftware.com",
+  "arcademics.com",
+  // More portals
+  "armorgames.com",
+  "kongregate.com",
+  "newgrounds.com",
+  "gamesgames.com",
+  "miniclip.com",
+  "beinternetawesome.withgoogle.com",
 ];
 
 function canUseProxy(url: string): boolean {
