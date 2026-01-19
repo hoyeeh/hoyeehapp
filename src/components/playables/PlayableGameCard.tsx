@@ -59,12 +59,6 @@ export const PlayableGameCard = ({ game, onClick, className }: PlayableGameCardP
             <Gamepad2 className="h-6 w-6 text-primary-foreground" />
           </div>
         </motion.div>
-        {/* External badge */}
-        {game.embed_type === "external" && (
-          <div className="absolute top-2 right-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground">
-            External
-          </div>
-        )}
       </div>
 
       {/* Info section */}

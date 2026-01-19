@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, Rea
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SessionConflictDialog } from "@/components/auth/SessionConflictDialog";
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSessionConflict, setShowSessionConflict] = useState(false);
+  const [pendingConflictUserId, setPendingConflictUserId] = useState<string | null>(null);
 
   // Get cached session ID from localStorage
   const getCachedSessionId = useCallback(() => {
@@ -83,6 +86,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Handle continuing on this device
+  const handleContinueHere = useCallback(async () => {
+    setShowSessionConflict(false);
+    
+    // Generate new session ID to take over the session
+    await generateSecureSessionId();
+    
+    toast.success("Session activated", {
+      description: "You are now signed in on this device.",
+      duration: 3000,
+    });
+    
+    setPendingConflictUserId(null);
+  }, [generateSecureSessionId]);
+
+  // Handle signing out from conflict dialog
+  const handleConflictSignOut = useCallback(async () => {
+    setShowSessionConflict(false);
+    setPendingConflictUserId(null);
+    clearCachedSessionId();
+    await supabase.auth.signOut();
+    
+    toast.info("Signed out", {
+      description: "You have been signed out successfully.",
+      duration: 3000,
+    });
+  }, [clearCachedSessionId]);
+
   // Check and update session - validates against server
   const checkAndUpdateSession = useCallback(
     async (userId: string) => {
@@ -99,13 +130,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           
           // Session is no longer valid - someone else logged in
-          // Clear the cache and sign out
-          clearCachedSessionId();
-          toast.error("Already signed in on another device", {
-            description: "You have been signed out because your account is active on another device.",
-            duration: 5000,
-          });
-          await supabase.auth.signOut();
+          // Show the conflict dialog instead of immediately signing out
+          setPendingConflictUserId(userId);
+          setShowSessionConflict(true);
           return;
         }
         
@@ -115,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error checking session:", error);
       }
     },
-    [getCachedSessionId, validateSession, clearCachedSessionId, generateSecureSessionId]
+    [getCachedSessionId, validateSession, generateSecureSessionId]
   );
 
   // Update active session - generates new secure session ID
@@ -245,7 +272,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+      {children}
+      <SessionConflictDialog
+        open={showSessionConflict}
+        onContinueHere={handleContinueHere}
+        onSignOut={handleConflictSignOut}
+      />
+    </AuthContext.Provider>
   );
 };
 
