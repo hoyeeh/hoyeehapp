@@ -28,8 +28,9 @@ export const useSubscriptionAccess = () => {
     queryKey: ['profile-subscription', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
+      // Use profiles_safe view to avoid exposing sensitive fields
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_safe')
         .select('is_subscribed, subscription_expiry')
         .eq('id', user.id)
         .maybeSingle();

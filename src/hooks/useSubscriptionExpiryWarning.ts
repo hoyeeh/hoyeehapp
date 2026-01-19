@@ -28,8 +28,9 @@ export const useSubscriptionExpiryWarning = () => {
       lastCheckTime.current = now;
 
       try {
+        // Use profiles_safe view to avoid exposing sensitive fields
         const { data: profile, error } = await supabase
-          .from("profiles")
+          .from("profiles_safe")
           .select("is_subscribed, subscription_expiry")
           .eq("id", user.id)
           .single();
