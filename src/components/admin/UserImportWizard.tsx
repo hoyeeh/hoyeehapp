@@ -148,7 +148,6 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
     
     // Match INSERT INTO statements with column names
     const insertRegex = /INSERT\s+INTO\s+[`"]?(\w+)[`"]?\s*\(([^)]+)\)\s*VALUES\s*/gi;
-    const valueBlockRegex = /\(([^)]+)\)/g;
     
     // Find all INSERT statements
     const lines = text.split(';');
@@ -167,15 +166,15 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
           .map(h => h.trim().replace(/[`"]/g, ''));
       }
       
-      // Extract values
-      let valuesMatch;
+      // Extract values - handle nested parentheses properly
       const valuesStart = trimmedLine.toUpperCase().indexOf('VALUES');
       if (valuesStart === -1) continue;
       
-      const valuesPart = trimmedLine.slice(valuesStart + 6);
+      const valuesPart = trimmedLine.slice(valuesStart + 6).trim();
+      const valueGroups = extractValueGroups(valuesPart);
       
-      while ((valuesMatch = valueBlockRegex.exec(valuesPart)) !== null) {
-        const values = parseValueString(valuesMatch[1]);
+      for (const group of valueGroups) {
+        const values = parseValueString(group);
         if (values.length > 0) {
           results.push(values);
         }
@@ -192,6 +191,71 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
     }
     
     return [headers, ...results];
+  };
+
+  // Extract value groups from SQL VALUES clause, handling nested parentheses
+  const extractValueGroups = (valuesPart: string): string[] => {
+    const groups: string[] = [];
+    let depth = 0;
+    let current = "";
+    let inString = false;
+    let stringChar = "";
+    
+    for (let i = 0; i < valuesPart.length; i++) {
+      const char = valuesPart[i];
+      const prevChar = i > 0 ? valuesPart[i - 1] : "";
+      
+      // Handle string boundaries
+      if (!inString && (char === "'" || char === '"')) {
+        inString = true;
+        stringChar = char;
+        current += char;
+        continue;
+      }
+      
+      if (inString) {
+        current += char;
+        // Check for escaped quotes or end of string
+        if (char === stringChar && prevChar !== '\\') {
+          // Check for doubled quotes (MySQL escape)
+          if (i + 1 < valuesPart.length && valuesPart[i + 1] === stringChar) {
+            continue; // Skip, next iteration will add it
+          }
+          inString = false;
+        }
+        continue;
+      }
+      
+      // Track parentheses depth outside strings
+      if (char === '(') {
+        if (depth === 0) {
+          current = ""; // Start new group
+        } else {
+          current += char;
+        }
+        depth++;
+        continue;
+      }
+      
+      if (char === ')') {
+        depth--;
+        if (depth === 0) {
+          if (current.trim()) {
+            groups.push(current);
+          }
+          current = "";
+        } else {
+          current += char;
+        }
+        continue;
+      }
+      
+      if (depth > 0) {
+        current += char;
+      }
+    }
+    
+    return groups;
   };
 
   // Parse a value string from SQL, handling quotes and escapes
@@ -212,8 +276,26 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
         continue;
       }
       
+      if (inString && char === '\\') {
+        // Handle backslash escapes
+        if (i + 1 < valueStr.length) {
+          const nextChar = valueStr[i + 1];
+          if (nextChar === 'n') {
+            current += '\n';
+          } else if (nextChar === 'r') {
+            current += '\r';
+          } else if (nextChar === 't') {
+            current += '\t';
+          } else {
+            current += nextChar; // Handle \' \" \\
+          }
+          i += 2;
+          continue;
+        }
+      }
+      
       if (inString && char === stringChar) {
-        // Check for escaped quote
+        // Check for doubled quote escape (MySQL style)
         if (i + 1 < valueStr.length && valueStr[i + 1] === stringChar) {
           current += char;
           i += 2;
@@ -225,7 +307,7 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
       }
       
       if (!inString && char === ',') {
-        values.push(current.trim().replace(/^NULL$/i, ''));
+        values.push(cleanValue(current));
         current = "";
         i++;
         continue;
@@ -237,8 +319,21 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
       i++;
     }
     
-    values.push(current.trim().replace(/^NULL$/i, ''));
+    values.push(cleanValue(current));
     return values;
+  };
+
+  // Clean and normalize parsed values
+  const cleanValue = (value: string): string => {
+    const trimmed = value.trim();
+    // Handle NULL values
+    if (trimmed.toUpperCase() === 'NULL') return '';
+    // Remove any remaining outer quotes
+    if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || 
+        (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+      return trimmed.slice(1, -1);
+    }
+    return trimmed;
   };
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
