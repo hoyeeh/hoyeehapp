@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -33,7 +34,9 @@ import {
   AlertTriangle,
   Database,
   Mail,
-  Download
+  Download,
+  Info,
+  CheckCircle2
 } from "lucide-react";
 
 interface UserImportWizardProps {
@@ -568,8 +571,61 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
     URL.revokeObjectURL(url);
   };
 
+  // Field detection analysis
+  const fieldAnalysis = useMemo(() => {
+    const supportedFields = [
+      { key: 'email', label: 'Email', required: true, aliases: ['email', 'e-mail', 'email_address', 'emailaddress', 'mail'] },
+      { key: 'display_name', label: 'Display Name', required: false, aliases: ['display_name', 'displayname', 'name', 'full_name', 'fullname', 'username'] },
+      { key: 'first_name', label: 'First Name', required: false, aliases: ['first_name', 'firstname', 'fname', 'given_name'] },
+      { key: 'last_name', label: 'Last Name', required: false, aliases: ['last_name', 'lastname', 'lname', 'surname', 'family_name'] },
+      { key: 'mobile_number', label: 'Phone', required: false, aliases: ['mobile_number', 'mobile', 'phone', 'phone_number', 'phonenumber', 'tel', 'telephone'] },
+      { key: 'country', label: 'Country', required: false, aliases: ['country', 'address', 'location', 'region'] },
+      { key: 'avatar_url', label: 'Avatar URL', required: false, aliases: ['avatar_url', 'avatar', 'profile_image', 'photo', 'picture', 'image_url'] },
+      { key: 'is_subscribed', label: 'Is Subscribed', required: false, aliases: ['is_subscribed', 'subscribed', 'subscription', 'premium', 'paid'] },
+      { key: 'password', label: 'Password', required: false, aliases: ['password', 'pass', 'pwd'] }
+    ];
+
+    const lowerHeaders = headers.map(h => h.toLowerCase().trim());
+    
+    const detected: { key: string; label: string; required: boolean; matchedColumn: string }[] = [];
+    const missing: { key: string; label: string; required: boolean }[] = [];
+
+    supportedFields.forEach(field => {
+      const matchIndex = lowerHeaders.findIndex(h => field.aliases.includes(h));
+      if (matchIndex >= 0) {
+        detected.push({ ...field, matchedColumn: headers[matchIndex] });
+      } else {
+        missing.push(field);
+      }
+    });
+
+    const hasEmail = detected.some(f => f.key === 'email');
+    const hasNameField = detected.some(f => ['display_name', 'first_name', 'last_name'].includes(f.key));
+
+    return { detected, missing, hasEmail, hasNameField };
+  }, [headers]);
+
+  const downloadTemplate = () => {
+    const link = document.createElement('a');
+    link.href = '/templates/user-import-template.csv';
+    link.download = 'user-import-template.csv';
+    link.click();
+  };
+
   const renderUploadStep = () => (
     <div className="space-y-6">
+      {/* Template Download */}
+      <Alert className="border-primary/30 bg-primary/5">
+        <Info className="h-4 w-4" />
+        <AlertDescription className="flex items-center justify-between">
+          <span>Need a template? Download our CSV template with all supported fields.</span>
+          <Button variant="outline" size="sm" onClick={downloadTemplate}>
+            <Download className="h-4 w-4 mr-2" />
+            Download Template
+          </Button>
+        </AlertDescription>
+      </Alert>
+
       <div
         className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
         onDragOver={handleDragOver}
@@ -617,6 +673,99 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
                 <X className="h-4 w-4" />
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Field Detection Analysis */}
+      {headers.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Field Detection Analysis
+            </CardTitle>
+            <CardDescription>
+              Auto-detected fields based on column headers
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Validation Status */}
+            {!fieldAnalysis.hasEmail && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Email column not detected!</strong> Email is required for import. 
+                  Make sure your file has an "email" column or map it manually in the next step.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {fieldAnalysis.hasEmail && !fieldAnalysis.hasNameField && (
+              <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <AlertDescription className="text-yellow-600 dark:text-yellow-400">
+                  No name fields detected. Users will be imported without display names.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {fieldAnalysis.hasEmail && fieldAnalysis.hasNameField && (
+              <Alert className="border-green-500/50 bg-green-500/10">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <AlertDescription className="text-green-600 dark:text-green-400">
+                  File looks good! All essential fields detected.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Detected Fields */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                Detected Fields ({fieldAnalysis.detected.length})
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {fieldAnalysis.detected.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">No fields auto-detected</span>
+                ) : (
+                  fieldAnalysis.detected.map(field => (
+                    <Badge 
+                      key={field.key} 
+                      variant={field.required ? "default" : "secondary"}
+                      className="gap-1"
+                    >
+                      <Check className="h-3 w-3" />
+                      {field.label}
+                      <span className="text-xs opacity-70">← {field.matchedColumn}</span>
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Missing/Optional Fields */}
+            {fieldAnalysis.missing.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium mb-2 block">
+                  Not Detected ({fieldAnalysis.missing.length})
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {fieldAnalysis.missing.map(field => (
+                    <Badge 
+                      key={field.key} 
+                      variant="outline"
+                      className={field.required ? "border-destructive text-destructive" : ""}
+                    >
+                      {field.label}
+                      {field.required && <span className="text-xs ml-1">(Required)</span>}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  You can manually map these fields in the next step if your columns have different names.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
