@@ -16,6 +16,7 @@ import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
 import { KidsConfetti } from "@/components/kids/KidsConfetti";
 import { KidsMobileContinueWatching } from "@/components/kids/KidsMobileContinueWatching";
 import { KidsMobileAgeGroupSections } from "@/components/kids/KidsMobileAgeGroupSections";
+import { KidsMobilePlayablesRow } from "@/components/kids/KidsMobilePlayablesRow";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { KidsParentalSetupNotice } from "@/components/kids/KidsParentalSetupNotice";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -293,6 +294,9 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
           </div>
         </motion.section>
       )}
+
+      {/* Hoyeeh Playables - Games Section */}
+      <KidsMobilePlayablesRow />
 
       {/* Age Group Sections */}
       <KidsMobileAgeGroupSections content={displayContent} onPlay={onPlay} onDetails={onDetails} />

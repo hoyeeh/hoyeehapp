@@ -39,7 +39,7 @@ const pageVariants = {
   }),
 };
 
-const tabOrder = ["home", "search", "youtube", "favorites"] as const;
+const tabOrder = ["home", "games", "youtube", "favorites"] as const;
 
 export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
   const location = useLocation();
@@ -70,9 +70,10 @@ export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
     navigate(`/content/${content.id}`);
   };
 
-  const getActiveTab = (): "home" | "search" | "youtube" | "favorites" => {
+  const getActiveTab = (): "home" | "games" | "youtube" | "favorites" => {
     if (location.pathname.includes("/kids-youtube")) return "youtube";
-    if (location.pathname.includes("/search")) return "search";
+    if (location.pathname.includes("/kids-games")) return "games";
+    if (location.pathname.includes("/search")) return "home"; // redirect search to home
     if (location.pathname.includes("/my-list")) return "favorites";
     return "home";
   };
@@ -89,8 +90,9 @@ export const KidsMobileInterface = ({ children }: KidsMobileInterfaceProps) => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "search":
-        return <KidsMobileSearch onPlay={handlePlay} onDetails={handleDetails} />;
+      case "games":
+        // Games page renders its own content via route
+        return children;
       case "favorites":
         return <KidsMobileMyList onPlay={handlePlay} onDetails={handleDetails} />;
       case "youtube":
