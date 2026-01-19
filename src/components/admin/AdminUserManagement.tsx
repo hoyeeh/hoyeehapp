@@ -23,7 +23,9 @@ import {
   Users,
   Activity,
   Search,
-  Upload
+  Upload,
+  Download,
+  History
 } from "lucide-react";
 import {
   Dialog,
@@ -48,6 +50,8 @@ import {
 import { UserDetailsCard, UserProfile, calculateHealthStatus } from "./UserDetailsCard";
 import { UserHealthAudit } from "./UserHealthAudit";
 import { UserImportWizard } from "./UserImportWizard";
+import { AdminAuditLogViewer } from "./AdminAuditLogViewer";
+import { format } from "date-fns";
 
 interface Profile {
   id: string;
@@ -407,6 +411,30 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     active_session_id: user.active_session_id || null
   });
 
+  // Export users to CSV
+  const handleExportUsers = () => {
+    const headers = ["ID", "Display Name", "Email", "Phone", "Country", "Subscribed", "Created At"];
+    const rows = filteredUsers.map(user => [
+      user.id,
+      user.display_name || "",
+      authEmails.get(user.id) || user.email || "",
+      user.mobile_number || "",
+      user.country || "",
+      user.is_subscribed ? "Yes" : "No",
+      user.created_at ? format(new Date(user.created_at), "yyyy-MM-dd HH:mm:ss") : ""
+    ]);
+
+    const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `users-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredUsers.length} users to CSV`);
+  };
+
   return (
     <Tabs defaultValue="users" className="space-y-4">
       <TabsList className="bg-secondary">
@@ -417,6 +445,10 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
         <TabsTrigger value="audit" className="gap-1">
           <Activity className="h-4 w-4" />
           Health Audit
+        </TabsTrigger>
+        <TabsTrigger value="logs" className="gap-1">
+          <History className="h-4 w-4" />
+          Admin Logs
         </TabsTrigger>
       </TabsList>
 
@@ -446,6 +478,15 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
             <Badge variant="outline" className="py-2 px-3 whitespace-nowrap">
               {filteredUsers.length} of {users.length} users
             </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportUsers}
+              className="gap-1 whitespace-nowrap"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -735,6 +776,10 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
           onRunAudit={handleRunAudit}
           isRunning={isAuditRunning}
         />
+      </TabsContent>
+
+      <TabsContent value="logs">
+        <AdminAuditLogViewer />
       </TabsContent>
     </Tabs>
   );

@@ -127,13 +127,113 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
     }
   };
 
+  // Parse SQL INSERT statements from MySQL/phpMyAdmin dump
+  const parseSQL = (text: string): string[][] => {
+    const results: string[][] = [];
+    let headers: string[] = [];
+    
+    // Match INSERT INTO statements with column names
+    const insertRegex = /INSERT\s+INTO\s+[`"]?(\w+)[`"]?\s*\(([^)]+)\)\s*VALUES\s*/gi;
+    const valueBlockRegex = /\(([^)]+)\)/g;
+    
+    // Find all INSERT statements
+    const lines = text.split(';');
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine.toUpperCase().includes('INSERT INTO')) continue;
+      
+      // Extract column names from first INSERT statement
+      const headerMatch = insertRegex.exec(trimmedLine);
+      insertRegex.lastIndex = 0; // Reset regex
+      
+      if (headerMatch && headers.length === 0) {
+        headers = headerMatch[2]
+          .split(',')
+          .map(h => h.trim().replace(/[`"]/g, ''));
+      }
+      
+      // Extract values
+      let valuesMatch;
+      const valuesStart = trimmedLine.toUpperCase().indexOf('VALUES');
+      if (valuesStart === -1) continue;
+      
+      const valuesPart = trimmedLine.slice(valuesStart + 6);
+      
+      while ((valuesMatch = valueBlockRegex.exec(valuesPart)) !== null) {
+        const values = parseValueString(valuesMatch[1]);
+        if (values.length > 0) {
+          results.push(values);
+        }
+      }
+    }
+    
+    if (headers.length === 0 && results.length > 0) {
+      // Generate generic headers if none found
+      headers = results[0].map((_, i) => `column_${i + 1}`);
+    }
+    
+    if (results.length === 0) {
+      throw new Error("No valid INSERT statements found in SQL file");
+    }
+    
+    return [headers, ...results];
+  };
+
+  // Parse a value string from SQL, handling quotes and escapes
+  const parseValueString = (valueStr: string): string[] => {
+    const values: string[] = [];
+    let current = "";
+    let inString = false;
+    let stringChar = "";
+    let i = 0;
+    
+    while (i < valueStr.length) {
+      const char = valueStr[i];
+      
+      if (!inString && (char === "'" || char === '"')) {
+        inString = true;
+        stringChar = char;
+        i++;
+        continue;
+      }
+      
+      if (inString && char === stringChar) {
+        // Check for escaped quote
+        if (i + 1 < valueStr.length && valueStr[i + 1] === stringChar) {
+          current += char;
+          i += 2;
+          continue;
+        }
+        inString = false;
+        i++;
+        continue;
+      }
+      
+      if (!inString && char === ',') {
+        values.push(current.trim().replace(/^NULL$/i, ''));
+        current = "";
+        i++;
+        continue;
+      }
+      
+      if (inString || (char !== ' ' && char !== '\t' && char !== '\n')) {
+        current += char;
+      }
+      i++;
+    }
+    
+    values.push(current.trim().replace(/^NULL$/i, ''));
+    return values;
+  };
+
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 10 * 1024 * 1024; // 10MB for SQL files
     if (file.size > maxSize) {
-      toast.error("File size exceeds 5MB limit");
+      toast.error("File size exceeds 10MB limit");
       return;
     }
 
@@ -147,6 +247,8 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
 
         if (file.name.endsWith('.json')) {
           parsed = parseJSON(text);
+        } else if (file.name.endsWith('.sql')) {
+          parsed = parseSQL(text);
         } else {
           parsed = parseCSV(text);
         }
@@ -178,7 +280,8 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
         });
 
         setColumnMapping(newMapping);
-        toast.success(`Loaded ${parsed.length - 1} records from ${file.name}`);
+        const fileType = file.name.endsWith('.sql') ? 'SQL dump' : file.name.endsWith('.json') ? 'JSON' : 'CSV';
+        toast.success(`Loaded ${parsed.length - 1} records from ${fileType} file`);
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : "Failed to parse file");
       }
@@ -336,12 +439,12 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
         <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <p className="text-lg font-medium mb-2">Drag & drop your file here</p>
         <p className="text-sm text-muted-foreground mb-4">
-          Supports CSV and JSON exports from phpMyAdmin/MySQL
+          Supports CSV, JSON, and SQL exports from phpMyAdmin/MySQL
         </p>
         <Input
           id="file-upload"
           type="file"
-          accept=".csv,.json"
+          accept=".csv,.json,.sql"
           onChange={handleFileUpload}
           className="hidden"
         />
@@ -631,7 +734,7 @@ export const UserImportWizard = ({ onClose, onSuccess }: UserImportWizardProps) 
             Import Users from MySQL/phpMyAdmin
           </DialogTitle>
           <DialogDescription>
-            Import user data from CSV or JSON exports from your MySQL database.
+            Import user data from CSV, JSON, or SQL exports from your MySQL database.
           </DialogDescription>
         </DialogHeader>
 
