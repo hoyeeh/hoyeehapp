@@ -154,8 +154,9 @@ export const useProfile = () => {
     queryFn: async () => {
       if (!user) return null;
 
+      // Use profiles_safe view to avoid exposing sensitive fields like pin_code, secret_word, parental_pin
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_safe")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();

@@ -4268,6 +4268,7 @@ export type Database = {
       }
       profiles_safe: {
         Row: {
+          active_session_id: string | null
           avatar_url: string | null
           country: string | null
           created_at: string | null
@@ -4275,13 +4276,16 @@ export type Database = {
           id: string | null
           is_subscribed: boolean | null
           last_login_at: string | null
+          lockout_count: number | null
           mobile_number_masked: string | null
           parental_controls_enabled: boolean | null
           parental_rating_limit: string | null
+          pin_locked_until: string | null
           subscription_expiry: string | null
           updated_at: string | null
         }
         Insert: {
+          active_session_id?: string | null
           avatar_url?: string | null
           country?: string | null
           created_at?: string | null
@@ -4289,13 +4293,16 @@ export type Database = {
           id?: string | null
           is_subscribed?: boolean | null
           last_login_at?: string | null
+          lockout_count?: number | null
           mobile_number_masked?: never
           parental_controls_enabled?: boolean | null
           parental_rating_limit?: string | null
+          pin_locked_until?: string | null
           subscription_expiry?: string | null
           updated_at?: string | null
         }
         Update: {
+          active_session_id?: string | null
           avatar_url?: string | null
           country?: string | null
           created_at?: string | null
@@ -4303,9 +4310,11 @@ export type Database = {
           id?: string | null
           is_subscribed?: boolean | null
           last_login_at?: string | null
+          lockout_count?: number | null
           mobile_number_masked?: never
           parental_controls_enabled?: boolean | null
           parental_rating_limit?: string | null
+          pin_locked_until?: string | null
           subscription_expiry?: string | null
           updated_at?: string | null
         }

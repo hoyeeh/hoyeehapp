@@ -495,8 +495,9 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           
           if (data) {
             const userIds = data.map(m => m.user_id);
+            // Use profiles_safe view to avoid exposing sensitive fields
             const { data: profiles } = await supabase
-              .from('profiles')
+              .from('profiles_safe')
               .select('id, display_name, avatar_url')
               .in('id', userIds);
 
@@ -522,8 +523,9 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
           const newMsg = payload.new as PartyMessage;
           
           // Fetch user display name
+          // Use profiles_safe view to avoid exposing sensitive fields
           const { data: profile } = await supabase
-            .from('profiles')
+            .from('profiles_safe')
             .select('display_name')
             .eq('id', newMsg.user_id)
             .single();
@@ -576,8 +578,9 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
       
       if (data) {
         const userIds = data.map(m => m.user_id);
+        // Use profiles_safe view to avoid exposing sensitive fields
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('profiles_safe')
           .select('id, display_name, avatar_url')
           .in('id', userIds);
 
@@ -602,8 +605,9 @@ export function WatchPartyProvider({ children }: { children: ReactNode }) {
 
       if (msgs && msgs.length > 0) {
         const userIds = [...new Set(msgs.map(m => m.user_id))];
+        // Use profiles_safe view to avoid exposing sensitive fields
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('profiles_safe')
           .select('id, display_name')
           .in('id', userIds);
 
