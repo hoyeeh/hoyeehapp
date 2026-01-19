@@ -133,17 +133,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Batch update health statuses
-    if (updates.length > 0) {
-      for (const update of updates) {
-        const { error: updateError } = await supabase
-          .from("playable_games")
-          .update({ health_status: update.health_status })
-          .eq("id", update.id);
+    // Batch update health statuses and last_health_check timestamp
+    const now = new Date().toISOString();
+    
+    // Update all checked games with new timestamp
+    for (const result of results) {
+      const updateData: { health_status?: string; last_health_check: string } = {
+        last_health_check: now,
+      };
+      
+      // Only update health_status if it changed
+      if (result.previous_status !== result.new_status) {
+        updateData.health_status = result.new_status;
+      }
+      
+      const { error: updateError } = await supabase
+        .from("playable_games")
+        .update(updateData)
+        .eq("id", result.id);
 
-        if (updateError) {
-          console.error(`Failed to update game ${update.id}:`, updateError);
-        }
+      if (updateError) {
+        console.error(`Failed to update game ${result.id}:`, updateError);
       }
     }
 
