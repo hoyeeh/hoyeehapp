@@ -95,6 +95,8 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
   const [isAuditRunning, setIsAuditRunning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportWizard, setShowImportWizard] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const USERS_PER_PAGE = 12;
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
@@ -107,6 +109,18 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
       return name.includes(query) || email.includes(query) || phone.includes(query);
     });
   }, [users, searchQuery, authEmails]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+  }, [filteredUsers, currentPage, USERS_PER_PAGE]);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Fetch auth emails for all users on mount (batched to handle >100 users)
   useEffect(() => {
@@ -529,7 +543,7 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filteredUsers.map((user) => (
+          {paginatedUsers.map((user) => (
           <div key={user.id} className="space-y-2">
             {/* Detailed User Card with Health Status */}
             <UserDetailsCard
@@ -783,6 +797,74 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
         {filteredUsers.length === 0 && (
           <div className="text-center py-12 text-muted-foreground col-span-full">
             {searchQuery ? `No users match "${searchQuery}"` : "No users found"}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * USERS_PER_PAGE) + 1}-{Math.min(currentPage * USERS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className="w-9"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                Last
+              </Button>
+            </div>
           </div>
         )}
       </TabsContent>
