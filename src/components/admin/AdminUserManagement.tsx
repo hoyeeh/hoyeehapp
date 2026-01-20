@@ -108,25 +108,43 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     });
   }, [users, searchQuery, authEmails]);
 
-  // Fetch auth emails for all users on mount
+  // Fetch auth emails for all users on mount (batched to handle >100 users)
   useEffect(() => {
     const fetchAuthDetails = async () => {
       if (users.length === 0) return;
       
+      const BATCH_SIZE = 100;
+      const userIds = users.map(u => u.id);
+      const emailMap = new Map<string, string>();
+      
+      // Split into batches of 100
+      const batches: string[][] = [];
+      for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+        batches.push(userIds.slice(i, i + BATCH_SIZE));
+      }
+      
       try {
-        const { data, error } = await supabase.functions.invoke('admin-get-user-auth-details', {
-          body: { userIds: users.map(u => u.id) }
-        });
+        // Fetch all batches in parallel
+        const results = await Promise.all(
+          batches.map(batch => 
+            supabase.functions.invoke('admin-get-user-auth-details', {
+              body: { userIds: batch }
+            })
+          )
+        );
 
-        if (!error && data?.users) {
-          const emailMap = new Map<string, string>();
-          Object.entries(data.users).forEach(([userId, details]: [string, any]) => {
-            if (details.email) {
-              emailMap.set(userId, details.email);
-            }
-          });
-          setAuthEmails(emailMap);
-        }
+        // Combine results from all batches
+        results.forEach(({ data, error }) => {
+          if (!error && data?.users) {
+            Object.entries(data.users).forEach(([userId, details]: [string, any]) => {
+              if (details.email) {
+                emailMap.set(userId, details.email);
+              }
+            });
+          }
+        });
+        
+        setAuthEmails(emailMap);
       } catch (err) {
         console.error('Failed to fetch auth details:', err);
       }
