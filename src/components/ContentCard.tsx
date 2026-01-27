@@ -16,7 +16,7 @@ interface ContentCardProps {
   onDetails: (content: Content) => void;
   isInList?: boolean;
   size?: "sm" | "md" | "lg";
-  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal" | "full";
   isRestricted?: boolean;
   onPlayFirstEpisode?: (content: Content, episodeVideoUrl: string, episodeTitle: string) => void;
 }
@@ -94,6 +94,7 @@ export const ContentCard = ({
     wide: "aspect-video",
     square: "aspect-square",
     minimal: "aspect-[3/2]",
+    full: "aspect-[2/3]",
   };
 
   const cardWidths = {
@@ -102,6 +103,7 @@ export const ContentCard = ({
     wide: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
     square: size === "sm" ? "w-32 md:w-40" : size === "md" ? "w-40 md:w-48" : "w-48 md:w-56",
     minimal: size === "sm" ? "w-48 md:w-56" : size === "md" ? "w-56 md:w-64" : "w-64 md:w-80",
+    full: size === "sm" ? "w-64 md:w-80" : size === "md" ? "w-80 md:w-[26rem]" : "w-96 md:w-[32rem]",
   };
 
   if (cardStyle === "minimal") {
@@ -295,7 +297,7 @@ export const ContentCard = ({
       </div>
 
       {/* Title below card - for non-hover state */}
-      {cardStyle !== "backdrop" && cardStyle !== "wide" && (
+      {cardStyle !== "backdrop" && cardStyle !== "wide" && cardStyle !== "full" && (
         <div className="mt-2 px-0.5 group-hover:opacity-0 transition-opacity">
           <h3 className="font-medium text-sm truncate">{content.title}</h3>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">

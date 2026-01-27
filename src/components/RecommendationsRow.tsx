@@ -118,7 +118,8 @@ export const RecommendationsRow = ({
               onToggleList={onToggleList}
               onDetails={onDetails}
               isInList={userList.includes(item.id)}
-              cardStyle="wide"
+              cardStyle="full"
+              size="md"
             />
           ))}
         </div>
