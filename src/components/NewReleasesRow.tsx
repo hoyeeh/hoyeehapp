@@ -18,6 +18,9 @@ interface NewReleasesRowProps {
   maxItems?: number;
   contentTypeFilter?: "all" | "movie" | "series";
   showFilterControls?: boolean;
+  firstCardStyle?: "poster" | "backdrop" | "full";
+  sectionBannerUrl?: string;
+  featuredContentId?: string;
 }
 
 export const NewReleasesRow = ({
@@ -29,6 +32,9 @@ export const NewReleasesRow = ({
   maxItems = 20,
   contentTypeFilter: initialFilter = "all",
   showFilterControls = true,
+  firstCardStyle = "backdrop",
+  sectionBannerUrl,
+  featuredContentId,
 }: NewReleasesRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -58,9 +64,9 @@ export const NewReleasesRow = ({
     },
   });
 
-  // Transform to Content type
+  // Transform to Content type and handle featured content ordering
   const content: Content[] = useMemo(() => {
-    return newReleases.map((item: any) => ({
+    const items = newReleases.map((item: any) => ({
       id: item.id,
       title: item.title,
       description: item.description || "",
@@ -74,7 +80,18 @@ export const NewReleasesRow = ({
       contentRating: item.content_rating,
       createdAt: item.created_at,
     }));
-  }, [newReleases]);
+    
+    // If featuredContentId is set, move that item to the front
+    if (featuredContentId) {
+      const featuredIndex = items.findIndex(item => item.id === featuredContentId);
+      if (featuredIndex > 0) {
+        const [featuredItem] = items.splice(featuredIndex, 1);
+        items.unshift(featuredItem);
+      }
+    }
+    
+    return items;
+  }, [newReleases, featuredContentId]);
 
   // Get TV show content IDs for new episode/season badges
   const tvShowIds = useMemo(() => 
@@ -105,6 +122,27 @@ export const NewReleasesRow = ({
 
   return (
     <section className="group/section relative py-4 transition-all duration-300 hover:z-10">
+      {/* Optional Section Banner */}
+      {sectionBannerUrl && (
+        <div 
+          className="mx-4 md:mx-12 mb-4 rounded-xl overflow-hidden cursor-pointer group/banner"
+          onClick={() => content[0] && onDetails(content[0])}
+        >
+          <div className="relative aspect-[21/9] bg-secondary">
+            <img 
+              src={sectionBannerUrl} 
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover/banner:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+            <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6">
+              <h3 className="text-xl md:text-2xl font-bold text-foreground">{title}</h3>
+              <p className="text-sm text-muted-foreground mt-1">Watch Now</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Section Title with Filter Controls */}
       <div className="px-4 md:px-12 mb-3 flex items-center justify-between">
         <div className="flex items-baseline gap-3">
@@ -194,7 +232,7 @@ export const NewReleasesRow = ({
                 onToggleList={onToggleList}
                 onDetails={onDetails}
                 isInList={userList.includes(item.id)}
-                cardStyle={index === 0 ? "backdrop" : "poster"}
+                cardStyle={index === 0 ? firstCardStyle : "poster"}
                 showJustAddedBadge={true}
                 justAddedDays={14}
                 hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
