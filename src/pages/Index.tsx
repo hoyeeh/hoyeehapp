@@ -764,6 +764,11 @@ const Index = () => {
                           contentTypeFilter={
                             (newReleasesSection?.content_type_filter as "all" | "movie" | "series") || "all"
                           }
+                          firstCardStyle={
+                            (newReleasesSection?.first_card_style as "poster" | "backdrop" | "full") || "backdrop"
+                          }
+                          sectionBannerUrl={newReleasesSection?.section_banner_url || undefined}
+                          featuredContentId={newReleasesSection?.featured_content_id || undefined}
                         />
                       );
                     }

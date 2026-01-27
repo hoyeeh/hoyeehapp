@@ -1843,11 +1843,14 @@ export type Database = {
           content_type_filter: string | null
           created_at: string
           display_order: number
+          featured_content_id: string | null
+          first_card_style: string | null
           genre_id: string | null
           id: string
           is_active: boolean
           is_curated: boolean
           max_items: number | null
+          section_banner_url: string | null
           section_type: string
           show_on_desktop: boolean
           show_on_kids: boolean
@@ -1862,11 +1865,14 @@ export type Database = {
           content_type_filter?: string | null
           created_at?: string
           display_order?: number
+          featured_content_id?: string | null
+          first_card_style?: string | null
           genre_id?: string | null
           id?: string
           is_active?: boolean
           is_curated?: boolean
           max_items?: number | null
+          section_banner_url?: string | null
           section_type?: string
           show_on_desktop?: boolean
           show_on_kids?: boolean
@@ -1881,11 +1887,14 @@ export type Database = {
           content_type_filter?: string | null
           created_at?: string
           display_order?: number
+          featured_content_id?: string | null
+          first_card_style?: string | null
           genre_id?: string | null
           id?: string
           is_active?: boolean
           is_curated?: boolean
           max_items?: number | null
+          section_banner_url?: string | null
           section_type?: string
           show_on_desktop?: boolean
           show_on_kids?: boolean
@@ -1895,6 +1904,13 @@ export type Database = {
           year_filter?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "home_sections_featured_content_id_fkey"
+            columns: ["featured_content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "home_sections_genre_id_fkey"
             columns: ["genre_id"]

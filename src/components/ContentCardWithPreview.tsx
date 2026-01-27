@@ -15,7 +15,7 @@ interface ContentCardWithPreviewProps {
   onDetails: (content: Content) => void;
   isInList?: boolean;
   size?: "sm" | "md" | "lg";
-  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal" | "full";
   isRestricted?: boolean;
   showTop10Badge?: boolean;
   showJustAddedBadge?: boolean;
@@ -78,6 +78,7 @@ export const ContentCardWithPreview = ({
     wide: "aspect-video",
     square: "aspect-square",
     minimal: "aspect-[3/2]",
+    full: "aspect-[3/4]",
   };
 
   // Backdrop cards should have the same HEIGHT as poster cards
@@ -90,6 +91,7 @@ export const ContentCardWithPreview = ({
     wide: size === "sm" ? "w-56 md:w-72" : size === "md" ? "w-72 md:w-80" : "w-80 md:w-96",
     square: size === "sm" ? "w-32 md:w-40" : size === "md" ? "w-40 md:w-48" : "w-48 md:w-56",
     minimal: size === "sm" ? "w-48 md:w-56" : size === "md" ? "w-56 md:w-64" : "w-64 md:w-80",
+    full: size === "sm" ? "w-[14rem] md:w-[18rem]" : size === "md" ? "w-[18rem] md:w-[22rem]" : "w-[22rem] md:w-[26rem]",
   };
 
   // Use fixed height classes to match poster heights exactly
@@ -100,6 +102,7 @@ export const ContentCardWithPreview = ({
     wide: aspectRatios[cardStyle],
     square: aspectRatios[cardStyle],
     minimal: aspectRatios[cardStyle],
+    full: aspectRatios[cardStyle],
   };
 
   // Start time at 25 minutes (1500 seconds)

@@ -47,6 +47,9 @@ interface HomeSection {
   is_curated: boolean;
   allow_duplicates: boolean;
   year_filter?: number | null;
+  first_card_style?: string;
+  section_banner_url?: string;
+  featured_content_id?: string;
 }
 
 interface Content {
@@ -81,6 +84,13 @@ const CARD_STYLES = [
   { value: "wide", label: "Wide (4:3)" },
   { value: "square", label: "Square (1:1)" },
   { value: "minimal", label: "Minimal (text only)" },
+  { value: "full", label: "Full Cover (3:4)" },
+];
+
+const FIRST_CARD_STYLES = [
+  { value: "backdrop", label: "Backdrop (16:9)" },
+  { value: "full", label: "Full Cover (3:4)" },
+  { value: "poster", label: "Poster (2:3)" },
 ];
 
 interface SortableItemProps {
@@ -170,6 +180,9 @@ export const EnhancedHomeSectionManagement = () => {
     show_on_kids: false,
     is_curated: false,
     year_filter: null as number | null,
+    first_card_style: "backdrop" as "backdrop" | "full" | "poster",
+    section_banner_url: "",
+    featured_content_id: "",
   });
 
   const sensors = useSensors(
@@ -239,6 +252,9 @@ export const EnhancedHomeSectionManagement = () => {
         show_on_kids: data.show_on_kids,
         is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
         year_filter: data.year_filter,
+        first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
+        section_banner_url: data.section_type === "new_releases" && data.section_banner_url ? data.section_banner_url : null,
+        featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
       });
       if (error) throw error;
     },
@@ -269,6 +285,9 @@ export const EnhancedHomeSectionManagement = () => {
           show_on_kids: data.show_on_kids,
           is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
           year_filter: data.year_filter,
+          first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
+          section_banner_url: data.section_type === "new_releases" && data.section_banner_url ? data.section_banner_url : null,
+          featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
         })
         .eq("id", id);
       if (error) throw error;
@@ -384,6 +403,9 @@ export const EnhancedHomeSectionManagement = () => {
       show_on_kids: false,
       is_curated: false,
       year_filter: null,
+      first_card_style: "backdrop",
+      section_banner_url: "",
+      featured_content_id: "",
     });
   };
 
@@ -402,6 +424,9 @@ export const EnhancedHomeSectionManagement = () => {
       show_on_kids: section.show_on_kids ?? false,
       is_curated: section.is_curated ?? false,
       year_filter: section.year_filter ?? null,
+      first_card_style: (section.first_card_style as "backdrop" | "full" | "poster") || "backdrop",
+      section_banner_url: section.section_banner_url || "",
+      featured_content_id: section.featured_content_id || "",
     });
     setShowForm(true);
   };
@@ -506,20 +531,64 @@ export const EnhancedHomeSectionManagement = () => {
                 </div>
               )}
               {formData.section_type === "new_releases" && (
-                <div className="space-y-2">
-                  <Label>Content Type Filter</Label>
-                  <Select 
-                    value={formData.content_type_filter} 
-                    onValueChange={(v) => setFormData({ ...formData, content_type_filter: v as "all" | "movie" | "series" })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Content</SelectItem>
-                      <SelectItem value="movie">Movies Only</SelectItem>
-                      <SelectItem value="series">TV Shows Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label>Content Type Filter</Label>
+                    <Select 
+                      value={formData.content_type_filter} 
+                      onValueChange={(v) => setFormData({ ...formData, content_type_filter: v as "all" | "movie" | "series" })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Content</SelectItem>
+                        <SelectItem value="movie">Movies Only</SelectItem>
+                        <SelectItem value="series">TV Shows Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>First Card Style</Label>
+                    <Select 
+                      value={formData.first_card_style} 
+                      onValueChange={(v) => setFormData({ ...formData, first_card_style: v as "backdrop" | "full" | "poster" })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FIRST_CARD_STYLES.map((style) => (
+                          <SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Controls the style of the first (featured) card</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Section Banner URL (optional)</Label>
+                    <Input
+                      value={formData.section_banner_url}
+                      onChange={(e) => setFormData({ ...formData, section_banner_url: e.target.value })}
+                      placeholder="https://example.com/banner.jpg"
+                    />
+                    <p className="text-xs text-muted-foreground">Full-width banner image displayed above the section</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Featured Content (optional)</Label>
+                    <Select 
+                      value={formData.featured_content_id || "__none__"} 
+                      onValueChange={(v) => setFormData({ ...formData, featured_content_id: v === "__none__" ? "" : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select featured content..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Auto (most recent)</SelectItem>
+                        {allContent.slice(0, 50).map((content) => (
+                          <SelectItem key={content.id} value={content.id}>
+                            {content.title} ({content.year || "N/A"})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Pin a specific content item as the first card</p>
+                  </div>
+                </>
               )}
               {formData.section_type === "free_content" && (
                 <>
