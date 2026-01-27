@@ -751,24 +751,24 @@ const Index = () => {
                   {/* New Releases Row - Shows content from last 2 weeks */}
                   {(() => {
                     const newReleasesSection = homeSections.find((s: any) => s.section_type === "new_releases");
-                    // Show by default if no section exists, or if section is active
-                    if (newReleasesSection === undefined || newReleasesSection) {
+                    // Only show if section exists and is active (is_active check is done in query)
+                    if (newReleasesSection) {
                       return (
                         <NewReleasesRow
                           onPlay={handlePlay}
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
-                          title={newReleasesSection?.title || "New Releases"}
-                          maxItems={newReleasesSection?.max_items || 20}
+                          title={newReleasesSection.title || "New Releases"}
+                          maxItems={newReleasesSection.max_items || 20}
                           contentTypeFilter={
-                            (newReleasesSection?.content_type_filter as "all" | "movie" | "series") || "all"
+                            (newReleasesSection.content_type_filter as "all" | "movie" | "series") || "all"
                           }
                           firstCardStyle={
-                            (newReleasesSection?.first_card_style as "poster" | "backdrop" | "full") || "backdrop"
+                            (newReleasesSection.first_card_style as "poster" | "backdrop" | "full") || "backdrop"
                           }
-                          sectionBannerUrl={newReleasesSection?.section_banner_url || undefined}
-                          featuredContentId={newReleasesSection?.featured_content_id || undefined}
+                          sectionBannerUrl={newReleasesSection.section_banner_url || undefined}
+                          featuredContentId={newReleasesSection.featured_content_id || undefined}
                         />
                       );
                     }
@@ -797,6 +797,11 @@ const Index = () => {
                   {/* Coming Soon Row - Above Top 10 */}
                   <ComingSoonRow />
                   {processedHomeSections.map(({ section, content: sectionContent }) => {
+                    // Skip new_releases - handled by dedicated NewReleasesRow above
+                    if (section.section_type === "new_releases") {
+                      return null;
+                    }
+                    
                     if (section.section_type === "top10") {
                       return top10Content.length > 0 ? (
                         <div key={section.id}>
