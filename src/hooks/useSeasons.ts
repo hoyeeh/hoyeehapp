@@ -77,6 +77,32 @@ export const useCreateSeason = () => {
         .single();
       
       if (error) throw error;
+
+      // Fetch the content title for the notification
+      const { data: content } = await supabase
+        .from('content')
+        .select('title, thumbnail_url')
+        .eq('id', season.content_id)
+        .single();
+
+      // Trigger notification for new season
+      if (content) {
+        try {
+          await supabase.functions.invoke('notify-new-content', {
+            body: {
+              type: 'new_season',
+              contentId: season.content_id,
+              contentTitle: content.title,
+              thumbnailUrl: season.thumbnail_url || content.thumbnail_url,
+              seasonNumber: season.season_number,
+            },
+          });
+          console.log(`[useCreateSeason] Notification triggered for new season: ${content.title} S${season.season_number}`);
+        } catch (notifyError) {
+          console.error('[useCreateSeason] Failed to send notification:', notifyError);
+        }
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
