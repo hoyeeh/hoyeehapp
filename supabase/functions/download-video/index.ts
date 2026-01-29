@@ -181,22 +181,27 @@ serve(async (req) => {
       'cdn.digitaloceanspaces.com',
       'digitaloceanspaces.com',
       'supabase.co',
-      'supabase.com'
+      'supabase.com',
+      'nyc3.digitaloceanspaces.com',
+      'nyc3.cdn.digitaloceanspaces.com',
     ];
     
     try {
       const urlObj = new URL(videoUrl);
-      const isAllowedDomain = allowedDomains.some(domain => urlObj.hostname.includes(domain));
+      const isAllowedDomain = allowedDomains.some(domain => 
+        urlObj.hostname.includes(domain) || urlObj.hostname.endsWith(domain)
+      );
       
       if (!isAllowedDomain) {
-        console.error('Invalid video URL domain:', urlObj.hostname);
+        console.error('[download-video] Invalid video URL domain:', urlObj.hostname, 'Allowed:', allowedDomains);
         return new Response(
-          JSON.stringify({ error: 'Invalid video source' }),
+          JSON.stringify({ error: 'Invalid video source', domain: urlObj.hostname }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-    } catch {
-      console.error('Invalid URL format:', videoUrl);
+      console.log('[download-video] Domain validated:', urlObj.hostname);
+    } catch (urlError) {
+      console.error('[download-video] Invalid URL format:', videoUrl, urlError);
       return new Response(
         JSON.stringify({ error: 'Invalid URL format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

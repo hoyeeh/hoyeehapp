@@ -367,9 +367,17 @@ export function useDownloadManager() {
         abortController.signal
       );
 
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Download failed. Please try again.');
+    } catch (error: any) {
+      console.error('[startDownload] Download error:', error);
+      const errorMessage = error?.message || 'Download failed';
+      toast.error(errorMessage === 'Download failed' ? 'Download failed. Please try again.' : errorMessage);
+      
+      // Remove from active downloads
+      setActiveDownloads(prev => {
+        const next = new Map(prev);
+        next.delete(downloadId);
+        return next;
+      });
       
       // Update status to failed
       const metadata = await getMetadata(downloadId);
@@ -413,8 +421,18 @@ export function useDownloadManager() {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch video');
+        let errorMessage = 'Failed to fetch video';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('[downloadVideo] Edge function error:', errorData);
+        } catch {
+          console.error('[downloadVideo] Non-JSON error response:', response.status, response.statusText);
+        }
+        throw new Error(errorMessage);
       }
+
+      console.log('[downloadVideo] Video stream started, status:', response.status);
 
       const contentLength = response.headers.get('content-length');
       const contentRange = response.headers.get('content-range');
@@ -555,7 +573,8 @@ export function useDownloadManager() {
       const deviceId = getDeviceId();
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData?.session) {
-        await supabase
+        // Build the query - handle episode_id being null for movies
+        let query = supabase
           .from('download_licenses')
           .update({ 
             status: 'completed', 
@@ -565,6 +584,20 @@ export function useDownloadManager() {
           .eq('content_id', metadata.contentId)
           .eq('device_id', deviceId)
           .eq('user_id', sessionData.session.user.id);
+        
+        // Add episode_id filter (handles null for movies)
+        if (metadata.episodeId) {
+          query = query.eq('episode_id', metadata.episodeId);
+        } else {
+          query = query.is('episode_id', null);
+        }
+        
+        const { error: updateError } = await query;
+        if (updateError) {
+          console.error('[downloadVideo] Failed to update license status:', updateError);
+        } else {
+          console.log('[downloadVideo] License status updated to completed');
+        }
       }
 
       // Remove from active downloads
