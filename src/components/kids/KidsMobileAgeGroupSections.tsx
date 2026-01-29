@@ -2,6 +2,8 @@ import { Content } from "@/types";
 import { KidsMobileContentCard } from "@/components/mobile/KidsMobileContentCard";
 import { Baby, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
+import { useMemo } from "react";
+import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 
 interface KidsMobileAgeGroupSectionsProps {
   content: Content[];
@@ -22,6 +24,13 @@ export const KidsMobileAgeGroupSections = ({ content, onPlay, onDetails }: KidsM
     const ageLimit = (c as any).age_limit || (c as any).ageLimit;
     return ageLimit && ageLimit >= OLDER_KIDS_MIN_AGE && ageLimit <= 13;
   });
+
+  // Get TV show content IDs for new episode/season badges
+  const tvShowIds = useMemo(() => 
+    content.filter(c => c.contentType === 'series').map(c => c.id),
+    [content]
+  );
+  const { data: tvShowUpdates = {} } = useLatestTVShowUpdates(tvShowIds);
 
   return (
     <>
@@ -51,6 +60,8 @@ export const KidsMobileAgeGroupSections = ({ content, onPlay, onDetails }: KidsM
                 onPlay={onPlay}
                 onDetails={onDetails}
                 index={index}
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />
             ))}
           </div>
@@ -83,6 +94,8 @@ export const KidsMobileAgeGroupSections = ({ content, onPlay, onDetails }: KidsM
                 onPlay={onPlay}
                 onDetails={onDetails}
                 index={index}
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />
             ))}
           </div>
