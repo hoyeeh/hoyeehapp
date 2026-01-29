@@ -153,6 +153,26 @@ export const useCreateContent = () => {
         .single();
 
       if (error) throw error;
+      
+      // Trigger automatic email notification for new content
+      try {
+        await supabase.functions.invoke('notify-new-content', {
+          body: {
+            type: content.content_type === 'movie' ? 'new_movie' : 'new_tvshow',
+            contentId: data.id,
+            contentTitle: data.title,
+            thumbnailUrl: data.thumbnail_url,
+            description: data.description,
+            genre: data.genre,
+            year: data.year,
+          },
+        });
+        console.log(`[useCreateContent] Notification triggered for new ${content.content_type}: ${data.title}`);
+      } catch (notifyError) {
+        // Don't fail content creation if notification fails
+        console.error('[useCreateContent] Failed to send notification:', notifyError);
+      }
+      
       return data;
     },
     onSuccess: () => {
