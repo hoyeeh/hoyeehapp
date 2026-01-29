@@ -205,9 +205,16 @@ export function MobileHome() {
 
   // Get raw section content helper (before deduplication)
   const getRawSectionContent = (section: any): Content[] => {
-    if (section.section_type === "recently_added") {
+    if (section.section_type === "recently_added" || section.section_type === "new_releases") {
       // Sort by created_at (already sorted from query), then by year
-      return newContent.slice(0, section.max_items || 15);
+      // Apply content type filter for new_releases if specified
+      let filtered = newContent;
+      if (section.content_type_filter === "movie") {
+        filtered = newContent.filter((c) => c.contentType === "movie");
+      } else if (section.content_type_filter === "series") {
+        filtered = newContent.filter((c) => c.contentType === "series");
+      }
+      return filtered.slice(0, section.max_items || 15);
     }
     
     if (section.section_type === "genre" && section.genre) {
@@ -639,8 +646,8 @@ export function MobileHome() {
                 ) : null;
               }
 
-              // Recently added section - use processed content (sorted by created_at)
-              if (section.section_type === "recently_added") {
+              // Recently added / New Releases section - use processed content (sorted by created_at)
+              if (section.section_type === "recently_added" || section.section_type === "new_releases") {
                 return sectionContent.length > 0 ? (
                   <FadeIn key={section.id} delay={150 + index * 50}>
                     <MobileContentRow
