@@ -13,6 +13,7 @@ interface ContentRowProps {
   onDetails: (content: Content) => void;
   userList?: string[];
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  cardSize?: "sm" | "md" | "lg";
   showRank?: boolean;
   showSeeAll?: boolean;
   onSeeAll?: () => void;
@@ -27,6 +28,7 @@ export const ContentRow = ({
   onDetails,
   userList = [],
   cardStyle = "poster",
+  cardSize = "md",
   showRank = false,
   showSeeAll = false,
   onSeeAll,
@@ -183,6 +185,7 @@ export const ContentRow = ({
                 onDetails={onDetails}
                 isInList={userList.includes(item.id)}
                 cardStyle={cardStyle}
+                size={cardSize}
                 hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
                 hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               />

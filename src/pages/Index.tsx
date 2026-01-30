@@ -899,7 +899,8 @@ const Index = () => {
                         onToggleList={handleToggleList}
                         onDetails={handleDetails}
                         userList={watchlistIds}
-                        cardStyle="poster"
+                        cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                        cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                         showSeeAll
                         onSeeAll={() => navigate(seeAllRoute)}
                       />

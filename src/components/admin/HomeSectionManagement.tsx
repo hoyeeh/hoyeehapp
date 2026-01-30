@@ -41,6 +41,7 @@ interface HomeSection {
   section_type: string;
   genre_id: string | null;
   card_style: string;
+  card_size: string;
   display_order: number;
   is_active: boolean;
   max_items: number | null;
@@ -90,6 +91,12 @@ const CARD_STYLES = [
   { value: "minimal", label: "Minimal (text only)" },
 ];
 
+const CARD_SIZES = [
+  { value: "sm", label: "Small" },
+  { value: "md", label: "Medium (Default)" },
+  { value: "lg", label: "Large" },
+];
+
 interface SortableItemProps {
   section: HomeSection;
   onEdit: (section: HomeSection) => void;
@@ -129,7 +136,7 @@ const SortableItem = ({ section, onEdit, onDelete, onToggleActive, onManageConte
       <div className="flex-1 min-w-0">
         <h4 className="font-medium truncate">{section.title}</h4>
         <p className="text-xs text-muted-foreground">
-          {SECTION_TYPES.find(t => t.value === section.section_type)?.label} • {CARD_STYLES.find(s => s.value === section.card_style)?.label}
+          {SECTION_TYPES.find(t => t.value === section.section_type)?.label} • {CARD_STYLES.find(s => s.value === section.card_style)?.label} • {CARD_SIZES.find(s => s.value === (section.card_size || 'md'))?.label}
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -169,6 +176,7 @@ export const HomeSectionManagement = () => {
     section_type: "genre",
     genre_id: "",
     card_style: "poster",
+    card_size: "md",
     max_items: 15,
     is_active: true,
     allow_duplicates: false,
@@ -229,6 +237,7 @@ export const HomeSectionManagement = () => {
         section_type: data.section_type,
         genre_id: data.genre_id || null,
         card_style: data.card_style,
+        card_size: data.card_size,
         max_items: data.max_items,
         is_active: data.is_active,
         display_order: maxOrder + 1,
@@ -256,6 +265,7 @@ export const HomeSectionManagement = () => {
         section_type: data.section_type,
         genre_id: data.genre_id || null,
         card_style: data.card_style,
+        card_size: data.card_size,
         max_items: data.max_items,
         is_active: data.is_active,
         allow_duplicates: data.allow_duplicates,
@@ -423,6 +433,7 @@ export const HomeSectionManagement = () => {
       section_type: "genre",
       genre_id: "",
       card_style: "poster",
+      card_size: "md",
       max_items: 15,
       is_active: true,
       allow_duplicates: false,
@@ -441,6 +452,7 @@ export const HomeSectionManagement = () => {
       section_type: section.section_type,
       genre_id: section.genre_id || "",
       card_style: section.card_style,
+      card_size: section.card_size || "md",
       max_items: section.max_items || 15,
       is_active: section.is_active,
       allow_duplicates: section.allow_duplicates || false,
@@ -539,6 +551,17 @@ export const HomeSectionManagement = () => {
                     <SelectContent>
                       {CARD_STYLES.map((style) => (
                         <SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Card Size</Label>
+                  <Select value={formData.card_size} onValueChange={(v) => setFormData({ ...formData, card_size: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CARD_SIZES.map((size) => (
+                        <SelectItem key={size.value} value={size.value}>{size.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
