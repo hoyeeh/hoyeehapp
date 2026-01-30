@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Settings, Play, Trash2, AlertCircle, CheckCircle, HardDrive, Wifi, Zap } from "lucide-react";
+import { ArrowLeft, Settings, Play, Trash2, AlertCircle, CheckCircle, HardDrive, Wifi, Zap, Loader2, Pause } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { MobileBottomNav } from "./MobileBottomNav";
@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSmartDownload } from "@/hooks/useSmartDownload";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { Content } from "@/types";
+import { Progress } from "@/components/ui/progress";
 
 interface DownloadItem {
   id: string;
@@ -47,7 +48,7 @@ export function MobileDownloads() {
     storageUsed,
     storageLimit,
     formatBytes: formatStorageBytes,
-    isLoading: isLocalLoading 
+    isLoading: isLocalLoading,
   } = useDownloadManager();
   
   // Video player state
@@ -358,11 +359,40 @@ export function MobileDownloads() {
                     <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                       <AlertCircle className="h-6 w-6 text-yellow-500" />
                     </div>
+                  ) : item.status === "downloading" ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                      <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center">
+                        <Loader2 className="h-5 w-5 text-primary-foreground animate-spin" />
+                      </div>
+                    </div>
+                  ) : item.status === "paused" ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                      <div className="w-10 h-10 rounded-full bg-muted/90 flex items-center justify-center">
+                        <Pause className="h-5 w-5 text-foreground" />
+                      </div>
+                    </div>
+                  ) : item.status === "failed" ? (
+                    <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                      <AlertCircle className="h-6 w-6 text-destructive" />
+                    </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/30">
                       <div className="w-10 h-10 rounded-full bg-foreground/90 flex items-center justify-center">
                         <Play className="h-4 w-4 text-background ml-0.5" fill="currentColor" />
                       </div>
+                    </div>
+                  )}
+
+                  {/* Progress bar for downloading items */}
+                  {(item.status === "downloading" || item.status === "paused") && item.progress !== undefined && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-muted/50">
+                      <div 
+                        className={cn(
+                          "h-full transition-all duration-300",
+                          item.status === "paused" ? "bg-muted-foreground" : "bg-primary"
+                        )}
+                        style={{ width: `${item.progress}%` }}
+                      />
                     </div>
                   )}
 
@@ -390,18 +420,32 @@ export function MobileDownloads() {
                     )}
                     <span className="text-xs text-muted-foreground">{item.size}</span>
                   </div>
+                  
+                  {/* Status indicators */}
+                  {item.status === "downloading" && item.progress !== undefined && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-primary font-medium">{item.progress}%</span>
+                      <span className="text-xs text-muted-foreground">Downloading...</span>
+                    </div>
+                  )}
+                  {item.status === "paused" && (
+                    <span className="text-xs text-muted-foreground mt-1">Paused - tap to resume</span>
+                  )}
+                  {item.status === "failed" && (
+                    <span className="text-xs text-destructive mt-1">Download failed</span>
+                  )}
                   {item.status === "expired" && (
                     <span className="text-xs text-yellow-500 mt-1">Expired</span>
                   )}
-                  {item.expiresAt && item.status !== "expired" && (
+                  {item.expiresAt && item.status === "completed" && (
                     <span className="text-xs text-muted-foreground/70 mt-1">
                       Expires {formatDistanceToNow(new Date(item.expiresAt), { addSuffix: true })}
                     </span>
                   )}
                 </div>
 
-                {/* Play indicator */}
-                {!isEditMode && item.status !== "expired" && (
+                {/* Play indicator - only show for completed downloads */}
+                {!isEditMode && item.status === "completed" && (
                   <div className="p-2 self-center text-primary">
                     <Play className="h-5 w-5" fill="currentColor" />
                   </div>
