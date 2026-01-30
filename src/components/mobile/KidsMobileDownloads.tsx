@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Download, HardDrive, Play, Trash2, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, Download, HardDrive, Play, Trash2, CheckCircle, Clock, Loader2, Pause, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -37,9 +37,10 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
     loadDownloads,
   } = useDownloadManager();
 
-  // Filter to only show completed downloads with kids-appropriate ratings
+  // Filter to only show downloads with kids-appropriate ratings (include downloading ones too)
   const downloads = allDownloads.filter(d => {
-    if (d.status !== 'completed') return false;
+    // Show completed, downloading, and paused downloads
+    if (!['completed', 'downloading', 'paused'].includes(d.status)) return false;
     // Filter by content rating if available - only G and PG for kids
     const rating = d.contentRating;
     return !rating || KIDS_RATINGS_LOCAL.includes(rating);
@@ -71,6 +72,16 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
   };
 
   const handlePlayItem = async (download: typeof downloads[0]) => {
+    // Don't allow playing incomplete downloads
+    if (download.status !== 'completed') {
+      if (download.status === 'downloading') {
+        toast.info("Still downloading...");
+      } else if (download.status === 'paused') {
+        toast.info("Download is paused");
+      }
+      return;
+    }
+
     // Check license expiry
     const expiry = await getLicenseExpiry(download.contentId, download.episodeId);
     if (expiry && expiry < Date.now()) {
@@ -283,6 +294,9 @@ function DownloadItem({
   });
 
   const isExpired = expiry ? expiry < Date.now() : false;
+  const isDownloading = item.status === 'downloading';
+  const isPaused = item.status === 'paused';
+  const isCompleted = item.status === 'completed';
 
   return (
     <motion.div
@@ -310,11 +324,36 @@ function DownloadItem({
           <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center">
             <Clock className="h-6 w-6 text-amber-400" />
           </div>
-        ) : (
+        ) : isDownloading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
+            <div className="w-10 h-10 rounded-full bg-cyan-500/90 flex items-center justify-center shadow-lg">
+              <Loader2 className="h-5 w-5 text-white animate-spin" />
+            </div>
+          </div>
+        ) : isPaused ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
+            <div className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center shadow-lg">
+              <Pause className="h-5 w-5 text-white" />
+            </div>
+          </div>
+        ) : isCompleted ? (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900/30">
             <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
               <Play className="h-4 w-4 text-slate-900 ml-0.5" fill="currentColor" />
             </div>
+          </div>
+        ) : null}
+
+        {/* Progress bar for downloading items */}
+        {(isDownloading || isPaused) && item.progress !== undefined && (
+          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-800/50">
+            <div 
+              className={cn(
+                "h-full transition-all duration-300 rounded-full",
+                isPaused ? "bg-white/50" : "bg-gradient-to-r from-cyan-400 to-purple-500"
+              )}
+              style={{ width: `${item.progress}%` }}
+            />
           </div>
         )}
 
@@ -346,9 +385,19 @@ function DownloadItem({
           )}
           <span className="text-xs text-white/50">{formatBytes(item.downloadedSize)}</span>
         </div>
+        {/* Status text */}
+        {isDownloading && item.progress !== undefined && (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-cyan-400 font-medium">{item.progress}%</span>
+            <span className="text-xs text-white/50">Downloading...</span>
+          </div>
+        )}
+        {isPaused && (
+          <span className="text-xs text-white/50 mt-1">Paused</span>
+        )}
         {isExpired ? (
           <span className="text-xs text-amber-400 mt-1">Expired</span>
-        ) : expiry && (
+        ) : expiry && isCompleted && (
           <span className="text-xs text-white/40 mt-1">
             Expires {formatDistanceToNow(new Date(expiry), { addSuffix: true })}
           </span>

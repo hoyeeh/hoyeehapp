@@ -136,16 +136,16 @@ export function MobileAIRecommendations({ onDetails }: MobileAIRecommendationsPr
         </div>
       ) : (
         <div
-          className="flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-2"
+          className="flex gap-4 overflow-x-auto scrollbar-hide px-4 pb-2"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {recommendedContent.map(({ content, reason }) => (
             <div
               key={content.id}
-              className="flex-shrink-0 w-32 active:scale-95 transition-transform"
+              className="flex-shrink-0 w-64 active:scale-95 transition-transform"
               onClick={() => onDetails(content)}
             >
-              <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-secondary">
+              <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
                 <img
                   src={content.thumbnailUrl}
                   alt={content.title}
@@ -153,20 +153,28 @@ export function MobileAIRecommendations({ onDetails }: MobileAIRecommendationsPr
                   loading="lazy"
                 />
                 
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+                
                 {/* AI Badge */}
-                <div className="absolute top-1.5 right-1.5 bg-brand/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                  <Sparkles className="h-2.5 w-2.5" />
+                <div className="absolute top-2 right-2 bg-brand/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  <span className="text-[10px] font-medium">AI Pick</span>
                 </div>
 
                 {content.isPremium && (
-                  <div className="absolute top-1.5 left-1.5 bg-brand px-1.5 py-0.5 rounded text-[9px] font-semibold text-primary-foreground">
+                  <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-[10px] font-semibold text-primary-foreground">
                     PRO
                   </div>
                 )}
-              </div>
-              
-              <div className="mt-1.5">
-                <h3 className="font-medium text-xs truncate">{content.title}</h3>
+                
+                {/* Title overlay at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <h3 className="font-semibold text-sm line-clamp-2 text-foreground">{content.title}</h3>
+                  {content.genre && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{content.genre.split(',')[0]}</p>
+                  )}
+                </div>
               </div>
             </div>
           ))}
