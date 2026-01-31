@@ -187,6 +187,20 @@ export function MobileContentCard({
     );
   }
 
+  // Map card size to poster width for ranked cards
+  const rankPosterSizeClasses = {
+    sm: "w-20",
+    md: "w-24",
+    lg: "w-28",
+  };
+
+  // Map card size to rank number font size
+  const rankFontSizeClasses = {
+    sm: "text-[60px]",
+    md: "text-[80px]",
+    lg: "text-[100px]",
+  };
+
   // Default poster variant - with Top 10 style ranking
   if (rank) {
     return (
@@ -198,7 +212,7 @@ export function MobileContentCard({
           {/* Large rank number - Netflix/Desktop style */}
           <div className="relative z-10 -mr-2">
             <span 
-              className="text-[80px] font-black leading-none select-none"
+              className={cn(rankFontSizeClasses[cardSize], "font-black leading-none select-none")}
               style={{
                 WebkitTextStroke: "2px hsl(var(--muted-foreground) / 0.5)",
                 WebkitTextFillColor: "transparent",
@@ -209,8 +223,8 @@ export function MobileContentCard({
             </span>
           </div>
           
-          {/* Poster */}
-          <div className="relative w-24 aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
+          {/* Poster - uses cardSize prop */}
+          <div className={cn("relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10", rankPosterSizeClasses[cardSize])}>
             <img
               src={thumbnailSrc}
               alt={content.title}
