@@ -354,20 +354,31 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
               onSeeAll={() => navigate(seeAllRoute)} 
             />
             <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
-              {sectionContent.map((item, index) => (
-                <KidsMobileContentCard
-                  key={item.id}
-                  content={item}
-                  onPlay={onPlay}
-                  onDetails={onDetails}
-                  index={index}
-                  variant={cardVariant}
-                  cardSize={cardSize}
-                  cardStyle={cardStyle}
-                  hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
-                  hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
-                />
-              ))}
+              {sectionContent.map((item, index) => {
+                // Map admin card size to width classes for consistent sizing
+                const sizeWidthClasses = cardStyle === "full" 
+                  ? { sm: "w-28", md: "w-32", lg: "w-40" }
+                  : { sm: "w-24", md: "w-28", lg: "w-36" };
+                
+                return (
+                  <div 
+                    key={item.id} 
+                    className={`flex-shrink-0 ${sizeWidthClasses[cardSize]}`}
+                  >
+                    <KidsMobileContentCard
+                      content={item}
+                      onPlay={onPlay}
+                      onDetails={onDetails}
+                      index={index}
+                      variant={cardVariant}
+                      cardSize={cardSize}
+                      cardStyle={cardStyle}
+                      hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                      hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </motion.section>
         );
