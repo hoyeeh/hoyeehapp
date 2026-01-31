@@ -2,9 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
-import { KidsMobileContentCard } from "./KidsMobileContentCard";
 import { KidsHeroCarousel } from "./KidsHeroCarousel";
-import { Film, Tv, Clock, Moon, TrendingUp, Sparkles, ChevronRight } from "lucide-react";
+import { Film, Clock, Moon } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -17,45 +16,16 @@ import { KidsConfetti } from "@/components/kids/KidsConfetti";
 import { KidsMobileContinueWatching } from "@/components/kids/KidsMobileContinueWatching";
 import { KidsMobileAgeGroupSections } from "@/components/kids/KidsMobileAgeGroupSections";
 import { KidsMobilePlayablesRow } from "@/components/kids/KidsMobilePlayablesRow";
+import { KidsDynamicSections } from "@/components/kids/KidsDynamicSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { KidsParentalSetupNotice } from "@/components/kids/KidsParentalSetupNotice";
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
+import { useState, useEffect, useRef } from "react";
 
 interface KidsMobileHomeProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
 }
 
-const SectionHeader = ({ 
-  icon: Icon, 
-  title, 
-  color,
-  onSeeAll
-}: { 
-  icon: typeof Film; 
-  title: string; 
-  color: string;
-  onSeeAll?: () => void;
-}) => (
-  <div className="flex items-center justify-between px-5 mb-4">
-    <div className="flex items-center gap-2.5">
-      <div className={`w-8 h-8 rounded-xl ${color} flex items-center justify-center`}>
-        <Icon className="h-4 w-4 text-white" strokeWidth={2} />
-      </div>
-      <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">{title}</h2>
-    </div>
-    {onSeeAll && (
-      <button 
-        onClick={onSeeAll}
-        className="flex items-center gap-1 text-xs text-white/60 active:scale-95 transition-transform"
-      >
-        <span>See All</span>
-        <ChevronRight className="h-3 w-3" />
-      </button>
-    )}
-  </div>
-);
 
 export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   const navigate = useNavigate();
@@ -117,14 +87,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
     ? kidsContent.filter(c => isContentApproved(c.id))
     : kidsContent;
 
-  // Get TV show content IDs for new episode/season badges
-  const tvShowIds = useMemo(() => 
-    displayContent.filter(c => c.contentType === 'series').map(c => c.id),
-    [displayContent]
-  );
-  const { data: tvShowUpdates = {} } = useLatestTVShowUpdates(tvShowIds);
-
-  // Prioritize animation content
+  // Prioritize animation content for hero
   const animationContent = displayContent.filter((c) => 
     c.genre?.toLowerCase().includes("animation") || 
     c.genre?.toLowerCase().includes("animated") ||
@@ -136,11 +99,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
     !c.genre?.toLowerCase().includes("cartoon")
   );
   
-  // Sort content with animation first
+  // Sort content with animation first for hero
   const sortedContent = [...animationContent, ...nonAnimationContent];
-  
-  const movies = displayContent.filter((c) => c.contentType === "movie");
-  const shows = displayContent.filter((c) => c.contentType === "series");
 
   // Trigger confetti when content loads
   useEffect(() => {
@@ -263,37 +223,12 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       {/* Continue Watching */}
       <KidsMobileContinueWatching onPlay={onPlay} onDetails={onDetails} />
 
-      {/* Animation Section - Featured First */}
-      {animationContent.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-30px" }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="bg-gradient-to-br from-fuchsia-500/20 via-fuchsia-500/10 to-purple-500/20 rounded-xl mx-3 py-4 border border-fuchsia-500/20"
-        >
-          <SectionHeader 
-            icon={Sparkles} 
-            title="Animation" 
-            color="bg-gradient-to-br from-fuchsia-500 to-purple-600"
-            onSeeAll={() => navigate("/genres")} 
-          />
-          <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
-            {animationContent.slice(0, 8).map((item, index) => (
-              <KidsMobileContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-                variant="large"
-                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
-                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
+      {/* Dynamic Sections from Admin (show_on_kids=true) */}
+      <KidsDynamicSections 
+        allContent={displayContent} 
+        onPlay={onPlay} 
+        onDetails={onDetails} 
+      />
 
       {/* Hoyeeh Playables - Games Section */}
       <KidsMobilePlayablesRow />
@@ -301,100 +236,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       {/* Age Group Sections */}
       <KidsMobileAgeGroupSections content={displayContent} onPlay={onPlay} onDetails={onDetails} />
 
-      {/* Trending Now */}
-      {displayContent.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-30px" }}
-          transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
-          className="bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-pink-500/20 rounded-xl mx-3 py-4 border border-rose-500/20"
-        >
-          <SectionHeader 
-            icon={TrendingUp} 
-            title="Trending Now" 
-            color="bg-gradient-to-br from-rose-500 to-pink-600"
-            onSeeAll={() => navigate("/genres")} 
-          />
-          <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
-            {sortedContent.slice(0, 8).map((item, index) => (
-              <KidsMobileContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-                variant="large"
-                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
-                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
-
       {/* YouTube Videos */}
       <KidsMobileYouTubeRow onPlayVideo={handlePlayYouTubeVideo} />
-
-      {/* Movies */}
-      {movies.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-30px" }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-cyan-500/20 rounded-xl mx-3 py-4 border border-blue-500/20"
-        >
-          <SectionHeader 
-            icon={Film} 
-            title="Movies" 
-            color="bg-gradient-to-br from-blue-500 to-cyan-600"
-            onSeeAll={() => navigate("/genres")} 
-          />
-          <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
-            {movies.slice(0, 12).map((item, index) => (
-              <KidsMobileContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
-
-      {/* TV Shows */}
-      {shows.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-30px" }}
-          transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
-          className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-green-500/20 rounded-xl mx-3 py-4 border border-emerald-500/20"
-        >
-          <SectionHeader 
-            icon={Tv} 
-            title="TV Shows" 
-            color="bg-gradient-to-br from-emerald-500 to-green-600"
-            onSeeAll={() => navigate("/genres")} 
-          />
-          <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
-            {shows.slice(0, 12).map((item, index) => (
-              <KidsMobileContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
-                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
 
       {/* Empty State */}
       {displayContent.length === 0 && (

@@ -712,6 +712,8 @@ export function MobileHome() {
                     showSeeAll
                     onSeeAll={() => navigate(seeAllRoute)}
                     tvShowUpdates={tvShowUpdates}
+                    cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                    cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                   />
                 </FadeIn>
               );

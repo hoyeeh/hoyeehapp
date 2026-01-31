@@ -8,6 +8,7 @@ interface KidsMobileContentCardProps {
   onDetails: (content: Content) => void;
   index: number;
   variant?: "default" | "large" | "featured";
+  cardSize?: "sm" | "md" | "lg"; // Admin-configured card size
   hasNewEpisode?: boolean;
   hasNewSeason?: boolean;
 }
@@ -18,19 +19,34 @@ export const KidsMobileContentCard = ({
   onDetails, 
   index,
   variant = "default",
+  cardSize,
   hasNewEpisode = false,
   hasNewSeason = false
 }: KidsMobileContentCardProps) => {
   
+  // Map admin card size to variant if cardSize is provided
+  const effectiveVariant = cardSize 
+    ? (cardSize === "lg" ? "large" : cardSize === "sm" ? "default" : "default")
+    : variant;
+
   const sizes = {
     default: "w-[120px]",
     large: "w-[140px]",
     featured: "w-[200px]",
   };
+  
+  // Override with admin sizes if cardSize is provided
+  const adminSizes: Record<string, string> = {
+    sm: "w-[100px]",
+    md: "w-[120px]",
+    lg: "w-[160px]",
+  };
+  
+  const widthClass = cardSize ? adminSizes[cardSize] : sizes[effectiveVariant];
 
   return (
     <motion.div
-      className={`${sizes[variant]} flex-shrink-0`}
+      className={`${widthClass} flex-shrink-0`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ 
