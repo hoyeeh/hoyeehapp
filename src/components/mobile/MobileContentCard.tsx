@@ -211,8 +211,11 @@ export function MobileContentCard({
         onClick={() => onDetails(content)}
       >
         <div className="flex items-end w-full">
-          {/* Large rank number - Netflix/Desktop style */}
-          <div className="relative z-10 -mr-1">
+          {/* Large rank number - fixed width container for consistent sizing */}
+          <div className={cn(
+            "relative z-10 -mr-1 flex items-end justify-end",
+            cardSize === "sm" ? "w-6" : cardSize === "lg" ? "w-10" : "w-8"
+          )}>
             <span 
               className={cn(rankFontSizeClasses[cardSize], "font-black leading-none select-none")}
               style={{
