@@ -3,17 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsMobileContentCard } from "@/components/mobile/KidsMobileContentCard";
 import { motion } from "framer-motion";
-import { Film, Tv, Sparkles, TrendingUp, Star, Heart, Gamepad2, Music } from "lucide-react";
+import { Film, Tv, Sparkles, TrendingUp, Star, Heart, Gamepad2, Music, Radio, Gift } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
 import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 import { useMemo } from "react";
+import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 
 interface KidsDynamicSectionsProps {
   allContent: Content[];
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
+  onPlayVideo?: (videoId: string, title: string) => void;
 }
 
 // Icon mapping for section types
@@ -26,7 +28,8 @@ const sectionIcons: Record<string, typeof Film> = {
   recently_added: Star,
   genre: Heart,
   curated: Sparkles,
-  free_content: Gamepad2,
+  free_content: Gift,
+  youtube: Radio,
   default: Music,
 };
 
@@ -72,6 +75,16 @@ const sectionColors: Record<string, { bg: string; icon: string; border: string }
     icon: "bg-gradient-to-br from-pink-500 to-rose-600",
     border: "border-pink-500/20"
   },
+  free_content: { 
+    bg: "from-green-500/20 via-green-500/10 to-emerald-500/20", 
+    icon: "bg-gradient-to-br from-green-500 to-emerald-600",
+    border: "border-green-500/20"
+  },
+  youtube: { 
+    bg: "from-red-500/20 via-red-500/10 to-orange-500/20", 
+    icon: "bg-gradient-to-br from-red-500 to-orange-600",
+    border: "border-red-500/20"
+  },
   default: { 
     bg: "from-slate-500/20 via-slate-500/10 to-gray-500/20", 
     icon: "bg-gradient-to-br from-slate-500 to-gray-600",
@@ -109,7 +122,7 @@ const SectionHeader = ({
   </div>
 );
 
-export const KidsDynamicSections = ({ allContent, onPlay, onDetails }: KidsDynamicSectionsProps) => {
+export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo }: KidsDynamicSectionsProps) => {
   const navigate = useNavigate();
 
   // Fetch home sections configured for kids
@@ -224,6 +237,32 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails }: KidsDynam
         })
         .slice(0, section.max_items || 15);
     }
+
+    // Free content section - only show non-premium content
+    if (section.section_type === "free_content") {
+      // Check if curated
+      if (section.is_curated) {
+        const curatedFree = sectionContentData
+          .filter((sc: any) => sc.section_id === section.id && sc.content && !sc.content.is_premium)
+          .map((sc: any) => transformContent([sc.content])[0]);
+        return filterForKids(curatedFree).slice(0, section.max_items || 15);
+      }
+      // Filter for non-premium (free) content only
+      let freeFiltered = allContent.filter((c) => !c.isPremium);
+      if (section.content_type_filter === "movie") {
+        freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
+      } else if (section.content_type_filter === "series") {
+        freeFiltered = freeFiltered.filter((c) => c.contentType === "series");
+      }
+      return filterForKids(freeFiltered)
+        .sort((a, b) => (b.year || 0) - (a.year || 0))
+        .slice(0, section.max_items || 15);
+    }
+
+    // YouTube section - handled separately in render
+    if (section.section_type === "youtube") {
+      return []; // Return empty, YouTube is rendered separately
+    }
     
     // Default: return all filtered content sorted by year
     let filtered = [...allContent];
@@ -253,14 +292,47 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails }: KidsDynam
   return (
     <>
       {kidsSections.map((section: any, sectionIndex: number) => {
-        const sectionContent = getSectionContent(section);
-        if (sectionContent.length === 0) return null;
-
         const sectionType = section.section_type || "default";
         const colors = sectionColors[sectionType] || sectionColors.default;
         const Icon = sectionIcons[sectionType] || sectionIcons.default;
+
+        // Handle YouTube section separately (Live Channels)
+        if (sectionType === "youtube") {
+          if (!onPlayVideo) return null;
+          return (
+            <motion.section 
+              key={section.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ duration: 0.4, ease: "easeOut", delay: sectionIndex * 0.05 }}
+              className={`bg-gradient-to-br ${colors.bg} rounded-xl mx-3 py-4 border ${colors.border}`}
+            >
+              <SectionHeader 
+                icon={Icon} 
+                title={section.title} 
+                color={colors.icon}
+              />
+              <KidsMobileYouTubeRow onPlayVideo={onPlayVideo} />
+            </motion.section>
+          );
+        }
+
+        // Handle continue_watching section - skip, handled elsewhere
+        if (sectionType === "continue_watching" || sectionType === "my_list") {
+          return null;
+        }
+
+        const sectionContent = getSectionContent(section);
+        if (sectionContent.length === 0) return null;
+
         const cardVariant = getCardVariant(section);
         const cardSize = (section.card_size as "sm" | "md" | "lg") || "md";
+
+        // Determine appropriate "See All" destination
+        const seeAllRoute = sectionType === "free_content" 
+          ? "/free-content" 
+          : "/genres";
 
         return (
           <motion.section 
@@ -275,7 +347,7 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails }: KidsDynam
               icon={Icon} 
               title={section.title} 
               color={colors.icon}
-              onSeeAll={() => navigate("/genres")} 
+              onSeeAll={() => navigate(seeAllRoute)} 
             />
             <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
               {sectionContent.map((item, index) => (

@@ -227,7 +227,8 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       <KidsDynamicSections 
         allContent={displayContent} 
         onPlay={onPlay} 
-        onDetails={onDetails} 
+        onDetails={onDetails}
+        onPlayVideo={handlePlayYouTubeVideo}
       />
 
       {/* Hoyeeh Playables - Games Section */}
