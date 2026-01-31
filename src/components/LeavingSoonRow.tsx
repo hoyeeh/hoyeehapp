@@ -9,10 +9,21 @@ interface LeavingSoonRowProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   myList?: string[];
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  cardSize?: "sm" | "md" | "lg";
+  maxItems?: number;
 }
 
-export function LeavingSoonRow({ onPlay, onToggleList, onDetails, myList = [] }: LeavingSoonRowProps) {
-  const { data: content, isLoading } = useLeavingSoonContent(15);
+export function LeavingSoonRow({ 
+  onPlay, 
+  onToggleList, 
+  onDetails, 
+  myList = [],
+  cardStyle = "poster",
+  cardSize = "md",
+  maxItems = 15,
+}: LeavingSoonRowProps) {
+  const { data: content, isLoading } = useLeavingSoonContent(maxItems);
 
   if (isLoading || !content || content.length === 0) {
     return null;
@@ -42,8 +53,8 @@ export function LeavingSoonRow({ onPlay, onToggleList, onDetails, myList = [] }:
               onToggleList={onToggleList}
               onDetails={onDetails}
               isInList={myList.includes(item.id)}
-              size="md"
-              cardStyle="poster"
+              size={cardSize}
+              cardStyle={cardStyle}
             />
           ))}
         </div>

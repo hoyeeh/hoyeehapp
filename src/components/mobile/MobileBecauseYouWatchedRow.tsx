@@ -8,10 +8,16 @@ import { MobileContentRow } from "./MobileContentRow";
 
 interface MobileBecauseYouWatchedRowProps {
   onDetails: (content: Content) => void;
+  cardSize?: "sm" | "md" | "lg";
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  maxItems?: number;
 }
 
 export const MobileBecauseYouWatchedRow = ({
   onDetails,
+  cardSize = "md",
+  cardStyle = "poster",
+  maxItems = 15,
 }: MobileBecauseYouWatchedRowProps) => {
   const { user } = useAuth();
   const { data: allContent = [] } = useContent();
@@ -62,8 +68,8 @@ export const MobileBecauseYouWatchedRow = ({
         return sourceGenres.some(sg => contentGenres.some(cg => cg.includes(sg) || sg.includes(cg)));
       })
       .sort((a, b) => (b.year || 0) - (a.year || 0))
-      .slice(0, 15);
-  }, [allContent, sourceContent]);
+      .slice(0, maxItems);
+  }, [allContent, sourceContent, maxItems]);
 
   if (!sourceContent || relatedContent.length === 0) {
     return null;
@@ -74,7 +80,8 @@ export const MobileBecauseYouWatchedRow = ({
       title={`Because You Watched ${sourceContent.title}`}
       content={relatedContent}
       onDetails={onDetails}
-      variant="poster"
+      cardSize={cardSize}
+      cardStyle={cardStyle}
     />
   );
 };

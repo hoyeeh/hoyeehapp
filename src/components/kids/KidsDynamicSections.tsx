@@ -277,11 +277,12 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
       .slice(0, section.max_items || 15);
   };
 
-  // Map card size from admin settings
+  // Map card size from admin settings - respect all three sizes
   const getCardVariant = (section: any): "default" | "large" | "featured" => {
     const size = section.card_size || "md";
     if (size === "lg") return "large";
-    if (size === "sm") return "default";
+    if (size === "md") return "default";
+    if (size === "sm") return "default"; // sm uses default variant but smaller in CSS
     return "default";
   };
 

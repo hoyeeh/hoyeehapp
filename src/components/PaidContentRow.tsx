@@ -14,6 +14,8 @@ interface PaidContentRowProps {
   onDetails: (content: Content) => void;
   userList?: string[];
   maxItems?: number;
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  cardSize?: "sm" | "md" | "lg";
 }
 
 export const PaidContentRow = ({
@@ -23,6 +25,8 @@ export const PaidContentRow = ({
   onDetails,
   userList = [],
   maxItems = 15,
+  cardStyle = "poster",
+  cardSize = "md",
 }: PaidContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -148,7 +152,8 @@ export const PaidContentRow = ({
                 onToggleList={onToggleList}
                 onDetails={onDetails}
                 isInList={userList.includes(item.id)}
-                cardStyle="poster"
+                cardStyle={cardStyle}
+                size={cardSize}
                 isPaidContent={!item.isFree}
                 paidPrice={item.price}
                 paidCurrency={item.currency}
