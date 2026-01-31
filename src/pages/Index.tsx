@@ -564,12 +564,12 @@ const Index = () => {
     });
   }, [homeSections, content, recentlyAddedContent, trendingContentItems, sectionContentData, movies, shows, enableDeduplication]);
 
-  // Get content by genre (fallback)
-  const getContentByGenre = (genreName: string) => {
+  // Get content by genre (fallback) - uses default limit, admin sections have own max_items
+  const getContentByGenre = (genreName: string, maxItems: number = 20) => {
     return content
       .filter((c) => c.genre.toLowerCase().includes(genreName.toLowerCase()))
       .sort((a, b) => (b.year || 0) - (a.year || 0))
-      .slice(0, 15);
+      .slice(0, maxItems);
   };
 
   // Loading state
@@ -831,7 +831,8 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
-                          cardStyle="poster"
+                          cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                          cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                           showSeeAll
                           onSeeAll={() => navigate("/my-list")}
                         />

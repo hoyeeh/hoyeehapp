@@ -12,6 +12,9 @@ interface BecauseYouWatchedRowProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   userList?: string[];
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
+  cardSize?: "sm" | "md" | "lg";
+  maxItems?: number;
 }
 
 export const BecauseYouWatchedRow = ({
@@ -19,6 +22,9 @@ export const BecauseYouWatchedRow = ({
   onToggleList,
   onDetails,
   userList = [],
+  cardStyle = "poster",
+  cardSize = "md",
+  maxItems = 15,
 }: BecauseYouWatchedRowProps) => {
   const { user } = useAuth();
   const { data: allContent = [] } = useContent();
@@ -72,8 +78,8 @@ export const BecauseYouWatchedRow = ({
         return sourceGenres.some(sg => contentGenres.some(cg => cg.includes(sg) || sg.includes(cg)));
       })
       .sort((a, b) => (b.year || 0) - (a.year || 0))
-      .slice(0, 15);
-  }, [allContent, sourceContent]);
+      .slice(0, maxItems);
+  }, [allContent, sourceContent, maxItems]);
 
   if (!sourceContent || relatedContent.length === 0) {
     return null;
@@ -89,7 +95,8 @@ export const BecauseYouWatchedRow = ({
       onToggleList={onToggleList}
       onDetails={onDetails}
       userList={userList}
-      cardStyle="poster"
+      cardStyle={cardStyle}
+      cardSize={cardSize}
     />
   );
 };

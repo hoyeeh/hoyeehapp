@@ -10,12 +10,16 @@ interface MobilePaidContentRowProps {
   title?: string;
   onDetails: (content: Content) => void;
   maxItems?: number;
+  cardSize?: "sm" | "md" | "lg";
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal";
 }
 
 export function MobilePaidContentRow({
   title = "Creator Studio",
   onDetails,
   maxItems = 15,
+  cardSize = "md",
+  cardStyle = "poster",
 }: MobilePaidContentRowProps) {
   const navigate = useNavigate();
   const { data: paidContent = [], isLoading } = usePaidContentForHome();
@@ -89,11 +93,12 @@ export function MobilePaidContentRow({
         "scroll-smooth snap-x snap-mandatory"
       )}>
         {contentItems.map((item) => (
-          <div key={item.id} className="snap-start">
+          <div key={item.id} className="snap-start flex-shrink-0">
             <MobileContentCard
               content={item as Content}
               onDetails={onDetails}
-              variant="poster"
+              variant={cardStyle === "backdrop" || cardStyle === "wide" ? "landscape" : "poster"}
+              cardSize={cardSize}
               isPaidContent={true}
               hasPurchased={item.hasPurchased || item.isFree}
               price={item.isFree ? undefined : item.price}

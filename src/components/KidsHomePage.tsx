@@ -17,6 +17,7 @@ import { KidsContinueWatching } from "./kids/KidsContinueWatching";
 import { KidsAgeGroupSections } from "./kids/KidsAgeGroupSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { KidsParentalSetupNotice } from "./kids/KidsParentalSetupNotice";
+import { KidsDesktopDynamicSections } from "./kids/KidsDesktopDynamicSections";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
@@ -233,23 +234,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     ? kidsContent.filter(c => isContentApproved(c.id))
     : kidsContent;
 
-  // Prioritize animation content
-  const animationContent = displayContent.filter((c) => 
-    c.genre?.toLowerCase().includes("animation") || 
-    c.genre?.toLowerCase().includes("animated") ||
-    c.genre?.toLowerCase().includes("cartoon")
-  );
-  const nonAnimationContent = displayContent.filter((c) => 
-    !c.genre?.toLowerCase().includes("animation") && 
-    !c.genre?.toLowerCase().includes("animated") &&
-    !c.genre?.toLowerCase().includes("cartoon")
-  );
-  
-  // Sort content with animation first
-  const sortedContent = [...animationContent, ...nonAnimationContent];
-  
-  const movies = displayContent.filter((c) => c.contentType === "movie");
-  const shows = displayContent.filter((c) => c.contentType === "series");
+  // Note: Animation content, movies, shows filtering now handled by KidsDesktopDynamicSections
 
   // Trigger confetti when content loads - MUST be before any conditional returns
   useEffect(() => {
@@ -354,7 +339,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
       <KidsParentalSetupNotice />
 
       {/* Hero Carousel - prioritize animation */}
-      <HeroCarousel content={sortedContent} onPlay={onPlay} onDetails={onDetails} />
+      <HeroCarousel content={displayContent} onPlay={onPlay} onDetails={onDetails} />
 
       {/* Time Remaining Badge */}
       {timeRemaining !== null && (
@@ -373,107 +358,16 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
       {/* Continue Watching */}
       <KidsContinueWatching onPlay={onPlay} onDetails={onDetails} />
 
-      {/* Animation Section - Featured First */}
-      {animationContent.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="bg-gradient-to-br from-fuchsia-500/20 via-fuchsia-500/10 to-purple-500/20 rounded-2xl p-4 md:p-6 border border-fuchsia-500/20"
-        >
-          <SectionHeader icon={Sparkles} title="Animation" color="bg-gradient-to-br from-fuchsia-500 to-purple-600" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {animationContent.slice(0, 12).map((item, index) => (
-              <KidsContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
-
       {/* Age Group Sections */}
       <KidsAgeGroupSections content={displayContent} onPlay={onPlay} onDetails={onDetails} />
 
-      {/* Trending Now */}
-      {displayContent.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-          className="bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-pink-500/20 rounded-2xl p-4 md:p-6 border border-rose-500/20"
-        >
-          <SectionHeader icon={TrendingUp} title="Trending Now" color="bg-gradient-to-br from-rose-500 to-pink-600" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {sortedContent.slice(0, 12).map((item, index) => (
-              <KidsContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
-
-      {/* YouTube Videos */}
-      <KidsYouTubeRow onPlayVideo={handlePlayYouTubeVideo} />
-
-      {/* Movies */}
-      {movies.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-cyan-500/20 rounded-2xl p-4 md:p-6 border border-blue-500/20"
-        >
-          <SectionHeader icon={Film} title="Movies" color="bg-gradient-to-br from-blue-500 to-cyan-600" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {movies.slice(0, 12).map((item, index) => (
-              <KidsContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
-
-      {/* TV Shows */}
-      {shows.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-          className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-green-500/20 rounded-2xl p-4 md:p-6 border border-emerald-500/20"
-        >
-          <SectionHeader icon={Tv} title="TV Shows" color="bg-gradient-to-br from-emerald-500 to-green-600" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {shows.slice(0, 12).map((item, index) => (
-              <KidsContentCard
-                key={item.id}
-                content={item}
-                onPlay={onPlay}
-                onDetails={onDetails}
-                index={index}
-              />
-            ))}
-          </div>
-        </motion.section>
-      )}
+      {/* Dynamic Sections from Admin (show_on_kids=true) */}
+      <KidsDesktopDynamicSections 
+        allContent={displayContent}
+        onPlay={onPlay}
+        onDetails={onDetails}
+        onPlayVideo={handlePlayYouTubeVideo}
+      />
 
       {/* Empty State */}
       {displayContent.length === 0 && (
