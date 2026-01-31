@@ -693,6 +693,8 @@ export function MobileHome() {
                       title={section.title}
                       onDetails={handleDetails}
                       maxItems={section.max_items || 15}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                     />
                   </FadeIn>
                 );

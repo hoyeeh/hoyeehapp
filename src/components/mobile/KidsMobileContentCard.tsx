@@ -33,34 +33,6 @@ export const KidsMobileContentCard = ({
       ? (cardSize === "lg" ? "large" : cardSize === "sm" ? "default" : "default")
       : variant;
 
-  // Standard poster sizes (2:3 aspect ratio)
-  const sizes = {
-    default: "w-[120px]",
-    large: "w-[140px]",
-    featured: "w-[200px]",
-    full: "w-[140px]", // Full style uses 3:4 aspect ratio
-  };
-  
-  // Override with admin sizes if cardSize is provided
-  const adminSizes: Record<string, string> = {
-    sm: "w-[100px]",
-    md: "w-[120px]",
-    lg: "w-[160px]",
-  };
-
-  // Full style sizes (larger to accommodate 3:4 aspect)
-  const fullSizes: Record<string, string> = {
-    sm: "w-[110px]",
-    md: "w-[130px]",
-    lg: "w-[170px]",
-  };
-  
-  const widthClass = cardStyle === "full" && cardSize
-    ? fullSizes[cardSize]
-    : cardSize 
-      ? adminSizes[cardSize] 
-      : sizes[effectiveVariant as keyof typeof sizes] || sizes.default;
-
   // Use 3:4 aspect ratio for "full" style, 2:3 for posters
   const aspectRatio = cardStyle === "full" || effectiveVariant === "full" 
     ? "aspect-[3/4]" 
@@ -68,7 +40,7 @@ export const KidsMobileContentCard = ({
 
   return (
     <motion.div
-      className={`${widthClass} flex-shrink-0`}
+      className="w-full flex-shrink-0"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ 
