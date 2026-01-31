@@ -627,7 +627,7 @@ export function MobileHome() {
                       variant="poster"
                       isLoading={isLoadingTop10}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
-                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
                     />
                   </FadeIn>
                 ) : null;
@@ -646,7 +646,7 @@ export function MobileHome() {
                       onSeeAll={() => navigate("/my-list")}
                       tvShowUpdates={tvShowUpdates}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
-                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
                     />
                   </FadeIn>
                 ) : null;
@@ -666,7 +666,7 @@ export function MobileHome() {
                       isLoading={isLoadingNewReleases}
                       tvShowUpdates={tvShowUpdates}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
-                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
                     />
                   </FadeIn>
                 ) : null;
@@ -703,22 +703,7 @@ export function MobileHome() {
                 return null;
               }
 
-              // Top 10 section - use admin settings for card size/style
-              if (section.section_type === "top10") {
-                return top10Content.length > 0 ? (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
-                    <MobileContentRow
-                      title={section.title}
-                      content={top10Content}
-                      onDetails={handleDetails}
-                      showRank
-                      isLoading={isLoadingTop10}
-                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
-                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
-                    />
-                  </FadeIn>
-                ) : null;
-              }
+              // NOTE: Top 10 section is already handled above at line 619, skip duplicate handling
 
               // Genre and other sections - use processed deduplicated content
               if (sectionContent.length === 0) return null;
@@ -738,7 +723,7 @@ export function MobileHome() {
                     onSeeAll={() => navigate(seeAllRoute)}
                     tvShowUpdates={tvShowUpdates}
                     cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
-                    cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                    cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
                   />
                 </FadeIn>
               );

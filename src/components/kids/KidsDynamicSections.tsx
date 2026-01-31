@@ -278,7 +278,9 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
   };
 
   // Map card size from admin settings - respect all three sizes
-  const getCardVariant = (section: any): "default" | "large" | "featured" => {
+  const getCardVariant = (section: any): "default" | "large" | "featured" | "full" => {
+    // If cardStyle is "full", return full variant
+    if (section.card_style === "full") return "full";
     const size = section.card_size || "md";
     if (size === "lg") return "large";
     if (size === "md") return "default";
@@ -329,6 +331,7 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
 
         const cardVariant = getCardVariant(section);
         const cardSize = (section.card_size as "sm" | "md" | "lg") || "md";
+        const cardStyle = (section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster";
 
         // Determine appropriate "See All" destination
         const seeAllRoute = sectionType === "free_content" 
@@ -360,6 +363,7 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
                   index={index}
                   variant={cardVariant}
                   cardSize={cardSize}
+                  cardStyle={cardStyle}
                   hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
                   hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
                 />

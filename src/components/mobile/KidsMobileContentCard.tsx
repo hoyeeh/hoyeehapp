@@ -7,8 +7,9 @@ interface KidsMobileContentCardProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
   index: number;
-  variant?: "default" | "large" | "featured";
+  variant?: "default" | "large" | "featured" | "full";
   cardSize?: "sm" | "md" | "lg"; // Admin-configured card size
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal" | "full"; // Admin-configured card style
   hasNewEpisode?: boolean;
   hasNewSeason?: boolean;
 }
@@ -20,19 +21,24 @@ export const KidsMobileContentCard = ({
   index,
   variant = "default",
   cardSize,
+  cardStyle,
   hasNewEpisode = false,
   hasNewSeason = false
 }: KidsMobileContentCardProps) => {
   
-  // Map admin card size to variant if cardSize is provided
-  const effectiveVariant = cardSize 
-    ? (cardSize === "lg" ? "large" : cardSize === "sm" ? "default" : "default")
-    : variant;
+  // Determine effective variant based on cardStyle (admin setting takes priority)
+  const effectiveVariant = cardStyle === "full" 
+    ? "full" 
+    : cardSize 
+      ? (cardSize === "lg" ? "large" : cardSize === "sm" ? "default" : "default")
+      : variant;
 
+  // Standard poster sizes (2:3 aspect ratio)
   const sizes = {
     default: "w-[120px]",
     large: "w-[140px]",
     featured: "w-[200px]",
+    full: "w-[140px]", // Full style uses 3:4 aspect ratio
   };
   
   // Override with admin sizes if cardSize is provided
@@ -41,8 +47,24 @@ export const KidsMobileContentCard = ({
     md: "w-[120px]",
     lg: "w-[160px]",
   };
+
+  // Full style sizes (larger to accommodate 3:4 aspect)
+  const fullSizes: Record<string, string> = {
+    sm: "w-[110px]",
+    md: "w-[130px]",
+    lg: "w-[170px]",
+  };
   
-  const widthClass = cardSize ? adminSizes[cardSize] : sizes[effectiveVariant];
+  const widthClass = cardStyle === "full" && cardSize
+    ? fullSizes[cardSize]
+    : cardSize 
+      ? adminSizes[cardSize] 
+      : sizes[effectiveVariant as keyof typeof sizes] || sizes.default;
+
+  // Use 3:4 aspect ratio for "full" style, 2:3 for posters
+  const aspectRatio = cardStyle === "full" || effectiveVariant === "full" 
+    ? "aspect-[3/4]" 
+    : (variant === "featured" ? "aspect-[16/9]" : "aspect-[2/3]");
 
   return (
     <motion.div
@@ -60,7 +82,7 @@ export const KidsMobileContentCard = ({
         onClick={() => onDetails(content)}
         className="relative rounded-2xl overflow-hidden bg-white/[0.04] cursor-pointer group"
       >
-        <div className={`relative ${variant === "featured" ? "aspect-[16/9]" : "aspect-[2/3]"}`}>
+        <div className={`relative ${aspectRatio}`}>
           <img
             src={content.thumbnailUrl}
             alt={content.title}

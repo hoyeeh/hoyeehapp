@@ -10,8 +10,9 @@ interface MobileContentCardProps {
   content: Content;
   onPlay?: (content: Content) => void;
   onDetails: (content: Content) => void;
-  variant?: "poster" | "landscape" | "continue" | "grid";
+  variant?: "poster" | "landscape" | "continue" | "grid" | "full";
   cardSize?: "sm" | "md" | "lg"; // Admin-configured card size
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal" | "full"; // Admin-configured card style
   rank?: number;
   progress?: number;
   showBadges?: boolean;
@@ -34,6 +35,7 @@ export function MobileContentCard({
   onDetails, 
   variant = "poster",
   cardSize = "md",
+  cardStyle,
   rank,
   progress,
   showBadges = true,
@@ -46,6 +48,12 @@ export function MobileContentCard({
   hasNewEpisode = false,
   hasNewSeason = false
 }: MobileContentCardProps) {
+  // Determine effective variant based on cardStyle (admin setting takes priority)
+  const effectiveVariant = cardStyle === "full" 
+    ? "full" 
+    : cardStyle === "backdrop" || cardStyle === "wide" 
+      ? "landscape" 
+      : variant;
   // Map card size to width classes - used when not in flex container with size set
   const sizeWidthClasses = {
     sm: "w-24",
@@ -187,21 +195,15 @@ export function MobileContentCard({
     );
   }
 
-  // Map card size to poster width for ranked cards
-  const rankPosterSizeClasses = {
-    sm: "w-20",
-    md: "w-24",
-    lg: "w-28",
-  };
-
-  // Map card size to rank number font size
+  // Map card size to rank number font size - scaled to match poster height
   const rankFontSizeClasses = {
-    sm: "text-[60px]",
-    md: "text-[80px]",
-    lg: "text-[100px]",
+    sm: "text-[50px]",
+    md: "text-[65px]",
+    lg: "text-[80px]",
   };
 
   // Default poster variant - with Top 10 style ranking
+  // Uses same width as standard poster for consistency
   if (rank) {
     return (
       <div 
@@ -210,7 +212,7 @@ export function MobileContentCard({
       >
         <div className="flex items-end">
           {/* Large rank number - Netflix/Desktop style */}
-          <div className="relative z-10 -mr-2">
+          <div className="relative z-10 -mr-1">
             <span 
               className={cn(rankFontSizeClasses[cardSize], "font-black leading-none select-none")}
               style={{
@@ -223,8 +225,8 @@ export function MobileContentCard({
             </span>
           </div>
           
-          {/* Poster - uses cardSize prop */}
-          <div className={cn("relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10", rankPosterSizeClasses[cardSize])}>
+          {/* Poster - uses SAME width as standard poster for consistency */}
+          <div className={cn("relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10", sizeWidthClasses[cardSize])}>
             <img
               src={thumbnailSrc}
               alt={content.title}
@@ -256,7 +258,7 @@ export function MobileContentCard({
         </div>
 
         {/* Title */}
-        <h4 className="mt-1.5 text-xs font-medium line-clamp-2 px-0.5 text-foreground/90 ml-8">
+        <h4 className="mt-1.5 text-xs font-medium line-clamp-2 px-0.5 text-foreground/90 ml-6">
           {content.title}
         </h4>
       </div>
@@ -358,6 +360,112 @@ export function MobileContentCard({
         <h4 className="mt-1 text-[11px] font-medium line-clamp-2 text-foreground/90">
           {content.title}
         </h4>
+      </div>
+    );
+  }
+
+  // Full variant - 3:4 aspect ratio (wider than poster) - scale based on cardSize
+  const fullSizeClasses = {
+    sm: "w-28",
+    md: "w-32",
+    lg: "w-40",
+  };
+
+  if (effectiveVariant === "full") {
+    return (
+      <div 
+        className={cn("relative flex-shrink-0 active:scale-95 transition-transform", fullSizeClasses[cardSize])}
+        onClick={() => onDetails(content)}
+      >
+        <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
+          <img
+            src={thumbnailSrc}
+            alt={content.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={handleImageError}
+          />
+          
+          {/* Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+          
+          {/* Badge */}
+          {!badgeError && (
+            <div className="absolute top-2 left-2">
+              <img 
+                src={badge} 
+                alt="Hoyeeh" 
+                className="h-3.5 w-auto opacity-90"
+                onError={() => setBadgeError(true)}
+              />
+            </div>
+          )}
+          
+          {/* Offline Available Badge */}
+          {showOfflineBadge && (
+            <div className="absolute top-2 right-2 bg-green-600 rounded-full p-1">
+              <CloudOff className="h-3 w-3 text-white" />
+            </div>
+          )}
+
+          {/* Paid Access Badge - Show when user has purchased */}
+          {isPaidContent && hasPurchased && !showOfflineBadge && (
+            <div className="absolute top-2 right-2 bg-green-500 rounded-md px-1.5 py-0.5 flex items-center gap-1">
+              <CheckCircle className="h-2.5 w-2.5 text-white" />
+              <span className="text-[8px] font-bold text-white">Paid Access</span>
+            </div>
+          )}
+
+          {/* Paid Content Badge - Show price when not purchased */}
+          {isPaidContent && !hasPurchased && !showOfflineBadge && (
+            <div className="absolute top-2 right-2 bg-amber-500 rounded-md px-1.5 py-0.5 flex items-center gap-1">
+              <ShoppingBag className="h-2.5 w-2.5 text-white" />
+              {price !== undefined && (
+                <span className="text-[8px] font-bold text-white">
+                  {new Intl.NumberFormat('fr-FR', {
+                    style: 'currency',
+                    currency: currency,
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  }).format(price)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Title overlay at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 p-2">
+            <h4 className="text-sm font-semibold line-clamp-2 drop-shadow-lg text-foreground">
+              {content.title}
+            </h4>
+            {content.genre && (
+              <p className="text-[10px] text-foreground/70 mt-0.5">
+                {content.genre?.split(',')[0]}
+              </p>
+            )}
+          </div>
+
+          {/* New Season Badge - Compact */}
+          {hasNewSeason && content.contentType === 'series' && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[8px] font-bold rounded-full">
+              NEW SEASON
+            </div>
+          )}
+
+          {/* New Episode Badge - Compact */}
+          {hasNewEpisode && !hasNewSeason && content.contentType === 'series' && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground px-2 py-0.5 text-[8px] font-bold rounded-full">
+              NEW EPISODE
+            </div>
+          )}
+
+          {/* New Badge */}
+          {showNewBadge && isNewlyAdded && !hasNewSeason && !hasNewEpisode && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-2 py-0.5 text-[8px] font-bold rounded-full">
+              JUST ADDED
+            </div>
+          )}
+        </div>
       </div>
     );
   }
