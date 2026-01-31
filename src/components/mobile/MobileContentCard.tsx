@@ -68,10 +68,17 @@ export function MobileContentCard({
 
   const thumbnailSrc = imageError ? PLACEHOLDER_IMAGE : (content.thumbnailUrl || PLACEHOLDER_IMAGE);
 
+  // Continue watching variant - scale based on cardSize
+  const continueSizeClasses = {
+    sm: "w-28",
+    md: "w-32",
+    lg: "w-40",
+  };
+  
   if (variant === "continue") {
     return (
       <div 
-        className="relative flex-shrink-0 w-32 group active:scale-95 transition-transform"
+        className={cn("relative flex-shrink-0 group active:scale-95 transition-transform", continueSizeClasses[cardSize])}
         onClick={() => onDetails(content)}
       >
         {/* Thumbnail */}
@@ -127,10 +134,17 @@ export function MobileContentCard({
     );
   }
 
+  // Landscape variant - scale width based on cardSize
+  const landscapeSizeClasses = {
+    sm: "w-32",
+    md: "w-40",
+    lg: "w-48",
+  };
+  
   if (variant === "landscape") {
     return (
       <div 
-        className="relative flex-shrink-0 w-40 active:scale-95 transition-transform"
+        className={cn("relative flex-shrink-0 active:scale-95 transition-transform", landscapeSizeClasses[cardSize])}
         onClick={() => onDetails(content)}
       >
         <div className="relative aspect-video rounded-xl overflow-hidden bg-secondary shadow-lg">
@@ -334,10 +348,10 @@ export function MobileContentCard({
     );
   }
 
-  // Standard poster variant (no rank)
+  // Standard poster variant (no rank) - use cardSize for width
   return (
     <div 
-      className="relative flex-shrink-0 w-28 active:scale-95 transition-transform"
+      className={cn("relative flex-shrink-0 active:scale-95 transition-transform", sizeWidthClasses[cardSize])}
       onClick={() => onDetails(content)}
     >
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
