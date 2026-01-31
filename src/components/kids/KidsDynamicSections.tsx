@@ -1,0 +1,300 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Content } from "@/types";
+import { KidsMobileContentCard } from "@/components/mobile/KidsMobileContentCard";
+import { motion } from "framer-motion";
+import { Film, Tv, Sparkles, TrendingUp, Star, Heart, Gamepad2, Music } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
+import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
+import { useMemo } from "react";
+
+interface KidsDynamicSectionsProps {
+  allContent: Content[];
+  onPlay: (content: Content) => void;
+  onDetails: (content: Content) => void;
+}
+
+// Icon mapping for section types
+const sectionIcons: Record<string, typeof Film> = {
+  movie: Film,
+  series: Tv,
+  animation: Sparkles,
+  trending: TrendingUp,
+  new_releases: Star,
+  recently_added: Star,
+  genre: Heart,
+  curated: Sparkles,
+  free_content: Gamepad2,
+  default: Music,
+};
+
+// Color gradients for sections
+const sectionColors: Record<string, { bg: string; icon: string; border: string }> = {
+  movie: { 
+    bg: "from-blue-500/20 via-blue-500/10 to-cyan-500/20", 
+    icon: "bg-gradient-to-br from-blue-500 to-cyan-600",
+    border: "border-blue-500/20"
+  },
+  series: { 
+    bg: "from-emerald-500/20 via-emerald-500/10 to-green-500/20", 
+    icon: "bg-gradient-to-br from-emerald-500 to-green-600",
+    border: "border-emerald-500/20"
+  },
+  animation: { 
+    bg: "from-fuchsia-500/20 via-fuchsia-500/10 to-purple-500/20", 
+    icon: "bg-gradient-to-br from-fuchsia-500 to-purple-600",
+    border: "border-fuchsia-500/20"
+  },
+  trending: { 
+    bg: "from-rose-500/20 via-rose-500/10 to-pink-500/20", 
+    icon: "bg-gradient-to-br from-rose-500 to-pink-600",
+    border: "border-rose-500/20"
+  },
+  new_releases: { 
+    bg: "from-amber-500/20 via-amber-500/10 to-orange-500/20", 
+    icon: "bg-gradient-to-br from-amber-500 to-orange-600",
+    border: "border-amber-500/20"
+  },
+  recently_added: { 
+    bg: "from-amber-500/20 via-amber-500/10 to-orange-500/20", 
+    icon: "bg-gradient-to-br from-amber-500 to-orange-600",
+    border: "border-amber-500/20"
+  },
+  genre: { 
+    bg: "from-violet-500/20 via-violet-500/10 to-indigo-500/20", 
+    icon: "bg-gradient-to-br from-violet-500 to-indigo-600",
+    border: "border-violet-500/20"
+  },
+  curated: { 
+    bg: "from-pink-500/20 via-pink-500/10 to-rose-500/20", 
+    icon: "bg-gradient-to-br from-pink-500 to-rose-600",
+    border: "border-pink-500/20"
+  },
+  default: { 
+    bg: "from-slate-500/20 via-slate-500/10 to-gray-500/20", 
+    icon: "bg-gradient-to-br from-slate-500 to-gray-600",
+    border: "border-slate-500/20"
+  },
+};
+
+const SectionHeader = ({ 
+  icon: Icon, 
+  title, 
+  color,
+  onSeeAll
+}: { 
+  icon: typeof Film; 
+  title: string; 
+  color: string;
+  onSeeAll?: () => void;
+}) => (
+  <div className="flex items-center justify-between px-5 mb-4">
+    <div className="flex items-center gap-2.5">
+      <div className={`w-8 h-8 rounded-xl ${color} flex items-center justify-center`}>
+        <Icon className="h-4 w-4 text-white" strokeWidth={2} />
+      </div>
+      <h2 className="text-[15px] font-semibold text-white tracking-[-0.02em]">{title}</h2>
+    </div>
+    {onSeeAll && (
+      <button 
+        onClick={onSeeAll}
+        className="flex items-center gap-1 text-xs text-white/60 active:scale-95 transition-transform"
+      >
+        <span>See All</span>
+        <ChevronRight className="h-3 w-3" />
+      </button>
+    )}
+  </div>
+);
+
+export const KidsDynamicSections = ({ allContent, onPlay, onDetails }: KidsDynamicSectionsProps) => {
+  const navigate = useNavigate();
+
+  // Fetch home sections configured for kids
+  const { data: kidsSections = [] } = useQuery({
+    queryKey: ["kids-home-sections"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("home_sections")
+        .select("*, genre:genre_id(name)")
+        .eq("is_active", true)
+        .eq("show_on_kids", true)
+        .order("display_order");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch section content for curated sections
+  const { data: sectionContentData = [] } = useQuery({
+    queryKey: ["kids-section-content"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("section_content")
+        .select("*, content:content_id(*)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Get TV show IDs for badges
+  const tvShowIds = useMemo(() => 
+    allContent.filter(c => c.contentType === 'series').map(c => c.id),
+    [allContent]
+  );
+  const { data: tvShowUpdates = {} } = useLatestTVShowUpdates(tvShowIds);
+
+  // Transform content from DB format
+  const transformContent = (items: any[]): Content[] =>
+    items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description || "",
+      thumbnailUrl: item.thumbnail_url || "",
+      videoUrl: item.video_url || "",
+      genre: item.genre || "",
+      contentType: item.content_type as "movie" | "series",
+      isPremium: item.is_premium || false,
+      duration: item.duration || 0,
+      year: item.year,
+      contentRating: item.content_rating,
+      age_limit: item.age_limit,
+    }));
+
+  // Filter content for kids safety
+  const filterForKids = (items: Content[]): Content[] => {
+    return items.filter(item => {
+      const rating = (item as any).contentRating;
+      const ageLimit = (item as any).age_limit;
+      
+      // Check rating is kids-safe
+      const ratingOk = !rating || KIDS_RATINGS.includes(rating);
+      // Check age limit
+      const ageOk = !ageLimit || ageLimit <= KIDS_MAX_AGE_LIMIT;
+      // Check not blocked
+      const notBlocked = !isBlockedTitle(item.title || "");
+      // Check genre is allowed
+      const genreOk = isKidsAllowedGenre(item.genre);
+      
+      return ratingOk && ageOk && notBlocked && genreOk;
+    });
+  };
+
+  // Get content for a section
+  const getSectionContent = (section: any): Content[] => {
+    const movies = allContent.filter(c => c.contentType === "movie");
+    const series = allContent.filter(c => c.contentType === "series");
+    
+    if (section.section_type === "curated") {
+      const curatedItems = sectionContentData
+        .filter((sc: any) => sc.section_id === section.id && sc.content)
+        .map((sc: any) => transformContent([sc.content])[0]);
+      return filterForKids(curatedItems).slice(0, section.max_items || 15);
+    }
+    
+    if (section.section_type === "genre" && section.genre) {
+      return filterForKids(
+        allContent.filter(c => 
+          c.genre?.toLowerCase().includes(section.genre.name.toLowerCase())
+        )
+      ).sort((a, b) => (b.year || 0) - (a.year || 0))
+       .slice(0, section.max_items || 15);
+    }
+    
+    if (section.section_type === "movie" || section.content_type_filter === "movie") {
+      return filterForKids(movies)
+        .sort((a, b) => (b.year || 0) - (a.year || 0))
+        .slice(0, section.max_items || 15);
+    }
+    
+    if (section.section_type === "series" || section.content_type_filter === "series") {
+      return filterForKids(series)
+        .sort((a, b) => (b.year || 0) - (a.year || 0))
+        .slice(0, section.max_items || 15);
+    }
+    
+    if (section.section_type === "recently_added" || section.section_type === "new_releases") {
+      return filterForKids(allContent)
+        .sort((a: any, b: any) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        })
+        .slice(0, section.max_items || 15);
+    }
+    
+    // Default: return all filtered content sorted by year
+    let filtered = [...allContent];
+    if (section.content_type_filter === "movie") {
+      filtered = movies;
+    } else if (section.content_type_filter === "series") {
+      filtered = series;
+    }
+    
+    return filterForKids(filtered)
+      .sort((a, b) => (b.year || 0) - (a.year || 0))
+      .slice(0, section.max_items || 15);
+  };
+
+  // Map card size from admin settings
+  const getCardVariant = (section: any): "default" | "large" | "featured" => {
+    const size = section.card_size || "md";
+    if (size === "lg") return "large";
+    if (size === "sm") return "default";
+    return "default";
+  };
+
+  if (kidsSections.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {kidsSections.map((section: any, sectionIndex: number) => {
+        const sectionContent = getSectionContent(section);
+        if (sectionContent.length === 0) return null;
+
+        const sectionType = section.section_type || "default";
+        const colors = sectionColors[sectionType] || sectionColors.default;
+        const Icon = sectionIcons[sectionType] || sectionIcons.default;
+        const cardVariant = getCardVariant(section);
+        const cardSize = (section.card_size as "sm" | "md" | "lg") || "md";
+
+        return (
+          <motion.section 
+            key={section.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-30px" }}
+            transition={{ duration: 0.4, ease: "easeOut", delay: sectionIndex * 0.05 }}
+            className={`bg-gradient-to-br ${colors.bg} rounded-xl mx-3 py-4 border ${colors.border}`}
+          >
+            <SectionHeader 
+              icon={Icon} 
+              title={section.title} 
+              color={colors.icon}
+              onSeeAll={() => navigate("/genres")} 
+            />
+            <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
+              {sectionContent.map((item, index) => (
+                <KidsMobileContentCard
+                  key={item.id}
+                  content={item}
+                  onPlay={onPlay}
+                  onDetails={onDetails}
+                  index={index}
+                  variant={cardVariant}
+                  cardSize={cardSize}
+                  hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                  hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
+                />
+              ))}
+            </div>
+          </motion.section>
+        );
+      })}
+    </>
+  );
+};

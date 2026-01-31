@@ -11,6 +11,8 @@ interface MobileContentRowProps {
   onPlay?: (content: Content) => void;
   onDetails: (content: Content) => void;
   variant?: "poster" | "landscape" | "continue";
+  cardSize?: "sm" | "md" | "lg"; // Admin-configured card size
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal"; // Admin-configured card style
   showSeeAll?: boolean;
   onSeeAll?: () => void;
   showRank?: boolean;
@@ -55,6 +57,8 @@ export function MobileContentRow({
   onPlay,
   onDetails,
   variant = "poster",
+  cardSize = "md",
+  cardStyle,
   showSeeAll = false,
   onSeeAll,
   showRank = false,
@@ -63,14 +67,25 @@ export function MobileContentRow({
   isLoading = false,
   tvShowUpdates = {},
 }: MobileContentRowProps) {
+  // Map card size to width classes
+  const sizeClasses = {
+    sm: "w-24",    // Small cards
+    md: "w-28",    // Medium (default)
+    lg: "w-36",    // Large cards
+  };
+  
+  // Determine effective variant based on cardStyle if provided
+  const effectiveVariant = cardStyle === "backdrop" || cardStyle === "wide" 
+    ? "landscape" 
+    : variant;
   // Show skeleton when loading
   if (isLoading) {
     const SkeletonComponent = 
-      variant === "landscape" ? LandscapeSkeleton : 
-      variant === "continue" ? ContinueSkeleton : 
+      effectiveVariant === "landscape" ? LandscapeSkeleton : 
+      effectiveVariant === "continue" ? ContinueSkeleton : 
       PosterSkeleton;
     
-    const skeletonCount = variant === "poster" ? 5 : 3;
+    const skeletonCount = effectiveVariant === "poster" ? 5 : 3;
 
     return (
       <section className="mb-6">
@@ -114,17 +129,18 @@ export function MobileContentRow({
         "scroll-smooth snap-x snap-mandatory"
       )}>
         {content.map((item, index) => (
-          <div key={item.id} className="snap-start">
+          <div key={item.id} className={cn("snap-start flex-shrink-0", sizeClasses[cardSize])}>
             <MobileContentCard
               content={item}
               onPlay={onPlay}
               onDetails={onDetails}
-              variant={variant}
+              variant={effectiveVariant}
               rank={showRank ? index + 1 : undefined}
               progress={progressMap?.[item.id]}
               showNewBadge={showNewBadge}
               hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
               hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
+              cardSize={cardSize}
             />
           </div>
         ))}

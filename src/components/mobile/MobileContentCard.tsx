@@ -11,6 +11,7 @@ interface MobileContentCardProps {
   onPlay?: (content: Content) => void;
   onDetails: (content: Content) => void;
   variant?: "poster" | "landscape" | "continue" | "grid";
+  cardSize?: "sm" | "md" | "lg"; // Admin-configured card size
   rank?: number;
   progress?: number;
   showBadges?: boolean;
@@ -32,6 +33,7 @@ export function MobileContentCard({
   onPlay,
   onDetails, 
   variant = "poster",
+  cardSize = "md",
   rank,
   progress,
   showBadges = true,
@@ -44,6 +46,12 @@ export function MobileContentCard({
   hasNewEpisode = false,
   hasNewSeason = false
 }: MobileContentCardProps) {
+  // Map card size to width classes - used when not in flex container with size set
+  const sizeWidthClasses = {
+    sm: "w-24",
+    md: "w-28", 
+    lg: "w-36",
+  };
   const [imageError, setImageError] = useState(false);
   const [badgeError, setBadgeError] = useState(false);
   const { isOnline } = useNetworkStatus();
