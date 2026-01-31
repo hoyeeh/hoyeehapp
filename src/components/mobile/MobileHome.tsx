@@ -608,6 +608,8 @@ export function MobileHome() {
                 showSeeAll
                 onSeeAll={() => navigate("/genres")}
                 tvShowUpdates={tvShowUpdates}
+                cardSize="md"
+                cardStyle="poster"
               />
             </FadeIn>
           ) : (
@@ -624,6 +626,8 @@ export function MobileHome() {
                       showRank
                       variant="poster"
                       isLoading={isLoadingTop10}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                     />
                   </FadeIn>
                 ) : null;
@@ -641,6 +645,8 @@ export function MobileHome() {
                       showSeeAll
                       onSeeAll={() => navigate("/my-list")}
                       tvShowUpdates={tvShowUpdates}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                     />
                   </FadeIn>
                 ) : null;
@@ -659,6 +665,8 @@ export function MobileHome() {
                       showNewBadge={true}
                       isLoading={isLoadingNewReleases}
                       tvShowUpdates={tvShowUpdates}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                     />
                   </FadeIn>
                 ) : null;
@@ -733,6 +741,8 @@ export function MobileHome() {
                   showNewBadge={true}
                   isLoading={isLoadingNewReleases}
                   tvShowUpdates={tvShowUpdates}
+                  cardSize="md"
+                  cardStyle="poster"
                 />
               </FadeIn>
 
@@ -744,6 +754,8 @@ export function MobileHome() {
                   showRank
                   variant="poster"
                   isLoading={isLoadingTop10}
+                  cardSize="md"
+                  cardStyle="poster"
                 />
               </FadeIn>
 
@@ -755,6 +767,8 @@ export function MobileHome() {
                   variant="landscape"
                   isLoading={isLoadingTrending}
                   tvShowUpdates={tvShowUpdates}
+                  cardSize="md"
+                  cardStyle="backdrop"
                 />
               </FadeIn>
             </>
