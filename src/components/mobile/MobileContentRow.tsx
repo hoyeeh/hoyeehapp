@@ -12,7 +12,7 @@ interface MobileContentRowProps {
   onDetails: (content: Content) => void;
   variant?: "poster" | "landscape" | "continue";
   cardSize?: "sm" | "md" | "lg"; // Admin-configured card size
-  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal"; // Admin-configured card style
+  cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal" | "full"; // Admin-configured card style
   showSeeAll?: boolean;
   onSeeAll?: () => void;
   showRank?: boolean;
@@ -67,17 +67,25 @@ export function MobileContentRow({
   isLoading = false,
   tvShowUpdates = {},
 }: MobileContentRowProps) {
-  // Map card size to width classes
-  const sizeClasses = {
-    sm: "w-24",    // Small cards
-    md: "w-28",    // Medium (default)
-    lg: "w-36",    // Large cards
-  };
+  // Map card size to width classes - adjust for "full" style which needs more width
+  const sizeClasses = cardStyle === "full" 
+    ? {
+        sm: "w-32",    // Full cards need more width (3:4 aspect)
+        md: "w-36",    
+        lg: "w-44",    
+      }
+    : {
+        sm: "w-24",    // Standard poster widths
+        md: "w-28",    
+        lg: "w-36",    
+      };
   
   // Determine effective variant based on cardStyle if provided
   const effectiveVariant = cardStyle === "backdrop" || cardStyle === "wide" 
     ? "landscape" 
-    : variant;
+    : cardStyle === "full"
+      ? "full"
+      : variant;
   // Show skeleton when loading
   if (isLoading) {
     const SkeletonComponent = 
@@ -141,6 +149,7 @@ export function MobileContentRow({
               hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
               hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
               cardSize={cardSize}
+              cardStyle={cardStyle}
             />
           </div>
         ))}
