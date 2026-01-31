@@ -207,10 +207,10 @@ export function MobileContentCard({
   if (rank) {
     return (
       <div 
-        className="relative flex-shrink-0 active:scale-95 transition-transform"
+        className="relative w-full active:scale-95 transition-transform"
         onClick={() => onDetails(content)}
       >
-        <div className="flex items-end">
+        <div className="flex items-end w-full">
           {/* Large rank number - Netflix/Desktop style */}
           <div className="relative z-10 -mr-1">
             <span 
@@ -225,8 +225,8 @@ export function MobileContentCard({
             </span>
           </div>
           
-          {/* Poster - uses SAME width as standard poster for consistency */}
-          <div className={cn("relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10", sizeWidthClasses[cardSize])}>
+          {/* Poster - flex-1 to fill remaining space after rank number */}
+          <div className="relative flex-1 aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
             <img
               src={thumbnailSrc}
               alt={content.title}

@@ -67,18 +67,25 @@ export function MobileContentRow({
   isLoading = false,
   tvShowUpdates = {},
 }: MobileContentRowProps) {
-  // Map card size to width classes - adjust for "full" style which needs more width
-  const sizeClasses = cardStyle === "full" 
+  // Map card size to width classes - adjust for different styles
+  const sizeClasses = showRank
     ? {
-        sm: "w-32",    // Full cards need more width (3:4 aspect)
+        // Ranked cards need extra width for rank number + poster
+        sm: "w-32",
         md: "w-36",    
         lg: "w-44",    
       }
-    : {
-        sm: "w-24",    // Standard poster widths
-        md: "w-28",    
-        lg: "w-36",    
-      };
+    : cardStyle === "full" 
+      ? {
+          sm: "w-32",    // Full cards need more width (3:4 aspect)
+          md: "w-36",    
+          lg: "w-44",    
+        }
+      : {
+          sm: "w-24",    // Standard poster widths
+          md: "w-28",    
+          lg: "w-36",    
+        };
   
   // Determine effective variant based on cardStyle if provided
   const effectiveVariant = cardStyle === "backdrop" || cardStyle === "wide" 
