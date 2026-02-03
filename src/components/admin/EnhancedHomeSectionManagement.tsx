@@ -253,7 +253,7 @@ export const EnhancedHomeSectionManagement = () => {
         is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
         year_filter: data.year_filter,
         first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
-        section_banner_url: data.section_type === "new_releases" && data.section_banner_url ? data.section_banner_url : null,
+        section_banner_url: data.section_banner_url || null,
         featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
       });
       if (error) throw error;
@@ -286,7 +286,7 @@ export const EnhancedHomeSectionManagement = () => {
           is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
           year_filter: data.year_filter,
           first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
-          section_banner_url: data.section_type === "new_releases" && data.section_banner_url ? data.section_banner_url : null,
+          section_banner_url: data.section_banner_url || null,
           featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
         })
         .eq("id", id);
@@ -562,15 +562,6 @@ export const EnhancedHomeSectionManagement = () => {
                     <p className="text-xs text-muted-foreground">Controls the style of the first (featured) card</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Section Banner URL (optional)</Label>
-                    <Input
-                      value={formData.section_banner_url}
-                      onChange={(e) => setFormData({ ...formData, section_banner_url: e.target.value })}
-                      placeholder="https://example.com/banner.jpg"
-                    />
-                    <p className="text-xs text-muted-foreground">Full-width banner image displayed above the section</p>
-                  </div>
-                  <div className="space-y-2">
                     <Label>Featured Content (optional)</Label>
                     <Select 
                       value={formData.featured_content_id || "__none__"} 
@@ -590,6 +581,17 @@ export const EnhancedHomeSectionManagement = () => {
                   </div>
                 </>
               )}
+
+              {/* Section Banner URL - Available for all section types */}
+              <div className="space-y-2">
+                <Label>Section Banner URL (optional)</Label>
+                <Input
+                  value={formData.section_banner_url}
+                  onChange={(e) => setFormData({ ...formData, section_banner_url: e.target.value })}
+                  placeholder="https://example.com/banner.jpg"
+                />
+                <p className="text-xs text-muted-foreground">Full-width banner image displayed above the section (21:9 aspect ratio recommended)</p>
+              </div>
               {formData.section_type === "free_content" && (
                 <>
                   <div className="space-y-2">
