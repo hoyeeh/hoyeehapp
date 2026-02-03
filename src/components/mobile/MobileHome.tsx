@@ -628,6 +628,7 @@ export function MobileHome() {
                       isLoading={isLoadingTop10}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      sectionBannerUrl={section.section_banner_url || undefined}
                     />
                   </FadeIn>
                 ) : null;
@@ -647,6 +648,7 @@ export function MobileHome() {
                       tvShowUpdates={tvShowUpdates}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      sectionBannerUrl={section.section_banner_url || undefined}
                     />
                   </FadeIn>
                 ) : null;
@@ -667,6 +669,7 @@ export function MobileHome() {
                       tvShowUpdates={tvShowUpdates}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      sectionBannerUrl={section.section_banner_url || undefined}
                     />
                   </FadeIn>
                 ) : null;
@@ -726,6 +729,7 @@ export function MobileHome() {
                     tvShowUpdates={tvShowUpdates}
                     cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                     cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                    sectionBannerUrl={section.section_banner_url || undefined}
                   />
                 </FadeIn>
               );

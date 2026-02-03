@@ -20,6 +20,7 @@ interface MobileContentRowProps {
   progressMap?: Record<string, number>;
   isLoading?: boolean;
   tvShowUpdates?: TVShowUpdatesMap; // Map of content IDs to new episode/season flags
+  sectionBannerUrl?: string; // Optional banner image above the section
 }
 
 // Skeleton components for different variants
@@ -66,6 +67,7 @@ export function MobileContentRow({
   progressMap,
   isLoading = false,
   tvShowUpdates = {},
+  sectionBannerUrl,
 }: MobileContentRowProps) {
   // Map card size to width classes - adjust for different styles
   const sizeClasses = showRank
@@ -124,6 +126,27 @@ export function MobileContentRow({
 
   return (
     <section className="mb-6 animate-fade-in">
+      {/* Optional Section Banner */}
+      {sectionBannerUrl && (
+        <div 
+          className="mx-4 mb-3 rounded-xl overflow-hidden cursor-pointer group/banner"
+          onClick={() => content[0] && onDetails(content[0])}
+        >
+          <div className="relative aspect-[21/9] bg-secondary">
+            <img 
+              src={sectionBannerUrl} 
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover/banner:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+            <div className="absolute bottom-2 left-3">
+              <h4 className="text-sm font-bold text-foreground">{title}</h4>
+              <p className="text-xs text-muted-foreground">Watch Now</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 mb-3">
         <h3 className="text-lg font-bold text-foreground">{title}</h3>
