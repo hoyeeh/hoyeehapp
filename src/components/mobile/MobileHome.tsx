@@ -35,6 +35,7 @@ import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { MobilePaidContentRow } from "./MobilePaidContentRow";
 import { MobilePurchasesShortcut } from "./MobilePurchasesShortcut";
 import { MobileComingSoonRow } from "./MobileComingSoonRow";
+import { MobileLeavingSoonRow } from "./MobileLeavingSoonRow";
 import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 import { MobilePlayablesRow } from "@/components/playables/MobilePlayablesRow";
 
@@ -74,12 +75,16 @@ export function MobileHome() {
 
   // Pull to refresh handler
   const handleRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ["content"] });
-    await queryClient.invalidateQueries({ queryKey: ["mobile-top-10"] });
-    await queryClient.invalidateQueries({ queryKey: ["mobile-trending"] });
-    await queryClient.invalidateQueries({ queryKey: ["mobile-new-releases"] });
-    await queryClient.invalidateQueries({ queryKey: ["mobile-continue-watching"] });
-    await queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["content"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-top-10"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-trending"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-new-releases"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-continue-watching"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-section-content"] }),
+      queryClient.invalidateQueries({ queryKey: ["leaving-soon-content"] }),
+    ]);
     toast.success("Content refreshed!");
   }, [queryClient]);
 
@@ -154,7 +159,7 @@ export function MobileHome() {
     },
   });
 
-  // Fetch new releases
+  // Fetch new releases - use same 14-day window as desktop NewReleasesRow for consistency
   const { data: newReleases = [], isLoading: isLoadingNewReleases } = useQuery({
     queryKey: ["mobile-new-releases"],
     queryFn: async () => {
@@ -164,7 +169,7 @@ export function MobileHome() {
         .select("*")
         .gte("created_at", twoWeeksAgo)
         .order("created_at", { ascending: false })
-        .limit(15);
+        .limit(20);
       if (error) throw error;
       return data || [];
     },
@@ -203,101 +208,125 @@ export function MobileHome() {
   const movies = content.filter((c) => c.contentType === "movie");
   const series = content.filter((c) => c.contentType === "series");
 
-  // Get raw section content helper (before deduplication)
+  // Get raw section content helper (before deduplication) - mirrors desktop logic
   const getRawSectionContent = (section: any): Content[] => {
-    if (section.section_type === "recently_added" || section.section_type === "new_releases") {
-      // Sort by created_at (already sorted from query), then by year
-      // Apply content type filter for new_releases if specified
-      let filtered = newContent;
-      if (section.content_type_filter === "movie") {
-        filtered = newContent.filter((c) => c.contentType === "movie");
-      } else if (section.content_type_filter === "series") {
-        filtered = newContent.filter((c) => c.contentType === "series");
-      }
-      return filtered.slice(0, section.max_items || 15);
-    }
-    
-    if (section.section_type === "genre" && section.genre) {
-      return content
-        .filter((c) => c.genre?.toLowerCase().includes(section.genre.name.toLowerCase()))
-        .sort((a, b) => (b.year || 0) - (a.year || 0))
-        .slice(0, section.max_items || 15);
-    }
-    
-    if (section.section_type === "curated") {
-      const sectionItems = sectionContentData
-        .filter((sc: any) => sc.section_id === section.id && sc.content)
-        .map((sc: any) => transformContent([sc.content])[0])
-        .sort((a: Content, b: Content) => (b.year || 0) - (a.year || 0));
-      return sectionItems.slice(0, section.max_items || 15);
-    }
-    
-    if (section.section_type === "by_year") {
-      // Extract year from section title (e.g., "Movies 2024", "2023 Films")
-      const yearMatch = section.title.match(/\b(19|20)\d{2}\b/);
-      if (yearMatch) {
-        const year = parseInt(yearMatch[0]);
+    switch (section.section_type) {
+      case "leaving_soon":
+        // Return empty - we'll use the dedicated MobileLeavingSoonRow component instead
+        return [];
+      
+      case "recently_added":
+      case "new_releases":
+        // Sort by created_at (already sorted from query), then by year
+        // Apply content type filter for new_releases if specified
+        let recentFiltered = newContent;
+        if (section.content_type_filter === "movie") {
+          recentFiltered = newContent.filter((c) => c.contentType === "movie");
+        } else if (section.content_type_filter === "series") {
+          recentFiltered = newContent.filter((c) => c.contentType === "series");
+        }
+        return recentFiltered.slice(0, section.max_items || 15);
+      
+      case "trending":
+        return trending.slice(0, section.max_items || 20);
+      
+      case "genre":
+        const genreName = section.genre?.name;
+        if (!genreName) return [];
         return content
-          .filter((c) => c.year === year)
+          .filter((c) => c.genre?.toLowerCase().includes(genreName.toLowerCase()))
           .sort((a, b) => (b.year || 0) - (a.year || 0))
           .slice(0, section.max_items || 15);
-      }
-      // Fallback: group by most recent years
-      return content
-        .filter((c) => c.year)
-        .sort((a, b) => (b.year || 0) - (a.year || 0))
-        .slice(0, section.max_items || 15);
+      
+      case "curated":
+        const sectionItems = sectionContentData
+          .filter((sc: any) => sc.section_id === section.id && sc.content)
+          .map((sc: any) => transformContent([sc.content])[0])
+          .sort((a: Content, b: Content) => (b.year || 0) - (a.year || 0));
+        return sectionItems.slice(0, section.max_items || 15);
+      
+      case "by_year":
+        // Extract year from section title (e.g., "Movies 2024", "2023 Films")
+        const yearMatch = section.title.match(/\b(19|20)\d{2}\b/);
+        if (yearMatch) {
+          const year = parseInt(yearMatch[0]);
+          return content
+            .filter((c) => c.year === year)
+            .sort((a, b) => (b.year || 0) - (a.year || 0))
+            .slice(0, section.max_items || 15);
+        }
+        // Fallback: group by most recent years
+        return content
+          .filter((c) => c.year)
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
+      
+      case "custom":
+        // Filter by content type if specified and sort by year - mirrors desktop logic
+        let customFiltered: Content[] = [];
+        if (section.content_type_filter === "movie") {
+          customFiltered = movies;
+        } else if (section.content_type_filter === "series") {
+          customFiltered = series;
+        } else if (section.title.toLowerCase().includes("movie")) {
+          customFiltered = movies;
+        } else if (section.title.toLowerCase().includes("show") || section.title.toLowerCase().includes("series")) {
+          customFiltered = series;
+        } else {
+          customFiltered = content;
+        }
+        return customFiltered
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
+      
+      case "free_content":
+        // Check if curated - use section_content table
+        if (section.is_curated) {
+          const curatedFree = sectionContentData
+            .filter((sc: any) => sc.section_id === section.id && sc.content && !sc.content.is_premium)
+            .map((sc: any) => transformContent([sc.content])[0]);
+          return curatedFree.slice(0, section.max_items || 15);
+        }
+        // Filter for non-premium (free) content
+        let freeFiltered = content.filter((c) => !c.isPremium);
+        if (section.content_type_filter === "movie") {
+          freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
+        } else if (section.content_type_filter === "series") {
+          freeFiltered = freeFiltered.filter((c) => c.contentType === "series");
+        }
+        return freeFiltered
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
+      
+      case "series":
+        // Series section with optional genre and year filters
+        let seriesFiltered = series;
+        // Apply genre filter if set
+        if (section.genre?.name) {
+          seriesFiltered = seriesFiltered.filter((c) => 
+            c.genre?.toLowerCase().includes(section.genre.name.toLowerCase())
+          );
+        }
+        // Apply year filter if set
+        if (section.year_filter) {
+          seriesFiltered = seriesFiltered.filter((c) => c.year === section.year_filter);
+        }
+        return seriesFiltered
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
+      
+      default:
+        // Generic fallback
+        let defaultFiltered = [...content];
+        if (section.content_type_filter === "movie") {
+          defaultFiltered = movies;
+        } else if (section.content_type_filter === "series") {
+          defaultFiltered = series;
+        }
+        return defaultFiltered
+          .sort((a, b) => (b.year || 0) - (a.year || 0))
+          .slice(0, section.max_items || 15);
     }
-    
-    // Filter by content type if specified and sort by year
-    let filtered = [...content];
-    if (section.content_type_filter === "movie") {
-      filtered = movies;
-    } else if (section.content_type_filter === "series") {
-      filtered = series;
-    }
-    
-    // Handle free_content section type
-    if (section.section_type === "free_content") {
-      // Check if curated
-      if (section.is_curated) {
-        const curatedFree = sectionContentData
-          .filter((sc: any) => sc.section_id === section.id && sc.content && !sc.content.is_premium)
-          .map((sc: any) => transformContent([sc.content])[0]);
-        return curatedFree.slice(0, section.max_items || 15);
-      }
-      let freeFiltered = content.filter((c) => !c.isPremium);
-      if (section.content_type_filter === "movie") {
-        freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
-      } else if (section.content_type_filter === "series") {
-        freeFiltered = freeFiltered.filter((c) => c.contentType === "series");
-      }
-      return freeFiltered
-        .sort((a, b) => (b.year || 0) - (a.year || 0))
-        .slice(0, section.max_items || 15);
-    }
-    
-    // Handle series section type with genre and year filters
-    if (section.section_type === "series") {
-      let seriesFiltered = series;
-      // Apply genre filter if set
-      if (section.genre?.name) {
-        seriesFiltered = seriesFiltered.filter((c) => 
-          c.genre?.toLowerCase().includes(section.genre.name.toLowerCase())
-        );
-      }
-      // Apply year filter if set
-      if (section.year_filter) {
-        seriesFiltered = seriesFiltered.filter((c) => c.year === section.year_filter);
-      }
-      return seriesFiltered
-        .sort((a, b) => (b.year || 0) - (a.year || 0))
-        .slice(0, section.max_items || 15);
-    }
-    
-    return filtered
-      .sort((a, b) => (b.year || 0) - (a.year || 0))
-      .slice(0, section.max_items || 15);
   };
 
   // Process all sections with deduplication (respects per-section allow_duplicates setting)
@@ -675,6 +704,27 @@ export function MobileHome() {
                 ) : null;
               }
 
+              // Trending section - uses backdrop style for horizontal cards
+              if (section.section_type === "trending") {
+                return sectionContent.length > 0 ? (
+                  <FadeIn key={section.id} delay={150 + index * 50}>
+                    <MobileContentRow
+                      title={section.title}
+                      content={sectionContent}
+                      onDetails={handleDetails}
+                      showSeeAll
+                      onSeeAll={() => navigate("/genres")}
+                      variant="landscape"
+                      isLoading={isLoadingTrending}
+                      tvShowUpdates={tvShowUpdates}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "backdrop"}
+                      sectionBannerUrl={section.section_banner_url || undefined}
+                    />
+                  </FadeIn>
+                ) : null;
+              }
+
               // YouTube section
               if (section.section_type === "youtube") {
                 return (
@@ -698,6 +748,21 @@ export function MobileHome() {
                       maxItems={section.max_items || 15}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                    />
+                  </FadeIn>
+                );
+              }
+
+              // Leaving Soon section - use dedicated component
+              if (section.section_type === "leaving_soon") {
+                return (
+                  <FadeIn key={section.id} delay={150 + index * 50}>
+                    <MobileLeavingSoonRow
+                      onDetails={handleDetails}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      maxItems={section.max_items || 15}
+                      sectionBannerUrl={section.section_banner_url || undefined}
                     />
                   </FadeIn>
                 );
