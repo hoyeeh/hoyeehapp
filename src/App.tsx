@@ -27,6 +27,7 @@ import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { PusherNotificationHandler } from "@/components/PusherNotificationHandler";
 import { GlobalRightClickGuard } from "@/components/security/GlobalRightClickGuard";
 import { GlobalKeyboardGuard } from "@/components/security/GlobalKeyboardGuard";
+import { RealtimeUpdatesHandler } from "@/components/RealtimeUpdatesHandler";
 import Index from "./pages/Index";
 import Profiles from "./pages/Profiles";
 import Auth from "./pages/Auth";
@@ -235,6 +236,7 @@ const App = () => (
                     <PWANavigationHandler />
                     <CapacitorBackHandler />
                     <PendingPurchaseVerifier />
+                    <RealtimeUpdatesHandler />
                     <CastProvider>
                       <PusherNotificationHandler />
                       <PersistentWatchPartyPanel />
