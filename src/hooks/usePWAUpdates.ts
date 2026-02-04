@@ -7,6 +7,24 @@ interface PWAUpdateState {
   registration: ServiceWorkerRegistration | null;
 }
 
+// Clear all service worker caches
+async function clearAllCaches(): Promise<void> {
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map((cacheName) => {
+          console.log('[PWAUpdates] Clearing cache:', cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+      console.log('[PWAUpdates] All caches cleared');
+    } catch (error) {
+      console.error('[PWAUpdates] Error clearing caches:', error);
+    }
+  }
+}
+
 export function usePWAUpdates() {
   const [state, setState] = useState<PWAUpdateState>({
     updateAvailable: false,
@@ -14,18 +32,34 @@ export function usePWAUpdates() {
     registration: null,
   });
 
-  const applyUpdate = useCallback(() => {
+  const applyUpdate = useCallback(async () => {
     if (state.registration?.waiting) {
+      // Clear caches before applying update
+      await clearAllCaches();
       // Tell the waiting service worker to skip waiting
       state.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+  }, [state.registration]);
+
+  // Force check for updates
+  const checkForUpdates = useCallback(async () => {
+    if (state.registration) {
+      try {
+        await state.registration.update();
+        console.log('[PWAUpdates] Update check complete');
+      } catch (error) {
+        console.error('[PWAUpdates] Update check failed:', error);
+      }
     }
   }, [state.registration]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    const handleControllerChange = () => {
-      // New service worker has taken control, reload the page
+    const handleControllerChange = async () => {
+      // Clear caches when new service worker takes control
+      await clearAllCaches();
+      // Reload the page to get fresh content
       window.location.reload();
     };
 
@@ -33,16 +67,19 @@ export function usePWAUpdates() {
       const newWorker = registration.installing;
       if (!newWorker) return;
 
-      newWorker.addEventListener('statechange', () => {
+      newWorker.addEventListener('statechange', async () => {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
           // New update is ready to be applied
           setState(prev => ({ ...prev, updateAvailable: true, updateReady: true }));
           
-          // Auto-apply update after a short delay
+          console.log('[PWAUpdates] New version ready, applying update...');
           toast.info('Updating app...', { duration: 2000 });
+          
+          // Clear caches and auto-apply update
+          await clearAllCaches();
           setTimeout(() => {
             newWorker.postMessage({ type: 'SKIP_WAITING' });
-          }, 1500);
+          }, 1000);
         }
       });
     };
@@ -51,27 +88,40 @@ export function usePWAUpdates() {
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
 
     // Check for updates on the existing registration
-    navigator.serviceWorker.ready.then((registration) => {
+    navigator.serviceWorker.ready.then(async (registration) => {
       setState(prev => ({ ...prev, registration }));
 
       // Check if there's already an update waiting
       if (registration.waiting) {
+        console.log('[PWAUpdates] Update waiting, applying...');
         setState(prev => ({ ...prev, updateAvailable: true, updateReady: true }));
-        // Auto-apply waiting update
+        // Clear caches and apply waiting update
+        await clearAllCaches();
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
 
       // Listen for new updates
       registration.addEventListener('updatefound', () => handleUpdateFound(registration));
 
-      // Check for updates periodically (every 30 seconds for PWA)
+      // Check for updates periodically (every 15 seconds for faster updates)
       const checkInterval = setInterval(() => {
         registration.update().catch(() => {
           // Silently fail on update check errors
         });
-      }, 30000);
+      }, 15000);
 
-      return () => clearInterval(checkInterval);
+      // Also check on visibility change (when app becomes visible)
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          registration.update().catch(() => {});
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+
+      return () => {
+        clearInterval(checkInterval);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
     });
 
     return () => {
@@ -82,5 +132,7 @@ export function usePWAUpdates() {
   return {
     ...state,
     applyUpdate,
+    checkForUpdates,
+    clearAllCaches,
   };
 }
