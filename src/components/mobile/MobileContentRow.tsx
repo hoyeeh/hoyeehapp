@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TVShowUpdatesMap } from "@/hooks/useLatestTVShowUpdates";
 
+
 interface MobileContentRowProps {
   title: string;
   content: Content[];
@@ -13,6 +14,10 @@ interface MobileContentRowProps {
   variant?: "poster" | "landscape" | "continue";
   cardSize?: "sm" | "md" | "lg"; // Admin-configured card size
   cardStyle?: "poster" | "backdrop" | "wide" | "square" | "minimal" | "full"; // Admin-configured card style
+  /** Optional override for the first card only (admin: first_card_style) */
+  firstCardStyle?: "poster" | "backdrop" | "full";
+  /** Optional featured content to pin to index 0 (admin: featured_content_id) */
+  featuredContentId?: string;
   showSeeAll?: boolean;
   onSeeAll?: () => void;
   showRank?: boolean;
@@ -52,6 +57,61 @@ function ContinueSkeleton() {
   );
 }
 
+type RowVariant = "poster" | "landscape" | "continue" | "full";
+
+function resolveVariant(
+  baseVariant: MobileContentRowProps["variant"],
+  style?: MobileContentRowProps["cardStyle"]
+): RowVariant {
+  // If admin explicitly set a style, it should fully control the visual layout.
+  if (style) {
+    if (style === "backdrop" || style === "wide") return "landscape";
+    if (style === "full") return "full";
+    // poster / square / minimal → poster layout
+    return "poster";
+  }
+
+  return baseVariant ?? "poster";
+}
+
+function widthClassFor(variant: RowVariant, cardSize: NonNullable<MobileContentRowProps["cardSize"]>, showRank: boolean) {
+  if (showRank) {
+    return {
+      sm: "w-32",
+      md: "w-36",
+      lg: "w-44",
+    }[cardSize];
+  }
+
+  switch (variant) {
+    case "landscape":
+      return {
+        sm: "w-32",
+        md: "w-40",
+        lg: "w-48",
+      }[cardSize];
+    case "full":
+      return {
+        sm: "w-28",
+        md: "w-32",
+        lg: "w-40",
+      }[cardSize];
+    case "continue":
+      return {
+        sm: "w-28",
+        md: "w-32",
+        lg: "w-40",
+      }[cardSize];
+    case "poster":
+    default:
+      return {
+        sm: "w-24",
+        md: "w-28",
+        lg: "w-36",
+      }[cardSize];
+  }
+}
+
 export function MobileContentRow({
   title,
   content,
@@ -60,6 +120,8 @@ export function MobileContentRow({
   variant = "poster",
   cardSize = "md",
   cardStyle,
+  firstCardStyle,
+  featuredContentId,
   showSeeAll = false,
   onSeeAll,
   showRank = false,
@@ -69,40 +131,24 @@ export function MobileContentRow({
   tvShowUpdates = {},
   sectionBannerUrl,
 }: MobileContentRowProps) {
-  // Map card size to width classes - adjust for different styles
-  const sizeClasses = showRank
-    ? {
-        // Ranked cards need extra width for rank number + poster
-        sm: "w-32",
-        md: "w-36",    
-        lg: "w-44",    
-      }
-    : cardStyle === "full" 
-      ? {
-          sm: "w-32",    // Full cards need more width (3:4 aspect)
-          md: "w-36",    
-          lg: "w-44",    
-        }
-      : {
-          sm: "w-24",    // Standard poster widths
-          md: "w-28",    
-          lg: "w-36",    
-        };
-  
-  // Determine effective variant based on cardStyle if provided
-  const effectiveVariant = cardStyle === "backdrop" || cardStyle === "wide" 
-    ? "landscape" 
-    : cardStyle === "full"
-      ? "full"
-      : variant;
+  const rowVariantForSkeleton = resolveVariant(variant, cardStyle);
+
+  // Reorder content so the featured item (if configured) is pinned to the first slot.
+  const displayContent = (() => {
+    if (!featuredContentId) return content;
+    const idx = content.findIndex((c) => c.id === featuredContentId);
+    if (idx <= 0) return content;
+    return [content[idx], ...content.slice(0, idx), ...content.slice(idx + 1)];
+  })();
+
   // Show skeleton when loading
   if (isLoading) {
-    const SkeletonComponent = 
-      effectiveVariant === "landscape" ? LandscapeSkeleton : 
-      effectiveVariant === "continue" ? ContinueSkeleton : 
+    const SkeletonComponent =
+      rowVariantForSkeleton === "landscape" ? LandscapeSkeleton :
+      rowVariantForSkeleton === "continue" ? ContinueSkeleton :
       PosterSkeleton;
-    
-    const skeletonCount = effectiveVariant === "poster" ? 5 : 3;
+
+    const skeletonCount = rowVariantForSkeleton === "poster" ? 5 : 3;
 
     return (
       <section className="mb-6">
@@ -122,19 +168,19 @@ export function MobileContentRow({
     );
   }
 
-  if (content.length === 0) return null;
+  if (displayContent.length === 0) return null;
 
   return (
     <section className="mb-6 animate-fade-in">
       {/* Optional Section Banner */}
       {sectionBannerUrl && (
-        <div 
+        <div
           className="mx-4 mb-3 rounded-xl overflow-hidden cursor-pointer group/banner"
-          onClick={() => content[0] && onDetails(content[0])}
+          onClick={() => displayContent[0] && onDetails(displayContent[0])}
         >
           <div className="relative aspect-[21/9] bg-secondary">
-            <img 
-              src={sectionBannerUrl} 
+            <img
+              src={sectionBannerUrl}
               alt={title}
               className="w-full h-full object-cover transition-transform duration-300 group-hover/banner:scale-105"
             />
@@ -151,7 +197,7 @@ export function MobileContentRow({
       <div className="flex items-center justify-between px-4 mb-3">
         <h3 className="text-lg font-bold text-foreground">{title}</h3>
         {showSeeAll && onSeeAll && (
-          <button 
+          <button
             onClick={onSeeAll}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-95"
           >
@@ -162,28 +208,42 @@ export function MobileContentRow({
       </div>
 
       {/* Scrollable Content */}
-      <div className={cn(
-        "flex gap-3 overflow-x-auto px-4 pb-2 hide-scrollbar",
-        "scroll-smooth snap-x snap-mandatory"
-      )}>
-        {content.map((item, index) => (
-          <div key={item.id} className={cn("snap-start flex-shrink-0", sizeClasses[cardSize])}>
-            <MobileContentCard
-              content={item}
-              onPlay={onPlay}
-              onDetails={onDetails}
-              variant={effectiveVariant}
-              rank={showRank ? index + 1 : undefined}
-              progress={progressMap?.[item.id]}
-              showNewBadge={showNewBadge}
-              hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
-              hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
-              cardSize={cardSize}
-              cardStyle={cardStyle}
-            />
-          </div>
-        ))}
+      <div
+        className={cn(
+          "flex gap-3 overflow-x-auto px-4 pb-2 hide-scrollbar",
+          "scroll-smooth snap-x snap-mandatory"
+        )}
+      >
+        {displayContent.map((item, index) => {
+          const itemStyle = index === 0 && firstCardStyle ? firstCardStyle : cardStyle;
+          const itemVariant = resolveVariant(variant, itemStyle as any);
+
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "snap-start flex-shrink-0",
+                widthClassFor(itemVariant, cardSize, showRank)
+              )}
+            >
+              <MobileContentCard
+                content={item}
+                onPlay={onPlay}
+                onDetails={onDetails}
+                variant={itemVariant}
+                rank={showRank ? index + 1 : undefined}
+                progress={progressMap?.[item.id]}
+                showNewBadge={showNewBadge}
+                hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+                hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
+                cardSize={cardSize}
+                cardStyle={itemStyle as any}
+              />
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
+
