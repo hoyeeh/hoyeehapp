@@ -685,11 +685,26 @@ export function MobileHome() {
 
               // Recently added / New Releases section - use processed content (sorted by created_at)
               if (section.section_type === "recently_added" || section.section_type === "new_releases") {
-                return sectionContent.length > 0 ? (
+                // Ensure featured content is first (if configured) for new releases.
+                // This makes the mobile PWA match the admin "Featured Content" behavior.
+                let rowContent = sectionContent;
+                const featuredId = (section.featured_content_id as string | null) ?? null;
+
+                if (featuredId) {
+                  const featured = content.find((c) => c.id === featuredId);
+                  if (featured) {
+                    rowContent = [featured, ...sectionContent.filter((c) => c.id !== featuredId)].slice(
+                      0,
+                      section.max_items || 15
+                    );
+                  }
+                }
+
+                return rowContent.length > 0 ? (
                   <FadeIn key={section.id} delay={150 + index * 50}>
                     <MobileContentRow
                       title={section.title}
-                      content={sectionContent}
+                      content={rowContent}
                       onDetails={handleDetails}
                       showSeeAll
                       onSeeAll={() => navigate("/genres")}
@@ -698,6 +713,12 @@ export function MobileHome() {
                       tvShowUpdates={tvShowUpdates}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      firstCardStyle={
+                        section.section_type === "new_releases"
+                          ? ((section.first_card_style as "poster" | "backdrop" | "full") || undefined)
+                          : undefined
+                      }
+                      featuredContentId={section.featured_content_id || undefined}
                       sectionBannerUrl={section.section_banner_url || undefined}
                     />
                   </FadeIn>
