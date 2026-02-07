@@ -599,47 +599,6 @@ export function MobileHome() {
             ) : null}
           </FadeIn>
 
-          {/* Continue Watching - Offline-first */}
-          <FadeIn delay={50}>
-            <MobileOfflineContinueWatching
-              onPlay={(c, progress, episodeId) => handlePlay(c, progress, episodeId)}
-              onDetails={handleDetails}
-            />
-          </FadeIn>
-
-          {/* My Purchases Shortcut */}
-          <FadeIn delay={60}>
-            <MobilePurchasesShortcut onDetails={handleDetails} />
-          </FadeIn>
-
-          {/* Recently Watched - Completed content for rewatching */}
-          <FadeIn delay={75}>
-            <MobileRecentlyWatched
-              onPlay={handlePlay}
-              onDetails={handleDetails}
-            />
-          </FadeIn>
-
-          {/* AI Recommendations - Smart picks based on watch history */}
-          <FadeIn delay={100}>
-            <MobileAIRecommendations onDetails={handleDetails} />
-          </FadeIn>
-
-          {/* Because You Watched Row */}
-          <FadeIn delay={125}>
-            <MobileBecauseYouWatchedRow onDetails={handleDetails} />
-          </FadeIn>
-
-          {/* Coming Soon Row */}
-          <FadeIn delay={135}>
-            <MobileComingSoonRow />
-          </FadeIn>
-
-          {/* Hoyeeh Playables Row */}
-          <FadeIn delay={140}>
-            <MobilePlayablesRow />
-          </FadeIn>
-
           {/* Dynamic sections from database - filtered by activeFilter */}
           {activeFilter !== "all" ? (
             // When filter is active, show filtered content
@@ -656,12 +615,85 @@ export function MobileHome() {
               />
             </FadeIn>
           ) : (
-            // When "All" is selected, show all sections with deduplication
+            // When "All" is selected, show all sections dynamically from admin config
             processedHomeSections.map(({ section, content: sectionContent }, index) => {
+              // Continue Watching section
+              if (section.section_type === "continue_watching") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileOfflineContinueWatching
+                      onPlay={(c, progress, episodeId) => handlePlay(c, progress, episodeId)}
+                      onDetails={handleDetails}
+                    />
+                  </FadeIn>
+                );
+              }
+
+              // Purchases section
+              if (section.section_type === "purchases") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobilePurchasesShortcut onDetails={handleDetails} />
+                  </FadeIn>
+                );
+              }
+
+              // Recently Watched section
+              if (section.section_type === "recently_watched") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileRecentlyWatched
+                      onPlay={handlePlay}
+                      onDetails={handleDetails}
+                    />
+                  </FadeIn>
+                );
+              }
+
+              // AI Recommendations section
+              if (section.section_type === "ai_recommendations") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileAIRecommendations onDetails={handleDetails} />
+                  </FadeIn>
+                );
+              }
+
+              // Because You Watched section
+              if (section.section_type === "because_you_watched") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileBecauseYouWatchedRow 
+                      onDetails={handleDetails}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                    />
+                  </FadeIn>
+                );
+              }
+
+              // Coming Soon section
+              if (section.section_type === "coming_soon") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileComingSoonRow />
+                  </FadeIn>
+                );
+              }
+
+              // Playables section
+              if (section.section_type === "playables") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobilePlayablesRow />
+                  </FadeIn>
+                );
+              }
+
               // Top 10 section
               if (section.section_type === "top10") {
                 return top10Content.length > 0 ? (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
+                  <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileContentRow
                       title={section.title}
                       content={top10Content}
@@ -681,7 +713,7 @@ export function MobileHome() {
               if (section.section_type === "my_list") {
                 const myListContent = content.filter((c) => watchlistIds.includes(c.id));
                 return myListContent.length > 0 ? (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
+                  <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileContentRow
                       title={section.title}
                       content={myListContent}
@@ -697,10 +729,8 @@ export function MobileHome() {
                 ) : null;
               }
 
-              // Recently added / New Releases section - use processed content (sorted by created_at)
+              // Recently added / New Releases section
               if (section.section_type === "recently_added" || section.section_type === "new_releases") {
-                // Ensure featured content is first (if configured) for new releases.
-                // This makes the mobile PWA match the admin "Featured Content" behavior.
                 let rowContent = sectionContent;
                 const featuredId = (section.featured_content_id as string | null) ?? null;
 
@@ -715,7 +745,7 @@ export function MobileHome() {
                 }
 
                 return rowContent.length > 0 ? (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
+                  <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileContentRow
                       title={section.title}
                       content={rowContent}
@@ -739,10 +769,10 @@ export function MobileHome() {
                 ) : null;
               }
 
-              // Trending section - uses backdrop style for horizontal cards
+              // Trending section
               if (section.section_type === "trending") {
                 return sectionContent.length > 0 ? (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
+                  <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileContentRow
                       title={section.title}
                       content={sectionContent}
@@ -763,7 +793,7 @@ export function MobileHome() {
               // YouTube section
               if (section.section_type === "youtube") {
                 return (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
+                  <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileHomeYouTubeRow
                       title={section.title}
                       maxItems={section.max_items || 15}
@@ -776,7 +806,7 @@ export function MobileHome() {
               // Creator Studio / Paid Content section
               if (section.section_type === "creator_store") {
                 return (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
+                  <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobilePaidContentRow
                       title={section.title}
                       onDetails={handleDetails}
@@ -788,10 +818,10 @@ export function MobileHome() {
                 );
               }
 
-              // Leaving Soon section - use dedicated component
+              // Leaving Soon section
               if (section.section_type === "leaving_soon") {
                 return (
-                  <FadeIn key={section.id} delay={150 + index * 50}>
+                  <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileLeavingSoonRow
                       onDetails={handleDetails}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
@@ -803,23 +833,15 @@ export function MobileHome() {
                 );
               }
 
-              // Continue watching section - handled above, skip in dynamic sections
-              if (section.section_type === "continue_watching") {
-                return null;
-              }
-
-              // NOTE: Top 10 section is already handled above at line 619, skip duplicate handling
-
-              // Genre and other sections - use processed deduplicated content
+              // Generic content sections (genre, curated, custom, etc.)
               if (sectionContent.length === 0) return null;
 
-              // Determine the appropriate "See All" destination based on section type
               const seeAllRoute = section.section_type === "free_content" 
                 ? "/free-content" 
                 : "/genres";
 
               return (
-                <FadeIn key={section.id} delay={150 + index * 50}>
+                <FadeIn key={section.id} delay={50 + index * 25}>
                   <MobileContentRow
                     title={section.title}
                     content={sectionContent}

@@ -76,6 +76,14 @@ const SECTION_TYPES = [
   { value: "by_year", label: "By Year (Movies by release year)" },
   { value: "series", label: "TV Series (by genre and/or year)" },
   { value: "playables", label: "Hoyeeh Playables (Games)" },
+  { value: "leaving_soon", label: "Leaving Soon" },
+  // Personalized sections (auto-populated based on user data)
+  { value: "recently_watched", label: "Recently Watched (Completed)" },
+  { value: "because_you_watched", label: "Because You Watched" },
+  { value: "ai_recommendations", label: "AI Hoyeeh Picks" },
+  { value: "coming_soon", label: "Coming Soon" },
+  { value: "recommendations", label: "Recommended For You" },
+  { value: "purchases", label: "My Purchases (Mobile)" },
 ];
 
 const CARD_STYLES = [

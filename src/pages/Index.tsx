@@ -736,91 +736,117 @@ const Index = () => {
                 <HomepageSpotlight appContext="main" />
                 
                 <div className="mt-8 space-y-2">
-                  {/* Continue Watching Row - Always first */}
-                  <ContinueWatchingRow
-                    onPlay={(c, progress) => setPlayingContent({ content: c, progress })}
-                    onDetails={handleDetails}
-                  />
+                  {/* All sections rendered dynamically based on admin configuration */}
+                  {processedHomeSections.map(({ section, content: sectionContent }) => {
+                    // Continue Watching section
+                    if (section.section_type === "continue_watching") {
+                      return (
+                        <ContinueWatchingRow
+                          key={section.id}
+                          onPlay={(c, progress) => setPlayingContent({ content: c, progress })}
+                          onDetails={handleDetails}
+                        />
+                      );
+                    }
 
-                  {/* Recently Watched Row - Completed content for rewatching */}
-                  <RecentlyWatchedRow
-                    onPlay={handlePlay}
-                    onDetails={handleDetails}
-                  />
+                    // Recently Watched section
+                    if (section.section_type === "recently_watched") {
+                      return (
+                        <RecentlyWatchedRow
+                          key={section.id}
+                          onPlay={handlePlay}
+                          onDetails={handleDetails}
+                        />
+                      );
+                    }
 
-                  {/* New Releases Row - Shows content from last 2 weeks */}
-                  {(() => {
-                    const newReleasesSection = homeSections.find((s: any) => s.section_type === "new_releases");
-                    // Only show if section exists and is active (is_active check is done in query)
-                    if (newReleasesSection) {
+                    // New Releases section
+                    if (section.section_type === "new_releases") {
                       return (
                         <NewReleasesRow
+                          key={section.id}
                           onPlay={handlePlay}
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
-                          title={newReleasesSection.title || "New Releases"}
-                          maxItems={newReleasesSection.max_items || 20}
+                          title={section.title || "New Releases"}
+                          maxItems={section.max_items || 20}
                           contentTypeFilter={
-                            (newReleasesSection.content_type_filter as "all" | "movie" | "series") || "all"
+                            (section.content_type_filter as "all" | "movie" | "series") || "all"
                           }
                           firstCardStyle={
-                            (newReleasesSection.first_card_style as "poster" | "backdrop" | "full") || "backdrop"
+                            (section.first_card_style as "poster" | "backdrop" | "full") || "backdrop"
                           }
-                          sectionBannerUrl={newReleasesSection.section_banner_url || undefined}
-                          featuredContentId={newReleasesSection.featured_content_id || undefined}
+                          sectionBannerUrl={section.section_banner_url || undefined}
+                          featuredContentId={section.featured_content_id || undefined}
                         />
                       );
                     }
-                    return null;
-                  })()}
 
-                  {/* AI Recommendations Row */}
-                  <RecommendationsRow
-                    onPlay={handlePlay}
-                    onToggleList={handleToggleList}
-                    onDetails={handleDetails}
-                    userList={watchlistIds}
-                  />
-
-                  {/* Because You Watched Row */}
-                  <BecauseYouWatchedRow
-                    onPlay={handlePlay}
-                    onToggleList={handleToggleList}
-                    onDetails={handleDetails}
-                    userList={watchlistIds}
-                  />
-
-                  {/* Hoyeeh Playables Section */}
-                  <PlayablesSection className="mt-6" />
-
-                  {/* Coming Soon Row - Above Top 10 */}
-                  <ComingSoonRow />
-                  {processedHomeSections.map(({ section, content: sectionContent }) => {
-                    // Skip new_releases - handled by dedicated NewReleasesRow above
-                    if (section.section_type === "new_releases") {
-                      return null;
+                    // Recommendations section
+                    if (section.section_type === "recommendations") {
+                      return (
+                        <RecommendationsRow
+                          key={section.id}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                        />
+                      );
                     }
-                    
+
+                    // Because You Watched section
+                    if (section.section_type === "because_you_watched") {
+                      return (
+                        <BecauseYouWatchedRow
+                          key={section.id}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                          cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                          cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                        />
+                      );
+                    }
+
+                    // Playables section
+                    if (section.section_type === "playables") {
+                      return <PlayablesSection key={section.id} className="mt-6" />;
+                    }
+
+                    // Coming Soon section
+                    if (section.section_type === "coming_soon") {
+                      return <ComingSoonRow key={section.id} />;
+                    }
+
+                    // AI Recommendations section
+                    if (section.section_type === "ai_recommendations") {
+                      return (
+                        <AIRecommendationsRow
+                          key={section.id}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                        />
+                      );
+                    }
+
+                    // Top 10 section
                     if (section.section_type === "top10") {
                       return top10Content.length > 0 ? (
-                        <div key={section.id}>
-                          <Top10Row
-                            content={top10Content}
-                            onPlay={handlePlay}
-                            onDetails={handleDetails}
-                          />
-                          {/* AI Hoyeeh Picks - Right after Top 10 */}
-                          <AIRecommendationsRow
-                            onPlay={handlePlay}
-                            onToggleList={handleToggleList}
-                            onDetails={handleDetails}
-                            userList={watchlistIds}
-                          />
-                        </div>
+                        <Top10Row
+                          key={section.id}
+                          content={top10Content}
+                          onPlay={handlePlay}
+                          onDetails={handleDetails}
+                        />
                       ) : null;
                     }
 
+                    // My List section
                     if (section.section_type === "my_list") {
                       return watchlistIds.length > 0 ? (
                         <ContentRow
@@ -839,7 +865,7 @@ const Index = () => {
                       ) : null;
                     }
 
-                    // YouTube section - show YouTube channels row
+                    // YouTube section
                     if (section.section_type === "youtube") {
                       return (
                         <HomeYouTubeRow
@@ -866,7 +892,7 @@ const Index = () => {
                       );
                     }
 
-                    // Leaving Soon section - use dedicated component
+                    // Leaving Soon section
                     if (section.section_type === "leaving_soon") {
                       return (
                         <LeavingSoonRow
@@ -879,14 +905,9 @@ const Index = () => {
                       );
                     }
 
-                    // Continue watching section - handled above, skip in dynamic sections
-                    if (section.section_type === "continue_watching") {
-                      return null;
-                    }
-
+                    // Generic content sections (genre, curated, custom, etc.)
                     if (sectionContent.length === 0) return null;
 
-                    // Determine the appropriate "See All" destination based on section type
                     const seeAllRoute = section.section_type === "free_content" 
                       ? "/free-content" 
                       : "/genres";
