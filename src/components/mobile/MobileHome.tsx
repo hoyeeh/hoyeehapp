@@ -169,7 +169,7 @@ export function MobileHome() {
         .select("*")
         .gte("created_at", twoWeeksAgo)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(50);
       if (error) throw error;
       return data || [];
     },
@@ -216,16 +216,30 @@ export function MobileHome() {
         return [];
       
       case "recently_added":
-      case "new_releases":
-        // Sort by created_at (already sorted from query), then by year
-        // Apply content type filter for new_releases if specified
-        let recentFiltered = newContent;
+        // "recently_added" shows all content sorted by created_at (newest first)
+        // This uses the full content library, not just the 14-day window
+        let recentlyAddedFiltered = [...content].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
         if (section.content_type_filter === "movie") {
-          recentFiltered = newContent.filter((c) => c.contentType === "movie");
+          recentlyAddedFiltered = recentlyAddedFiltered.filter((c) => c.contentType === "movie");
         } else if (section.content_type_filter === "series") {
-          recentFiltered = newContent.filter((c) => c.contentType === "series");
+          recentlyAddedFiltered = recentlyAddedFiltered.filter((c) => c.contentType === "series");
         }
-        return recentFiltered.slice(0, section.max_items || 15);
+        return recentlyAddedFiltered.slice(0, section.max_items || 15);
+      
+      case "new_releases":
+        // "new_releases" shows content from the last 14 days
+        // Apply content type filter if specified
+        let newReleasesFiltered = newContent;
+        if (section.content_type_filter === "movie") {
+          newReleasesFiltered = newContent.filter((c) => c.contentType === "movie");
+        } else if (section.content_type_filter === "series") {
+          newReleasesFiltered = newContent.filter((c) => c.contentType === "series");
+        }
+        return newReleasesFiltered.slice(0, section.max_items || 15);
       
       case "trending":
         return trending.slice(0, section.max_items || 20);
