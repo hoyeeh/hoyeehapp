@@ -84,6 +84,10 @@ export function MobileHome() {
       queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] }),
       queryClient.invalidateQueries({ queryKey: ["mobile-section-content"] }),
       queryClient.invalidateQueries({ queryKey: ["leaving-soon-content"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-recently-watched"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-ai-recommendations"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-because-you-watched"] }),
+      queryClient.invalidateQueries({ queryKey: ["mobile-coming-soon"] }),
     ]);
     toast.success("Content refreshed!");
   }, [queryClient]);

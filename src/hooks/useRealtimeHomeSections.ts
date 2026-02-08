@@ -27,6 +27,13 @@ export function useRealtimeHomeSections() {
     queryClient.invalidateQueries({ queryKey: ['trending-content'] });
     queryClient.invalidateQueries({ queryKey: ['recently-added-home'] });
     queryClient.invalidateQueries({ queryKey: ['top-10-display'] });
+    // New personalized section caches
+    queryClient.invalidateQueries({ queryKey: ['continue-watching-enhanced'] });
+    queryClient.invalidateQueries({ queryKey: ['recently-watched-completed'] });
+    queryClient.invalidateQueries({ queryKey: ['because-you-watched'] });
+    queryClient.invalidateQueries({ queryKey: ['mobile-because-you-watched'] });
+    queryClient.invalidateQueries({ queryKey: ['ai-recommendations'] });
+    queryClient.invalidateQueries({ queryKey: ['coming-soon'] });
   }, [queryClient]);
 
   useEffect(() => {
