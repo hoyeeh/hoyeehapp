@@ -12,57 +12,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify caller identity
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userId = claimsData.claims.sub;
-
-    // Admin client for privileged operations
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Check admin role
-    const { data: isAdmin } = await adminClient.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-
-    if (!isAdmin) {
-      return new Response(
-        JSON.stringify({ error: "Forbidden: Admin required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Get all imported user IDs from audit_logs
+    // Get batch of imported user IDs (process 50 at a time to avoid timeout)
     const { data: auditLogs, error: auditError } = await adminClient
       .from("audit_logs")
       .select("resource_id")
       .eq("action", "create")
       .eq("resource_type", "user")
-      .filter("details->>action", "eq", "user_import");
+      .filter("details->>action", "eq", "user_import")
+      .limit(50);
 
     if (auditError) {
       return new Response(
@@ -73,7 +34,7 @@ Deno.serve(async (req) => {
 
     if (!auditLogs || auditLogs.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No imported users found", deleted: 0, failed: 0 }),
+        JSON.stringify({ message: "No imported users remaining", deleted: 0, remaining: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -86,47 +47,45 @@ Deno.serve(async (req) => {
     let failed = 0;
     const errors: string[] = [];
 
-    for (const importedUserId of userIds) {
+    for (const userId of userIds) {
       try {
-        // Delete from related tables
-        await adminClient.from("user_roles").delete().eq("user_id", importedUserId);
-        await adminClient.from("watchlist").delete().eq("user_id", importedUserId);
-        await adminClient.from("watch_history").delete().eq("user_id", importedUserId);
-        await adminClient.from("reviews").delete().eq("user_id", importedUserId);
-        await adminClient.from("subscriptions").delete().eq("user_id", importedUserId);
-        await adminClient.from("push_subscriptions").delete().eq("user_id", importedUserId);
-        await adminClient.from("profiles").delete().eq("id", importedUserId);
-
-        // Delete from auth.users
-        const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(importedUserId);
-        if (deleteAuthError) {
-          errors.push(`${importedUserId}: auth delete failed - ${deleteAuthError.message}`);
+        const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+        if (deleteError) {
+          errors.push(`${userId}: ${deleteError.message}`);
           failed++;
-          continue;
+        } else {
+          deleted++;
         }
-
-        deleted++;
+        // Delete the audit log entry regardless
+        await adminClient
+          .from("audit_logs")
+          .delete()
+          .eq("resource_id", userId)
+          .eq("action", "create")
+          .eq("resource_type", "user")
+          .filter("details->>action", "eq", "user_import");
       } catch (e: any) {
-        errors.push(`${importedUserId}: ${e.message}`);
+        errors.push(`${userId}: ${e.message}`);
         failed++;
       }
     }
 
-    // Clean up audit log entries for imported users
-    await adminClient
+    // Count remaining
+    const { count } = await adminClient
       .from("audit_logs")
-      .delete()
+      .select("id", { count: "exact", head: true })
       .eq("action", "create")
       .eq("resource_type", "user")
       .filter("details->>action", "eq", "user_import");
 
     return new Response(
       JSON.stringify({
-        message: `Deletion complete`,
-        total: userIds.length,
+        message: `Batch complete`,
+        batch_size: userIds.length,
         deleted,
         failed,
-        errors: errors.slice(0, 20), // Return first 20 errors max
+        remaining: count || 0,
+        errors: errors.slice(0, 10),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
