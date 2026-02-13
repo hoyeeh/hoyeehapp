@@ -1,70 +1,41 @@
-# ✅ COMPLETED: Remove Hardcoded Sections - Sync Desktop and Mobile with Admin Settings
 
-## Summary
-Successfully refactored both Desktop (`Index.tsx`) and Mobile (`MobileHome.tsx`) to render ALL sections dynamically based on admin configuration in the `home_sections` table.
 
-## Changes Made
+# Remove 700 Imported Users and Fix Build Error
 
-### 1. Admin Section Types (EnhancedHomeSectionManagement.tsx)
-Added new section types to the SECTION_TYPES array:
-- `recently_watched`: Recently Watched (Completed)
-- `because_you_watched`: Because You Watched
-- `ai_recommendations`: AI Hoyeeh Picks
-- `coming_soon`: Coming Soon
-- `recommendations`: Recommended For You
-- `purchases`: My Purchases (Mobile)
-- `leaving_soon`: Leaving Soon
+## Overview
+Delete all 700 users that were imported via CSV/MySQL from the database, and fix a pre-existing TypeScript build error.
 
-### 2. Desktop Index.tsx
-Removed all hardcoded sections and unified rendering in a single `processedHomeSections.map()` loop:
-- Continue Watching
-- Recently Watched
-- New Releases
-- Recommendations
-- Because You Watched
-- Playables
-- Coming Soon
-- AI Recommendations
-- Top 10
-- My List
-- YouTube
-- Creator Store
-- Leaving Soon
+## Part 1: Fix Build Error
 
-### 3. Mobile MobileHome.tsx
-Removed all hardcoded sections and unified rendering in a single dynamic loop:
-- Continue Watching
-- Purchases
-- Recently Watched
-- AI Recommendations
-- Because You Watched
-- Coming Soon
-- Playables
-- Top 10
-- My List
-- New Releases / Recently Added
-- Trending
-- YouTube
-- Creator Store
-- Leaving Soon
+**File: `src/hooks/usePushNotifications.ts`**
+- Add proper type assertion for `pushManager` on `ServiceWorkerRegistration` (this is a known TypeScript limitation with the Push API types)
 
-### 4. Database Migration
-Inserted default sections for the new section types:
-- Continue Watching (order: 1)
-- Recently Watched (order: 2)
-- My Purchases (order: 3, mobile only)
-- Recommended For You (order: 5, desktop only)
-- Because You Watched (order: 7)
-- AI Hoyeeh Picks (order: 8)
-- Coming Soon (order: 9)
-- Hoyeeh Playables (order: 10)
+## Part 2: Create Edge Function to Bulk Delete Imported Users
 
-### 5. Cache Invalidation
-Updated `useRealtimeHomeSections.ts` and `MobileHome.tsx` refresh handlers to invalidate all new section caches.
+**New file: `supabase/functions/delete-imported-users/index.ts`**
 
-## Result
-- All sections are now controlled via admin Home Section management
-- Desktop and Mobile render sections in the same order based on `display_order`
-- Section titles, styles, and visibility are consistent across platforms
-- Admins can enable/disable any section without code changes
-- New section types can be added without modifying core rendering logic
+This edge function will:
+1. Verify the calling user is a super admin
+2. Query the `audit_logs` table for all user IDs imported via the MySQL/CSV import (`details->>'action' = 'user_import'`)
+3. For each imported user:
+   - Delete from `user_roles`
+   - Delete from `watchlist`, `watch_history`, `reviews`, `subscriptions`
+   - Delete from `profiles`
+   - Delete from `auth.users` using the admin API
+4. Delete the corresponding audit log entries
+5. Return a summary of how many users were deleted, skipped, or failed
+
+**Security**: Only super admins can invoke this function.
+
+**Batch processing**: Users will be deleted one at a time to avoid timeouts, with progress tracking. The function processes all 700 users in a single call.
+
+## Part 3: Trigger the Deletion
+
+After deploying the edge function, I will call it directly to execute the deletion. No UI changes are needed since this is a one-time cleanup operation.
+
+## Files to Create/Modify
+| File | Action |
+|------|--------|
+| `supabase/functions/delete-imported-users/index.ts` | Create - bulk delete edge function |
+| `src/hooks/usePushNotifications.ts` | Fix - TypeScript build error |
+
