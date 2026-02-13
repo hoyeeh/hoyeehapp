@@ -215,3 +215,6 @@ verify_jwt = false
 
 [functions.import-users-mysql]
 verify_jwt = false
+
+[functions.delete-imported-users]
+verify_jwt = false
