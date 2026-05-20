@@ -1859,6 +1859,8 @@ export type Database = {
           title: string
           updated_at: string
           year_filter: number | null
+          year_max: number | null
+          year_min: number | null
         }
         Insert: {
           allow_duplicates?: boolean
@@ -1882,6 +1884,8 @@ export type Database = {
           title: string
           updated_at?: string
           year_filter?: number | null
+          year_max?: number | null
+          year_min?: number | null
         }
         Update: {
           allow_duplicates?: boolean
@@ -1905,6 +1909,8 @@ export type Database = {
           title?: string
           updated_at?: string
           year_filter?: number | null
+          year_max?: number | null
+          year_min?: number | null
         }
         Relationships: [
           {

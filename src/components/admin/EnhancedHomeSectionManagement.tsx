@@ -47,6 +47,8 @@ interface HomeSection {
   is_curated: boolean;
   allow_duplicates: boolean;
   year_filter?: number | null;
+  year_min?: number | null;
+  year_max?: number | null;
   first_card_style?: string;
   section_banner_url?: string;
   featured_content_id?: string;
@@ -188,6 +190,8 @@ export const EnhancedHomeSectionManagement = () => {
     show_on_kids: false,
     is_curated: false,
     year_filter: null as number | null,
+    year_min: null as number | null,
+    year_max: null as number | null,
     first_card_style: "backdrop" as "backdrop" | "full" | "poster",
     section_banner_url: "",
     featured_content_id: "",
@@ -260,6 +264,8 @@ export const EnhancedHomeSectionManagement = () => {
         show_on_kids: data.show_on_kids,
         is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
         year_filter: data.year_filter,
+        year_min: data.year_min,
+        year_max: data.year_max,
         first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
         section_banner_url: data.section_banner_url || null,
         featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
@@ -293,6 +299,8 @@ export const EnhancedHomeSectionManagement = () => {
           show_on_kids: data.show_on_kids,
           is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
           year_filter: data.year_filter,
+          year_min: data.year_min,
+          year_max: data.year_max,
           first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
           section_banner_url: data.section_banner_url || null,
           featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
@@ -411,6 +419,8 @@ export const EnhancedHomeSectionManagement = () => {
       show_on_kids: false,
       is_curated: false,
       year_filter: null,
+      year_min: null,
+      year_max: null,
       first_card_style: "backdrop",
       section_banner_url: "",
       featured_content_id: "",
@@ -432,6 +442,8 @@ export const EnhancedHomeSectionManagement = () => {
       show_on_kids: section.show_on_kids ?? false,
       is_curated: section.is_curated ?? false,
       year_filter: section.year_filter ?? null,
+      year_min: (section as any).year_min ?? null,
+      year_max: (section as any).year_max ?? null,
       first_card_style: (section.first_card_style as "backdrop" | "full" | "poster") || "backdrop",
       section_banner_url: section.section_banner_url || "",
       featured_content_id: section.featured_content_id || "",
@@ -625,25 +637,46 @@ export const EnhancedHomeSectionManagement = () => {
                   </div>
                 </>
               )}
-              {formData.section_type === "series" && (
-                <>
+              {/* Generic filters — available for every section type except dedicated ones */}
+              {!["leaving_soon", "by_year"].includes(formData.section_type) && (
+                <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
+                  <Label className="text-sm font-medium">Filters (optional)</Label>
+
                   <div className="space-y-2">
-                    <Label>Filter by Genre (optional)</Label>
-                    <Select 
-                      value={formData.genre_id || "__all__"} 
-                      onValueChange={(v) => setFormData({ ...formData, genre_id: v === "__all__" ? "" : v })}
+                    <Label className="text-xs text-muted-foreground">Content type</Label>
+                    <Select
+                      value={formData.content_type_filter}
+                      onValueChange={(v) => setFormData({ ...formData, content_type_filter: v as "all" | "movie" | "series" })}
                     >
-                      <SelectTrigger><SelectValue placeholder="All genres..." /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__all__">All Genres</SelectItem>
-                        {genres.filter((genre: any) => genre.id).map((genre: any) => (
-                          <SelectItem key={genre.id} value={genre.id}>{genre.name}</SelectItem>
-                        ))}
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="movie">Movies only</SelectItem>
+                        <SelectItem value="series">Series only</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {formData.section_type !== "genre" && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Genre</Label>
+                      <Select
+                        value={formData.genre_id || "__all__"}
+                        onValueChange={(v) => setFormData({ ...formData, genre_id: v === "__all__" ? "" : v })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="All genres..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">All Genres</SelectItem>
+                          {genres.filter((genre: any) => genre.id).map((genre: any) => (
+                            <SelectItem key={genre.id} value={genre.id}>{genre.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
-                    <Label>Filter by Year (optional)</Label>
+                    <Label className="text-xs text-muted-foreground">Exact year</Label>
                     <Input
                       type="number"
                       placeholder="e.g. 2024"
@@ -653,7 +686,37 @@ export const EnhancedHomeSectionManagement = () => {
                       max={2100}
                     />
                   </div>
-                </>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">From year</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 2020"
+                        value={formData.year_min ?? ""}
+                        onChange={(e) => setFormData({ ...formData, year_min: e.target.value ? parseInt(e.target.value) : null })}
+                        min={1900}
+                        max={2100}
+                        disabled={!!formData.year_filter}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">To year</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 2026"
+                        value={formData.year_max ?? ""}
+                        onChange={(e) => setFormData({ ...formData, year_max: e.target.value ? parseInt(e.target.value) : null })}
+                        min={1900}
+                        max={2100}
+                        disabled={!!formData.year_filter}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tip: leave all year fields empty for an unfiltered section. Exact year overrides the From/To range.
+                  </p>
+                </div>
               )}
               <div className="space-y-2">
                 <Label>Max Items</Label>
