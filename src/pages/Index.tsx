@@ -551,6 +551,10 @@ const Index = () => {
     
     return homeSections.map((section: any) => {
       let sectionContent = getRawSectionContent(section);
+
+      // Universal admin filters — apply to EVERY section type so admins can scope any row
+      sectionContent = applyAdminFilters(sectionContent, section);
+
       
       // Check per-section allow_duplicates setting, only apply deduplication if global setting is enabled
       const shouldDeduplicate = enableDeduplication && !section.allow_duplicates;
