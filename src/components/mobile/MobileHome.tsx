@@ -195,12 +195,16 @@ export function MobileHome() {
       createdAt: item.created_at,
     }));
 
+  // Sort helper: most recent year first (persistent ordering across mobile home)
+  const sortByYearDesc = <T extends { year?: number | null }>(items: T[]): T[] =>
+    [...items].sort((a, b) => (b.year || 0) - (a.year || 0));
+
   const top10Content = top10Data
     .filter((item: any) => item.content)
     .map((item: any) => transformContent([item.content])[0]);
 
-  const trending = transformContent(trendingData);
-  const newContent = transformContent(newReleases);
+  const trending = sortByYearDesc(transformContent(trendingData));
+  const newContent = sortByYearDesc(transformContent(newReleases));
 
   // Filter content
   const filteredContent = content.filter((c) => {
