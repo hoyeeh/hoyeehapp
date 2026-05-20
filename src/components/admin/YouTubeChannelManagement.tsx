@@ -786,7 +786,7 @@ function ChannelCard({
     try {
       const { error } = await supabase
         .from('youtube_channels')
-        .update({ [field]: value })
+        .update({ [field]: value } as any)
         .eq('id', channel.id);
       
       if (error) throw error;

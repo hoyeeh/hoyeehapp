@@ -193,7 +193,7 @@ export const useUpdateContent = () => {
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
       const { error } = await supabase
         .from("content")
-        .update(updates)
+        .update(updates as any)
         .eq("id", id);
 
       if (error) throw error;

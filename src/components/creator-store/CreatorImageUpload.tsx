@@ -69,7 +69,7 @@ export function CreatorImageUpload({
       const updateField = type === "avatar" ? "avatar_url" : "cover_url";
       const { error: updateError } = await supabase
         .from("creator_profiles")
-        .update({ [updateField]: imageUrl })
+        .update({ [updateField]: imageUrl } as any)
         .eq("id", creatorId);
 
       if (updateError) throw updateError;

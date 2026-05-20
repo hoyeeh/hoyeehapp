@@ -76,7 +76,7 @@ export const useUpdateWalkthroughScreen = () => {
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
       const { error } = await supabase
         .from("walkthrough_screens")
-        .update(updates)
+        .update(updates as any)
         .eq("id", id);
 
       if (error) throw error;

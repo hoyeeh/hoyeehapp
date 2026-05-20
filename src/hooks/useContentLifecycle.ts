@@ -147,7 +147,7 @@ export function useUpdateLifecycleStatus() {
 
       const { error } = await supabase
         .from('content')
-        .update(updates)
+        .update(updates as any)
         .eq('id', contentId);
 
       if (error) throw error;
@@ -215,7 +215,7 @@ export function useBulkUpdateLifecycle() {
 
         await supabase
           .from('content')
-          .update(updates)
+          .update(updates as any)
           .eq('id', contentId);
       }
 

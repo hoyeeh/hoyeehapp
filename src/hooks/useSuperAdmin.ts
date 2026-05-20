@@ -168,7 +168,7 @@ export const useUpdateSubscriptionSettings = () => {
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
       const { error } = await supabase
         .from("subscription_settings")
-        .update(updates)
+        .update(updates as any)
         .eq("id", id);
 
       if (error) throw error;
