@@ -109,7 +109,7 @@ export const CDNMigrationTool = () => {
         if (isOriginUrl(item.thumbnail_url)) updates.thumbnail_url = toCdnUrl(item.thumbnail_url!);
         
         if (Object.keys(updates).length > 0) {
-          await supabase.from('content').update(updates).eq('id', item.id);
+          await supabase.from('content').update(updates as any).eq('id', item.id);
           migrated += Object.keys(updates).length;
           setProgress((migrated / totalToMigrate) * 100);
         }
@@ -123,7 +123,7 @@ export const CDNMigrationTool = () => {
         if (isOriginUrl(item.thumbnail_url)) updates.thumbnail_url = toCdnUrl(item.thumbnail_url!);
         
         if (Object.keys(updates).length > 0) {
-          await supabase.from('episodes').update(updates).eq('id', item.id);
+          await supabase.from('episodes').update(updates as any).eq('id', item.id);
           migrated += Object.keys(updates).length;
           setProgress((migrated / totalToMigrate) * 100);
         }
@@ -137,7 +137,7 @@ export const CDNMigrationTool = () => {
         if (isOriginUrl(item.video_url)) updates.video_url = toCdnUrl(item.video_url!);
         
         if (Object.keys(updates).length > 0) {
-          await supabase.from('hero_banners').update(updates).eq('id', item.id);
+          await supabase.from('hero_banners').update(updates as any).eq('id', item.id);
           migrated += Object.keys(updates).length;
           setProgress((migrated / totalToMigrate) * 100);
         }
@@ -151,7 +151,7 @@ export const CDNMigrationTool = () => {
         if (isOriginUrl(item.trailer_url)) updates.trailer_url = toCdnUrl(item.trailer_url!);
         
         if (Object.keys(updates).length > 0) {
-          await supabase.from('coming_soon').update(updates).eq('id', item.id);
+          await supabase.from('coming_soon').update(updates as any).eq('id', item.id);
           migrated += Object.keys(updates).length;
           setProgress((migrated / totalToMigrate) * 100);
         }

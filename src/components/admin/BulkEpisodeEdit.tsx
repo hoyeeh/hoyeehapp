@@ -87,7 +87,7 @@ export const BulkEpisodeEdit = ({ episodes, onComplete, onClose }: BulkEpisodeEd
     setIsSaving(true);
     try {
       const promises = Array.from(selectedIds).map(id =>
-        supabase.from('episodes').update(updates).eq('id', id)
+        supabase.from('episodes').update(updates as any).eq('id', id)
       );
       
       const results = await Promise.all(promises);
