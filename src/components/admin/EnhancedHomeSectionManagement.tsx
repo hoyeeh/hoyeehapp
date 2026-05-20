@@ -47,6 +47,8 @@ interface HomeSection {
   is_curated: boolean;
   allow_duplicates: boolean;
   year_filter?: number | null;
+  year_min?: number | null;
+  year_max?: number | null;
   first_card_style?: string;
   section_banner_url?: string;
   featured_content_id?: string;
