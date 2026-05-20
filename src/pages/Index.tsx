@@ -49,6 +49,7 @@ import { HomepageSpotlight } from "@/components/spotlight/HomepageSpotlight";
 import { PaidContentRow } from "@/components/PaidContentRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { PlayablesSection } from "@/components/playables";
+import { applyAdminFilters } from "@/lib/homeSectionFilters";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 

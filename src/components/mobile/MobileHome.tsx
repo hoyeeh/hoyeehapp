@@ -38,6 +38,7 @@ import { MobileComingSoonRow } from "./MobileComingSoonRow";
 import { MobileLeavingSoonRow } from "./MobileLeavingSoonRow";
 import { MobileSwipeWrapper } from "./MobileSwipeWrapper";
 import { MobilePlayablesRow } from "@/components/playables/MobilePlayablesRow";
+import { applyAdminFilters } from "@/lib/homeSectionFilters";
 
 export function MobileHome() {
   const navigate = useNavigate();
