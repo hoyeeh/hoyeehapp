@@ -191,34 +191,42 @@ const Index = () => {
       } as Content,
     }));
 
-  // Transform trending to Content type
-  const trendingContentItems: Content[] = trendingContent.map((item: any) => ({
-    id: item.id,
-    title: item.title,
-    description: item.description || "",
-    thumbnailUrl: item.thumbnail_url || "",
-    videoUrl: item.video_url || "",
-    genre: item.genre || "",
-    contentType: item.content_type as "movie" | "series",
-    isPremium: item.is_premium || false,
-    duration: item.duration || 0,
-    year: item.year,
-    rating: item.rating,
-  }));
+  // Sort helper: most recent year first (persistent ordering)
+  const sortByYearDesc = <T extends { year?: number | null }>(items: T[]): T[] =>
+    [...items].sort((a, b) => (b.year || 0) - (a.year || 0));
 
-  // Transform recently added to Content type
-  const recentlyAddedContent: Content[] = recentlyAdded.map((item: any) => ({
-    id: item.id,
-    title: item.title,
-    description: item.description || "",
-    thumbnailUrl: item.thumbnail_url || "",
-    videoUrl: item.video_url || "",
-    genre: item.genre || "",
-    contentType: item.content_type as "movie" | "series",
-    isPremium: item.is_premium || false,
-    duration: item.duration || 0,
-    year: item.year,
-  }));
+  // Transform trending to Content type — re-ordered by most recent year first
+  const trendingContentItems: Content[] = sortByYearDesc(
+    trendingContent.map((item: any) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description || "",
+      thumbnailUrl: item.thumbnail_url || "",
+      videoUrl: item.video_url || "",
+      genre: item.genre || "",
+      contentType: item.content_type as "movie" | "series",
+      isPremium: item.is_premium || false,
+      duration: item.duration || 0,
+      year: item.year,
+      rating: item.rating,
+    }))
+  );
+
+  // Transform recently added to Content type — re-ordered by most recent year first
+  const recentlyAddedContent: Content[] = sortByYearDesc(
+    recentlyAdded.map((item: any) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description || "",
+      thumbnailUrl: item.thumbnail_url || "",
+      videoUrl: item.video_url || "",
+      genre: item.genre || "",
+      contentType: item.content_type as "movie" | "series",
+      isPremium: item.is_premium || false,
+      duration: item.duration || 0,
+      year: item.year,
+    }))
+  );
 
   // Redirect to auth if not logged in (handled in LandingPage)
   useEffect(() => {
