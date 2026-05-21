@@ -26,6 +26,37 @@ export const LandingPage = ({ onSignIn, onGetStarted }: LandingPageProps) => {
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  // Public Top 10 — visible to logged-out visitors on the landing page.
+  const { data: top10 = [] } = useQuery({
+    queryKey: ["landing-top-10"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("top_10")
+        .select(
+          `id, rank, content:content_id (id, title, description, thumbnail_url, genre, content_type, is_premium, duration, year)`
+        )
+        .order("rank");
+      if (error) throw error;
+      return (data || [])
+        .filter((item: any) => item.content)
+        .map((item: any) => ({
+          rank: item.rank,
+          content: {
+            id: item.content.id,
+            title: item.content.title,
+            description: item.content.description || "",
+            thumbnailUrl: item.content.thumbnail_url || "",
+            videoUrl: "",
+            genre: item.content.genre || "",
+            contentType: item.content.content_type as "movie" | "series",
+            isPremium: item.content.is_premium || false,
+            duration: item.content.duration || 0,
+            year: item.content.year,
+          } as Content,
+        }));
+    },
+  });
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-brand selection:text-primary-foreground">
       {/* Hero Section */}
