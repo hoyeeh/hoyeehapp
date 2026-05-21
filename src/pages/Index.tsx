@@ -747,7 +747,24 @@ const Index = () => {
                 
                 {/* Spotlight Ads - Below hero, above content rows */}
                 <HomepageSpotlight appContext="main" />
-                
+
+                {/* Fallback Top 10 — always visible on the public homepage when
+                    admin has not explicitly added a "top10" section. If a
+                    top10 section IS configured in home_sections, the dynamic
+                    renderer below handles ordering/placement instead. */}
+                {top10Content.length > 0 &&
+                  !processedHomeSections.some(
+                    ({ section }) => section.section_type === "top10"
+                  ) && (
+                    <div className="mt-8">
+                      <Top10Row
+                        content={top10Content}
+                        onPlay={handlePlay}
+                        onDetails={handleDetails}
+                      />
+                    </div>
+                  )}
+
                 <div className="mt-8 space-y-2">
                   {/* All sections rendered dynamically based on admin configuration */}
                   {processedHomeSections.map(({ section, content: sectionContent }) => {
