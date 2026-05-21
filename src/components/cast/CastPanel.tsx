@@ -159,9 +159,10 @@ export function CastPanel({
             </div>
           </div>
 
-          <Separator />
+          {capabilities.chromecast.enabled && <Separator />}
 
-          {/* Chromecast Section */}
+          {/* Chromecast Section — gated by capability matrix */}
+          {capabilities.chromecast.enabled && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium flex items-center gap-2">
