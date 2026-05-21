@@ -353,6 +353,7 @@ export function CastPanel({
               )}
             </div>
           </div>
+          )}
 
           {/* Device Groups */}
           {castHistory.groups.length > 0 && (
