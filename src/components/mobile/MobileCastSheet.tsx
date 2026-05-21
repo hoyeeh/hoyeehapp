@@ -10,6 +10,7 @@ import { toast } from "sonner";
 // Hooks
 import { useCast } from "@/contexts/CastContext";
 import { useCastHistory, CastDevice as HistoryDevice } from "@/hooks/useCastHistory";
+import { getCastCapabilities } from "@/player/castCapabilities";
 
 // Components
 import { CastPairingDialog } from "@/components/cast/CastPairingDialog";
@@ -47,6 +48,13 @@ export function MobileCastSheet({
   // Use unified CastContext
   const cast = useCast();
   const castHistory = useCastHistory();
+
+  // Capability matrix — hides cast protocols whose underlying SDK / platform
+  // is NOT verified working in this runtime. See src/player/castCapabilities.ts
+  const capabilities = getCastCapabilities({
+    chromecastAvailable: cast.chromecast.isAvailable,
+    airplayAvailable: cast.airPlay.isAvailable,
+  });
 
   // Handle Chromecast connection
   const handleChromecast = async () => {
@@ -251,7 +259,9 @@ export function MobileCastSheet({
                 {/* Quick Cast Tab */}
                 {activeTab === "quick" && (
                   <div className="space-y-3">
-                    {/* Chromecast */}
+                    {/* Chromecast — only rendered when capability matrix says verified-working */}
+                    {capabilities.chromecast.enabled && (
+                    <>
                     <button
                       onClick={handleChromecast}
                       disabled={!!cast.chromecast.platformWarning}
@@ -297,8 +307,11 @@ export function MobileCastSheet({
                         </p>
                       </div>
                     )}
+                    </>
+                    )}
 
-                    {/* AirPlay */}
+                    {/* AirPlay — gated by capability matrix */}
+                    {capabilities.airplay.enabled && (
                     <button
                       onClick={handleAirPlay}
                       disabled={!cast.airPlay.isAvailable}
@@ -326,8 +339,9 @@ export function MobileCastSheet({
                         <Check className="h-5 w-5 text-blue-500" />
                       )}
                     </button>
+                    )}
 
-                    {/* Link with TV Code */}
+                    {/* Link with TV Code — always available (capability matrix tvPairing) */}
                     <button
                       onClick={() => setShowPairingDialog(true)}
                       className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors touch-manipulation"

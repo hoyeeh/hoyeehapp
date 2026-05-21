@@ -9,6 +9,7 @@ import { CastSetupGuide } from './CastSetupGuide';
 import { DeviceGroupManager } from './DeviceGroupManager';
 import { NativeCastButton } from './NativeCastButton';
 import { AirPlayButton } from './AirPlayButton';
+import { getCastCapabilities } from '@/player/castCapabilities';
 import {
   Sheet,
   SheetContent,
@@ -71,6 +72,17 @@ export function CastPanel({
   });
 
   const castHistory = useCastHistory();
+
+  // Capability matrix — controls which protocol sections render. Sections
+  // for protocols whose underlying SDK / platform is NOT verified working
+  // (e.g. Chromecast Web SDK failed to load, AirPlay outside Safari) are
+  // simply not rendered. See src/player/castCapabilities.ts
+  const capabilities = getCastCapabilities({
+    chromecastAvailable: googleCast.isAvailable,
+    airplayAvailable: airPlay.isAvailable,
+    dlnaDeviceCount: dlna.devices?.length ?? 0,
+  });
+
 
   const handleDLNAConnect = (device: DLNADevice) => {
     dlna.connectToDevice(device);
@@ -147,9 +159,10 @@ export function CastPanel({
             </div>
           </div>
 
-          <Separator />
+          {capabilities.chromecast.enabled && <Separator />}
 
-          {/* Chromecast Section */}
+          {/* Chromecast Section — gated by capability matrix */}
+          {capabilities.chromecast.enabled && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium flex items-center gap-2">
@@ -218,10 +231,12 @@ export function CastPanel({
               )}
             </div>
           </div>
+          )}
 
-          <Separator />
+          {capabilities.dlna.enabled && <Separator />}
 
-          {/* DLNA Section */}
+          {/* DLNA Section — gated by capability matrix */}
+          {capabilities.dlna.enabled && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium flex items-center gap-2">
@@ -289,10 +304,12 @@ export function CastPanel({
               )}
             </div>
           </div>
+          )}
 
-          <Separator />
+          {capabilities.airplay.enabled && <Separator />}
 
-          {/* AirPlay Section */}
+          {/* AirPlay Section — gated by capability matrix */}
+          {capabilities.airplay.enabled && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium flex items-center gap-2">
@@ -336,6 +353,7 @@ export function CastPanel({
               )}
             </div>
           </div>
+          )}
 
           {/* Device Groups */}
           {castHistory.groups.length > 0 && (
