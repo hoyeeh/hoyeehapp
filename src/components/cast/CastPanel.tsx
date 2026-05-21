@@ -231,10 +231,12 @@ export function CastPanel({
               )}
             </div>
           </div>
+          )}
 
-          <Separator />
+          {capabilities.dlna.enabled && <Separator />}
 
-          {/* DLNA Section */}
+          {/* DLNA Section — gated by capability matrix */}
+          {capabilities.dlna.enabled && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium flex items-center gap-2">
