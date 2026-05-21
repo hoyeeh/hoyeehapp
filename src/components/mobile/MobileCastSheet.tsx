@@ -49,6 +49,13 @@ export function MobileCastSheet({
   const cast = useCast();
   const castHistory = useCastHistory();
 
+  // Capability matrix — hides cast protocols whose underlying SDK / platform
+  // is NOT verified working in this runtime. See src/player/castCapabilities.ts
+  const capabilities = getCastCapabilities({
+    chromecastAvailable: cast.chromecast.isAvailable,
+    airplayAvailable: cast.airPlay.isAvailable,
+  });
+
   // Handle Chromecast connection
   const handleChromecast = async () => {
     // Check for platform warning first
