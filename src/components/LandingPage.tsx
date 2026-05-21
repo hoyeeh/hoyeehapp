@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Play, Tv, Download, Users, ChevronRight, Plus } from "lucide-react";
 import heroImage from "@/assets/hero-landing.png";
+import { supabase } from "@/integrations/supabase/client";
+import { Top10Row } from "./Top10Row";
+import type { Content } from "@/types";
 
 interface LandingPageProps {
   onSignIn: () => void;
