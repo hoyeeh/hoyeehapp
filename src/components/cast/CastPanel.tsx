@@ -9,6 +9,7 @@ import { CastSetupGuide } from './CastSetupGuide';
 import { DeviceGroupManager } from './DeviceGroupManager';
 import { NativeCastButton } from './NativeCastButton';
 import { AirPlayButton } from './AirPlayButton';
+import { getCastCapabilities } from '@/player/castCapabilities';
 import {
   Sheet,
   SheetContent,
