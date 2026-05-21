@@ -339,8 +339,9 @@ export function MobileCastSheet({
                         <Check className="h-5 w-5 text-blue-500" />
                       )}
                     </button>
+                    )}
 
-                    {/* Link with TV Code */}
+                    {/* Link with TV Code — always available (capability matrix tvPairing) */}
                     <button
                       onClick={() => setShowPairingDialog(true)}
                       className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors touch-manipulation"
