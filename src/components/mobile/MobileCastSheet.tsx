@@ -10,6 +10,7 @@ import { toast } from "sonner";
 // Hooks
 import { useCast } from "@/contexts/CastContext";
 import { useCastHistory, CastDevice as HistoryDevice } from "@/hooks/useCastHistory";
+import { getCastCapabilities } from "@/player/castCapabilities";
 
 // Components
 import { CastPairingDialog } from "@/components/cast/CastPairingDialog";
