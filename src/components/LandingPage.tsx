@@ -149,14 +149,12 @@ export const LandingPage = ({ onSignIn, onGetStarted }: LandingPageProps) => {
 
       {/* Top 10 Section — public preview, clicking prompts sign in */}
       {top10.length > 0 && (
-        <section className="border-t-8 border-secondary py-20 bg-background">
-          <div className="max-w-7xl mx-auto">
-            <Top10Row
-              content={top10}
-              onPlay={() => onSignIn()}
-              onDetails={() => onSignIn()}
-            />
-          </div>
+        <section className="border-t-8 border-secondary py-20 bg-background w-full">
+          <Top10Row
+            content={top10}
+            onPlay={() => onSignIn()}
+            onDetails={() => onSignIn()}
+          />
         </section>
       )}
 
