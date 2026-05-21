@@ -259,7 +259,9 @@ export function MobileCastSheet({
                 {/* Quick Cast Tab */}
                 {activeTab === "quick" && (
                   <div className="space-y-3">
-                    {/* Chromecast */}
+                    {/* Chromecast — only rendered when capability matrix says verified-working */}
+                    {capabilities.chromecast.enabled && (
+                    <>
                     <button
                       onClick={handleChromecast}
                       disabled={!!cast.chromecast.platformWarning}
