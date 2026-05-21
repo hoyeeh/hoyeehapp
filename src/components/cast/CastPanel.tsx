@@ -73,6 +73,17 @@ export function CastPanel({
 
   const castHistory = useCastHistory();
 
+  // Capability matrix — controls which protocol sections render. Sections
+  // for protocols whose underlying SDK / platform is NOT verified working
+  // (e.g. Chromecast Web SDK failed to load, AirPlay outside Safari) are
+  // simply not rendered. See src/player/castCapabilities.ts
+  const capabilities = getCastCapabilities({
+    chromecastAvailable: googleCast.isAvailable,
+    airplayAvailable: airPlay.isAvailable,
+    dlnaDeviceCount: dlna.devices?.length ?? 0,
+  });
+
+
   const handleDLNAConnect = (device: DLNADevice) => {
     dlna.connectToDevice(device);
     if (videoUrl && videoTitle) {
