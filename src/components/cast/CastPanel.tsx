@@ -304,10 +304,12 @@ export function CastPanel({
               )}
             </div>
           </div>
+          )}
 
-          <Separator />
+          {capabilities.airplay.enabled && <Separator />}
 
-          {/* AirPlay Section */}
+          {/* AirPlay Section — gated by capability matrix */}
+          {capabilities.airplay.enabled && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium flex items-center gap-2">
