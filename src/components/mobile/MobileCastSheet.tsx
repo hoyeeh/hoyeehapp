@@ -307,8 +307,11 @@ export function MobileCastSheet({
                         </p>
                       </div>
                     )}
+                    </>
+                    )}
 
-                    {/* AirPlay */}
+                    {/* AirPlay — gated by capability matrix */}
+                    {capabilities.airplay.enabled && (
                     <button
                       onClick={handleAirPlay}
                       disabled={!cast.airPlay.isAvailable}
