@@ -409,16 +409,37 @@ export const EnhancedHomeSectionManagement = () => {
 
   const reorderSections = useMutation({
     mutationFn: async (updates: { id: string; display_order: number }[]) => {
-      for (const update of updates) {
-        await supabase.from("home_sections").update({ display_order: update.display_order }).eq("id", update.id);
+      // Parallel updates: faster and minimizes partial-failure window.
+      const results = await Promise.all(
+        updates.map((u) =>
+          supabase.from("home_sections").update({ display_order: u.display_order }).eq("id", u.id)
+        )
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+    },
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: ["home-sections"] });
+      const previous = queryClient.getQueryData<HomeSection[]>(["home-sections"]);
+      if (previous) {
+        const orderMap = new Map(updates.map((u) => [u.id, u.display_order]));
+        const next = [...previous]
+          .map((s) => ({ ...s, display_order: orderMap.get(s.id) ?? s.display_order }))
+          .sort((a, b) => a.display_order - b.display_order);
+        queryClient.setQueryData(["home-sections"], next);
       }
+      return { previous };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["home-sections"] });
       queryClient.invalidateQueries({ queryKey: ["home-sections-display"] });
       queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
+      toast.success("Section order updated");
     },
-    onError: () => toast.error("Failed to reorder sections"),
+    onError: (_err, _vars, ctx: any) => {
+      if (ctx?.previous) queryClient.setQueryData(["home-sections"], ctx.previous);
+      toast.error("Failed to reorder sections");
+    },
   });
 
   const toggleActive = useMutation({
