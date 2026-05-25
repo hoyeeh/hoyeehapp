@@ -2,6 +2,23 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { castLog } from '@/lib/castLog';
+
+// How long the controller waits for the TV receiver to send an ack
+// (success or error) after a LOAD command. After this expires we
+// surface a "TV failed to load" failure state with retry.
+const LOAD_ACK_TIMEOUT_MS = 8000;
+
+export interface LoadVideoResult {
+  success: boolean;
+  error?: string;
+  /** The command_seq assigned to this LOAD by the signaling server. */
+  seq?: number;
+  /** Whether the receiver acknowledged the LOAD within the timeout. */
+  acked?: boolean;
+  /** True when the LOAD was sent successfully but no ack arrived in time. */
+  timedOut?: boolean;
+}
 
 export interface CastDevice {
   id: string;
@@ -157,6 +174,7 @@ export function useUniversalCast() {
   // Pair with TV using code - returns sessionId on success for immediate use
   const pairWithCode = useCallback(async (code: string): Promise<string | null> => {
     setState(prev => ({ ...prev, isConnecting: true }));
+    castLog.info('Pair attempt', { code: code.toUpperCase() });
 
     try {
       const result = await callSignaling('pair', {
@@ -172,7 +190,6 @@ export function useUniversalCast() {
           sessionId: result.sessionId,
         };
 
-        // Store sessionId in ref for immediate access
         sessionIdRef.current = result.sessionId;
 
         setState(prev => ({
@@ -186,14 +203,17 @@ export function useUniversalCast() {
         startPolling(result.sessionId);
         setupRealtimeSubscription(result.sessionId);
 
+        castLog.success('Pair success', { sessionId: result.sessionId, device: device.name });
         toast.success(`Connected to ${device.name}`);
         return result.sessionId;
       } else {
+        castLog.error('Pair failed', { error: result.error });
         toast.error(result.error || 'Invalid or expired code');
         setState(prev => ({ ...prev, isConnecting: false }));
         return null;
       }
-    } catch (error) {
+    } catch (error: any) {
+      castLog.error('Pair threw', { error: String(error?.message || error) });
       console.error('Pairing error:', error);
       toast.error('Failed to connect');
       setState(prev => ({ ...prev, isConnecting: false }));
@@ -304,6 +324,33 @@ export function useUniversalCast() {
     }, 10000); // Reduced from 2s to 10s - realtime handles immediate updates
   }, []);
 
+  // Pending ack resolvers keyed by command_seq. When the receiver POSTs
+  // /ack, our realtime / polling listener resolves the matching promise.
+  const pendingAcksRef = useRef<
+    Map<number, { resolve: (r: { acked: boolean; error?: string }) => void; timer: ReturnType<typeof setTimeout> }>
+  >(new Map());
+
+  const resolveAcksUpTo = useCallback(
+    (lastAckedSeq: number, status?: string | null, errorMessage?: string | null) => {
+      if (!lastAckedSeq) return;
+      const pending = pendingAcksRef.current;
+      for (const [seq, entry] of pending.entries()) {
+        if (seq <= lastAckedSeq) {
+          clearTimeout(entry.timer);
+          pending.delete(seq);
+          const isError = status === 'error';
+          castLog.log(
+            isError ? 'error' : 'success',
+            `LOAD ack received seq=${seq} status=${status || 'success'}`,
+            errorMessage ? { error: errorMessage } : undefined
+          );
+          entry.resolve({ acked: !isError, error: isError ? errorMessage || 'TV reported playback error' : undefined });
+        }
+      }
+    },
+    []
+  );
+
   // Setup realtime subscription for instant updates
   const setupRealtimeSubscription = useCallback((sessionId: string) => {
     if (realtimeChannelRef.current) {
@@ -335,10 +382,16 @@ export function useUniversalCast() {
               queue: (session.queue as QueueItem[]) || [],
             },
           }));
+
+          // Resolve any pending ack waiters when the receiver posts an ack.
+          const lastAckedSeq = Number(session.last_acked_seq) || 0;
+          const lastAckStatus = (session.last_ack_status as string | null) ?? null;
+          const lastAckError = (session.last_ack_error as string | null) ?? null;
+          resolveAcksUpTo(lastAckedSeq, lastAckStatus, lastAckError);
         }
       )
       .subscribe();
-  }, []);
+  }, [resolveAcksUpTo]);
 
   // Send command to receiver - uses ref for immediate sessionId access
   const sendCommand = useCallback(async (
@@ -348,26 +401,48 @@ export function useUniversalCast() {
   ) => {
     const activeSessionId = overrideSessionId || sessionIdRef.current || state.sessionId;
     if (!activeSessionId) {
-      console.error('No active session for command:', command);
+      castLog.error(`Cannot send ${command}: no active session`);
       return { success: false, error: 'No active session' };
     }
 
+    castLog.info(`Send command ${command}`, { sessionId: activeSessionId, payload });
     try {
       const result = await callSignaling('command', {
         sessionId: activeSessionId,
         command,
         payload,
       });
-      console.log(`[Cast] Command ${command} result:`, result);
+      if (result?.success) {
+        castLog.success(`Command ${command} accepted by server`, { seq: result.seq });
+      } else {
+        castLog.error(`Command ${command} rejected`, { error: result?.error });
+      }
       return result;
-    } catch (error) {
-      console.error('Command error:', error);
+    } catch (error: any) {
+      castLog.error(`Command ${command} threw`, { error: String(error?.message || error) });
       toast.error('Failed to send command');
       return { success: false, error: 'Command failed' };
     }
   }, [state.sessionId, callSignaling]);
 
-  // Load video on receiver
+  // Wait for the receiver to ack the given command_seq within a timeout.
+  const awaitAck = useCallback(
+    (seq: number): Promise<{ acked: boolean; error?: string; timedOut?: boolean }> => {
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          if (pendingAcksRef.current.has(seq)) {
+            pendingAcksRef.current.delete(seq);
+            castLog.warn(`LOAD ack timed out seq=${seq}`, { timeoutMs: LOAD_ACK_TIMEOUT_MS });
+            resolve({ acked: false, timedOut: true, error: 'TV did not confirm playback in time' });
+          }
+        }, LOAD_ACK_TIMEOUT_MS);
+        pendingAcksRef.current.set(seq, { resolve: (r) => resolve(r), timer });
+      });
+    },
+    []
+  );
+
+  // Load video on receiver — sends LOAD then waits for the TV ack handshake.
   const loadVideo = useCallback(async (
     videoUrl: string,
     title: string,
@@ -375,8 +450,9 @@ export function useUniversalCast() {
     duration?: number,
     startTime?: number,
     overrideSessionId?: string
-  ) => {
-    console.log('[Cast] Loading video:', { videoUrl, title, overrideSessionId });
+  ): Promise<LoadVideoResult> => {
+    castLog.info('LOAD payload prepared', { url: videoUrl, title, startTime: startTime || 0, sessionId: overrideSessionId });
+
     const result = await sendCommand('LOAD', {
       url: videoUrl,
       videoUrl,
@@ -388,8 +464,29 @@ export function useUniversalCast() {
 
     if (!result?.success) {
       const errorMessage = typeof result?.error === 'string' ? result.error : 'Failed to launch video on TV';
+      castLog.error('LOAD rejected by server', { error: errorMessage });
       toast.error(errorMessage);
+      return { success: false, error: errorMessage };
     }
+
+    // Wait for the TV receiver to acknowledge it actually loaded the stream.
+    const seq = typeof result.seq === 'number' ? result.seq : undefined;
+    if (seq === undefined) {
+      // Server didn't return a seq — best effort, treat as success without ack.
+      castLog.warn('LOAD accepted but no seq returned; skipping ack wait');
+      return { success: true, acked: false, seq: undefined };
+    }
+
+    const ack = await awaitAck(seq);
+    if (ack.acked) {
+      return { success: true, acked: true, seq };
+    }
+
+    const message = ack.error || 'TV failed to load the video';
+    castLog.error('LOAD did not complete on TV', { seq, timedOut: ack.timedOut, error: message });
+    toast.error(message);
+    return { success: false, acked: false, timedOut: !!ack.timedOut, seq, error: message };
+  }, [sendCommand, awaitAck]);
 
     return result;
   }, [sendCommand]);

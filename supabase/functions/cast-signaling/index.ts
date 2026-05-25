@@ -443,10 +443,15 @@ serve(async (req) => {
           playbackTime: session.playback_time, duration: session.video_duration,
           isPlaying: session.is_playing, volume: session.volume_level, queue: session.queue,
           deviceName: session.cast_receivers?.device_name, lastHeartbeat: session.last_heartbeat,
-          // NEW: Include command tracking for receiver deduplication
+          // Command tracking for receiver deduplication
           commandSeq: session.command_seq,
           commandType: session.command_type,
-          commandUpdatedAt: session.command_updated_at
+          commandUpdatedAt: session.command_updated_at,
+          // Ack handshake (receiver -> controller)
+          lastAckedSeq: session.last_acked_seq,
+          lastAckStatus: session.last_ack_status,
+          lastAckError: session.last_ack_error,
+          lastAckAt: session.last_ack_at,
         },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -469,6 +474,53 @@ serve(async (req) => {
       // DO NOT update: command_seq, command_type, command_payload, command_updated_at
 
       await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ACK (receiver -> controller) — confirms the TV processed a command.
+    // No auth required: the receiver is identified by sessionId only.
+    // Body: { sessionId, seq, status: 'success'|'error', error?, commandType? }
+    if (action === 'ack') {
+      const body = await req.json().catch(() => ({}));
+      const { sessionId, seq, status, error: ackError, commandType } = body || {};
+
+      if (!sessionId || typeof seq !== 'number' || !status) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Missing sessionId, seq, or status',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      console.log(`[cast-signaling] ACK session=${sessionId} seq=${seq} status=${status}${ackError ? ' err=' + ackError : ''}`);
+
+      const { error: updateError } = await supabase
+        .from('cast_sessions')
+        .update({
+          last_acked_seq: seq,
+          last_ack_status: status,
+          last_ack_error: status === 'error' ? (typeof ackError === 'string' ? ackError.slice(0, 500) : 'Unknown error') : null,
+          last_ack_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      if (updateError) {
+        console.error('[cast-signaling] Failed to persist ack:', updateError);
+        return new Response(JSON.stringify({ success: false, error: 'Failed to persist ack' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Log to cast_events for audit / debug timeline.
+      await supabase.from('cast_events').insert({
+        session_id: sessionId,
+        actor: 'receiver',
+        event_type: status === 'success' ? 'ACK' : 'ACK_ERROR',
+        payload: { seq, commandType: commandType || null, error: ackError || null },
+      });
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -499,7 +551,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: false, 
       error: 'Invalid action',
-      validActions: ['health', 'generate-code', 'pair', 'command', 'status', 'heartbeat', 'disconnect']
+      validActions: ['health', 'generate-code', 'pair', 'command', 'status', 'heartbeat', 'ack', 'disconnect']
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

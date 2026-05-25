@@ -1542,6 +1542,7 @@
             pendingVideoUrl = null;
             video.currentTime = startTime;
             attemptPlay();
+            sendAck('success');
           });
           
           hls.on(Hls.Events.ERROR, function(event, data) {
@@ -1556,6 +1557,7 @@
                   setTimeout(function() { hls.startLoad(); }, 2000);
                 } else {
                   showError('Network Error', 'Failed to load video. Please check your connection.', 'HLS_NETWORK');
+                  sendAck('error', 'Network error: ' + (data.details || 'unable to load video stream'));
                 }
               } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                 console.log('[TV] Fatal media error, trying to recover');
@@ -1563,6 +1565,7 @@
               } else {
                 showError('Format Not Supported', 'This video format cannot be played on your TV.', 'HLS_FATAL');
                 hls.destroy();
+                sendAck('error', 'Format not supported: ' + (data.details || 'fatal HLS error'));
               }
             }
           });
@@ -1581,6 +1584,7 @@
             pendingVideoUrl = null;
             video.currentTime = startTime;
             attemptPlay();
+            sendAck('success');
           });
         } else {
           console.log('[TV] Using native video element');
@@ -1593,6 +1597,7 @@
             pendingVideoUrl = null;
             video.currentTime = startTime;
             attemptPlay();
+            sendAck('success');
           });
         }
       }
@@ -1809,6 +1814,28 @@
         pairingScreen.style.display = '-webkit-box';
         pairingScreen.style.display = 'flex';
       }
+
+      // Send ack back to controller so the app knows the LOAD command
+      // was actually received and processed (or failed) on the TV.
+      function sendAck(status, errorMessage) {
+        if (!sessionId) return;
+        try {
+          callSignaling('ack', {
+            sessionId: sessionId,
+            seq: lastProcessedCommandSeq,
+            status: status,
+            error: errorMessage || null,
+            commandType: 'LOAD',
+          }).catch(function (err) {
+            console.error('[TV] Failed to send ack:', err);
+          });
+          console.log('[TV] ACK sent', { seq: lastProcessedCommandSeq, status: status, error: errorMessage || null });
+        } catch (e) {
+          console.error('[TV] sendAck threw:', e);
+        }
+      }
+      // Expose globally so load/error handlers added later can call it.
+      window.__castSendAck = sendAck;
 
       function startHeartbeat() {
         if (heartbeatInterval) {
