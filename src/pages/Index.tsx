@@ -900,6 +900,42 @@ const Index = () => {
                       ) : null;
                     }
 
+                    // My Purchases section (admin-configured, shows user's unlocked content)
+                    if (section.section_type === "purchases") {
+                      const purchasedContent: Content[] = userPurchases
+                        .filter((p: any) => p.content)
+                        .map((p: any) => ({
+                          id: p.content.id,
+                          title: p.content.title,
+                          description: p.content.description || "",
+                          thumbnailUrl: p.content.thumbnail_url || "",
+                          videoUrl: p.content.video_url || "",
+                          genre: p.content.genre || "",
+                          contentType: p.content.content_type as "movie" | "series",
+                          isPremium: p.content.is_premium || false,
+                          duration: p.content.duration || 0,
+                          year: p.content.year,
+                          rating: p.content.rating,
+                        }))
+                        .slice(0, section.max_items || 15);
+                      return purchasedContent.length > 0 ? (
+                        <ContentRow
+                          key={section.id}
+                          title={section.title}
+                          content={purchasedContent}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                          cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                          cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                          showSeeAll
+                          onSeeAll={() => navigate("/my-purchases")}
+                        />
+                      ) : null;
+                    }
+
+
                     // YouTube section
                     if (section.section_type === "youtube") {
                       return (
