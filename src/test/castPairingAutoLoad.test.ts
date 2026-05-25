@@ -30,4 +30,9 @@ describe("cast pairing auto-load regressions", () => {
     const src = read("src/components/mobile/MobileVideoPlayer.tsx");
     expect(src).toMatch(/await cast\.loadVideo\([\s\S]*thumbnail \|\| content\.thumbnailUrl,[\s\S]*duration,[\s\S]*currentVideoTime/);
   });
+
+  it("VideoPlayer passes the resolved playback URL into CastToTVButton", () => {
+    const src = read("src/components/VideoPlayer.tsx");
+    expect(src).toMatch(/<CastToTVButton[\s\S]*videoUrl=\{getVideoSource\(\)\}/);
+  });
 });
