@@ -474,6 +474,53 @@ serve(async (req) => {
       });
     }
 
+    // ACK (receiver -> controller) — confirms the TV processed a command.
+    // No auth required: the receiver is identified by sessionId only.
+    // Body: { sessionId, seq, status: 'success'|'error', error?, commandType? }
+    if (action === 'ack') {
+      const body = await req.json().catch(() => ({}));
+      const { sessionId, seq, status, error: ackError, commandType } = body || {};
+
+      if (!sessionId || typeof seq !== 'number' || !status) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Missing sessionId, seq, or status',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      console.log(`[cast-signaling] ACK session=${sessionId} seq=${seq} status=${status}${ackError ? ' err=' + ackError : ''}`);
+
+      const { error: updateError } = await supabase
+        .from('cast_sessions')
+        .update({
+          last_acked_seq: seq,
+          last_ack_status: status,
+          last_ack_error: status === 'error' ? (typeof ackError === 'string' ? ackError.slice(0, 500) : 'Unknown error') : null,
+          last_ack_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      if (updateError) {
+        console.error('[cast-signaling] Failed to persist ack:', updateError);
+        return new Response(JSON.stringify({ success: false, error: 'Failed to persist ack' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Log to cast_events for audit / debug timeline.
+      await supabase.from('cast_events').insert({
+        session_id: sessionId,
+        actor: 'receiver',
+        event_type: status === 'success' ? 'ACK' : 'ACK_ERROR',
+        payload: { seq, commandType: commandType || null, error: ackError || null },
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Disconnect - REQUIRES AUTH for owned sessions
     if (action === 'disconnect') {
       const { sessionId } = await req.json();
