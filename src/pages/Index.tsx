@@ -521,16 +521,16 @@ const Index = () => {
           .sort((a, b) => (b.year || 0) - (a.year || 0))
           .slice(0, section.max_items || 15);
       case "free_content":
-        // Anything placed in a Free section is free to watch for all visitors —
-        // we override isPremium=false regardless of the content's own flag so the
-        // playback gate (which checks item.isPremium) does not require a subscription.
+        // Only content explicitly marked as free (is_premium = false) by the admin
+        // when adding the content may appear in a Free section. Premium content is
+        // excluded even if an admin tries to curate it into a Free section.
         if (section.is_curated) {
           const curatedFree = sectionContentData
-            .filter((sc: any) => sc.section_id === section.id && sc.content)
-            .map((sc: any) => ({ ...transformRawContent(sc.content), isPremium: false }));
+            .filter((sc: any) => sc.section_id === section.id && sc.content && !sc.content.is_premium)
+            .map((sc: any) => transformRawContent(sc.content));
           return curatedFree.slice(0, section.max_items || 15);
         }
-        let freeFiltered = content.map((c) => ({ ...c, isPremium: false }));
+        let freeFiltered = content.filter((c) => !c.isPremium);
         if (section.content_type_filter === "movie") {
           freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
         } else if (section.content_type_filter === "series") {
