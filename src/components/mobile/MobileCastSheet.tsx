@@ -115,9 +115,13 @@ export function MobileCastSheet({
         // Only load video if we have a URL - use sessionId directly to avoid race condition
         if (videoUrl) {
           onCastStart?.();
-          await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime, sessionId);
-          toast.success(`Connected and casting to TV`);
-          onClose();
+          const result = await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime, sessionId);
+          if (result?.success) {
+            toast.success(`Connected and casting to TV`);
+            onClose();
+          } else {
+            toast.error(result?.error || 'Connected to TV but failed to launch video');
+          }
         } else {
           toast.success(`Connected to TV`);
         }
@@ -141,13 +145,17 @@ export function MobileCastSheet({
         name: device.customName || device.name,
         type: castDeviceType as 'remote' | 'dlna' | 'chromecast',
       });
-      if (success && cast.isConnected) {
+        if (success && cast.isConnected) {
         // Only load video if we have a URL
         if (videoUrl) {
           onCastStart?.();
-          await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime);
-          toast.success(`Connected to ${device.name}`);
-          onClose();
+            const result = await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime);
+            if (result?.success) {
+              toast.success(`Connected to ${device.name}`);
+              onClose();
+            } else {
+              toast.error(result?.error || 'Connected to TV but failed to launch video');
+            }
         } else {
           toast.success(`Connected to ${device.name}`);
         }
