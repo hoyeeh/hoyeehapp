@@ -311,15 +311,15 @@ export function MobileHome() {
           .slice(0, section.max_items || 15);
       
       case "free_content":
-        // Check if curated - use section_content table
+        // Items in a Free section are free to watch regardless of is_premium —
+        // override isPremium=false so the playback gate bypasses the subscription check.
         if (section.is_curated) {
           const curatedFree = sectionContentData
-            .filter((sc: any) => sc.section_id === section.id && sc.content && !sc.content.is_premium)
-            .map((sc: any) => transformContent([sc.content])[0]);
+            .filter((sc: any) => sc.section_id === section.id && sc.content)
+            .map((sc: any) => ({ ...transformContent([sc.content])[0], isPremium: false }));
           return curatedFree.slice(0, section.max_items || 15);
         }
-        // Filter for non-premium (free) content
-        let freeFiltered = content.filter((c) => !c.isPremium);
+        let freeFiltered = content.map((c) => ({ ...c, isPremium: false }));
         if (section.content_type_filter === "movie") {
           freeFiltered = freeFiltered.filter((c) => c.contentType === "movie");
         } else if (section.content_type_filter === "series") {
