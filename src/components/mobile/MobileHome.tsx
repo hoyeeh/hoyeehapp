@@ -30,6 +30,7 @@ import { MobileCastStatusIndicator } from "./MobileCastStatusIndicator";
 import { MobileHomeYouTubeRow } from "./MobileHomeYouTubeRow";
 import { MobileRecentlyWatched } from "./MobileRecentlyWatched";
 import { MobileAIRecommendations } from "./MobileAIRecommendations";
+import { MobileRecommendationsRow } from "./MobileRecommendationsRow";
 import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { MobilePaidContentRow } from "./MobilePaidContentRow";
