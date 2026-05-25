@@ -31,6 +31,22 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Helper: find a Supabase auth user by email, paginating to support any user count.
+    // The default listUsers() page size is 50, which silently misses users on larger projects.
+    const findUserByEmail = async (email: string) => {
+      const perPage = 200;
+      let page = 1;
+      while (true) {
+        const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (error || !data?.users?.length) return null;
+        const match = data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+        if (match) return match;
+        if (data.users.length < perPage) return null;
+        page += 1;
+        if (page > 50) return null; // safety cap (10k users)
+      }
+    };
+
     // Get the raw body and signature
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
@@ -144,8 +160,8 @@ serve(async (req) => {
         // This handles subscription renewals
         if (invoice.subscription && invoice.customer_email) {
           // Find user by email in auth
-          const { data: authUsers } = await supabase.auth.admin.listUsers();
-          const user = authUsers?.users?.find(u => u.email === invoice.customer_email);
+          // Paginated lookup (replaces unpaginated listUsers default of 50)
+          const user = await findUserByEmail(invoice.customer_email);
           
           if (user) {
             // Get current subscription
@@ -195,8 +211,8 @@ serve(async (req) => {
         console.log("Invoice payment failed:", invoice.id);
         
         if (invoice.customer_email) {
-          const { data: authUsers } = await supabase.auth.admin.listUsers();
-          const user = authUsers?.users?.find(u => u.email === invoice.customer_email);
+          // Paginated lookup (replaces unpaginated listUsers default of 50)
+          const user = await findUserByEmail(invoice.customer_email);
           
           if (user) {
             // Mark subscription as past_due
@@ -239,8 +255,8 @@ serve(async (req) => {
         if (subscription.customer) {
           const customer = await stripe.customers.retrieve(subscription.customer as string);
           if (customer && !customer.deleted && customer.email) {
-            const { data: authUsers } = await supabase.auth.admin.listUsers();
-            const user = authUsers?.users?.find(u => u.email === customer.email);
+            // Paginated lookup (replaces unpaginated listUsers default of 50)
+            const user = await findUserByEmail(customer.email);
             
             if (user) {
               await supabase

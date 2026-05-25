@@ -202,13 +202,35 @@ serve(async (req) => {
       const result = await response.json();
 
       if (result.status === "success" && result.data.status === "successful") {
+        // CRITICAL: Verify the transaction belongs to the authenticated user
+        const txUserId = result.data.meta?.user_id;
+        if (txUserId && txUserId !== user.id) {
+          console.error("Transaction ownership mismatch", { txUserId, authUser: user.id });
+          return new Response(JSON.stringify({ error: "Unauthorized: transaction does not belong to this user" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         // Extract plan type from tx_ref (hoyeeh-{plan_type}-{user_id}-{timestamp})
         const verifiedPlanType = (tx_ref as string).split("-")[1] === "yearly" ? "yearly" : "monthly";
         const verifiedDaysToAdd = verifiedPlanType === "yearly" ? 365 : 30;
         const verifiedPrice = verifiedPlanType === "yearly" ? yearlyPrice : monthlyPrice;
-        
+
+        // CRITICAL: Verify amount and currency match expected plan price (prevent tampering)
+        const paidAmount = Number(result.data.amount);
+        const paidCurrency = String(result.data.currency || "").toUpperCase();
+        if (paidCurrency !== "XAF" || paidAmount < verifiedPrice) {
+          console.error("Amount/currency mismatch", { paidAmount, paidCurrency, expected: verifiedPrice });
+          return new Response(JSON.stringify({ error: "Payment amount or currency does not match plan" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         const now = new Date();
         const expiresAt = new Date(now.getTime() + verifiedDaysToAdd * 24 * 60 * 60 * 1000);
+
 
         // Update subscription status
         await supabase
