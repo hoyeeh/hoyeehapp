@@ -114,9 +114,17 @@ const Index = () => {
         .select("*, genre:genre_id(name)")
         .eq("is_active", true)
         .eq("show_on_desktop", true)
-        .order("display_order");
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
       if (error) throw error;
-      return data || [];
+      // Deduplicate by id (defensive — should always be unique)
+      const seen = new Set<string>();
+      return (data || []).filter((s: any) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
     },
   });
 
