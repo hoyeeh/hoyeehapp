@@ -608,6 +608,26 @@ export function useDownloadManager() {
       });
 
       await loadDownloads();
+
+      // Ask the browser to mark storage as persistent so offline downloads
+      // are not evicted under storage pressure (runs once per device).
+      try {
+        if (
+          typeof navigator !== "undefined" &&
+          navigator.storage?.persist &&
+          navigator.storage?.persisted &&
+          !localStorage.getItem("hoyeeh-storage-persist-requested")
+        ) {
+          const already = await navigator.storage.persisted();
+          if (!already) {
+            await navigator.storage.persist();
+          }
+          localStorage.setItem("hoyeeh-storage-persist-requested", "1");
+        }
+      } catch (e) {
+        console.warn("[downloadVideo] storage.persist() not available:", e);
+      }
+
       toast.success(`Download complete: ${metadata.episodeTitle || metadata.title}`);
 
     } catch (error: any) {

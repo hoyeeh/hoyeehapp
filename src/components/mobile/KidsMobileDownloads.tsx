@@ -46,9 +46,19 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
     return !rating || KIDS_RATINGS_LOCAL.includes(rating);
   });
 
-  // Calculate storage usage
+  // Calculate storage usage against actual device quota (unified with main app)
   const totalSize = downloads.reduce((acc, d) => acc + d.downloadedSize, 0);
-  const storagePercentage = Math.min((totalSize / (5 * 1024 * 1024 * 1024)) * 100, 100); // 5GB limit for kids
+  const [deviceQuota, setDeviceQuota] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.storage?.estimate) {
+      navigator.storage.estimate()
+        .then((est) => setDeviceQuota(est.quota ?? null))
+        .catch(() => setDeviceQuota(null));
+    }
+  }, []);
+  // Fall back to 5GB only if the browser does not expose a quota estimate
+  const storageLimit = deviceQuota ?? 5 * 1024 * 1024 * 1024;
+  const storagePercentage = Math.min((totalSize / storageLimit) * 100, 100);
 
   const handleDelete = async (ids: string[]) => {
     warningFeedback();
@@ -159,7 +169,10 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
             </div>
             <div>
               <p className="text-sm font-medium text-white">Storage</p>
-              <p className="text-xs text-white/60">{downloads.length} items saved • {formatBytes(totalSize)}</p>
+              <p className="text-xs text-white/60">
+                {downloads.length} items saved • {formatBytes(totalSize)}
+                {deviceQuota ? ` of ${formatBytes(storageLimit)}` : ""}
+              </p>
             </div>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
