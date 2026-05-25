@@ -321,6 +321,33 @@ export function useUniversalCast() {
     }, 10000); // Reduced from 2s to 10s - realtime handles immediate updates
   }, []);
 
+  // Pending ack resolvers keyed by command_seq. When the receiver POSTs
+  // /ack, our realtime / polling listener resolves the matching promise.
+  const pendingAcksRef = useRef<
+    Map<number, { resolve: (r: { acked: boolean; error?: string }) => void; timer: ReturnType<typeof setTimeout> }>
+  >(new Map());
+
+  const resolveAcksUpTo = useCallback(
+    (lastAckedSeq: number, status?: string | null, errorMessage?: string | null) => {
+      if (!lastAckedSeq) return;
+      const pending = pendingAcksRef.current;
+      for (const [seq, entry] of pending.entries()) {
+        if (seq <= lastAckedSeq) {
+          clearTimeout(entry.timer);
+          pending.delete(seq);
+          const isError = status === 'error';
+          castLog.log(
+            isError ? 'error' : 'success',
+            `LOAD ack received seq=${seq} status=${status || 'success'}`,
+            errorMessage ? { error: errorMessage } : undefined
+          );
+          entry.resolve({ acked: !isError, error: isError ? errorMessage || 'TV reported playback error' : undefined });
+        }
+      }
+    },
+    []
+  );
+
   // Setup realtime subscription for instant updates
   const setupRealtimeSubscription = useCallback((sessionId: string) => {
     if (realtimeChannelRef.current) {
@@ -352,10 +379,16 @@ export function useUniversalCast() {
               queue: (session.queue as QueueItem[]) || [],
             },
           }));
+
+          // Resolve any pending ack waiters when the receiver posts an ack.
+          const lastAckedSeq = Number(session.last_acked_seq) || 0;
+          const lastAckStatus = (session.last_ack_status as string | null) ?? null;
+          const lastAckError = (session.last_ack_error as string | null) ?? null;
+          resolveAcksUpTo(lastAckedSeq, lastAckStatus, lastAckError);
         }
       )
       .subscribe();
-  }, []);
+  }, [resolveAcksUpTo]);
 
   // Send command to receiver - uses ref for immediate sessionId access
   const sendCommand = useCallback(async (
