@@ -103,6 +103,45 @@ const FIRST_CARD_STYLES = [
   { value: "poster", label: "Poster (2:3)" },
 ];
 
+const sanitizeYearFilters = (data: {
+  year_filter: number | null;
+  year_min: number | null;
+  year_max: number | null;
+}) => {
+  const exactYear = typeof data.year_filter === "number" && !Number.isNaN(data.year_filter)
+    ? data.year_filter
+    : null;
+
+  if (exactYear) {
+    return {
+      year_filter: exactYear,
+      year_min: null,
+      year_max: null,
+    };
+  }
+
+  const minYear = typeof data.year_min === "number" && !Number.isNaN(data.year_min)
+    ? data.year_min
+    : null;
+  const maxYear = typeof data.year_max === "number" && !Number.isNaN(data.year_max)
+    ? data.year_max
+    : null;
+
+  if (minYear !== null && maxYear !== null && minYear > maxYear) {
+    return {
+      year_filter: null,
+      year_min: maxYear,
+      year_max: minYear,
+    };
+  }
+
+  return {
+    year_filter: null,
+    year_min: minYear,
+    year_max: maxYear,
+  };
+};
+
 interface SortableItemProps {
   section: HomeSection;
   onEdit: (section: HomeSection) => void;
@@ -205,7 +244,12 @@ export const EnhancedHomeSectionManagement = () => {
   const { data: sections = [], isLoading } = useQuery({
     queryKey: ["home-sections"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("home_sections").select("*").order("display_order");
+      const { data, error } = await supabase
+        .from("home_sections")
+        .select("*")
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
       if (error) throw error;
       return data as HomeSection[];
     },
@@ -250,6 +294,7 @@ export const EnhancedHomeSectionManagement = () => {
   const createSection = useMutation({
     mutationFn: async (data: typeof formData) => {
       const maxOrder = sections.length > 0 ? Math.max(...sections.map((s) => s.display_order)) : 0;
+      const { year_filter, year_min, year_max } = sanitizeYearFilters(data);
       const { error } = await supabase.from("home_sections").insert({
         title: data.title,
         section_type: data.section_type,
@@ -263,9 +308,9 @@ export const EnhancedHomeSectionManagement = () => {
         show_on_mobile: data.show_on_mobile,
         show_on_kids: data.show_on_kids,
         is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
-        year_filter: data.year_filter,
-        year_min: data.year_min,
-        year_max: data.year_max,
+        year_filter,
+        year_min,
+        year_max,
         first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
         section_banner_url: data.section_banner_url || null,
         featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
@@ -284,6 +329,7 @@ export const EnhancedHomeSectionManagement = () => {
 
   const updateSection = useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & typeof formData) => {
+      const { year_filter, year_min, year_max } = sanitizeYearFilters(data);
       const { error } = await supabase
         .from("home_sections")
         .update({
@@ -298,9 +344,9 @@ export const EnhancedHomeSectionManagement = () => {
           show_on_mobile: data.show_on_mobile,
           show_on_kids: data.show_on_kids,
           is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
-          year_filter: data.year_filter,
-          year_min: data.year_min,
-          year_max: data.year_max,
+          year_filter,
+          year_min,
+          year_max,
           first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
           section_banner_url: data.section_banner_url || null,
           featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
