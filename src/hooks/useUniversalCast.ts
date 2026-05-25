@@ -174,6 +174,7 @@ export function useUniversalCast() {
   // Pair with TV using code - returns sessionId on success for immediate use
   const pairWithCode = useCallback(async (code: string): Promise<string | null> => {
     setState(prev => ({ ...prev, isConnecting: true }));
+    castLog.info('Pair attempt', { code: code.toUpperCase() });
 
     try {
       const result = await callSignaling('pair', {
@@ -189,7 +190,6 @@ export function useUniversalCast() {
           sessionId: result.sessionId,
         };
 
-        // Store sessionId in ref for immediate access
         sessionIdRef.current = result.sessionId;
 
         setState(prev => ({
@@ -203,14 +203,17 @@ export function useUniversalCast() {
         startPolling(result.sessionId);
         setupRealtimeSubscription(result.sessionId);
 
+        castLog.success('Pair success', { sessionId: result.sessionId, device: device.name });
         toast.success(`Connected to ${device.name}`);
         return result.sessionId;
       } else {
+        castLog.error('Pair failed', { error: result.error });
         toast.error(result.error || 'Invalid or expired code');
         setState(prev => ({ ...prev, isConnecting: false }));
         return null;
       }
-    } catch (error) {
+    } catch (error: any) {
+      castLog.error('Pair threw', { error: String(error?.message || error) });
       console.error('Pairing error:', error);
       toast.error('Failed to connect');
       setState(prev => ({ ...prev, isConnecting: false }));
