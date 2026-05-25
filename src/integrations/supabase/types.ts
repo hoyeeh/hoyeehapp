@@ -145,6 +145,10 @@ export type Database = {
           expires_at: string | null
           id: string
           is_playing: boolean | null
+          last_ack_at: string | null
+          last_ack_error: string | null
+          last_ack_status: string | null
+          last_acked_seq: number
           last_heartbeat: string | null
           pairing_code: string
           playback_time: number | null
@@ -170,6 +174,10 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_playing?: boolean | null
+          last_ack_at?: string | null
+          last_ack_error?: string | null
+          last_ack_status?: string | null
+          last_acked_seq?: number
           last_heartbeat?: string | null
           pairing_code: string
           playback_time?: number | null
@@ -195,6 +203,10 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_playing?: boolean | null
+          last_ack_at?: string | null
+          last_ack_error?: string | null
+          last_ack_status?: string | null
+          last_acked_seq?: number
           last_heartbeat?: string | null
           pairing_code?: string
           playback_time?: number | null
