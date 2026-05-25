@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Download, HardDrive, Play, Trash2, CheckCircle, Clock, Loader2, Pause, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -287,11 +287,17 @@ function DownloadItem({
   formatBytes: (bytes: number) => string;
 }) {
   const [expiry, setExpiry] = useState<number | null>(null);
-  
-  // Load expiry on mount
-  useState(() => {
-    getLicenseExpiry(item.contentId, item.episodeId).then(setExpiry);
-  });
+
+  // Load expiry on mount / when the item changes (fixes prior useState-as-effect misuse).
+  useEffect(() => {
+    let cancelled = false;
+    getLicenseExpiry(item.contentId, item.episodeId).then((value) => {
+      if (!cancelled) setExpiry(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.contentId, item.episodeId, getLicenseExpiry]);
 
   const isExpired = expiry ? expiry < Date.now() : false;
   const isDownloading = item.status === 'downloading';
