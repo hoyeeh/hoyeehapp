@@ -443,10 +443,15 @@ serve(async (req) => {
           playbackTime: session.playback_time, duration: session.video_duration,
           isPlaying: session.is_playing, volume: session.volume_level, queue: session.queue,
           deviceName: session.cast_receivers?.device_name, lastHeartbeat: session.last_heartbeat,
-          // NEW: Include command tracking for receiver deduplication
+          // Command tracking for receiver deduplication
           commandSeq: session.command_seq,
           commandType: session.command_type,
-          commandUpdatedAt: session.command_updated_at
+          commandUpdatedAt: session.command_updated_at,
+          // Ack handshake (receiver -> controller)
+          lastAckedSeq: session.last_acked_seq,
+          lastAckStatus: session.last_ack_status,
+          lastAckError: session.last_ack_error,
+          lastAckAt: session.last_ack_at,
         },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
