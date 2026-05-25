@@ -81,7 +81,7 @@ interface CastContextType {
   removePairedDevice: (deviceId: string) => void;
 
   // Playback methods
-  loadVideo: (videoUrl: string, title: string, thumbnail?: string, duration?: number, startTime?: number, sessionId?: string) => Promise<void>;
+  loadVideo: (videoUrl: string, title: string, thumbnail?: string, duration?: number, startTime?: number, sessionId?: string) => Promise<{ success: boolean; error?: string }>;
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;
