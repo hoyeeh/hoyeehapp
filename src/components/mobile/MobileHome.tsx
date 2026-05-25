@@ -30,6 +30,7 @@ import { MobileCastStatusIndicator } from "./MobileCastStatusIndicator";
 import { MobileHomeYouTubeRow } from "./MobileHomeYouTubeRow";
 import { MobileRecentlyWatched } from "./MobileRecentlyWatched";
 import { MobileAIRecommendations } from "./MobileAIRecommendations";
+import { MobileRecommendationsRow } from "./MobileRecommendationsRow";
 import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { MobilePaidContentRow } from "./MobilePaidContentRow";
@@ -668,6 +669,22 @@ export function MobileHome() {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileAIRecommendations onDetails={handleDetails} />
+                  </FadeIn>
+                );
+              }
+
+              // Recommendations section (mirrors desktop RecommendationsRow)
+              if (section.section_type === "recommendations") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileRecommendationsRow
+                      title={section.title}
+                      onDetails={handleDetails}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      sectionBannerUrl={section.section_banner_url || undefined}
+                      maxItems={section.max_items || 15}
+                    />
                   </FadeIn>
                 );
               }
