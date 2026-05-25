@@ -546,7 +546,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: false, 
       error: 'Invalid action',
-      validActions: ['health', 'generate-code', 'pair', 'command', 'status', 'heartbeat', 'disconnect']
+      validActions: ['health', 'generate-code', 'pair', 'command', 'status', 'heartbeat', 'ack', 'disconnect']
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
