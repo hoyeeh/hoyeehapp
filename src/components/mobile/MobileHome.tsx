@@ -673,6 +673,22 @@ export function MobileHome() {
                 );
               }
 
+              // Recommendations section (mirrors desktop RecommendationsRow)
+              if (section.section_type === "recommendations") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileRecommendationsRow
+                      title={section.title}
+                      onDetails={handleDetails}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      sectionBannerUrl={section.section_banner_url || undefined}
+                      maxItems={section.max_items || 15}
+                    />
+                  </FadeIn>
+                );
+              }
+
               // Because You Watched section
               if (section.section_type === "because_you_watched") {
                 return (
