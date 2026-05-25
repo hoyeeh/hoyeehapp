@@ -88,6 +88,10 @@ const Index = () => {
     setActiveFilters(filters);
   }, []);
 
+  // Fetch user purchases (for "My Purchases" admin section on desktop)
+  const { data: userPurchases = [] } = useUserPurchases();
+
+
   // Fetch Top 10 content
   const { data: top10Data = [] } = useQuery({
     queryKey: ["top-10-display"],
