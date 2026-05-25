@@ -55,11 +55,14 @@ export function UniversalCastButton({
     const sessionId = await pairWithCode(code);
     if (sessionId) {
       onCastStart?.();
-      // Auto-cast if we have a video - use sessionId directly to avoid race condition
+      // Auto-cast immediately with sessionId — avoids race conditions
+      // and guarantees the player launches on the TV right after pairing.
       if (videoUrl && videoTitle) {
-        setTimeout(() => {
-          loadVideo(videoUrl, videoTitle, thumbnail, duration, undefined, sessionId);
-        }, 300);
+        try {
+          await loadVideo(videoUrl, videoTitle, thumbnail, duration, undefined, sessionId);
+        } catch (err) {
+          console.error('[UniversalCastButton] Auto-load after pair failed:', err);
+        }
       }
       return true;
     }
@@ -70,11 +73,13 @@ export function UniversalCastButton({
     const success = await reconnectToDevice(device);
     if (success) {
       onCastStart?.();
-      // Auto-cast if we have a video
+      // Auto-cast immediately after reconnect
       if (videoUrl && videoTitle) {
-        setTimeout(() => {
-          loadVideo(videoUrl, videoTitle, thumbnail, duration);
-        }, 500);
+        try {
+          await loadVideo(videoUrl, videoTitle, thumbnail, duration);
+        } catch (err) {
+          console.error('[UniversalCastButton] Auto-load after reconnect failed:', err);
+        }
       }
     }
   };
