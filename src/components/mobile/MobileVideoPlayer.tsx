@@ -1022,15 +1022,17 @@ export function MobileVideoPlayer({
       setIsPlaying(false);
       
       // Load on cast device
-      await cast.loadVideo(
+      const result = await cast.loadVideo(
         getVideoSource(),
         episodeTitle || title,
         thumbnail || content.thumbnailUrl,
-        currentVideoTime,
-        duration
+        duration,
+        currentVideoTime
       );
-      
-      toast.success(`Casting to ${cast.connectedDevice?.name}`);
+
+      if (result?.success) {
+        toast.success(`Casting to ${cast.connectedDevice?.name}`);
+      }
     } else {
       setShowCastSheet(true);
     }
