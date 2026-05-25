@@ -1810,6 +1810,28 @@
         pairingScreen.style.display = 'flex';
       }
 
+      // Send ack back to controller so the app knows the LOAD command
+      // was actually received and processed (or failed) on the TV.
+      function sendAck(status, errorMessage) {
+        if (!sessionId) return;
+        try {
+          callSignaling('ack', {
+            sessionId: sessionId,
+            seq: lastProcessedCommandSeq,
+            status: status,
+            error: errorMessage || null,
+            commandType: 'LOAD',
+          }).catch(function (err) {
+            console.error('[TV] Failed to send ack:', err);
+          });
+          console.log('[TV] ACK sent', { seq: lastProcessedCommandSeq, status: status, error: errorMessage || null });
+        } catch (e) {
+          console.error('[TV] sendAck threw:', e);
+        }
+      }
+      // Expose globally so load/error handlers added later can call it.
+      window.__castSendAck = sendAck;
+
       function startHeartbeat() {
         if (heartbeatInterval) {
           clearInterval(heartbeatInterval);
