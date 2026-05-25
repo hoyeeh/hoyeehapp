@@ -179,6 +179,15 @@ serve(async (req) => {
       // Retrieve session from Stripe using SDK
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
+      // CRITICAL: Verify the session belongs to the authenticated user
+      if (session.metadata?.user_id && session.metadata.user_id !== user.id) {
+        console.error("Session ownership mismatch", { sessionUser: session.metadata.user_id, authUser: user.id });
+        return new Response(JSON.stringify({ error: "Unauthorized: session does not belong to this user" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       if (session.payment_status === "paid") {
         const verifiedPlanType = session.metadata?.plan_type || "monthly";
         const verifiedDaysToAdd = verifiedPlanType === "yearly" ? 365 : 30;
