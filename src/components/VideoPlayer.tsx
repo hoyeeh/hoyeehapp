@@ -1820,7 +1820,7 @@ export const VideoPlayer = ({
 
               {/* Cast to TV Button - QR Code Pairing */}
               <CastToTVButton
-                videoUrl={src}
+                videoUrl={getVideoSource()}
                 videoTitle={title}
                 startTime={currentTime}
                 duration={duration}

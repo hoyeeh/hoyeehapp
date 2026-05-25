@@ -92,11 +92,14 @@ export function CastToTVButton({
     const sessionId = await cast.pairWithCode(pairingCode.toUpperCase());
     
     if (sessionId) {
-      toast.success('Connected to TV!');
-      // Load the video on the TV - use sessionId directly to avoid race condition
-      await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime, sessionId);
-      setShowDialog(false);
-      setPairingCode('');
+      const result = await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime, sessionId);
+      if (result?.success) {
+        toast.success('Connected to TV!');
+        setShowDialog(false);
+        setPairingCode('');
+      } else {
+        setError(result?.error || 'Connected to TV but failed to launch video. Please try again.');
+      }
     } else {
       setError('Invalid or expired code. Please try again.');
     }
@@ -256,8 +259,12 @@ export function CastToTVButton({
                       onClick={async () => {
                         const success = await cast.reconnectToDevice(device);
                         if (success) {
-                          await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime);
-                          setShowDialog(false);
+                          const result = await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime);
+                          if (result?.success) {
+                            setShowDialog(false);
+                          } else {
+                            setError(result?.error || 'Connected to TV but failed to launch video. Please try again.');
+                          }
                         }
                       }}
                       className="w-full flex items-center gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors text-left"

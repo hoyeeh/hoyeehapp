@@ -378,12 +378,19 @@ export function useUniversalCast() {
   ) => {
     console.log('[Cast] Loading video:', { videoUrl, title, overrideSessionId });
     const result = await sendCommand('LOAD', {
+      url: videoUrl,
       videoUrl,
       title,
       thumbnail,
       duration,
       startTime: startTime || 0,
     }, overrideSessionId);
+
+    if (!result?.success) {
+      const errorMessage = typeof result?.error === 'string' ? result.error : 'Failed to launch video on TV';
+      toast.error(errorMessage);
+    }
+
     return result;
   }, [sendCommand]);
 
@@ -418,6 +425,8 @@ export function useUniversalCast() {
         console.error('Disconnect error:', error);
       }
     }
+
+    sessionIdRef.current = null;
 
     setState(prev => ({
       ...prev,
