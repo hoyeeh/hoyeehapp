@@ -488,9 +488,6 @@ export function useUniversalCast() {
     return { success: false, acked: false, timedOut: !!ack.timedOut, seq, error: message };
   }, [sendCommand, awaitAck]);
 
-    return result;
-  }, [sendCommand]);
-
   // Playback controls
   const play = useCallback(() => sendCommand('PLAY'), [sendCommand]);
   const pause = useCallback(() => sendCommand('PAUSE'), [sendCommand]);
