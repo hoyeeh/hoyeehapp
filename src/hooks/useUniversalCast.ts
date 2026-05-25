@@ -2,6 +2,23 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { castLog } from '@/lib/castLog';
+
+// How long the controller waits for the TV receiver to send an ack
+// (success or error) after a LOAD command. After this expires we
+// surface a "TV failed to load" failure state with retry.
+const LOAD_ACK_TIMEOUT_MS = 8000;
+
+export interface LoadVideoResult {
+  success: boolean;
+  error?: string;
+  /** The command_seq assigned to this LOAD by the signaling server. */
+  seq?: number;
+  /** Whether the receiver acknowledged the LOAD within the timeout. */
+  acked?: boolean;
+  /** True when the LOAD was sent successfully but no ack arrived in time. */
+  timedOut?: boolean;
+}
 
 export interface CastDevice {
   id: string;
