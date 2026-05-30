@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Storage key for cached session ID
 const SESSION_STORAGE_KEY = "secure_session_id";
+const SESSION_OVERRIDE_GRACE_KEY = "secure_session_override_grace_until";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [showSessionConflict, setShowSessionConflict] = useState(false);
   const [pendingConflictUserId, setPendingConflictUserId] = useState<string | null>(null);
+  const sessionOverrideGraceUntilRef = useRef(0);
 
   // Get cached session ID from localStorage
   const getCachedSessionId = useCallback(() => {
@@ -42,7 +44,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const clearCachedSessionId = useCallback(() => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(SESSION_OVERRIDE_GRACE_KEY);
     }
+
+    sessionOverrideGraceUntilRef.current = 0;
+  }, []);
+
+  const setSessionOverrideGrace = useCallback((durationMs: number) => {
+    sessionOverrideGraceUntilRef.current = Date.now() + durationMs;
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        SESSION_OVERRIDE_GRACE_KEY,
+        String(sessionOverrideGraceUntilRef.current)
+      );
+    }
+  }, []);
+
+  const isWithinSessionOverrideGrace = useCallback(() => {
+    if (typeof window !== "undefined") {
+      const storedGraceUntil = Number(localStorage.getItem(SESSION_OVERRIDE_GRACE_KEY) || "0");
+      if (storedGraceUntil > sessionOverrideGraceUntilRef.current) {
+        sessionOverrideGraceUntilRef.current = storedGraceUntil;
+      }
+    }
+
+    const withinGrace = Date.now() < sessionOverrideGraceUntilRef.current;
+
+    if (!withinGrace && typeof window !== "undefined") {
+      localStorage.removeItem(SESSION_OVERRIDE_GRACE_KEY);
+    }
+
+    return withinGrace;
   }, []);
 
   // Generate secure session ID via server-side RPC
@@ -89,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Handle continuing on this device
   const handleContinueHere = useCallback(async () => {
     setShowSessionConflict(false);
+    setSessionOverrideGrace(15000);
     
     // Generate new session ID to take over the session
     await generateSecureSessionId();
@@ -99,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     setPendingConflictUserId(null);
-  }, [generateSecureSessionId]);
+  }, [generateSecureSessionId, setSessionOverrideGrace]);
 
   // Handle signing out from conflict dialog
   const handleConflictSignOut = useCallback(async () => {
@@ -117,6 +151,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check and update session - validates against server
   const checkAndUpdateSession = useCallback(
     async (userId: string) => {
+      if (isWithinSessionOverrideGrace()) {
+        return;
+      }
+
       const cachedSessionId = getCachedSessionId();
       
       try {
@@ -131,8 +169,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Session is no longer valid - someone else logged in
           // Show the conflict dialog instead of immediately signing out
-          setPendingConflictUserId(userId);
-          setShowSessionConflict(true);
+          if (!isWithinSessionOverrideGrace()) {
+            setPendingConflictUserId(userId);
+            setShowSessionConflict(true);
+          }
           return;
         }
         
@@ -142,19 +182,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error checking session:", error);
       }
     },
-    [getCachedSessionId, validateSession, generateSecureSessionId]
-  );
-
-  // Update active session - generates new secure session ID
-  const updateActiveSession = useCallback(
-    async (userId: string) => {
-      try {
-        await generateSecureSessionId();
-      } catch (error) {
-        console.error("Error updating active session:", error);
-      }
-    },
-    [generateSecureSessionId]
+    [getCachedSessionId, validateSession, generateSecureSessionId, isWithinSessionOverrideGrace]
   );
 
   useEffect(() => {
@@ -167,7 +195,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (event === "SIGNED_IN" && currentSession?.user) {
         setTimeout(() => {
-          updateActiveSession(currentSession.user.id);
+          checkAndUpdateSession(currentSession.user.id);
         }, 0);
       }
 
@@ -189,7 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [updateActiveSession, checkAndUpdateSession, clearCachedSessionId]);
+  }, [checkAndUpdateSession, clearCachedSessionId]);
 
   // Realtime: detect when another device takes over this account
   useEffect(() => {
@@ -210,7 +238,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             ?.active_session_id;
           const cached = getCachedSessionId();
           if (!newSessionId || !cached) return;
-          if (newSessionId !== cached && !showSessionConflict) {
+          if (
+            newSessionId !== cached &&
+            !showSessionConflict &&
+            !isWithinSessionOverrideGrace()
+          ) {
             setPendingConflictUserId(user.id);
             setShowSessionConflict(true);
           }
@@ -227,7 +259,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       supabase.removeChannel(channel);
       window.clearInterval(interval);
     };
-  }, [user?.id, getCachedSessionId, checkAndUpdateSession, showSessionConflict]);
+  }, [user?.id, getCachedSessionId, checkAndUpdateSession, showSessionConflict, isWithinSessionOverrideGrace]);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     // Use production URL for redirect to ensure proper handling
