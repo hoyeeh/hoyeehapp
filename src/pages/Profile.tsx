@@ -133,11 +133,6 @@ const Profile = () => {
     }
   }, [currentProfile, navigate]);
 
-  // Return mobile version for mobile devices
-  if (isMobile) {
-    return <MobileProfile />;
-  }
-
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -157,6 +152,11 @@ const Profile = () => {
       }
     }
   }, [profile]);
+
+  // Return mobile version for mobile devices — must be AFTER all hooks
+  if (isMobile) {
+    return <MobileProfile />;
+  }
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
