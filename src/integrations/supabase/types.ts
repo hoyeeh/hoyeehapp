@@ -2822,10 +2822,14 @@ export type Database = {
         Row: {
           active_session_id: string | null
           avatar_url: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
           country: string | null
           created_at: string | null
           display_name: string | null
           id: string
+          is_blocked: boolean
           is_subscribed: boolean | null
           last_login_at: string | null
           lockout_count: number | null
@@ -2843,10 +2847,14 @@ export type Database = {
         Insert: {
           active_session_id?: string | null
           avatar_url?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           country?: string | null
           created_at?: string | null
           display_name?: string | null
           id: string
+          is_blocked?: boolean
           is_subscribed?: boolean | null
           last_login_at?: string | null
           lockout_count?: number | null
@@ -2864,10 +2872,14 @@ export type Database = {
         Update: {
           active_session_id?: string | null
           avatar_url?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           country?: string | null
           created_at?: string | null
           display_name?: string | null
           id?: string
+          is_blocked?: boolean
           is_subscribed?: boolean | null
           last_login_at?: string | null
           lockout_count?: number | null
