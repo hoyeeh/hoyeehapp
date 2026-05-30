@@ -216,13 +216,23 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Parse request body
-    const { targetUserId, sendEmail = true }: AdminResetPasswordRequest = await req.json();
+    const { targetUserId, sendEmail = true, customPassword }: AdminResetPasswordRequest = await req.json();
 
     if (!targetUserId) {
       return new Response(
         JSON.stringify({ success: false, error: "Target user ID is required" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    // Validate custom password if supplied
+    if (customPassword !== undefined && customPassword !== null && customPassword !== "") {
+      if (typeof customPassword !== "string" || customPassword.length < 8 || customPassword.length > 72) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Custom password must be 8-72 characters" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     }
 
     console.log(`Super admin ${callerUser.id} resetting password for user ${targetUserId}`);
