@@ -16,28 +16,46 @@ interface AdminResetPasswordRequest {
   sendEmail?: boolean;
 }
 
-// Generate a secure random password
-function generateSecurePassword(length: number = 12): string {
+// Generate a cryptographically secure random password
+function secureRandomInt(maxExclusive: number): number {
+  // Rejection sampling for unbiased values in [0, maxExclusive)
+  const buf = new Uint32Array(1);
+  const limit = Math.floor(0xffffffff / maxExclusive) * maxExclusive;
+  while (true) {
+    crypto.getRandomValues(buf);
+    if (buf[0] < limit) return buf[0] % maxExclusive;
+  }
+}
+
+function pickChar(set: string): string {
+  return set[secureRandomInt(set.length)];
+}
+
+function secureShuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateSecurePassword(length: number = 16): string {
   const lowercase = 'abcdefghijklmnopqrstuvwxyz';
   const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const numbers = '0123456789';
   const special = '!@#$%^&*';
   const allChars = lowercase + uppercase + numbers + special;
-  
-  // Ensure at least one of each type
-  let password = '';
-  password += lowercase[Math.floor(Math.random() * lowercase.length)];
-  password += uppercase[Math.floor(Math.random() * uppercase.length)];
-  password += numbers[Math.floor(Math.random() * numbers.length)];
-  password += special[Math.floor(Math.random() * special.length)];
-  
-  // Fill the rest randomly
-  for (let i = 4; i < length; i++) {
-    password += allChars[Math.floor(Math.random() * allChars.length)];
+
+  const chars: string[] = [
+    pickChar(lowercase),
+    pickChar(uppercase),
+    pickChar(numbers),
+    pickChar(special),
+  ];
+  for (let i = chars.length; i < length; i++) {
+    chars.push(pickChar(allChars));
   }
-  
-  // Shuffle the password
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+  return secureShuffle(chars).join('');
 }
 
 async function sendPasswordResetEmail(
