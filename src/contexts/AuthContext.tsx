@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [showSessionConflict, setShowSessionConflict] = useState(false);
   const [pendingConflictUserId, setPendingConflictUserId] = useState<string | null>(null);
+  const sessionOverrideGraceUntilRef = useRef(0);
 
   // Get cached session ID from localStorage
   const getCachedSessionId = useCallback(() => {
@@ -43,6 +44,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(SESSION_STORAGE_KEY);
     }
+  }, []);
+
+  const isWithinSessionOverrideGrace = useCallback(() => {
+    return Date.now() < sessionOverrideGraceUntilRef.current;
   }, []);
 
   // Generate secure session ID via server-side RPC
@@ -89,6 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Handle continuing on this device
   const handleContinueHere = useCallback(async () => {
     setShowSessionConflict(false);
+    sessionOverrideGraceUntilRef.current = Date.now() + 5000;
     
     // Generate new session ID to take over the session
     await generateSecureSessionId();
@@ -117,6 +123,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check and update session - validates against server
   const checkAndUpdateSession = useCallback(
     async (userId: string) => {
+      if (isWithinSessionOverrideGrace()) {
+        return;
+      }
+
       const cachedSessionId = getCachedSessionId();
       
       try {
@@ -131,8 +141,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Session is no longer valid - someone else logged in
           // Show the conflict dialog instead of immediately signing out
-          setPendingConflictUserId(userId);
-          setShowSessionConflict(true);
+          if (!isWithinSessionOverrideGrace()) {
+            setPendingConflictUserId(userId);
+            setShowSessionConflict(true);
+          }
           return;
         }
         
@@ -142,19 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error checking session:", error);
       }
     },
-    [getCachedSessionId, validateSession, generateSecureSessionId]
-  );
-
-  // Update active session - generates new secure session ID
-  const updateActiveSession = useCallback(
-    async (userId: string) => {
-      try {
-        await generateSecureSessionId();
-      } catch (error) {
-        console.error("Error updating active session:", error);
-      }
-    },
-    [generateSecureSessionId]
+    [getCachedSessionId, validateSession, generateSecureSessionId, isWithinSessionOverrideGrace]
   );
 
   useEffect(() => {
