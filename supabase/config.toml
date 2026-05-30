@@ -5,6 +5,8 @@ project_id = "astugmzoxhxcyipxsojl"
     verify_jwt = false
   [functions.admin-get-user-auth-details]
     verify_jwt = false
+  [functions.admin-block-user]
+    verify_jwt = false
   [functions.admin-reset-password]
     verify_jwt = false
   [functions.admin-update-user-details]
