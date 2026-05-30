@@ -192,7 +192,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (event === "SIGNED_IN" && currentSession?.user) {
         setTimeout(() => {
-          updateActiveSession(currentSession.user.id);
+          checkAndUpdateSession(currentSession.user.id);
         }, 0);
       }
 
@@ -214,7 +214,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [updateActiveSession, checkAndUpdateSession, clearCachedSessionId]);
+  }, [checkAndUpdateSession, clearCachedSessionId]);
 
   // Realtime: detect when another device takes over this account
   useEffect(() => {
@@ -235,7 +235,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             ?.active_session_id;
           const cached = getCachedSessionId();
           if (!newSessionId || !cached) return;
-          if (newSessionId !== cached && !showSessionConflict) {
+          if (
+            newSessionId !== cached &&
+            !showSessionConflict &&
+            !isWithinSessionOverrideGrace()
+          ) {
             setPendingConflictUserId(user.id);
             setShowSessionConflict(true);
           }
@@ -252,7 +256,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       supabase.removeChannel(channel);
       window.clearInterval(interval);
     };
-  }, [user?.id, getCachedSessionId, checkAndUpdateSession, showSessionConflict]);
+  }, [user?.id, getCachedSessionId, checkAndUpdateSession, showSessionConflict, isWithinSessionOverrideGrace]);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     // Use production URL for redirect to ensure proper handling
