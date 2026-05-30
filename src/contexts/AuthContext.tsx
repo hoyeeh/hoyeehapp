@@ -289,7 +289,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    // Clear the active session on sign out via RPC
     if (user) {
       try {
         await supabase.rpc("clear_session");
@@ -297,11 +296,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error clearing session:", error);
       }
     }
-    
-    // Clear local cache
+
     clearCachedSessionId();
 
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      // Ignore "session_not_found" — server already revoked the refresh token
+      // (e.g. after takeover on another device). Local state is already cleared.
+      console.warn("signOut warning:", error);
+    }
   };
 
   return (
