@@ -273,8 +273,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const displayName = profileData?.display_name || targetUser.email?.split("@")[0] || "User";
 
-    // Generate new password
-    const newPassword = generateSecurePassword(16);
+    // Use supplied custom password or generate a secure one
+    const isCustom = !!(customPassword && customPassword.length >= 8);
+    const newPassword = isCustom ? customPassword! : generateSecurePassword(16);
 
     // Update user password
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
@@ -289,14 +290,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Log the action
+    // Log the action (never log the password itself)
     await supabaseAdmin.from("audit_logs").insert({
       admin_id: callerUser.id,
       action: "reset_password",
       resource_type: "user",
       resource_id: targetUserId,
       details: {
-        action: "password_reset",
+        action: isCustom ? "password_set_custom" : "password_reset",
         target_user_id: targetUserId,
         target_email: targetUser.email,
         email_sent: sendEmail,
