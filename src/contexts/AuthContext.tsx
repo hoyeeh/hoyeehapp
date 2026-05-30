@@ -158,7 +158,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
@@ -166,26 +165,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(currentSession?.user ?? null);
       setLoading(false);
 
-      // Handle session on sign in - use setTimeout to avoid deadlock
       if (event === "SIGNED_IN" && currentSession?.user) {
         setTimeout(() => {
           updateActiveSession(currentSession.user.id);
         }, 0);
       }
-      
-      // Clear cached session on sign out
+
       if (event === "SIGNED_OUT") {
         clearCachedSessionId();
       }
     });
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       setLoading(false);
 
-      // Check active session for existing login
       if (existingSession?.user) {
         setTimeout(() => {
           checkAndUpdateSession(existingSession.user.id);
@@ -195,6 +190,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, [updateActiveSession, checkAndUpdateSession, clearCachedSessionId]);
+
+  // Realtime: detect when another device takes over this account
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`profile-session-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newSessionId = (payload.new as { active_session_id?: string | null })
+            ?.active_session_id;
+          const cached = getCachedSessionId();
+          if (!newSessionId || !cached) return;
+          if (newSessionId !== cached && !showSessionConflict) {
+            setPendingConflictUserId(user.id);
+            setShowSessionConflict(true);
+          }
+        }
+      )
+      .subscribe();
+
+    // Safety re-check covers missed realtime events / network blips
+    const interval = window.setInterval(() => {
+      checkAndUpdateSession(user.id);
+    }, 60_000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.clearInterval(interval);
+    };
+  }, [user?.id, getCachedSessionId, checkAndUpdateSession, showSessionConflict]);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     // Use production URL for redirect to ensure proper handling
@@ -256,7 +289,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    // Clear the active session on sign out via RPC
     if (user) {
       try {
         await supabase.rpc("clear_session");
@@ -264,11 +296,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error clearing session:", error);
       }
     }
-    
-    // Clear local cache
+
     clearCachedSessionId();
 
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      // Ignore "session_not_found" — server already revoked the refresh token
+      // (e.g. after takeover on another device). Local state is already cleared.
+      console.warn("signOut warning:", error);
+    }
   };
 
   return (
