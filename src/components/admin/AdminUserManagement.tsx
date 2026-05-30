@@ -436,6 +436,67 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     }
   };
 
+  const handleSetCustomPassword = async (userId: string, userName?: string) => {
+    if (!customPassword || customPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: { targetUserId: userId, sendEmail: true, customPassword }
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        toast.error(data?.error || "Failed to set password");
+        return;
+      }
+      toast.success(
+        data.emailSent
+          ? `Password updated and emailed to ${data.userEmail}`
+          : "Password updated. Email delivery failed — share it manually."
+      );
+      setSetPasswordDialog(null);
+      setCustomPassword("");
+      setShowCustomPassword(false);
+      onRefresh();
+    } catch (error: any) {
+      console.error("Set password error:", error);
+      toast.error(error?.message || "Failed to set password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleBlock = async (userId: string, currentlyBlocked: boolean, userName?: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-block-user', {
+        body: {
+          targetUserId: userId,
+          block: !currentlyBlocked,
+          reason: !currentlyBlocked ? (blockReason || undefined) : undefined,
+        }
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        toast.error(data?.error || "Failed to update block status");
+        return;
+      }
+      toast.success(!currentlyBlocked
+        ? `${userName || "User"} has been blocked`
+        : `${userName || "User"} has been unblocked`);
+      setBlockDialog(null);
+      setBlockReason("");
+      onRefresh();
+    } catch (error: any) {
+      console.error("Block error:", error);
+      toast.error(error?.message || "Failed to update block status");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Convert Profile to UserProfile for components
   const toUserProfile = (user: Profile): UserProfile => ({
     id: user.id,
