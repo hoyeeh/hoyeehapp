@@ -44,7 +44,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const clearCachedSessionId = useCallback(() => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(SESSION_OVERRIDE_GRACE_KEY);
     }
+
+    sessionOverrideGraceUntilRef.current = 0;
   }, []);
 
   const setSessionOverrideGrace = useCallback((durationMs: number) => {
