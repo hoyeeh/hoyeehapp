@@ -217,4 +217,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.delete-imported-users]
+verify_jwt = true
+
+[functions.pin-login]
 verify_jwt = false
