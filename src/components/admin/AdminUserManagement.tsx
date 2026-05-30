@@ -25,7 +25,11 @@ import {
   Search,
   Upload,
   Download,
-  History
+  History,
+  Ban,
+  ShieldCheck,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import {
   Dialog,
