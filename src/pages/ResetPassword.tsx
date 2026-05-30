@@ -16,24 +16,50 @@ const ResetPassword = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  const [isRecoveryFlow, setIsRecoveryFlow] = useState(false);
+
   useEffect(() => {
-    // Check if we have a valid session from the reset link
-    const checkSession = async () => {
+    // Only allow this page when we're in a real password-recovery flow.
+    // Supabase fires a PASSWORD_RECOVERY auth event when the user lands here
+    // via the recovery link. Any other entry (e.g. an already-logged-in user
+    // just navigating to /reset-password) is rejected.
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsRecoveryFlow(true);
+      }
+    });
+
+    // Fallback: check URL hash for type=recovery (Supabase appends it on the redirect)
+    const hash = window.location.hash || "";
+    if (hash.includes("type=recovery")) {
+      setIsRecoveryFlow(true);
+    }
+
+    const timeout = setTimeout(async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!session || (!isRecoveryFlow && !hash.includes("type=recovery"))) {
         toast.error("Invalid or expired reset link");
         navigate("/auth");
       }
+    }, 800);
+
+    return () => {
+      sub.subscription.unsubscribe();
+      clearTimeout(timeout);
     };
-    checkSession();
-  }, [navigate]);
+  }, [navigate, isRecoveryFlow]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+
+    if (!isRecoveryFlow) {
+      setError("This page is only available from a password reset email link.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
