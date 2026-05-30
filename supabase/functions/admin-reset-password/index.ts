@@ -186,14 +186,11 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Create user client to verify the caller (use ANON key so JWT is validated against the user, not service role)
-    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Get the calling user
-    const { data: { user: callerUser }, error: userError } = await supabaseUser.auth.getUser();
+    // Get the calling user (pass token explicitly — no persisted session in edge functions)
+    const { data: { user: callerUser }, error: userError } = await supabaseUser.auth.getUser(token);
     if (userError || !callerUser) {
       console.error("Failed to get caller user:", userError);
       return new Response(
