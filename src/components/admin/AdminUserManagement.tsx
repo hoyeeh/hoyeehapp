@@ -73,6 +73,9 @@ interface Profile {
   lockout_count?: number | null;
   parental_controls_enabled?: boolean | null;
   active_session_id?: string | null;
+  is_blocked?: boolean | null;
+  blocked_at?: string | null;
+  blocked_reason?: string | null;
 }
 
 interface AdminUserManagementProps {
