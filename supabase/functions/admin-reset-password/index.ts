@@ -15,6 +15,7 @@ const corsHeaders = {
 interface AdminResetPasswordRequest {
   targetUserId: string;
   sendEmail?: boolean;
+  customPassword?: string;
 }
 
 // Generate a cryptographically secure random password
@@ -185,14 +186,11 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Create user client to verify the caller (use ANON key so JWT is validated against the user, not service role)
-    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Get the calling user
-    const { data: { user: callerUser }, error: userError } = await supabaseUser.auth.getUser();
+    // Get the calling user (pass token explicitly — no persisted session in edge functions)
+    const { data: { user: callerUser }, error: userError } = await supabaseUser.auth.getUser(token);
     if (userError || !callerUser) {
       console.error("Failed to get caller user:", userError);
       return new Response(
@@ -218,13 +216,23 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Parse request body
-    const { targetUserId, sendEmail = true }: AdminResetPasswordRequest = await req.json();
+    const { targetUserId, sendEmail = true, customPassword }: AdminResetPasswordRequest = await req.json();
 
     if (!targetUserId) {
       return new Response(
         JSON.stringify({ success: false, error: "Target user ID is required" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    // Validate custom password if supplied
+    if (customPassword !== undefined && customPassword !== null && customPassword !== "") {
+      if (typeof customPassword !== "string" || customPassword.length < 8 || customPassword.length > 72) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Custom password must be 8-72 characters" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     }
 
     console.log(`Super admin ${callerUser.id} resetting password for user ${targetUserId}`);
@@ -265,8 +273,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const displayName = profileData?.display_name || targetUser.email?.split("@")[0] || "User";
 
-    // Generate new password
-    const newPassword = generateSecurePassword(16);
+    // Use supplied custom password or generate a secure one
+    const isCustom = !!(customPassword && customPassword.length >= 8);
+    const newPassword = isCustom ? customPassword! : generateSecurePassword(16);
 
     // Update user password
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
@@ -281,14 +290,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Log the action
+    // Log the action (never log the password itself)
     await supabaseAdmin.from("audit_logs").insert({
       admin_id: callerUser.id,
       action: "reset_password",
       resource_type: "user",
       resource_id: targetUserId,
       details: {
-        action: "password_reset",
+        action: isCustom ? "password_set_custom" : "password_reset",
         target_user_id: targetUserId,
         target_email: targetUser.email,
         email_sent: sendEmail,

@@ -25,7 +25,11 @@ import {
   Search,
   Upload,
   Download,
-  History
+  History,
+  Ban,
+  ShieldCheck,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import {
   Dialog,
@@ -69,6 +73,9 @@ interface Profile {
   lockout_count?: number | null;
   parental_controls_enabled?: boolean | null;
   active_session_id?: string | null;
+  is_blocked?: boolean | null;
+  blocked_at?: string | null;
+  blocked_reason?: string | null;
 }
 
 interface AdminUserManagementProps {
@@ -86,6 +93,11 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [authEmails, setAuthEmails] = useState<Map<string, string>>(new Map());
+  const [setPasswordDialog, setSetPasswordDialog] = useState<string | null>(null);
+  const [customPassword, setCustomPassword] = useState("");
+  const [showCustomPassword, setShowCustomPassword] = useState(false);
+  const [blockDialog, setBlockDialog] = useState<string | null>(null);
+  const [blockReason, setBlockReason] = useState("");
   const [editValues, setEditValues] = useState({
     display_name: "",
     email: "",
@@ -419,6 +431,67 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
     } catch (error: any) {
       console.error("Password reset error:", error);
       toast.error(error?.message || "Failed to reset password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetCustomPassword = async (userId: string, userName?: string) => {
+    if (!customPassword || customPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: { targetUserId: userId, sendEmail: true, customPassword }
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        toast.error(data?.error || "Failed to set password");
+        return;
+      }
+      toast.success(
+        data.emailSent
+          ? `Password updated and emailed to ${data.userEmail}`
+          : "Password updated. Email delivery failed — share it manually."
+      );
+      setSetPasswordDialog(null);
+      setCustomPassword("");
+      setShowCustomPassword(false);
+      onRefresh();
+    } catch (error: any) {
+      console.error("Set password error:", error);
+      toast.error(error?.message || "Failed to set password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleBlock = async (userId: string, currentlyBlocked: boolean, userName?: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-block-user', {
+        body: {
+          targetUserId: userId,
+          block: !currentlyBlocked,
+          reason: !currentlyBlocked ? (blockReason || undefined) : undefined,
+        }
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        toast.error(data?.error || "Failed to update block status");
+        return;
+      }
+      toast.success(!currentlyBlocked
+        ? `${userName || "User"} has been blocked`
+        : `${userName || "User"} has been unblocked`);
+      setBlockDialog(null);
+      setBlockReason("");
+      onRefresh();
+    } catch (error: any) {
+      console.error("Block error:", error);
+      toast.error(error?.message || "Failed to update block status");
     } finally {
       setIsLoading(false);
     }
@@ -776,18 +849,173 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
                     </AlertDialogContent>
                   </AlertDialog>
 
-                  {/* Unlock Account */}
+                  {/* Set Custom Password */}
+                  <Dialog
+                    open={setPasswordDialog === user.id}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setSetPasswordDialog(null);
+                        setCustomPassword("");
+                        setShowCustomPassword(false);
+                      }
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSetPasswordDialog(user.id)}
+                        disabled={isLoading}
+                        className="gap-1"
+                        title="Assign a specific password"
+                      >
+                        <Key className="h-3 w-3" />
+                        Set Password
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Set Password for {user.display_name || "user"}</DialogTitle>
+                        <DialogDescription>
+                          Assign a specific password for this account. The new password will be emailed to the user.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 pt-2">
+                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                          <p className="text-sm text-destructive font-medium">⚠️ Super Admin Required</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            This action is logged. Minimum 8 characters.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="custom-password">New Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="custom-password"
+                              type={showCustomPassword ? "text" : "password"}
+                              placeholder="Min 8 characters"
+                              value={customPassword}
+                              onChange={(e) => setCustomPassword(e.target.value)}
+                              className="bg-secondary pr-10"
+                              minLength={8}
+                              maxLength={72}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                              onClick={() => setShowCustomPassword((v) => !v)}
+                            >
+                              {showCustomPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{customPassword.length}/8 minimum</p>
+                        </div>
+                      </div>
+                      <DialogFooter className="pt-2">
+                        <Button variant="ghost" onClick={() => { setSetPasswordDialog(null); setCustomPassword(""); setShowCustomPassword(false); }}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="brand"
+                          onClick={() => handleSetCustomPassword(user.id, user.display_name || undefined)}
+                          disabled={isLoading || customPassword.length < 8}
+                        >
+                          Set Password
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Block / Unblock Account */}
+                  {user.is_blocked ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleBlock(user.id, true, user.display_name || undefined)}
+                      disabled={isLoading}
+                      className="gap-1 border-green-500/40 text-green-500 hover:bg-green-500/10"
+                      title="Unblock this account"
+                    >
+                      <ShieldCheck className="h-3 w-3" />
+                      Unblock
+                    </Button>
+                  ) : (
+                    <Dialog
+                      open={blockDialog === user.id}
+                      onOpenChange={(open) => {
+                        if (!open) { setBlockDialog(null); setBlockReason(""); }
+                      }}
+                    >
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setBlockDialog(user.id)}
+                          disabled={isLoading}
+                          className="gap-1"
+                          title="Block this account"
+                        >
+                          <Ban className="h-3 w-3" />
+                          Block
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Block {user.display_name || "user"}?</DialogTitle>
+                          <DialogDescription>
+                            This will sign the user out of all devices and prevent future sign-ins until you unblock them.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2 pt-2">
+                          <Label htmlFor="block-reason">Reason (optional)</Label>
+                          <Input
+                            id="block-reason"
+                            placeholder="e.g. Terms of service violation"
+                            value={blockReason}
+                            onChange={(e) => setBlockReason(e.target.value)}
+                            className="bg-secondary"
+                          />
+                        </div>
+                        <DialogFooter className="pt-2">
+                          <Button variant="ghost" onClick={() => { setBlockDialog(null); setBlockReason(""); }}>
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleToggleBlock(user.id, false, user.display_name || undefined)}
+                            disabled={isLoading}
+                          >
+                            Block Account
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {/* Unlock Account (PIN lockout) */}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleUnlockAccount(user.id)}
                     disabled={isLoading}
                     className="gap-1"
+                    title="Clear PIN lockout"
                   >
                     <RotateCcw className="h-3 w-3" />
-                    Unlock
+                    Unlock PIN
                   </Button>
                 </div>
+                {user.is_blocked && (
+                  <div className="mt-3 p-2 rounded-md bg-destructive/10 border border-destructive/30 text-xs text-destructive flex items-center gap-2">
+                    <Ban className="h-3 w-3" />
+                    <span>
+                      Blocked{user.blocked_at ? ` on ${format(new Date(user.blocked_at), "PP")}` : ""}
+                      {user.blocked_reason ? ` — ${user.blocked_reason}` : ""}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
