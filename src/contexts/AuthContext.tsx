@@ -17,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Storage key for cached session ID
 const SESSION_STORAGE_KEY = "secure_session_id";
+const SESSION_OVERRIDE_GRACE_KEY = "secure_session_override_grace_until";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -46,8 +47,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const setSessionOverrideGrace = useCallback((durationMs: number) => {
+    sessionOverrideGraceUntilRef.current = Date.now() + durationMs;
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        SESSION_OVERRIDE_GRACE_KEY,
+        String(sessionOverrideGraceUntilRef.current)
+      );
+    }
+  }, []);
+
   const isWithinSessionOverrideGrace = useCallback(() => {
-    return Date.now() < sessionOverrideGraceUntilRef.current;
+    if (typeof window !== "undefined") {
+      const storedGraceUntil = Number(localStorage.getItem(SESSION_OVERRIDE_GRACE_KEY) || "0");
+      if (storedGraceUntil > sessionOverrideGraceUntilRef.current) {
+        sessionOverrideGraceUntilRef.current = storedGraceUntil;
+      }
+    }
+
+    const withinGrace = Date.now() < sessionOverrideGraceUntilRef.current;
+
+    if (!withinGrace && typeof window !== "undefined") {
+      localStorage.removeItem(SESSION_OVERRIDE_GRACE_KEY);
+    }
+
+    return withinGrace;
   }, []);
 
   // Generate secure session ID via server-side RPC
@@ -94,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Handle continuing on this device
   const handleContinueHere = useCallback(async () => {
     setShowSessionConflict(false);
-    sessionOverrideGraceUntilRef.current = Date.now() + 5000;
+    setSessionOverrideGrace(15000);
     
     // Generate new session ID to take over the session
     await generateSecureSessionId();
@@ -105,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     setPendingConflictUserId(null);
-  }, [generateSecureSessionId]);
+  }, [generateSecureSessionId, setSessionOverrideGrace]);
 
   // Handle signing out from conflict dialog
   const handleConflictSignOut = useCallback(async () => {
