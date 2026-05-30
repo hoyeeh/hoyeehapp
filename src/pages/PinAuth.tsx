@@ -31,41 +31,37 @@ const PinAuth = () => {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      const { data: result, error } = await supabase
-        .rpc('verify_pin_code', {
-          user_mobile: formData.mobileNumber,
-          input_pin: formData.pin
-        });
+      const { data, error } = await supabase.functions.invoke('pin-login', {
+        body: {
+          mobileNumber: formData.mobileNumber,
+          pin: formData.pin,
+        },
+      });
 
-      if (error) {
-        toast.error("An error occurred. Please try again.");
+      if (error || !data?.success || !data?.token_hash) {
+        const msg = (data as any)?.error || "Invalid mobile number or PIN";
+        toast.error(msg);
         setIsLoading(false);
         return;
       }
 
-      const verifyResult = result?.[0];
-      
-      if (!verifyResult?.user_id) {
-        toast.error("Invalid mobile number or PIN");
+      // Exchange the magiclink token_hash for a real Supabase session
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        type: 'magiclink',
+        token_hash: data.token_hash,
+      });
+
+      if (verifyError) {
+        console.error('verifyOtp error:', verifyError);
+        toast.error("Could not establish session. Please try again.");
         setIsLoading(false);
         return;
       }
 
-      if (verifyResult.is_locked) {
-        toast.error("Account is locked. Please try again later.");
-        setIsLoading(false);
-        return;
-      }
-
-      if (!verifyResult.is_valid) {
-        toast.error("Invalid mobile number or PIN");
-        setIsLoading(false);
-        return;
-      }
-
-      toast.success("PIN verified! Please complete sign in.");
-      navigate("/auth", { state: { fromPin: true, mobileNumber: formData.mobileNumber } });
+      toast.success("Signed in successfully");
+      navigate("/");
     } catch (error) {
+      console.error('PIN login error:', error);
       toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
