@@ -93,6 +93,11 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [authEmails, setAuthEmails] = useState<Map<string, string>>(new Map());
+  const [setPasswordDialog, setSetPasswordDialog] = useState<string | null>(null);
+  const [customPassword, setCustomPassword] = useState("");
+  const [showCustomPassword, setShowCustomPassword] = useState(false);
+  const [blockDialog, setBlockDialog] = useState<string | null>(null);
+  const [blockReason, setBlockReason] = useState("");
   const [editValues, setEditValues] = useState({
     display_name: "",
     email: "",
