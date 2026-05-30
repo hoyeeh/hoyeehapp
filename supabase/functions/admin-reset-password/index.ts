@@ -15,6 +15,7 @@ const corsHeaders = {
 interface AdminResetPasswordRequest {
   targetUserId: string;
   sendEmail?: boolean;
+  customPassword?: string;
 }
 
 // Generate a cryptographically secure random password
