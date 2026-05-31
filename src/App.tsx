@@ -28,6 +28,7 @@ import { PusherNotificationHandler } from "@/components/PusherNotificationHandle
 import { GlobalRightClickGuard } from "@/components/security/GlobalRightClickGuard";
 import { GlobalKeyboardGuard } from "@/components/security/GlobalKeyboardGuard";
 import { RealtimeUpdatesHandler } from "@/components/RealtimeUpdatesHandler";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Profiles from "./pages/Profiles";
 import Auth from "./pages/Auth";
@@ -250,7 +251,7 @@ const App = () => (
                         <Route path="/subscription" element={<Subscription />} />
                         <Route path="/admin" element={<Admin />} />
                         <Route path="/analytics" element={<Analytics />} />
-                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/profile" element={<ErrorBoundary fallbackTitle="Profile failed to load"><Profile /></ErrorBoundary>} />
                         <Route path="/content/:id" element={<ContentDetail />} />
                         <Route path="/my-list" element={<MyList />} />
                         <Route path="/downloads" element={<Downloads />} />
