@@ -133,14 +133,7 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: true,
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "react-vendor": ["react", "react-dom", "react-router-dom"],
-          "query": ["@tanstack/react-query"],
-          "supabase": ["@supabase/supabase-js"],
-        },
-      },
-    },
+    // Let Vite/Rollup handle chunk splitting automatically to avoid
+    // stale-chunk import errors when deploys invalidate hashed filenames.
   },
 }));
