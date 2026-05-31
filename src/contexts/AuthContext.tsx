@@ -18,6 +18,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Storage key for cached session ID
 const SESSION_STORAGE_KEY = "secure_session_id";
 const SESSION_OVERRIDE_GRACE_KEY = "secure_session_override_grace_until";
+const LOCAL_SESSION_SYNC_GRACE_MS = 5000;
+
+let pendingSessionCheck: Promise<void> | null = null;
+let pendingSessionCheckUserId: string | null = null;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -48,6 +52,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     sessionOverrideGraceUntilRef.current = 0;
+    pendingSessionCheck = null;
+    pendingSessionCheckUserId = null;
   }, []);
 
   const setSessionOverrideGrace = useCallback((durationMs: number) => {
@@ -81,6 +87,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Generate secure session ID via server-side RPC
   const generateSecureSessionId = useCallback(async (): Promise<string | null> => {
     try {
+      setSessionOverrideGrace(LOCAL_SESSION_SYNC_GRACE_MS);
+
       const { data, error } = await supabase.rpc("generate_secure_session_id");
       
       if (error) {
@@ -90,6 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (data) {
         cacheSessionId(data);
+        setSessionOverrideGrace(LOCAL_SESSION_SYNC_GRACE_MS);
         return data;
       }
       
@@ -98,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error generating secure session ID:", error);
       return null;
     }
-  }, [cacheSessionId]);
+  }, [cacheSessionId, setSessionOverrideGrace]);
 
   // Validate session ID against server
   const validateSession = useCallback(async (sessionId: string): Promise<boolean> => {
@@ -155,32 +164,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const cachedSessionId = getCachedSessionId();
-      
-      try {
-        // If we have a cached session, validate it
-        if (cachedSessionId) {
-          const isValid = await validateSession(cachedSessionId);
-          
-          if (isValid) {
-            // Session is still valid on this device
+      if (pendingSessionCheck && pendingSessionCheckUserId === userId) {
+        return pendingSessionCheck;
+      }
+
+      let currentCheck: Promise<void>;
+
+      currentCheck = (async () => {
+        const cachedSessionId = getCachedSessionId();
+        
+        try {
+          // If we have a cached session, validate it
+          if (cachedSessionId) {
+            const isValid = await validateSession(cachedSessionId);
+            
+            if (isValid) {
+              // Session is still valid on this device
+              return;
+            }
+            
+            // Session is no longer valid - someone else logged in
+            // Show the conflict dialog instead of immediately signing out
+            if (!isWithinSessionOverrideGrace()) {
+              setPendingConflictUserId(userId);
+              setShowSessionConflict(true);
+            }
             return;
           }
           
-          // Session is no longer valid - someone else logged in
-          // Show the conflict dialog instead of immediately signing out
-          if (!isWithinSessionOverrideGrace()) {
-            setPendingConflictUserId(userId);
-            setShowSessionConflict(true);
-          }
-          return;
+          // No cached session - generate a new one
+          await generateSecureSessionId();
+        } catch (error) {
+          console.error("Error checking session:", error);
         }
-        
-        // No cached session - generate a new one
-        await generateSecureSessionId();
-      } catch (error) {
-        console.error("Error checking session:", error);
-      }
+      })();
+
+      pendingSessionCheckUserId = userId;
+      pendingSessionCheck = currentCheck.finally(() => {
+        if (pendingSessionCheck === currentCheck) {
+          pendingSessionCheck = null;
+          pendingSessionCheckUserId = null;
+        }
+      });
+
+      return pendingSessionCheck;
     },
     [getCachedSessionId, validateSession, generateSecureSessionId, isWithinSessionOverrideGrace]
   );
@@ -313,8 +340,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      // Generate new secure session ID (this also updates the database)
-      await generateSecureSessionId();
+      // Claim or validate the current device session once; this is shared with
+      // startup auth restoration to avoid self-conflicts in StrictMode.
+      await checkAndUpdateSession(data.user.id);
     }
 
     return { error: null };
