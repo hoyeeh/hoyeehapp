@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,52 +29,54 @@ import { GlobalRightClickGuard } from "@/components/security/GlobalRightClickGua
 import { GlobalKeyboardGuard } from "@/components/security/GlobalKeyboardGuard";
 import { RealtimeUpdatesHandler } from "@/components/RealtimeUpdatesHandler";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+// Keep landing page eager for fast first paint; lazy-load all other routes
 import Index from "./pages/Index";
-import Profiles from "./pages/Profiles";
-import Auth from "./pages/Auth";
-import PinAuth from "./pages/PinAuth";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Subscription from "./pages/Subscription";
-import Admin from "./pages/Admin";
-import Analytics from "./pages/Analytics";
-import Profile from "./pages/Profile";
-import ContentDetail from "./pages/ContentDetail";
-import MyList from "./pages/MyList";
-import Downloads from "./pages/Downloads";
-import Dashboard from "./pages/Dashboard";
-import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
-import Genres from "./pages/Genres";
-import TermsOfUse from "./pages/TermsOfUse";
-import Privacy from "./pages/Privacy";
-import About from "./pages/About";
-import HelpCenter from "./pages/HelpCenter";
-import Contact from "./pages/Contact";
-import Support from "./pages/Support";
-import Copyright from "./pages/Copyright";
-import Install from "./pages/Install";
-import NotificationPreferences from "./pages/NotificationPreferences";
-import Notifications from "./pages/Notifications";
-import Parental from "./pages/Parental";
-import ComingSoon from "./pages/ComingSoon";
-import YouTubeChannels from "./pages/YouTubeChannels";
-import ChannelsPage from "./pages/ChannelsPage";
-import WatchLater from "./pages/WatchLater";
-import CreatorStore from "./pages/CreatorStore";
-import CreatorProfile from "./pages/CreatorProfile";
-import CreatorDashboard from "./pages/CreatorDashboard";
-import TV from "./pages/TV";
-import TVReceiver from "./pages/TVReceiver";
-import TVApp from "./pages/TVApp";
-import KidsYouTube from "./pages/KidsYouTube";
-import KidsProfile from "./pages/KidsProfile";
-import KidsGamesPage from "./pages/KidsGamesPage";
-import Cast from "./pages/Cast";
-import WatchParty from "./pages/WatchParty";
-import MyPurchases from "./pages/MyPurchases";
-import PurchaseReturn from "./pages/PurchaseReturn";
-import FreeContent from "./pages/FreeContent";
+
+const Profiles = lazy(() => import("./pages/Profiles"));
+const Auth = lazy(() => import("./pages/Auth"));
+const PinAuth = lazy(() => import("./pages/PinAuth"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Subscription = lazy(() => import("./pages/Subscription"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Profile = lazy(() => import("./pages/Profile"));
+const ContentDetail = lazy(() => import("./pages/ContentDetail"));
+const MyList = lazy(() => import("./pages/MyList"));
+const Downloads = lazy(() => import("./pages/Downloads"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Search = lazy(() => import("./pages/Search"));
+const Genres = lazy(() => import("./pages/Genres"));
+const TermsOfUse = lazy(() => import("./pages/TermsOfUse"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const About = lazy(() => import("./pages/About"));
+const HelpCenter = lazy(() => import("./pages/HelpCenter"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Support = lazy(() => import("./pages/Support"));
+const Copyright = lazy(() => import("./pages/Copyright"));
+const Install = lazy(() => import("./pages/Install"));
+const NotificationPreferences = lazy(() => import("./pages/NotificationPreferences"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Parental = lazy(() => import("./pages/Parental"));
+const ComingSoon = lazy(() => import("./pages/ComingSoon"));
+const YouTubeChannels = lazy(() => import("./pages/YouTubeChannels"));
+const ChannelsPage = lazy(() => import("./pages/ChannelsPage"));
+const WatchLater = lazy(() => import("./pages/WatchLater"));
+const CreatorStore = lazy(() => import("./pages/CreatorStore"));
+const CreatorProfile = lazy(() => import("./pages/CreatorProfile"));
+const CreatorDashboard = lazy(() => import("./pages/CreatorDashboard"));
+const TV = lazy(() => import("./pages/TV"));
+const TVReceiver = lazy(() => import("./pages/TVReceiver"));
+const TVApp = lazy(() => import("./pages/TVApp"));
+const KidsYouTube = lazy(() => import("./pages/KidsYouTube"));
+const KidsProfile = lazy(() => import("./pages/KidsProfile"));
+const KidsGamesPage = lazy(() => import("./pages/KidsGamesPage"));
+const Cast = lazy(() => import("./pages/Cast"));
+const WatchParty = lazy(() => import("./pages/WatchParty"));
+const MyPurchases = lazy(() => import("./pages/MyPurchases"));
+const PurchaseReturn = lazy(() => import("./pages/PurchaseReturn"));
+const FreeContent = lazy(() => import("./pages/FreeContent"));
 import { usePendingPurchaseVerification } from "./hooks/usePendingPurchaseVerification";
 
 const queryClient = new QueryClient();
@@ -241,6 +243,7 @@ const App = () => (
                     <CastProvider>
                       <PusherNotificationHandler />
                       <PersistentWatchPartyPanel />
+                      <Suspense fallback={<div className="min-h-screen bg-background" />}>
                       <Routes>
                         <Route path="/" element={<Index />} />
                         <Route path="/profiles" element={<Profiles />} />
@@ -289,6 +292,7 @@ const App = () => (
                         <Route path="/free-content" element={<FreeContent />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
+                      </Suspense>
                       <PersistentMobileVideoPlayer />
                       <PersistentMobileYouTubePlayer />
                     </CastProvider>
