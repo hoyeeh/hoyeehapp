@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { toast } from 'sonner';
+import { isPreviewOrIframeContext } from '@/utils/serviceWorkerCleanup';
 
 interface PWAUpdateState {
   updateAvailable: boolean;
@@ -54,7 +55,7 @@ export function usePWAUpdates() {
   }, [state.registration]);
 
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    if (!('serviceWorker' in navigator) || isPreviewOrIframeContext()) return;
 
     const handleControllerChange = async () => {
       // Clear caches when new service worker takes control
