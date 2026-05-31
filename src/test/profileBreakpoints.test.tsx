@@ -39,7 +39,20 @@ vi.mock("@/hooks/useDatabase", () => ({
 
 vi.mock("@/hooks/useCreator", () => ({
   useIsCreator: () => ({ data: false }),
+  useCreatorProfile: () => ({ data: null, isLoading: false }),
+  useCreatorContent: () => ({ data: [], isLoading: false }),
+  useCreatorSales: () => ({ data: [], isLoading: false }),
+  useCreatorPayouts: () => ({ data: [], isLoading: false }),
+  usePlatformSettings: () => ({ data: null }),
 }));
+
+// Stub heavy sub-components Profile.tsx pulls in
+vi.mock("@/components/PushNotificationToggle", () => ({ PushNotificationToggle: () => null }));
+vi.mock("@/components/ParentalControls", () => ({ ParentalControls: () => null }));
+vi.mock("@/components/creator/CreatorSection", () => ({ CreatorSection: () => null }));
+vi.mock("@/components/CacheControlSettings", () => ({ CacheControlSettings: () => null }));
+vi.mock("@/components/Logo", () => ({ Logo: () => <div>Logo</div> }));
+vi.mock("@/components/LoadingSpinner", () => ({ LoadingSpinner: () => <div>Loading...</div> }));
 
 vi.mock("@/hooks/useAdmin", () => ({
   useIsAdmin: () => ({ data: false }),
