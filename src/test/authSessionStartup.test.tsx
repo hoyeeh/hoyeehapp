@@ -2,28 +2,45 @@ import { StrictMode } from "react";
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const authListeners: Array<(event: string, session: any) => void> = [];
-const session = {
-  user: {
-    id: "user-1",
-    email: "user@hoyeeh.com",
-  },
-};
+const { authListeners, session, rpc, getSession, signOut, removeChannel, makeChannel } = vi.hoisted(() => {
+  const listeners: Array<(event: string, session: any) => void> = [];
+  const activeSession = {
+    user: {
+      id: "user-1",
+      email: "user@hoyeeh.com",
+    },
+  };
 
-const rpc = vi.fn(async (fn: string) => {
-  if (fn === "generate_secure_session_id") {
-    return { data: "session-1", error: null };
-  }
+  return {
+    authListeners: listeners,
+    session: activeSession,
+    rpc: vi.fn(async (fn: string) => {
+      if (fn === "generate_secure_session_id") {
+        return { data: "session-1", error: null };
+      }
 
-  if (fn === "validate_session") {
-    return { data: true, error: null };
-  }
+      if (fn === "validate_session") {
+        return { data: true, error: null };
+      }
 
-  if (fn === "clear_session") {
-    return { data: null, error: null };
-  }
+      if (fn === "clear_session") {
+        return { data: null, error: null };
+      }
 
-  return { data: null, error: null };
+      return { data: null, error: null };
+    }),
+    getSession: vi.fn(async () => ({ data: { session: activeSession } })),
+    signOut: vi.fn(async () => ({ error: null })),
+    removeChannel: vi.fn(),
+    makeChannel: () => {
+      const channelApi = {
+        on: vi.fn(() => channelApi),
+        subscribe: vi.fn(() => channelApi),
+      };
+
+      return channelApi;
+    },
+  };
 });
 
 vi.mock("sonner", () => ({
@@ -52,18 +69,11 @@ vi.mock("@/integrations/supabase/client", () => ({
           },
         };
       },
-      getSession: vi.fn(async () => ({ data: { session } })),
-      signOut: vi.fn(async () => ({ error: null })),
+      getSession,
+      signOut,
     },
-    channel: vi.fn(() => {
-      const channelApi = {
-        on: vi.fn(() => channelApi),
-        subscribe: vi.fn(() => channelApi),
-      };
-
-      return channelApi;
-    }),
-    removeChannel: vi.fn(),
+    channel: vi.fn(() => makeChannel()),
+    removeChannel,
   },
 }));
 
@@ -81,6 +91,9 @@ describe("AuthProvider startup session sync", () => {
   beforeEach(() => {
     authListeners.length = 0;
     rpc.mockClear();
+    getSession.mockClear();
+    signOut.mockClear();
+    removeChannel.mockClear();
     localStorage.clear();
     vi.useFakeTimers();
     window.setInterval = vi.fn(() => 1 as any) as any;
