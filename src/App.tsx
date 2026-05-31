@@ -28,6 +28,7 @@ import { PusherNotificationHandler } from "@/components/PusherNotificationHandle
 import { GlobalRightClickGuard } from "@/components/security/GlobalRightClickGuard";
 import { GlobalKeyboardGuard } from "@/components/security/GlobalKeyboardGuard";
 import { RealtimeUpdatesHandler } from "@/components/RealtimeUpdatesHandler";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Profiles from "./pages/Profiles";
 import Auth from "./pages/Auth";
