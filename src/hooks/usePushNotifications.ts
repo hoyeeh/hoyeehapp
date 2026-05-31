@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { isPreviewOrIframeContext } from "@/utils/serviceWorkerCleanup";
 
 // VAPID public key - fetched from edge function or fallback to env
 let cachedVapidKey: string | null = null;
@@ -49,7 +50,7 @@ export function usePushNotifications() {
 
   useEffect(() => {
     // Check if push notifications are supported
-    const supported = "serviceWorker" in navigator && "PushManager" in window;
+    const supported = "serviceWorker" in navigator && "PushManager" in window && !isPreviewOrIframeContext();
     setIsSupported(supported);
 
     if (supported && user) {
@@ -73,7 +74,15 @@ export function usePushNotifications() {
     setIsLoading(true);
     try {
       // Check if we're in an iframe (like Lovable preview) where notifications are restricted
-      const isInIframe = window.self !== window.top;
+      const isInIframe = isPreviewOrIframeContext();
+
+      if (isInIframe) {
+        toast.error("Push notifications cannot be enabled in preview mode. Please open the app in a new tab.", {
+          duration: 6000,
+        });
+        setIsLoading(false);
+        return;
+      }
       
       // Check current permission status first
       if ('Notification' in window) {
