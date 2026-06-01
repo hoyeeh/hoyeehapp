@@ -20,6 +20,7 @@ import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeroCard, MobileHeroSkeleton } from "./MobileHeroCard";
 import { MobileContentRow } from "./MobileContentRow";
+import { MobileFilteredGrid } from "./MobileFilteredGrid";
 import { MobileOfflineContinueWatching } from "./MobileOfflineContinueWatching";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MobileContentDetail } from "./MobileContentDetail";
