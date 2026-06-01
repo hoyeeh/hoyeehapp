@@ -270,8 +270,9 @@ export function useGoogleCast(options: UseCastOptions = {}) {
 
   // Initialize Cast Application Framework
   const initializeCastFramework = useCallback(() => {
-    if (!window.cast?.framework) {
-      console.error('[GoogleCast] Cast framework not available');
+    if (!window.cast?.framework || !window.chrome?.cast?.media?.MediaInfo || !window.chrome?.cast?.AutoJoinPolicy) {
+      console.warn('[GoogleCast] Cast framework or chrome.cast not fully available, skipping init');
+      setState(prev => ({ ...prev, isInitialized: true }));
       return false;
     }
 
