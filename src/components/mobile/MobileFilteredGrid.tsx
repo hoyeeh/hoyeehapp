@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Film, Tv2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Content } from "@/types";
-import { MobileContentCard } from "./MobileContentCard";
+import { MobileGridPoster } from "./MobileGridPoster";
 import { TVShowUpdatesMap } from "@/hooks/useLatestTVShowUpdates";
 import { cn } from "@/lib/utils";
 
