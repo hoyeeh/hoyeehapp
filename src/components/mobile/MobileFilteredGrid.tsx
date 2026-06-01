@@ -90,24 +90,15 @@ export function MobileFilteredGrid({
       {/* Responsive grid: 3 cols on phones, 4 on wider phones, 5 on small tablets */}
       <div className="grid grid-cols-3 xs:grid-cols-3 [@media(min-width:480px)]:grid-cols-4 [@media(min-width:640px)]:grid-cols-5 gap-2.5 px-3">
         {pageItems.map((item, idx) => (
-          <motion.div
+          <MobileGridPoster
             key={item.id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: Math.min(idx * 0.015, 0.3) }}
-            className="w-full"
-          >
-            <MobileContentCard
-              content={item}
-              onDetails={onDetails}
-              onPlay={onPlay}
-              variant="poster"
-              cardStyle="poster"
-              cardSize="md"
-              hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
-              hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
-            />
-          </motion.div>
+            content={item}
+            onDetails={onDetails}
+            onPlay={onPlay}
+            hasNewEpisode={tvShowUpdates[item.id]?.hasNewEpisode}
+            hasNewSeason={tvShowUpdates[item.id]?.hasNewSeason}
+            index={idx}
+          />
         ))}
       </div>
 
