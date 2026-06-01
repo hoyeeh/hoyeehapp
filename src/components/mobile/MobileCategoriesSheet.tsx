@@ -256,21 +256,12 @@ export function MobileCategoriesSheet({ open, onClose }: MobileCategoriesSheetPr
                       </div>
                       <div className="grid grid-cols-3 [@media(min-width:480px)]:grid-cols-4 [@media(min-width:640px)]:grid-cols-5 gap-2.5 px-3 py-3">
                         {filteredContent.shows.map((item, idx) => (
-                          <motion.div
+                          <MobileGridPoster
                             key={item.id}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2, delay: Math.min(idx * 0.015, 0.3) }}
-                            className="w-full"
-                          >
-                            <MobileContentCard
-                              content={item}
-                              onDetails={handleDetails}
-                              variant="poster"
-                              cardStyle="poster"
-                              cardSize="md"
-                            />
-                          </motion.div>
+                            content={item}
+                            onDetails={handleDetails}
+                            index={idx}
+                          />
                         ))}
                       </div>
                     </section>
