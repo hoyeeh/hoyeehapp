@@ -20,6 +20,7 @@ import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeroCard, MobileHeroSkeleton } from "./MobileHeroCard";
 import { MobileContentRow } from "./MobileContentRow";
+import { MobileFilteredGrid } from "./MobileFilteredGrid";
 import { MobileOfflineContinueWatching } from "./MobileOfflineContinueWatching";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
 import { MobileContentDetail } from "./MobileContentDetail";
@@ -622,17 +623,16 @@ export function MobileHome() {
 
           {/* Dynamic sections from database - filtered by activeFilter */}
           {activeFilter !== "all" ? (
-            // When filter is active, show filtered content
-            <FadeIn delay={150}>
-              <MobileContentRow
+            // When TV Shows / Movies filter is active, show a paginated 30-per-page grid
+            <FadeIn delay={100}>
+              <MobileFilteredGrid
                 title={activeFilter === "series" ? "TV Shows" : "Movies"}
                 content={filteredContent}
                 onDetails={handleDetails}
-                showSeeAll
-                onSeeAll={() => navigate("/genres")}
+                onPlay={handlePlay}
                 tvShowUpdates={tvShowUpdates}
-                cardSize="md"
-                cardStyle="poster"
+                pageSize={30}
+                icon={activeFilter === "series" ? "series" : "movie"}
               />
             </FadeIn>
           ) : (
