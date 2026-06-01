@@ -7,7 +7,7 @@ import { Content } from "@/types";
 import { X, Film, Tv, ChevronRight, Grid3X3, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { MobileContentCard } from "./MobileContentCard";
+import { MobileGridPoster } from "./MobileGridPoster";
 import { MobileContentDetail } from "./MobileContentDetail";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
