@@ -2184,5 +2184,21 @@
       generatePairingCode();
     })();
   </script>
+  <script>
+    // Catch script-level errors that prevent the main IIFE from booting
+    // (e.g. CDN polyfill blocked by TV firewall). Pure ES5, no deps.
+    window.addEventListener && window.addEventListener('error', function (e) {
+      try {
+        if (typeof window.__tvTrack === 'function') {
+          window.__tvTrack('receiver_error', {
+            message: (e && e.message) || 'unknown',
+            source: (e && e.filename) || '',
+            line: (e && e.lineno) || 0
+          });
+        }
+      } catch (err) {}
+    });
+  </script>
 </body>
 </html>
+
