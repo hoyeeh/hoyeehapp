@@ -155,3 +155,5 @@ project_id = "astugmzoxhxcyipxsojl"
     verify_jwt = true
   [functions.youtube-monthly-sync]
     verify_jwt = false
+  [functions.tv-telemetry]
+    verify_jwt = false

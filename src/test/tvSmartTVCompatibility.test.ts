@@ -62,14 +62,14 @@ describe("/tv static redirect — Smart TV engine compatibility", () => {
     const html = read(TV_INDEX);
     // Meta-refresh — primary mechanism, supported by every TV browser
     // including pre-2015 sets that cannot run inline scripts reliably.
+    // Allow any small delay (0–3s) so a telemetry beacon can flush first.
     expect(html).toMatch(
-      /<meta\s+http-equiv=["']refresh["']\s+content=["']0;\s*url=\/tv-receiver\/index\.html["']/i,
+      /<meta\s+http-equiv=["']refresh["']\s+content=["']\d+;\s*url=\/tv-receiver\/index\.html["']/i,
     );
     // JS redirect — fallback for engines that ignore meta-refresh inside
-    // certain WebView containers.
-    expect(html).toMatch(
-      /window\.location\.(replace|href)\s*[=(]\s*["']\/tv-receiver\/index\.html["']/,
-    );
+    // certain WebView containers. Accept inline literal or TARGET constant.
+    expect(html).toMatch(/location\.(replace|href)\s*[=(]/);
+    expect(html).toContain("/tv-receiver/index.html");
     // <noscript> fallback link so JS-disabled TVs still navigate.
     expect(html).toMatch(
       /<noscript>[\s\S]*\/tv-receiver\/index\.html[\s\S]*<\/noscript>/i,

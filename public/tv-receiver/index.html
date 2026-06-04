@@ -670,6 +670,50 @@
       var SUPABASE_URL = 'https://astugmzoxhxcyipxsojl.supabase.co';
       var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdHVnbXpveGh4Y3lpcHhzb2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzIzNDIsImV4cCI6MjA4MDY0ODM0Mn0.gYQzgVqNwvHe2dO5tfk0S2sy4EPVybh9C8alpi7LhCE';
 
+      // ===== Smart TV telemetry beacon =====
+      // Fires lightweight events to the tv-telemetry edge function so admins
+      // can audit which Smart TV engines successfully boot the receiver and
+      // surface the pairing code. ES5-only; never throws into the caller.
+      var TV_TELEMETRY_URL = SUPABASE_URL + '/functions/v1/tv-telemetry';
+      function tvTrack(event, details) {
+        try {
+          var payload = JSON.stringify({
+            event: event,
+            sessionId: (typeof sessionId !== 'undefined' && sessionId) || null,
+            pairingCode: (typeof pairingCode !== 'undefined' && pairingCode) || null,
+            url: (typeof location !== 'undefined' && location.href) || '',
+            details: details || null
+          });
+          if (navigator && typeof navigator.sendBeacon === 'function') {
+            try {
+              var blob = new Blob([payload], { type: 'application/json' });
+              if (navigator.sendBeacon(TV_TELEMETRY_URL, blob)) return;
+            } catch (e) { /* fall through */ }
+          }
+          if (typeof fetch === 'function') {
+            fetch(TV_TELEMETRY_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true
+            })['catch'](function () {});
+          }
+        } catch (e) { /* never break receiver on telemetry */ }
+      }
+      // Expose globally so onerror handler outside this IIFE can call it.
+      window.__tvTrack = tvTrack;
+
+      tvTrack('receiver_boot', {
+        ua: (navigator && navigator.userAgent) || '',
+        hasPromise: typeof Promise !== 'undefined',
+        hasFetch: typeof fetch !== 'undefined',
+        hasBeacon: !!(navigator && navigator.sendBeacon),
+        hasSupabase: typeof supabase !== 'undefined',
+        hasHls: typeof Hls !== 'undefined'
+      });
+
+
+
       var sessionId = null;
       var receiverId = null;
       var pairingCode = null;
@@ -773,13 +817,21 @@
 
       // Show browser error if incompatible
       if (!checkBrowserCompat()) {
+        tvTrack('pairing_failed', { reason: 'browser_incompatible' });
         document.getElementById('browserError').style.display = 'block';
         pairingScreen.style.display = 'none';
         return;
       }
 
+      tvTrack('polyfills_ready', {
+        hasHls: typeof Hls !== 'undefined',
+        hasSupabase: typeof supabase !== 'undefined',
+        hasQR: typeof QRCode !== 'undefined'
+      });
+
       // Initialize Supabase
       var hasRealtime = initSupabase();
+
 
       function formatTime(seconds) {
         if (isNaN(seconds) || !isFinite(seconds)) {
@@ -940,6 +992,7 @@
           document.getElementById('pairingCode').textContent = pairingCode;
             generateQRCode(pairingCode);
             document.getElementById('status').textContent = 'Waiting for connection...';
+            tvTrack('pairing_visible', { pairingCode: pairingCode });
 
             var expiresAt = new Date(result.expiresAt);
             updateExpiry(expiresAt);
@@ -956,9 +1009,11 @@
           document.getElementById('spinner').style.display = 'none';
         }).catch(function(error) {
           console.error('Error generating code:', error);
+          tvTrack('pairing_failed', { reason: 'generate_code_error', message: (error && error.message) || String(error) });
           document.getElementById('errorMessage').textContent = 'Error: ' + (error.message || 'Unknown error');
           document.getElementById('spinner').style.display = 'none';
         });
+
       }
 
       function updateExpiry(expiresAt) {
@@ -2129,5 +2184,21 @@
       generatePairingCode();
     })();
   </script>
+  <script>
+    // Catch script-level errors that prevent the main IIFE from booting
+    // (e.g. CDN polyfill blocked by TV firewall). Pure ES5, no deps.
+    window.addEventListener && window.addEventListener('error', function (e) {
+      try {
+        if (typeof window.__tvTrack === 'function') {
+          window.__tvTrack('receiver_error', {
+            message: (e && e.message) || 'unknown',
+            source: (e && e.filename) || '',
+            line: (e && e.lineno) || 0
+          });
+        }
+      } catch (err) {}
+    });
+  </script>
 </body>
 </html>
+

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="0; url=/tv-receiver/index.html">
+  <meta http-equiv="refresh" content="1; url=/tv-receiver/index.html">
   <title>Hoyeeh TV</title>
   <link rel="canonical" href="https://hoyeeh.com/tv-receiver/index.html">
   <style>
@@ -13,12 +13,50 @@
     .msg{margin-top:16px;opacity:.8;}
   </style>
   <script>
-    // Hard redirect for smart TV browsers (Tizen, webOS, older WebKit/Chromium)
-    // that may not honor meta-refresh reliably. Runs before SPA bundle would
-    // ever load, so /tv never depends on the React app booting on the TV.
-    try { window.location.replace('/tv-receiver/index.html'); } catch (e) {
-      window.location.href = '/tv-receiver/index.html';
-    }
+    // ES5-safe: every Smart TV engine (Tizen, webOS, legacy WebKit) can parse
+    // this block. Fire a telemetry beacon BEFORE redirecting so we can
+    // measure how often /tv even reaches a working browser. Then redirect.
+    (function () {
+      var TELEMETRY_URL = 'https://astugmzoxhxcyipxsojl.supabase.co/functions/v1/tv-telemetry';
+      var TARGET = '/tv-receiver/index.html';
+
+      function send(event, details) {
+        try {
+          var payload = JSON.stringify({
+            event: event,
+            url: (typeof location !== 'undefined' && location.href) || '',
+            details: details || null
+          });
+          if (navigator && typeof navigator.sendBeacon === 'function') {
+            try {
+              var blob = new Blob([payload], { type: 'application/json' });
+              navigator.sendBeacon(TELEMETRY_URL, blob);
+              return;
+            } catch (e) { /* fall through to fetch */ }
+          }
+          if (typeof fetch === 'function') {
+            fetch(TELEMETRY_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true
+            })['catch'](function () {});
+          }
+        } catch (e) { /* never block redirect on telemetry */ }
+      }
+
+      send('redirect_fired', { target: TARGET });
+
+      // Hard redirect for smart TV browsers that may not honor meta-refresh
+      // reliably. The 1-second meta-refresh above is the safety net.
+      try {
+        window.location.replace(TARGET);
+      } catch (e) {
+        try { window.location.href = TARGET; } catch (e2) {
+          send('redirect_failed', { error: String(e2 && e2.message || e2) });
+        }
+      }
+    })();
   </script>
 </head>
 <body>
