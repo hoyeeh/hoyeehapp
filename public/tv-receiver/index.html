@@ -817,13 +817,21 @@
 
       // Show browser error if incompatible
       if (!checkBrowserCompat()) {
+        tvTrack('pairing_failed', { reason: 'browser_incompatible' });
         document.getElementById('browserError').style.display = 'block';
         pairingScreen.style.display = 'none';
         return;
       }
 
+      tvTrack('polyfills_ready', {
+        hasHls: typeof Hls !== 'undefined',
+        hasSupabase: typeof supabase !== 'undefined',
+        hasQR: typeof QRCode !== 'undefined'
+      });
+
       // Initialize Supabase
       var hasRealtime = initSupabase();
+
 
       function formatTime(seconds) {
         if (isNaN(seconds) || !isFinite(seconds)) {
