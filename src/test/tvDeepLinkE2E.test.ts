@@ -58,8 +58,8 @@ describe("/tv deep linking → tv-receiver", () => {
     expect(app).toMatch(/path=["']\/tv-receiver["']/);
     expect(app).toMatch(/path=["']\/tv-app["']/);
     // And imports the page components
-    expect(app).toMatch(/from\s+["']\.\/pages\/TV["']/);
-    expect(app).toMatch(/from\s+["']\.\/pages\/TVReceiver["']/);
+    expect(app).toMatch(/import\(["']\.\/pages\/TV["']\)/);
+    expect(app).toMatch(/import\(["']\.\/pages\/TVReceiver["']\)/);
   });
 
   it("CastPairingDialog points users at hoyeeh.com/tv (canonical receiver URL)", () => {
