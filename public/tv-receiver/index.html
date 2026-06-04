@@ -992,6 +992,7 @@
           document.getElementById('pairingCode').textContent = pairingCode;
             generateQRCode(pairingCode);
             document.getElementById('status').textContent = 'Waiting for connection...';
+            tvTrack('pairing_visible', { pairingCode: pairingCode });
 
             var expiresAt = new Date(result.expiresAt);
             updateExpiry(expiresAt);
@@ -1008,9 +1009,11 @@
           document.getElementById('spinner').style.display = 'none';
         }).catch(function(error) {
           console.error('Error generating code:', error);
+          tvTrack('pairing_failed', { reason: 'generate_code_error', message: (error && error.message) || String(error) });
           document.getElementById('errorMessage').textContent = 'Error: ' + (error.message || 'Unknown error');
           document.getElementById('spinner').style.display = 'none';
         });
+
       }
 
       function updateExpiry(expiresAt) {
