@@ -3777,6 +3777,39 @@ export type Database = {
           },
         ]
       }
+      tv_telemetry: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event: string
+          id: string
+          pairing_code: string | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event: string
+          id?: string
+          pairing_code?: string | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event?: string
+          id?: string
+          pairing_code?: string | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       user_devices: {
         Row: {
           device_id: string
