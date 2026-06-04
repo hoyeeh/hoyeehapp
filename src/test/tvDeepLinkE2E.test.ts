@@ -17,16 +17,21 @@ const root = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(root, rel), "utf8");
 
 describe("/tv deep linking → tv-receiver", () => {
-  it("does NOT have a static stub at public/tv/index.html (regression guard)", () => {
+  it("serves a lightweight static redirect at public/tv/index.html for smart TVs", () => {
+    // Smart TV browsers (Tizen, webOS, older WebKit/Chromium) frequently fail
+    // to boot the React SPA bundle, leaving /tv blank. A static HTML file at
+    // public/tv/index.html bypasses the SPA entirely and forwards the TV to
+    // the self-contained /tv-receiver/index.html shell.
     const stub = resolve(root, "public/tv/index.html");
-    expect(existsSync(stub)).toBe(false);
-  });
-
-  it("does NOT have a static stub directory at public/tv (regression guard)", () => {
-    // The whole public/tv/ folder should remain absent so the SPA fallback
-    // owns the /tv path on Lovable hosting.
-    const dir = resolve(root, "public/tv");
-    expect(existsSync(dir)).toBe(false);
+    expect(existsSync(stub)).toBe(true);
+    const html = read("public/tv/index.html");
+    // Must redirect to the receiver via BOTH meta-refresh and JS so legacy
+    // smart TV browsers without reliable meta-refresh still navigate.
+    expect(html).toMatch(/http-equiv=["']refresh["'][^>]*\/tv-receiver\/index\.html/i);
+    expect(html).toMatch(/location\.(replace|href)\s*=?\s*\(?\s*['"]\/tv-receiver\/index\.html/);
+    // Must not pull in the SPA bundle (no <script type="module" src="/src/...">
+    // or /assets/index- references that would re-introduce the original bug).
+    expect(html).not.toMatch(/type=["']module["'][^>]*src=["']\/(src|assets)\//);
   });
 
   it("ships the static TV receiver at public/tv-receiver/index.html", () => {
