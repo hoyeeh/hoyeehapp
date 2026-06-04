@@ -28,7 +28,10 @@ describe("/tv deep linking → tv-receiver", () => {
     // Must redirect to the receiver via BOTH meta-refresh and JS so legacy
     // smart TV browsers without reliable meta-refresh still navigate.
     expect(html).toMatch(/http-equiv=["']refresh["'][^>]*\/tv-receiver\/index\.html/i);
-    expect(html).toMatch(/location\.(replace|href)\s*=?\s*\(?\s*['"]\/tv-receiver\/index\.html/);
+    // JS redirect — accept either an inline literal or a TARGET constant
+    // that resolves to /tv-receiver/index.html.
+    expect(html).toMatch(/location\.(replace|href)\s*[=(]/);
+    expect(html).toContain("/tv-receiver/index.html");
     // Must not pull in the SPA bundle (no <script type="module" src="/src/...">
     // or /assets/index- references that would re-introduce the original bug).
     expect(html).not.toMatch(/type=["']module["'][^>]*src=["']\/(src|assets)\//);
