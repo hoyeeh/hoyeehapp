@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="0; url=/tv-receiver/index.html">
+  <title>Hoyeeh TV</title>
+  <link rel="canonical" href="https://hoyeeh.com/tv-receiver/index.html">
+  <style>
+    html,body{margin:0;padding:0;background:#0a0a0a;color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;height:100%;}
+    .wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;}
+    .brand{color:#ff6300;font-weight:700;font-size:48px;letter-spacing:2px;}
+    .msg{margin-top:16px;opacity:.8;}
+  </style>
+  <script>
+    // Hard redirect for smart TV browsers (Tizen, webOS, older WebKit/Chromium)
+    // that may not honor meta-refresh reliably. Runs before SPA bundle would
+    // ever load, so /tv never depends on the React app booting on the TV.
+    try { window.location.replace('/tv-receiver/index.html'); } catch (e) {
+      window.location.href = '/tv-receiver/index.html';
+    }
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">HOYEEH</div>
+    <div class="msg">Loading TV Receiver…</div>
+    <noscript>
+      <p><a style="color:#ff6300" href="/tv-receiver/index.html">Continue to TV Receiver</a></p>
+    </noscript>
+  </div>
+</body>
+</html>
