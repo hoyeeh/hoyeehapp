@@ -70,12 +70,10 @@ export const HeroBannerManagement = () => {
   const { data: content = [] } = useQuery({
     queryKey: ["content-for-banner"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title")
-        .order("title");
-      if (error) throw error;
-      return data || [];
+      return await fetchAllContent<{ id: string; title: string }>(
+        "id, title",
+        (q) => q.order("title")
+      );
     },
   });
 
