@@ -268,12 +268,10 @@ export const EnhancedHomeSectionManagement = () => {
   const { data: allContent = [] } = useQuery({
     queryKey: ["all-content"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, thumbnail_url, content_type, year, is_premium")
-        .order("title");
-      if (error) throw error;
-      return data as (Content & { is_premium: boolean | null })[];
+      return await fetchAllContent<Content & { is_premium: boolean | null }>(
+        "id, title, thumbnail_url, content_type, year, is_premium",
+        (q) => q.order("title")
+      );
     },
   });
 
