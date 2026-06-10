@@ -64,15 +64,14 @@ export function BatchSubtitleGenerator() {
   const { data: allContent = [], isLoading: loadingMovies } = useQuery({
     queryKey: ["batch-subtitle-content"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, content_type, video_url, thumbnail_url")
-        .eq("content_type", "movie")
-        .not("video_url", "is", null)
-        .order("title");
-
-      if (error) throw error;
-      return data as ContentItem[];
+      return await fetchAllContent<ContentItem>(
+        "id, title, content_type, video_url, thumbnail_url",
+        (q) =>
+          q
+            .eq("content_type", "movie")
+            .not("video_url", "is", null)
+            .order("title")
+      );
     },
   });
 
