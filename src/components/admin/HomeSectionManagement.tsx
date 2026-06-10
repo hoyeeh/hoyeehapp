@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllContent } from "@/lib/fetchAllContent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -342,12 +343,10 @@ export const HomeSectionManagement = () => {
   const { data: allContent = [] } = useQuery({
     queryKey: ["all-content-for-sections"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, thumbnail_url, content_type, is_premium, year")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      return await fetchAllContent(
+        "id, title, thumbnail_url, content_type, is_premium, year",
+        (q) => q.order("created_at", { ascending: false })
+      );
     },
     enabled: !!managingContentSection,
   });

@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllContent } from "@/lib/fetchAllContent";
 import { toast } from "sonner";
 import { Languages, Loader2, Check, X, Play, Pause, Film, Tv, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -63,15 +64,14 @@ export function BatchSubtitleGenerator() {
   const { data: allContent = [], isLoading: loadingMovies } = useQuery({
     queryKey: ["batch-subtitle-content"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, content_type, video_url, thumbnail_url")
-        .eq("content_type", "movie")
-        .not("video_url", "is", null)
-        .order("title");
-
-      if (error) throw error;
-      return data as ContentItem[];
+      return await fetchAllContent<ContentItem>(
+        "id, title, content_type, video_url, thumbnail_url",
+        (q) =>
+          q
+            .eq("content_type", "movie")
+            .not("video_url", "is", null)
+            .order("title")
+      );
     },
   });
 

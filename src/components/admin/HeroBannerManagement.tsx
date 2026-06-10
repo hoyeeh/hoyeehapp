@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllContent } from "@/lib/fetchAllContent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,12 +70,10 @@ export const HeroBannerManagement = () => {
   const { data: content = [] } = useQuery({
     queryKey: ["content-for-banner"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title")
-        .order("title");
-      if (error) throw error;
-      return data || [];
+      return await fetchAllContent<{ id: string; title: string }>(
+        "id, title",
+        (q) => q.order("title")
+      );
     },
   });
 
