@@ -227,15 +227,16 @@ export const KidsZoneManagement = () => {
   const { data: kidsContent = [] } = useQuery({
     queryKey: ["admin-kids-content"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, thumbnail_url, content_rating, content_type, view_count, age_limit")
-        .in("content_rating", KIDS_RATINGS)
-        .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
-        .order("title");
-      if (error) throw error;
+      const data = await fetchAllContent<any>(
+        "id, title, thumbnail_url, content_rating, content_type, view_count, age_limit",
+        (q) =>
+          q
+            .in("content_rating", KIDS_RATINGS)
+            .or(`age_limit.is.null,age_limit.lte.${KIDS_MAX_AGE_LIMIT}`)
+            .order("title")
+      );
       // Additional client-side filter for strict age compliance
-      return (data || []).filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT);
+      return data.filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT);
     },
   });
 
