@@ -54,6 +54,29 @@ export default function Cast() {
     }
   }, [location.state]);
 
+  // Auto-pair when arriving from a QR scan: /cast?code=ABC123
+  // The TV receiver encodes this URL in its QR so any phone camera can launch
+  // pairing without a custom scheme handler.
+  const [autoPairAttempted, setAutoPairAttempted] = useState(false);
+  useEffect(() => {
+    if (autoPairAttempted || isConnected || isConnecting) return;
+    const params = new URLSearchParams(location.search);
+    const qrCode = (params.get('code') || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(qrCode)) return;
+    setAutoPairAttempted(true);
+    (async () => {
+      const ok = await pairWithCode(qrCode);
+      if (ok) {
+        toast.success('Paired with TV — pick something to play');
+      } else {
+        toast.error('Could not pair with TV. Check the code is still showing.');
+      }
+      // Strip the code from the URL so a reload doesn't retry an expired code
+      const cleanUrl = location.pathname + location.hash;
+      window.history.replaceState({}, document.title, cleanUrl);
+    })();
+  }, [autoPairAttempted, isConnected, isConnecting, location.search, location.pathname, location.hash, pairWithCode]);
+
   // Auto-cast pending video when connected
   useEffect(() => {
     if (isConnected && pendingVideo) {
