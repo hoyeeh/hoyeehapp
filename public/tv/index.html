@@ -1952,7 +1952,10 @@
       });
 
       function generateQRCode(code) {
-        var qrData = 'hoyeeh://pair?code=' + code;
+        // Encode an HTTPS URL so ANY phone camera app (iOS/Android) can open
+        // it without needing a custom scheme handler. The /cast page reads the
+        // ?code= param and auto-pairs, then auto-loads selected content.
+        var qrData = 'https://hoyeeh.com/cast?code=' + code + '&auto=1';
         var container = document.getElementById('qrContainer');
         container.innerHTML = '';
 
