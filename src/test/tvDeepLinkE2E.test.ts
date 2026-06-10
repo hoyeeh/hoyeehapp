@@ -17,24 +17,23 @@ const root = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(root, rel), "utf8");
 
 describe("/tv deep linking → tv-receiver", () => {
-  it("serves a lightweight static redirect at public/tv/index.html for smart TVs", () => {
+  it("serves a self-contained TV receiver at public/tv/index.html (no redirect, no SPA bundle)", () => {
     // Smart TV browsers (Tizen, webOS, older WebKit/Chromium) frequently fail
-    // to boot the React SPA bundle, leaving /tv blank. A static HTML file at
-    // public/tv/index.html bypasses the SPA entirely and forwards the TV to
-    // the self-contained /tv-receiver/index.html shell.
+    // to follow meta-refresh or window.location redirects, leaving /tv blank.
+    // We now ship the FULL receiver directly at /tv/index.html so the URL
+    // works on every TV browser without any client-side navigation.
     const stub = resolve(root, "public/tv/index.html");
     expect(existsSync(stub)).toBe(true);
     const html = read("public/tv/index.html");
-    // Must redirect to the receiver via BOTH meta-refresh and JS so legacy
-    // smart TV browsers without reliable meta-refresh still navigate.
-    expect(html).toMatch(/http-equiv=["']refresh["'][^>]*\/tv-receiver\/index\.html/i);
-    // JS redirect — accept either an inline literal or a TARGET constant
-    // that resolves to /tv-receiver/index.html.
-    expect(html).toMatch(/location\.(replace|href)\s*[=(]/);
-    expect(html).toContain("/tv-receiver/index.html");
-    // Must not pull in the SPA bundle (no <script type="module" src="/src/...">
-    // or /assets/index- references that would re-introduce the original bug).
+    // Must contain the receiver UI (pairing screen + QR container).
+    expect(html).toMatch(/id=["']pairingScreen["']/);
+    expect(html).toMatch(/id=["']qrContainer["']/);
+    // Must NOT pull in the SPA bundle (which is what was breaking TV browsers).
     expect(html).not.toMatch(/type=["']module["'][^>]*src=["']\/(src|assets)\//);
+    // QR must encode an HTTPS URL so any phone camera can open it — NEVER a
+    // custom scheme that requires an app handler.
+    expect(html).toMatch(/qrData\s*=\s*['"]https:\/\/hoyeeh\.com\/cast\?code=/);
+    expect(html).not.toMatch(/hoyeeh:\/\/pair/);
   });
 
   it("ships the static TV receiver at public/tv-receiver/index.html", () => {
