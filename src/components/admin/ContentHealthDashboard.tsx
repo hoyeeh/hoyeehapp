@@ -86,12 +86,10 @@ export const ContentHealthDashboard = () => {
   const { data: content = [], isLoading: contentLoading, refetch: refetchContent } = useQuery({
     queryKey: ["content-health-content"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, content_type, video_url, thumbnail_url, year, genre, created_at, tmdb_id")
-        .order("title");
-      if (error) throw error;
-      return data as ContentItem[];
+      return await fetchAllContent<ContentItem>(
+        "id, title, content_type, video_url, thumbnail_url, year, genre, created_at, tmdb_id",
+        (q) => q.order("title")
+      );
     },
   });
 
