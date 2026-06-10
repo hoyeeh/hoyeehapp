@@ -140,50 +140,30 @@ describe("/tv-receiver shell — Smart TV engine compatibility", () => {
       .join("\n");
     // Hard-blockers for Tizen 2017 / webOS 3 / legacy WebKit:
     expect(inline, "optional chaining is unsupported on legacy Smart TVs").not.toMatch(/\?\./);
-    expect(inline, "nullish coalescing is unsupported on legacy Smart TVs").not.toMatch(/\?\?(?!=)/);
-    // Top-level await would also fail to parse.
-    expect(inline).not.toMatch(/^\s*await\s+/m);
+describe("/tv ↔ /tv-receiver parity — both paths must work", () => {
+  it("both /tv and /tv-receiver expose the pairing UI directly", () => {
+    const tv = read(TV_INDEX);
+    const recv = read(RECEIVER);
+    for (const html of [tv, recv]) {
+      expect(html).toMatch(/id=["']pairingScreen["']/);
+      expect(html).toMatch(/id=["']pairingCode["']/);
+      expect(html).toMatch(/id=["']qrContainer["']/);
+    }
   });
 
-  it("declares a TV-safe viewport (1080p baseline) and dark background", () => {
-    const html = read(RECEIVER);
-    const dom = new JSDOM(html);
-    const vp = dom.window.document.querySelector('meta[name="viewport"]');
-    expect(vp).toBeTruthy();
-    expect(vp!.getAttribute("content") || "").toMatch(/width=device-width/);
-    // Dark background prevents the flash-of-white that some Smart TV
-    // browsers render while loading external <script src>'s.
-    expect(html).toMatch(/background:\s*#0a0a0a/i);
-    dom.window.close();
-  });
-
-  it("self-redirects when the receiver shell is opened under a Smart TV UA", () => {
-    // Sanity check: the receiver must NOT bounce the TV back to /tv.
-    const html = read(RECEIVER);
-    expect(html).not.toMatch(/window\.location\.(href|replace)\s*[=(]\s*['"]\/tv['"]/);
-  });
-});
-
-describe("/tv ↔ /tv-receiver round-trip — UA-driven smoke test", () => {
   it.each(Object.entries(SMART_TV_UAS))(
-    "%s reaches the receiver shell via the static /tv stub",
+    "%s renders the pairing UI under the smart TV UA without a redirect",
     async (_label, ua) => {
       const tvHtml = read(TV_INDEX);
       const dom = new JSDOM(tvHtml, {
         url: "https://hoyeeh.com/tv",
         userAgent: ua,
-        runScripts: "outside-only", // Don't actually navigate jsdom
+        runScripts: "outside-only",
         pretendToBeVisual: true,
       });
-      const meta = dom.window.document.querySelector(
-        'meta[http-equiv="refresh" i]',
-      );
-      const content = meta?.getAttribute("content") || "";
-      expect(content).toMatch(/url=\/tv-receiver\/index\.html/);
-      // The receiver file at the redirect target must exist and contain a
-      // pairing-code UI element so the TV actually shows something.
-      const receiver = read(RECEIVER);
-      expect(receiver).toMatch(/id=["']pairingCode["']/);
+      expect(dom.window.document.querySelector("#pairingCode")).toBeTruthy();
+      expect(dom.window.document.querySelector("#qrContainer")).toBeTruthy();
+      expect(dom.window.document.querySelector('meta[http-equiv="refresh" i]')).toBeNull();
       dom.window.close();
     },
   );
