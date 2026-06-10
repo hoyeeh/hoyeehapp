@@ -151,12 +151,10 @@ export const Top10Management = () => {
   const { data: allContent = [] } = useQuery({
     queryKey: ["all-content-extended"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, thumbnail_url, content_type, description, year, genre, duration, is_premium")
-        .order("title");
-      if (error) throw error;
-      return data as ContentItem[];
+      return await fetchAllContent<ContentItem>(
+        "id, title, thumbnail_url, content_type, description, year, genre, duration, is_premium",
+        (q) => q.order("title")
+      );
     },
   });
 
