@@ -3,69 +3,2202 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="1; url=/tv-receiver/index.html">
-  <title>Hoyeeh TV</title>
-  <link rel="canonical" href="https://hoyeeh.com/tv-receiver/index.html">
+  <title>Hoyeeh TV Receiver</title>
+  <link rel="icon" href="/hoyeeh-icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/hoyeeh-icon.png">
   <style>
-    html,body{margin:0;padding:0;background:#0a0a0a;color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;height:100%;}
-    .wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;}
-    .brand{color:#ff6300;font-weight:700;font-size:48px;letter-spacing:2px;}
-    .msg{margin-top:16px;opacity:.8;}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      background: -webkit-linear-gradient(315deg, #0a0a0a 0%, #1a1a2e 100%);
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: white;
+      height: 100%;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .container {
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 100vh;
+      padding: 40px;
+    }
+    .logo { font-size: 48px; font-weight: bold; color: #ff6300; margin-bottom: 20px; }
+    .pairing-screen { text-align: center; }
+    .pairing-code {
+      font-size: 120px;
+      font-weight: bold;
+      letter-spacing: 20px;
+      color: #ff6300;
+      margin: 40px 0;
+      font-family: 'Courier New', monospace;
+    }
+    .qr-container {
+      margin: 30px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+      width: -webkit-fit-content;
+      width: fit-content;
+    }
+    .qr-container canvas,
+    .qr-container img,
+    .qr-container svg {
+      display: block;
+      image-rendering: pixelated;
+    }
+    .qr-label { font-size: 16px; color: #666; margin-top: 20px; text-align: center; }
+    .instructions { font-size: 24px; color: #aaa; max-width: 600px; line-height: 1.6; }
+    .status { margin-top: 30px; font-size: 18px; color: #666; }
+    .status.connected { color: #4ade80; }
+    .expires { margin-top: 20px; font-size: 16px; color: #666; }
+    .player-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: black;
+    }
+    .player-container.active { display: block; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+    .player-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: -webkit-linear-gradient(top, transparent, rgba(0,0,0,0.9));
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
+      padding: 40px;
+      opacity: 0;
+      -webkit-transition: opacity 0.3s;
+      transition: opacity 0.3s;
+    }
+    .player-container:hover .player-overlay,
+    .player-overlay.visible { opacity: 1; }
+    .video-title { font-size: 32px; font-weight: bold; margin-bottom: 20px; }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    .progress-fill { height: 100%; background: #ff6300; border-radius: 4px; -webkit-transition: width 0.1s; transition: width 0.1s; }
+    .controls { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; gap: 20px; }
+    .time-display { font-size: 18px; color: #aaa; }
+    .now-playing-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #ff6300;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255,99,0,0.2);
+      border-top-color: #ff6300;
+      border-radius: 50%;
+      -webkit-animation: spin 1s linear infinite;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
+    @keyframes spin { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
+    .error-message { color: #ef4444; font-size: 18px; margin-top: 20px; }
+    .idle-screen { display: none; text-align: center; }
+    .idle-screen.active { display: block; }
+    .idle-screen h2 { font-size: 36px; margin-bottom: 20px; }
+    .idle-screen p { font-size: 20px; color: #aaa; }
+    .queue-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      opacity: 0;
+      -webkit-transition: opacity 0.3s;
+      transition: opacity 0.3s;
+    }
+    .player-container:hover .queue-panel,
+    .queue-panel.visible { opacity: 1; }
+    .queue-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #ff6300; }
+    .queue-item {
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.05);
+    }
+    .queue-item.active { background: rgba(255,99,0,0.2); border: 1px solid #ff6300; }
+    .queue-item img { width: 60px; height: 34px; object-fit: cover; border-radius: 4px; }
+    .queue-item-info { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; overflow: hidden; }
+    .queue-item-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .queue-item-number { font-size: 10px; color: #aaa; }
+    .queue-empty { font-size: 14px; color: #666; text-align: center; padding: 20px 0; }
+    
+    .video-loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .video-loading-overlay.hidden { display: none; }
+    .loading-spinner {
+      width: 80px;
+      height: 80px;
+      border: 6px solid rgba(255,99,0,0.2);
+      border-top-color: #ff6300;
+      border-radius: 50%;
+      -webkit-animation: spin 1s linear infinite;
+      animation: spin 1s linear infinite;
+    }
+    .loading-text { margin-top: 20px; font-size: 18px; color: #aaa; }
+    
+    .video-error-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
+      justify-content: center;
+      z-index: 11;
+    }
+    .video-error-overlay.hidden { display: none; }
+    .error-icon { font-size: 64px; margin-bottom: 20px; }
+    .error-title { font-size: 24px; font-weight: bold; color: #ef4444; margin-bottom: 10px; }
+    .error-details { font-size: 16px; color: #aaa; text-align: center; max-width: 400px; }
+    .error-code { font-size: 12px; color: #666; margin-top: 10px; font-family: monospace; }
+    .retry-button {
+      margin-top: 30px;
+      padding: 16px 40px;
+      font-size: 18px;
+      background: #ff6300;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .retry-button:hover { background: #e65a00; }
+    
+    .unmute-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -webkit-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9);
+      padding: 32px 48px;
+      border-radius: 16px;
+      cursor: pointer;
+      z-index: 12;
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      gap: 16px;
+      -webkit-transition: opacity 0.3s, background 0.2s;
+      transition: opacity 0.3s, background 0.2s;
+      border: 2px solid #ff6300;
+    }
+    .unmute-overlay.hidden { display: none; }
+    .unmute-overlay:hover, .unmute-overlay:focus { background: rgba(255,99,0,0.2); outline: none; }
+    .unmute-icon { font-size: 48px; }
+    .unmute-text { font-size: 20px; font-weight: 500; text-align: center; }
+    .unmute-hint { font-size: 14px; color: #aaa; }
+    
+    .preflight-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-box-pack: center;
+      -webkit-justify-content: center;
+      justify-content: center;
+      z-index: 13;
+    }
+    .preflight-overlay.hidden { display: none; }
+    .preflight-icon { font-size: 48px; margin-bottom: 16px; }
+    .preflight-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
+    .preflight-details { font-size: 14px; color: #aaa; text-align: center; max-width: 400px; }
+    
+    .browser-error {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    .browser-error h2 { color: #ef4444; margin-bottom: 20px; }
+    .browser-error p { color: #aaa; font-size: 18px; line-height: 1.6; }
+    
+    .connection-badge {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.8);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #4ade80;
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      -webkit-animation: pulse 2s infinite;
+      animation: pulse 2s infinite;
+    }
+    @-webkit-keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Debug Panel */
+    .debug-panel {
+      position: fixed;
+      bottom: 60px;
+      left: 20px;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: #aaa;
+      z-index: 100;
+      max-width: 400px;
+      display: none;
+    }
+    .debug-panel.visible { display: block; }
+    .debug-title { 
+      font-weight: bold; 
+      color: #ff6300; 
+      margin-bottom: 8px;
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-pack: justify;
+      -webkit-justify-content: space-between;
+      justify-content: space-between;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+    }
+    .debug-close {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0;
+    }
+    .debug-close:hover { color: #fff; }
+    .debug-row { 
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      margin-bottom: 4px;
+      gap: 8px;
+    }
+    .debug-label { color: #666; min-width: 100px; }
+    .debug-value { color: #4ade80; word-break: break-all; }
+    .debug-value.error { color: #ef4444; }
+    .debug-value.warning { color: #f59e0b; }
+    .debug-value.url { 
+      max-width: 220px; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      white-space: nowrap;
+    }
+    
+    /* Force Refresh Button */
+    .force-refresh-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: #aaa;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 99;
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .force-refresh-btn:hover { background: rgba(255,99,0,0.2); border-color: #ff6300; color: #fff; }
+    
+    /* Debug Toggle Button */
+    .debug-toggle-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 140px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: #aaa;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 99;
+    }
+    .debug-toggle-btn:hover { background: rgba(255,99,0,0.2); border-color: #ff6300; color: #fff; }
+    .debug-toggle-btn.active { border-color: #ff6300; color: #ff6300; }
+    
+    /* Buffering Progress Indicator */
+    .buffering-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -webkit-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+      display: -webkit-box;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-box-orient: vertical;
+      -webkit-box-direction: normal;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-box-align: center;
+      -webkit-align-items: center;
+      align-items: center;
+      z-index: 8;
+    }
+    .buffering-overlay.hidden { display: none; }
+    .buffering-ring {
+      width: 100px;
+      height: 100px;
+      position: relative;
+    }
+    .buffering-ring svg {
+      width: 100%;
+      height: 100%;
+      -webkit-transform: rotate(-90deg);
+      transform: rotate(-90deg);
+    }
+    .buffering-ring-bg {
+      fill: none;
+      stroke: rgba(255,255,255,0.1);
+      stroke-width: 8;
+    }
+    .buffering-ring-progress {
+      fill: none;
+      stroke: #ff6300;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+      -webkit-transition: stroke-dashoffset 0.3s ease;
+      transition: stroke-dashoffset 0.3s ease;
+    }
+    .buffering-percent {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -webkit-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .buffering-text {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #aaa;
+    }
   </style>
-  <script>
-    // ES5-safe: every Smart TV engine (Tizen, webOS, legacy WebKit) can parse
-    // this block. Fire a telemetry beacon BEFORE redirecting so we can
-    // measure how often /tv even reaches a working browser. Then redirect.
-    (function () {
-      var TELEMETRY_URL = 'https://astugmzoxhxcyipxsojl.supabase.co/functions/v1/tv-telemetry';
-      var TARGET = '/tv-receiver/index.html';
+</head>
+<body>
+  <noscript>
+    <div style="text-align: center; padding: 40px; color: white;">
+      <h2 style="color: #ff6300;">HOYEEH</h2>
+      <p style="margin-top: 20px;">JavaScript is required to use this TV receiver.</p>
+    </div>
+  </noscript>
 
-      function send(event, details) {
+  <div class="browser-error" id="browserError">
+    <div class="logo">HOYEEH</div>
+    <h2>Browser Not Supported</h2>
+    <p>This browser may not support all features required for the TV receiver.</p>
+    <p style="margin-top: 10px;">Please try updating your TV's browser or use a streaming device.</p>
+  </div>
+
+  <div class="container" id="pairingScreen">
+    <div class="pairing-screen">
+      <div class="logo">HOYEEH</div>
+      <p style="font-size: 16px; color: #aaa; margin-bottom: 10px;">You're at</p>
+      <p style="font-size: 28px; color: #ff6300; font-weight: bold; margin-bottom: 30px;">hoyeeh.com/tv</p>
+      <h1>Link with TV Code</h1>
+      <div class="pairing-code" id="pairingCode">------</div>
+      <div class="qr-container" id="qrContainer"></div>
+      <p class="qr-label">Scan this QR code with the Hoyeeh app</p>
+      <p class="instructions">
+        Open the Hoyeeh app on your phone.<br>
+        Go to Cast → "Scan QR Code" or enter the code above.
+      </p>
+      <p class="status" id="status">Waiting for connection...</p>
+      <p class="expires" id="expires"></p>
+      <div class="spinner" id="spinner" style="display: none;"></div>
+      <p class="error-message" id="errorMessage"></p>
+    </div>
+  </div>
+
+  <div class="container idle-screen" id="idleScreen">
+    <div class="logo">HOYEEH</div>
+    <h2>Ready to Cast</h2>
+    <p>Select content from your phone or computer to start watching</p>
+    <p class="status connected">Connected</p>
+    <div id="idleQueue" style="margin-top: 30px;"></div>
+  </div>
+
+  <div class="player-container" id="playerContainer">
+    <video id="videoPlayer" playsinline muted></video>
+    <div class="now-playing-badge">Now Playing</div>
+    
+    <div class="video-loading-overlay hidden" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loadingText">Loading video...</div>
+    </div>
+    
+    <div class="preflight-overlay hidden" id="preflightOverlay">
+      <div class="preflight-icon">🔍</div>
+      <div class="preflight-title" id="preflightTitle">Checking video...</div>
+      <div class="preflight-details" id="preflightDetails">Verifying video compatibility</div>
+    </div>
+    
+    <div class="video-error-overlay hidden" id="errorOverlay">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title" id="errorTitle">Video Error</div>
+      <div class="error-details" id="errorDetails">Unable to play this video</div>
+      <div class="error-code" id="errorCode"></div>
+      <button class="retry-button" id="retryButton">Retry</button>
+    </div>
+    
+    <div class="unmute-overlay hidden" id="unmuteOverlay" tabindex="0">
+      <span class="unmute-icon">🔇</span>
+      <span class="unmute-text">Press OK or Click to Enable Audio</span>
+      <span class="unmute-hint">Video is playing muted</span>
+    </div>
+    
+    <div class="queue-panel" id="queuePanel">
+      <div class="queue-title">Up Next</div>
+      <div id="queueList"></div>
+    </div>
+    
+    <div class="player-overlay" id="playerOverlay">
+      <h2 class="video-title" id="videoTitle">Video Title</h2>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="controls">
+        <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+      </div>
+    </div>
+    
+    <div class="connection-badge" id="connectionBadge" style="display: none;">
+      <div class="connection-dot"></div>
+      <span>Realtime Connected</span>
+    </div>
+    
+    <!-- Buffering Progress Overlay -->
+    <div class="buffering-overlay hidden" id="bufferingOverlay">
+      <div class="buffering-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="buffering-ring-bg" cx="50" cy="50" r="45"></circle>
+          <circle class="buffering-ring-progress" id="bufferingProgress" cx="50" cy="50" r="45"></circle>
+        </svg>
+        <div class="buffering-percent" id="bufferingPercent">0%</div>
+      </div>
+      <div class="buffering-text" id="bufferingText">Buffering...</div>
+    </div>
+  </div>
+  
+  <!-- Debug Panel -->
+  <div class="debug-panel" id="debugPanel">
+    <div class="debug-title">
+      <span>🔧 Debug Info</span>
+      <button class="debug-close" id="debugClose">×</button>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">command_seq:</span>
+      <span class="debug-value" id="debugCommandSeq">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">activeVideoUrl:</span>
+      <span class="debug-value url" id="debugActiveUrl">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">loadedVideoUrl:</span>
+      <span class="debug-value url" id="debugLoadedUrl">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Realtime:</span>
+      <span class="debug-value" id="debugRealtime">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Session ID:</span>
+      <span class="debug-value" id="debugSessionId">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">isPlaying:</span>
+      <span class="debug-value" id="debugIsPlaying">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Last Action:</span>
+      <span class="debug-value" id="debugLastAction">-</span>
+    </div>
+    <div class="debug-row">
+      <span class="debug-label">Buffer:</span>
+      <span class="debug-value" id="debugBuffer">-</span>
+    </div>
+  </div>
+  
+  <!-- Control Buttons -->
+  <button class="force-refresh-btn" id="forceRefreshBtn">🔄 Refresh</button>
+  <button class="debug-toggle-btn" id="debugToggleBtn">🔧 Debug</button>
+
+  <!-- Polyfills for older browsers -->
+  <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3/dist/fetch.umd.min.js"></script>
+  
+  <!-- HLS.js and QRCode -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  
+  <!-- Supabase JS for Realtime -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  
+  <script>
+    // ES5 compatible code for LG TV and older browsers
+    (function() {
+      'use strict';
+      
+      var SUPABASE_URL = 'https://astugmzoxhxcyipxsojl.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdHVnbXpveGh4Y3lpcHhzb2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzIzNDIsImV4cCI6MjA4MDY0ODM0Mn0.gYQzgVqNwvHe2dO5tfk0S2sy4EPVybh9C8alpi7LhCE';
+
+      // ===== Smart TV telemetry beacon =====
+      // Fires lightweight events to the tv-telemetry edge function so admins
+      // can audit which Smart TV engines successfully boot the receiver and
+      // surface the pairing code. ES5-only; never throws into the caller.
+      var TV_TELEMETRY_URL = SUPABASE_URL + '/functions/v1/tv-telemetry';
+      function tvTrack(event, details) {
         try {
           var payload = JSON.stringify({
             event: event,
+            sessionId: (typeof sessionId !== 'undefined' && sessionId) || null,
+            pairingCode: (typeof pairingCode !== 'undefined' && pairingCode) || null,
             url: (typeof location !== 'undefined' && location.href) || '',
             details: details || null
           });
           if (navigator && typeof navigator.sendBeacon === 'function') {
             try {
               var blob = new Blob([payload], { type: 'application/json' });
-              navigator.sendBeacon(TELEMETRY_URL, blob);
-              return;
-            } catch (e) { /* fall through to fetch */ }
+              if (navigator.sendBeacon(TV_TELEMETRY_URL, blob)) return;
+            } catch (e) { /* fall through */ }
           }
           if (typeof fetch === 'function') {
-            fetch(TELEMETRY_URL, {
+            fetch(TV_TELEMETRY_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: payload,
               keepalive: true
             })['catch'](function () {});
           }
-        } catch (e) { /* never block redirect on telemetry */ }
+        } catch (e) { /* never break receiver on telemetry */ }
+      }
+      // Expose globally so onerror handler outside this IIFE can call it.
+      window.__tvTrack = tvTrack;
+
+      tvTrack('receiver_boot', {
+        ua: (navigator && navigator.userAgent) || '',
+        hasPromise: typeof Promise !== 'undefined',
+        hasFetch: typeof fetch !== 'undefined',
+        hasBeacon: !!(navigator && navigator.sendBeacon),
+        hasSupabase: typeof supabase !== 'undefined',
+        hasHls: typeof Hls !== 'undefined'
+      });
+
+
+
+      var sessionId = null;
+      var receiverId = null;
+      var pairingCode = null;
+      var pollInterval = null;
+      var heartbeatInterval = null;
+      var expiryInterval = null;
+      var hls = null;
+      var currentQueue = [];
+      var currentQueueIndex = 0;
+      var retryCount = 0;
+      var MAX_RETRIES = 3;
+      var supabaseClient = null;
+      var realtimeChannel = null;
+
+      // State tracking to prevent reload loops
+      var loadedVideoUrl = null;
+      var pendingVideoUrl = null;
+      var isVideoLoading = false;
+      var isHandlingUpdate = false;
+      var lastIsPlaying = null;
+      var userHasInteracted = false;
+      var playPromisePending = false;
+      var useRealtimeUpdates = true;
+      
+      // Command deduplication - NEW: Use command_seq as primary gate
+      var lastCommandKey = null;
+      var lastProcessedCommandSeq = -1;  // Track last processed command_seq
+      
+      // Abort tracking - don't retry on recent aborts
+      var lastAbortTime = 0;
+
+      // === NEW: Single source of truth for active media ===
+      var activeVideoUrl = null;
+
+      // === NEW: Cooldown protection against repeated loads ===
+      var lastLoadAttemptUrl = null;
+      var lastLoadAttemptTs = 0;
+      var LOAD_COOLDOWN_MS = 4000;  // 4 second cooldown for same URL
+
+      // === NEW: Seek rate limiting ===
+      var lastSeekTime = 0;
+      var SEEK_RATE_LIMIT_MS = 800;  // Don't seek more than once per 800ms
+
+      // === Debug state (initialized early, functions added later) ===
+      var lastDebugAction = '-';
+      var currentCommandSeq = 0;
+      var debugVisible = false;
+      
+      // Placeholder function - gets proper implementation later
+      function setDebugAction(action) {
+        lastDebugAction = action;
+        // Debug panel update happens in the actual implementation
       }
 
-      send('redirect_fired', { target: TARGET });
+      // Supported video types for preflight check
+      var SUPPORTED_VIDEO_TYPES = [
+        'video/mp4',
+        'video/webm',
+        'video/ogg',
+        'video/quicktime',
+        'application/vnd.apple.mpegurl',
+        'application/x-mpegurl',
+        'audio/mpegurl'
+      ];
 
-      // Hard redirect for smart TV browsers that may not honor meta-refresh
-      // reliably. The 1-second meta-refresh above is the safety net.
-      try {
-        window.location.replace(TARGET);
-      } catch (e) {
-        try { window.location.href = TARGET; } catch (e2) {
-          send('redirect_failed', { error: String(e2 && e2.message || e2) });
+      var video = document.getElementById('videoPlayer');
+      var pairingScreen = document.getElementById('pairingScreen');
+      var idleScreen = document.getElementById('idleScreen');
+      var playerContainer = document.getElementById('playerContainer');
+      var unmuteOverlay = document.getElementById('unmuteOverlay');
+      var connectionBadge = document.getElementById('connectionBadge');
+
+      // Initialize Supabase client for realtime
+      function initSupabase() {
+        try {
+          if (typeof supabase !== 'undefined' && supabase.createClient) {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('[TV] Supabase client initialized for realtime');
+            return true;
+          }
+        } catch (e) {
+          console.error('[TV] Failed to initialize Supabase:', e);
+        }
+        return false;
+      }
+
+      // Check browser compatibility
+      function checkBrowserCompat() {
+        try {
+          if (typeof Promise === 'undefined' || typeof fetch === 'undefined') {
+            return false;
+          }
+          if (!video || typeof video.play !== 'function') {
+            return false;
+          }
+          return true;
+        } catch (e) {
+          return false;
         }
       }
+
+      // Show browser error if incompatible
+      if (!checkBrowserCompat()) {
+        tvTrack('pairing_failed', { reason: 'browser_incompatible' });
+        document.getElementById('browserError').style.display = 'block';
+        pairingScreen.style.display = 'none';
+        return;
+      }
+
+      tvTrack('polyfills_ready', {
+        hasHls: typeof Hls !== 'undefined',
+        hasSupabase: typeof supabase !== 'undefined',
+        hasQR: typeof QRCode !== 'undefined'
+      });
+
+      // Initialize Supabase
+      var hasRealtime = initSupabase();
+
+
+      function formatTime(seconds) {
+        if (isNaN(seconds) || !isFinite(seconds)) {
+          return '0:00';
+        }
+        var mins = Math.floor(seconds / 60);
+        var secs = Math.floor(seconds % 60);
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+      }
+
+      function callSignaling(action, body) {
+        var url = SUPABASE_URL + '/functions/v1/cast-signaling?action=' + action;
+        var options = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY
+          }
+        };
+        
+        if (body && Object.keys(body).length > 0) {
+          options.body = JSON.stringify(body);
+        }
+        
+        return fetch(url, options).then(function(response) {
+          return response.json();
+        });
+      }
+
+      function checkStatus() {
+        var url = SUPABASE_URL + '/functions/v1/cast-signaling?action=status&sessionId=' + sessionId;
+        return fetch(url, {
+          headers: { 'apikey': SUPABASE_ANON_KEY }
+        }).then(function(response) {
+          return response.json();
+        });
+      }
+
+      // Media preflight check
+      function performPreflightCheck(url) {
+        return new Promise(function(resolve) {
+          if (!url) {
+            resolve({ success: false, errorCode: 'NO_URL', errorMessage: 'No video URL provided' });
+            return;
+          }
+
+          showPreflight('Checking video...', 'Verifying video compatibility');
+
+          var controller = null;
+          var timeout = null;
+          
+          try {
+            controller = new AbortController();
+            timeout = setTimeout(function() { controller.abort(); }, 8000);
+          } catch (e) {
+            // AbortController not supported, proceed without it
+          }
+
+          var fetchOptions = {
+            method: 'HEAD',
+            mode: 'cors'
+          };
+          
+          if (controller) {
+            fetchOptions.signal = controller.signal;
+          }
+
+          fetch(url, fetchOptions)
+            .then(function(response) {
+              if (timeout) clearTimeout(timeout);
+              
+              if (!response.ok && response.status !== 206) {
+                resolve({
+                  success: false,
+                  errorCode: 'HTTP_' + response.status,
+                  errorMessage: 'Server returned status ' + response.status
+                });
+                return;
+              }
+
+              var contentType = response.headers.get('content-type') || '';
+              var acceptRanges = response.headers.get('accept-ranges');
+              var baseType = contentType.split(';')[0].trim().toLowerCase();
+
+              var result = {
+                success: true,
+                contentType: contentType,
+                supportsRange: acceptRanges === 'bytes' || response.status === 206,
+                warnings: []
+              };
+
+              // Check if content type is supported
+              var isSupported = false;
+              for (var i = 0; i < SUPPORTED_VIDEO_TYPES.length; i++) {
+                if (baseType === SUPPORTED_VIDEO_TYPES[i] || baseType.indexOf('video/') === 0) {
+                  isSupported = true;
+                  break;
+                }
+              }
+
+              if (!isSupported && contentType) {
+                result.warnings.push('Content-Type may not be supported: ' + contentType);
+              }
+
+              if (!result.supportsRange) {
+                result.warnings.push('Seeking may not work (no Range support)');
+              }
+
+              resolve(result);
+            })
+            .catch(function(error) {
+              if (timeout) clearTimeout(timeout);
+              
+              var errorCode = 'NETWORK_ERROR';
+              var errorMessage = 'Network error while checking video';
+
+              if (error && error.name === 'AbortError') {
+                errorCode = 'TIMEOUT';
+                errorMessage = 'Connection timed out';
+              } else if (error && error.message && error.message.indexOf('CORS') !== -1) {
+                errorCode = 'CORS_ERROR';
+                errorMessage = 'Video server does not allow cross-origin playback';
+              }
+
+              // Don't fail on preflight errors - let the video element try anyway
+              resolve({
+                success: true,
+                warnings: [errorMessage],
+                preflightFailed: true
+              });
+            });
+        });
+      }
+
+      function showPreflight(title, details) {
+        document.getElementById('preflightOverlay').classList.remove('hidden');
+        document.getElementById('preflightTitle').textContent = title;
+        document.getElementById('preflightDetails').textContent = details;
+      }
+
+      function hidePreflight() {
+        document.getElementById('preflightOverlay').classList.add('hidden');
+      }
+
+      function generatePairingCode() {
+        document.getElementById('spinner').style.display = 'block';
+        document.getElementById('errorMessage').textContent = '';
+
+        callSignaling('generate-code', {
+          deviceName: 'Smart TV',
+          deviceType: 'smart_tv'
+        }).then(function(result) {
+          if (result.success) {
+            sessionId = result.sessionId;
+            receiverId = result.receiverId;
+            pairingCode = result.pairingCode;
+
+          document.getElementById('pairingCode').textContent = pairingCode;
+            generateQRCode(pairingCode);
+            document.getElementById('status').textContent = 'Waiting for connection...';
+            tvTrack('pairing_visible', { pairingCode: pairingCode });
+
+            var expiresAt = new Date(result.expiresAt);
+            updateExpiry(expiresAt);
+            
+            // Setup realtime subscription IMMEDIATELY to catch first-scan pairing
+            if (supabaseClient && sessionId) {
+              setupRealtimeSubscription(sessionId);
+            }
+            
+            startPolling();
+          } else {
+            throw new Error(result.error || 'Failed to generate code');
+          }
+          document.getElementById('spinner').style.display = 'none';
+        }).catch(function(error) {
+          console.error('Error generating code:', error);
+          tvTrack('pairing_failed', { reason: 'generate_code_error', message: (error && error.message) || String(error) });
+          document.getElementById('errorMessage').textContent = 'Error: ' + (error.message || 'Unknown error');
+          document.getElementById('spinner').style.display = 'none';
+        });
+
+      }
+
+      function updateExpiry(expiresAt) {
+        if (expiryInterval) {
+          clearInterval(expiryInterval);
+        }
+        
+        function updateCountdown() {
+          var now = new Date();
+          var diff = Math.max(0, Math.floor((expiresAt - now) / 1000));
+          
+          if (diff <= 0) {
+            document.getElementById('expires').textContent = 'Code expired. Generating new code...';
+            clearInterval(expiryInterval);
+            generatePairingCode();
+            return;
+          }
+
+          var mins = Math.floor(diff / 60);
+          var secs = diff % 60;
+          document.getElementById('expires').textContent = 
+            'Code expires in ' + mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        updateCountdown();
+        expiryInterval = setInterval(updateCountdown, 1000);
+      }
+
+      // Setup realtime subscription
+      function setupRealtimeSubscription(sid) {
+        if (!supabaseClient || !hasRealtime) {
+          console.log('[TV] Realtime not available, using polling only');
+          return;
+        }
+
+        try {
+          if (realtimeChannel) {
+            supabaseClient.removeChannel(realtimeChannel);
+          }
+
+          realtimeChannel = supabaseClient
+            .channel('cast-session-' + sid)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'cast_sessions',
+                filter: 'id=eq.' + sid
+              },
+              function(payload) {
+                console.log('[TV] Realtime update received:', payload);
+                var session = payload.new;
+                handleRealtimeUpdate(session);
+              }
+            )
+            .subscribe(function(status) {
+              console.log('[TV] Realtime subscription status:', status);
+              if (status === 'SUBSCRIBED') {
+                connectionBadge.style.display = 'flex';
+                useRealtimeUpdates = true;
+              } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                connectionBadge.style.display = 'none';
+                useRealtimeUpdates = false;
+              }
+            });
+
+          console.log('[TV] Realtime subscription setup for session:', sid);
+        } catch (e) {
+          console.error('[TV] Failed to setup realtime:', e);
+          useRealtimeUpdates = false;
+        }
+      }
+
+      // Handle realtime update from Supabase
+      // CRITICAL: This function gates ALL updates through command_seq
+      function handleRealtimeUpdate(session) {
+        if (!session) return;
+
+        var newCommandSeq = session.command_seq || 0;
+        
+        // === PRIMARY GATE: Only process if command_seq has changed ===
+        // Heartbeats do NOT change command_seq, so they are filtered out here
+        if (newCommandSeq === lastProcessedCommandSeq) {
+          console.log('[TV] HEARTBEAT IGNORED: command_seq unchanged (' + newCommandSeq + ')');
+          return;
+        }
+
+        console.log('[TV] COMMAND RECEIVED: command_seq ' + lastProcessedCommandSeq + ' -> ' + newCommandSeq);
+        lastProcessedCommandSeq = newCommandSeq;
+
+        // Build session object matching expected format
+        var formattedSession = {
+          status: session.status,
+          videoUrl: session.video_url,
+          videoTitle: session.video_title,
+          videoThumbnail: session.video_thumbnail,
+          playbackTime: session.playback_time || 0,
+          duration: session.video_duration || 0,
+          isPlaying: session.is_playing || false,
+          volume: session.volume_level || 100,
+          queue: session.queue || [],
+          commandSeq: session.command_seq,
+          commandType: session.command_type,
+          commandPayload: session.command_payload
+        };
+
+        handleSessionUpdate(formattedSession);
+      }
+
+      // Generate stable command key for deduplication
+      // CRITICAL: Does NOT use updatedAt/last_heartbeat - they change on every heartbeat!
+      function getCommandKey(session) {
+        var url = session.videoUrl || '';
+        var playing = session.isPlaying ? '1' : '0';
+        var time = Math.floor(session.playbackTime || 0);
+        
+        // Use command_seq if available (new backend) - most reliable deduplication
+        if (session.commandSeq !== undefined && session.commandSeq !== null) {
+          return session.commandSeq + '|' + url;
+        }
+        
+        // Fallback: url + playing state + rounded time (NOT timestamps!)
+        return url + '|' + playing + '|' + time;
+      }
+
+      function startPolling() {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+        }
+
+        // Reduced polling frequency when realtime is active
+        var pollFrequency = useRealtimeUpdates ? 10000 : 2000;
+
+        pollInterval = setInterval(function() {
+          // Skip polling if currently handling an update or loading
+          if (isHandlingUpdate || isVideoLoading) {
+            console.log('[TV] Poll skipped (busy)');
+            return;
+          }
+
+          checkStatus().then(function(result) {
+            if (result.success) {
+              // Only use polling updates if realtime is not working
+              if (!useRealtimeUpdates) {
+                handleSessionUpdate(result.session);
+              }
+              
+              // Setup realtime if not already done and session is active
+              if (result.session.status === 'paired' || result.session.status === 'active') {
+                if (!realtimeChannel && sessionId) {
+                  setupRealtimeSubscription(sessionId);
+                }
+              }
+            }
+          }).catch(function(error) {
+            console.error('Polling error:', error);
+          });
+        }, pollFrequency);
+      }
+
+      function handleSessionUpdate(session) {
+        // Guard against overlapping updates
+        if (isHandlingUpdate) {
+          console.log('[TV] ACTION=IGNORE already handling update');
+          setDebugAction('IGNORE_BUSY');
+          return;
+        }
+
+        // Track command_seq for debug panel
+        if (session && session.commandSeq !== undefined) {
+          currentCommandSeq = session.commandSeq;
+        }
+
+        // === PROCESS COMMAND TYPE DIRECTLY ===
+        // The realtime handler already filtered by command_seq, so we process the command
+        var commandType = session.commandType;
+        var commandPayload = session.commandPayload || {};
+        
+        console.log('[TV] Processing command:', commandType, 'payload:', JSON.stringify(commandPayload));
+
+        isHandlingUpdate = true;
+        lastCommandKey = session.commandSeq + '|' + (session.videoUrl || '');
+
+        try {
+          if (session.status === 'paired' || session.status === 'active') {
+            document.getElementById('status').textContent = 'Connected!';
+            document.getElementById('status').classList.add('connected');
+
+            // Update queue
+            if (session.queue && Array.isArray(session.queue)) {
+              currentQueue = session.queue;
+              renderQueue();
+            }
+
+            if (session.videoUrl) {
+              // === KEY CHANGE: Use activeVideoUrl as sole source of truth ===
+              if (session.videoUrl !== activeVideoUrl) {
+                // NEW VIDEO: Set active URL and trigger load
+                console.log('[TV] ACTION=LOAD new URL detected:', session.videoUrl);
+                setDebugAction('LOAD');
+                activeVideoUrl = session.videoUrl;
+                showPlayer(session);
+              } else {
+                // SAME VIDEO: Sync state only (seek, play/pause, volume) - DO NOT load
+                console.log('[TV] ACTION=SYNC same URL, syncing state only');
+                setDebugAction('SYNC');
+                syncPlaybackState(session);
+              }
+            } else {
+              // No video URL - go to idle
+              console.log('[TV] ACTION=IDLE no video URL');
+              setDebugAction('IDLE');
+              activeVideoUrl = null;
+              loadedVideoUrl = null;
+              pendingVideoUrl = null;
+              showIdleScreen();
+            }
+
+            startHeartbeat();
+          }
+
+          if (session.status === 'disconnected') {
+            console.log('[TV] ACTION=DISCONNECT session ended');
+            setDebugAction('DISCONNECT');
+            activeVideoUrl = null;
+            loadedVideoUrl = null;
+            pendingVideoUrl = null;
+            lastCommandKey = null;
+            cleanupRealtime();
+            showPairingScreen();
+            generatePairingCode();
+          }
+        } finally {
+          isHandlingUpdate = false;
+        }
+      }
+
+      function cleanupRealtime() {
+        if (realtimeChannel && supabaseClient) {
+          try {
+            supabaseClient.removeChannel(realtimeChannel);
+          } catch (e) {
+            console.error('[TV] Error removing realtime channel:', e);
+          }
+          realtimeChannel = null;
+        }
+        connectionBadge.style.display = 'none';
+      }
+
+      // Sync playback state without reloading video
+      function syncPlaybackState(session) {
+        // Update title if needed
+        document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
+        
+        // Calculate drift for logging
+        var drift = Math.abs((video.currentTime || 0) - (session.playbackTime || 0));
+        console.log('[TV] ACTION=SYNC url=' + (session.videoUrl || '').substring(0, 50) + '... drift=' + drift.toFixed(1) + 's');
+        
+        // Safe seek - only if metadata ready and delta > 1.5 seconds
+        safeSeek(session.playbackTime);
+
+        // Sync play/pause state
+        if (session.isPlaying !== undefined && session.isPlaying !== lastIsPlaying) {
+          console.log('[TV] Play state changed:', session.isPlaying);
+          lastIsPlaying = session.isPlaying;
+          
+          if (session.isPlaying && video.paused) {
+            safePlay();
+          } else if (!session.isPlaying && !video.paused) {
+            video.pause();
+          }
+        }
+
+        // Sync volume
+        if (session.volume !== undefined) {
+          video.volume = session.volume / 100;
+        }
+      }
+
+      // Safe seek function - only seeks after metadata loaded and if delta significant
+      // Includes rate limiting to prevent excessive seeking
+      function safeSeek(targetTime) {
+        if (targetTime === undefined || isNaN(targetTime)) return;
+        
+        // Rate limit: don't seek more than once every 800ms
+        var now = Date.now();
+        if ((now - lastSeekTime) < SEEK_RATE_LIMIT_MS) {
+          console.log('[TV] Seek rate limited, skipping');
+          return;
+        }
+        
+        // Check if metadata is ready (readyState >= 1 = HAVE_METADATA)
+        if (video.readyState < 1) {
+          console.log('[TV] Cannot seek, metadata not ready');
+          return;
+        }
+        
+        var delta = Math.abs(video.currentTime - targetTime);
+        if (delta > 1.5) {
+          console.log('[TV] ACTION=SEEK to:', targetTime, 'drift:', delta.toFixed(1) + 's');
+          lastSeekTime = now;
+          
+          if (video.fastSeek && typeof video.fastSeek === 'function') {
+            video.fastSeek(targetTime);
+          } else {
+            video.currentTime = targetTime;
+          }
+        }
+      }
+
+      // Safe play function that handles promise rejections
+      function safePlay() {
+        if (playPromisePending) {
+          console.log('[TV] Play already pending, skipping');
+          return;
+        }
+
+        playPromisePending = true;
+        
+        var playPromise = video.play();
+        
+        if (playPromise && typeof playPromise.then === 'function') {
+          playPromise.then(function() {
+            playPromisePending = false;
+            console.log('[TV] SafePlay succeeded');
+            hideError();
+          }).catch(function(error) {
+            playPromisePending = false;
+            var errorName = error.name || '';
+            
+            if (errorName === 'AbortError') {
+              console.log('[TV] SafePlay aborted (likely new load)');
+            } else if (errorName === 'NotAllowedError') {
+              console.log('[TV] SafePlay blocked by policy, showing unmute overlay');
+              if (!userHasInteracted) {
+                showUnmuteOverlay();
+              }
+            } else {
+              console.error('[TV] SafePlay error:', error);
+            }
+          });
+        } else {
+          playPromisePending = false;
+        }
+      }
+
+      function renderQueue() {
+        var queuePanel = document.getElementById('queuePanel');
+        var queueList = document.getElementById('queueList');
+        
+        if (!currentQueue || currentQueue.length === 0) {
+          // Hide the entire queue panel when empty
+          queuePanel.style.display = 'none';
+          queueList.innerHTML = '';
+          return;
+        }
+        
+        // Show panel when there are items
+        queuePanel.style.display = '';
+
+        var html = '';
+        for (var i = 0; i < currentQueue.length; i++) {
+          var item = currentQueue[i];
+          var isActive = i === currentQueueIndex;
+          var statusText = isActive ? 'Now Playing' : '#' + (i + 1);
+          
+          html += '<div class="queue-item' + (isActive ? ' active' : '') + '">' +
+            '<img src="' + (item.thumbnail || '') + '" alt="" onerror="this.style.display=\'none\'">' +
+            '<div class="queue-item-info">' +
+            '<div class="queue-item-title">' + (item.title || 'Untitled') + '</div>' +
+            '<div class="queue-item-number">' + statusText + '</div>' +
+            '</div>' +
+            '</div>';
+        }
+        queueList.innerHTML = html;
+      }
+
+      function showPlayer(session) {
+        pairingScreen.style.display = 'none';
+        idleScreen.classList.remove('active');
+        playerContainer.classList.add('active');
+
+        document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
+
+        // Find current index in queue
+        if (currentQueue.length > 0) {
+          for (var i = 0; i < currentQueue.length; i++) {
+            if (currentQueue[i].url === session.videoUrl) {
+              currentQueueIndex = i;
+              break;
+            }
+          }
+        }
+
+        loadVideo(session.videoUrl, session.playbackTime);
+        renderQueue();
+      }
+
+      function showLoading(message) {
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+        document.getElementById('loadingText').textContent = message || 'Loading video...';
+        document.getElementById('errorOverlay').classList.add('hidden');
+        hidePreflight();
+      }
+
+      function hideLoading() {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+      }
+
+      function showError(title, details, code) {
+        document.getElementById('errorOverlay').classList.remove('hidden');
+        document.getElementById('errorTitle').textContent = title;
+        document.getElementById('errorDetails').textContent = details;
+        document.getElementById('errorCode').textContent = code ? 'Error: ' + code : '';
+        hideLoading();
+        hidePreflight();
+      }
+
+      function hideError() {
+        document.getElementById('errorOverlay').classList.add('hidden');
+      }
+
+      function showUnmuteOverlay() {
+        unmuteOverlay.classList.remove('hidden');
+        unmuteOverlay.focus();
+      }
+
+      function hideUnmuteOverlay() {
+        unmuteOverlay.classList.add('hidden');
+      }
+
+      function loadVideo(url, startTime) {
+        startTime = startTime || 0;
+        console.log('[TV] loadVideo called with URL:', url, 'startTime:', startTime);
+        
+        if (!url) {
+          console.error('[TV] No video URL provided');
+          showError('No Video', 'No video URL was provided', 'NO_URL');
+          return;
+        }
+
+        // === NEW: Cooldown guard - block repeated loads of same URL within 4 seconds ===
+        var now = Date.now();
+        if (url === lastLoadAttemptUrl && (now - lastLoadAttemptTs) < LOAD_COOLDOWN_MS) {
+          console.log('[TV] ACTION=IGNORE cooldown hit, same URL within', LOAD_COOLDOWN_MS, 'ms');
+          return;
+        }
+        lastLoadAttemptUrl = url;
+        lastLoadAttemptTs = now;
+
+        // GUARD 1: Check if this URL is already pending (load in progress)
+        if (url === pendingVideoUrl) {
+          console.log('[TV] ACTION=IGNORE video already pending');
+          return;
+        }
+
+        // GUARD 2: Check if same URL already loaded and playing
+        if (url === loadedVideoUrl && !isVideoLoading) {
+          console.log('[TV] ACTION=SYNC video already loaded, seeking to:', startTime);
+          safeSeek(startTime);
+          safePlay();
+          return;
+        }
+
+        // GUARD 3: Prevent overlapping loads
+        if (isVideoLoading) {
+          console.log('[TV] ACTION=IGNORE load in progress');
+          return;
+        }
+
+        // GUARD 4: Don't retry immediately after an abort
+        var timeSinceAbort = now - lastAbortTime;
+        if (timeSinceAbort < 500) {
+          console.log('[TV] Recent abort detected, delaying load');
+          setTimeout(function() {
+            loadVideo(url, startTime);
+          }, 500);
+          return;
+        }
+
+        console.log('[TV] ACTION=LOAD starting video load:', url.substring(0, 60) + '...');
+
+        // Set pending IMMEDIATELY before any async work
+        pendingVideoUrl = url;
+        isVideoLoading = true;
+        retryCount = 0;
+        lastIsPlaying = null;
+        hideError();
+
+        // Perform preflight check
+        performPreflightCheck(url).then(function(result) {
+          hidePreflight();
+
+          // Check if URL changed during preflight
+          if (pendingVideoUrl !== url) {
+            console.log('[TV] URL changed during preflight, aborting');
+            isVideoLoading = false;
+            return;
+          }
+
+          if (!result.success) {
+            isVideoLoading = false;
+            pendingVideoUrl = null;
+            
+            // Show user-friendly error based on error code
+            var errorTitle = 'Cannot Play Video';
+            var errorDetails = result.errorMessage || 'The video format is not supported';
+            
+            if (result.errorCode === 'CORS_ERROR') {
+              errorTitle = 'Access Denied';
+              errorDetails = 'This video cannot be played on your TV. The server does not allow it.';
+            } else if (result.errorCode && result.errorCode.indexOf('HTTP_') === 0) {
+              errorTitle = 'Video Unavailable';
+              errorDetails = 'The video could not be found or accessed.';
+            } else if (result.errorCode === 'TIMEOUT') {
+              errorTitle = 'Connection Slow';
+              errorDetails = 'Could not reach the video server. Please check your internet connection.';
+            }
+            
+            showError(errorTitle, errorDetails, result.errorCode);
+            return;
+          }
+
+          // Log warnings
+          if (result.warnings && result.warnings.length > 0) {
+            console.log('[TV] Preflight warnings:', result.warnings);
+          }
+
+          // Proceed with loading
+          actuallyLoadVideo(url, startTime);
+        });
+      }
+
+      function actuallyLoadVideo(url, startTime) {
+        // Final safety check - video element already has this URL and is ready
+        if (video.src === url && video.readyState >= 2 && !video.error) {
+          console.log('[TV] Video element already has this URL and is ready, skipping reload');
+          pendingVideoUrl = null;
+          loadedVideoUrl = url;
+          isVideoLoading = false;
+          safeSeek(startTime);
+          safePlay();
+          return;
+        }
+        showLoading('Loading video...');
+
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+
+        // Reset video element
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+
+        var isHLS = url.indexOf('.m3u8') !== -1;
+        var hlsSupported = typeof Hls !== 'undefined' && Hls.isSupported();
+        
+        var targetUrl = url; // Capture for closure
+
+        if (isHLS && hlsSupported) {
+          console.log('[TV] Using HLS.js for m3u8 stream');
+          hls = new Hls({
+            debug: false,
+            enableWorker: true,
+            lowLatencyMode: false,
+            xhrSetup: function(xhr) {
+              xhr.withCredentials = false;
+            }
+          });
+          
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          
+          hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            console.log('[TV] HLS manifest parsed, starting playback');
+            isVideoLoading = false;
+            loadedVideoUrl = targetUrl;
+            pendingVideoUrl = null;
+            video.currentTime = startTime;
+            attemptPlay();
+            sendAck('success');
+          });
+          
+          hls.on(Hls.Events.ERROR, function(event, data) {
+            console.error('[TV] HLS error:', data.type, data.details);
+            if (data.fatal) {
+              isVideoLoading = false;
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                console.log('[TV] Fatal network error, trying to recover');
+                if (retryCount < MAX_RETRIES) {
+                  retryCount++;
+                  showLoading('Network error, retrying (' + retryCount + '/' + MAX_RETRIES + ')...');
+                  setTimeout(function() { hls.startLoad(); }, 2000);
+                } else {
+                  showError('Network Error', 'Failed to load video. Please check your connection.', 'HLS_NETWORK');
+                  sendAck('error', 'Network error: ' + (data.details || 'unable to load video stream'));
+                }
+              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                console.log('[TV] Fatal media error, trying to recover');
+                hls.recoverMediaError();
+              } else {
+                showError('Format Not Supported', 'This video format cannot be played on your TV.', 'HLS_FATAL');
+                hls.destroy();
+                sendAck('error', 'Format not supported: ' + (data.details || 'fatal HLS error'));
+              }
+            }
+          });
+          
+          hls.on(Hls.Events.FRAG_LOADED, function() {
+            console.log('[TV] HLS fragment loaded');
+          });
+          
+        } else if (video.canPlayType && video.canPlayType('application/vnd.apple.mpegurl')) {
+          console.log('[TV] Using native HLS (Safari)');
+          video.src = url;
+          video.addEventListener('loadedmetadata', function onMeta() {
+            video.removeEventListener('loadedmetadata', onMeta);
+            isVideoLoading = false;
+            loadedVideoUrl = targetUrl;
+            pendingVideoUrl = null;
+            video.currentTime = startTime;
+            attemptPlay();
+            sendAck('success');
+          });
+        } else {
+          console.log('[TV] Using native video element');
+          video.src = url;
+          video.addEventListener('loadedmetadata', function onMeta() {
+            video.removeEventListener('loadedmetadata', onMeta);
+            console.log('[TV] Video metadata loaded');
+            isVideoLoading = false;
+            loadedVideoUrl = targetUrl;
+            pendingVideoUrl = null;
+            video.currentTime = startTime;
+            attemptPlay();
+            sendAck('success');
+          });
+        }
+      }
+
+      function attemptPlay() {
+        console.log('[TV] Attempting to play video, muted:', video.muted);
+        hideLoading();
+        
+        // Always start muted for autoplay policy compliance
+        video.muted = true;
+        
+        var playPromise = video.play();
+        
+        if (playPromise && typeof playPromise.then === 'function') {
+          playPromise.then(function() {
+            console.log('[TV] Playback started (muted)');
+            lastIsPlaying = true;
+            
+            // If user has already interacted, try to unmute
+            if (userHasInteracted) {
+              try {
+                video.muted = false;
+                console.log('[TV] Auto-unmuted (user interacted before)');
+              } catch (e) {
+                console.log('[TV] Could not auto-unmute');
+                showUnmuteOverlay();
+              }
+            } else {
+              // Show overlay for user to enable audio
+              showUnmuteOverlay();
+            }
+          }).catch(function(playError) {
+            console.error('[TV] Autoplay failed even muted:', playError);
+            // Don't show error - show the unmute overlay instead for user interaction
+            showUnmuteOverlay();
+          });
+        } else {
+          // Fallback for older browsers without Promise support
+          console.log('[TV] Playback started (no promise)');
+          lastIsPlaying = true;
+          showUnmuteOverlay();
+        }
+      }
+
+      // Handle user interaction to enable audio
+      function handleUserInteraction() {
+        userHasInteracted = true;
+        
+        if (video.muted) {
+          video.muted = false;
+          console.log('[TV] Unmuted via user interaction');
+        }
+        
+        hideUnmuteOverlay();
+        
+        // If video is paused, try to play
+        if (video.paused && loadedVideoUrl) {
+          safePlay();
+        }
+      }
+
+      // Retry button handler
+      document.getElementById('retryButton').addEventListener('click', function() {
+        userHasInteracted = true;
+        if (loadedVideoUrl) {
+          retryCount = 0;
+          var currentUrl = loadedVideoUrl;
+          loadedVideoUrl = null; // Force reload
+          loadVideo(currentUrl, video.currentTime || 0);
+        }
+      });
+
+      // Click anywhere to unmute or start playback
+      playerContainer.addEventListener('click', function(e) {
+        // Don't trigger on control elements
+        var target = e.target;
+        while (target && target !== playerContainer) {
+          if (target.classList && (target.classList.contains('player-overlay') || target.classList.contains('queue-panel'))) {
+            return;
+          }
+          target = target.parentElement;
+        }
+        
+        handleUserInteraction();
+      });
+
+      // Keyboard handlers for TV remotes (Enter, Space, OK button)
+      document.addEventListener('keydown', function(e) {
+        var keyCode = e.keyCode || e.which;
+        // 13 = Enter, 32 = Space, some TVs use other codes
+        if (keyCode === 13 || keyCode === 32) {
+          if (!unmuteOverlay.classList.contains('hidden')) {
+            e.preventDefault();
+            handleUserInteraction();
+          }
+        }
+      });
+
+      // Direct click on unmute overlay
+      unmuteOverlay.addEventListener('click', function(e) {
+        e.stopPropagation();
+        handleUserInteraction();
+      });
+
+      // Video event listeners for debugging
+      video.addEventListener('loadstart', function() { console.log('[TV] Video loadstart'); });
+      video.addEventListener('loadeddata', function() { console.log('[TV] Video loadeddata'); });
+      video.addEventListener('canplay', function() {
+        console.log('[TV] Video canplay');
+        hideLoading();
+      });
+      video.addEventListener('canplaythrough', function() { console.log('[TV] Video canplaythrough'); });
+      video.addEventListener('playing', function() {
+        console.log('[TV] Video playing');
+        hideLoading();
+        hideError();
+        lastIsPlaying = true;
+      });
+      video.addEventListener('pause', function() {
+        console.log('[TV] Video paused');
+        lastIsPlaying = false;
+      });
+      video.addEventListener('waiting', function() {
+        console.log('[TV] Video waiting/buffering');
+        // Only show loading if actually loading, not during seek
+        if (isVideoLoading) {
+          showLoading('Buffering...');
+        }
+      });
+      video.addEventListener('stalled', function() {
+        console.log('[TV] Video stalled');
+        showLoading('Connection slow...');
+      });
+      video.addEventListener('error', function() {
+        var error = video.error;
+        console.error('[TV] Video error:', error ? error.code : 'unknown', error ? error.message : '');
+        
+        var errorTitle = 'Video Error';
+        var errorDetails = 'Unknown error occurred';
+        var errorCode = 'UNKNOWN';
+        
+        if (error) {
+          switch (error.code) {
+            case 1: 
+              errorTitle = 'Playback Aborted';
+              errorDetails = 'Video loading was interrupted';
+              errorCode = 'MEDIA_ABORTED';
+              break;
+            case 2: 
+              errorTitle = 'Network Error';
+              errorDetails = 'Could not load video due to network issues';
+              errorCode = 'MEDIA_NETWORK';
+              break;
+            case 3: 
+              errorTitle = 'Decoding Error';
+              errorDetails = 'This video cannot be decoded by your TV';
+              errorCode = 'MEDIA_DECODE';
+              break;
+            case 4: 
+              errorTitle = 'Format Not Supported';
+              errorDetails = 'This video format is not supported on your TV. Try a different video.';
+              errorCode = 'MEDIA_FORMAT';
+              break;
+          }
+        }
+        
+        isVideoLoading = false;
+        showError(errorTitle, errorDetails, errorCode);
+      });
+      video.addEventListener('abort', function() { 
+        console.log('[TV] Video abort'); 
+        isVideoLoading = false;
+        lastAbortTime = Date.now();
+        // Do NOT auto-retry on abort - wait for new command
+      });
+
+      function showIdleScreen() {
+        pairingScreen.style.display = 'none';
+        playerContainer.classList.remove('active');
+        idleScreen.classList.add('active');
+        renderIdleQueue();
+      }
+
+      function renderIdleQueue() {
+        var container = document.getElementById('idleQueue');
+        if (!currentQueue || currentQueue.length === 0) {
+          container.innerHTML = '';
+          return;
+        }
+
+        var itemsToShow = currentQueue.slice(0, 5);
+        var html = '<div style="color: #ff6300; font-size: 18px; margin-bottom: 16px;">Queue (' + currentQueue.length + ' items)</div>' +
+          '<div style="display: -webkit-box; display: -webkit-flex; display: flex; gap: 12px; -webkit-flex-wrap: wrap; flex-wrap: wrap; -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;">';
+        
+        for (var i = 0; i < itemsToShow.length; i++) {
+          var item = itemsToShow[i];
+          html += '<div style="text-align: center; width: 120px;">' +
+            '<img src="' + (item.thumbnail || '') + '" alt="" style="width: 100%; height: 68px; object-fit: cover; border-radius: 8px;" onerror="this.style.display=\'none\'">' +
+            '<div style="font-size: 12px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + (item.title || 'Untitled') + '</div>' +
+            '</div>';
+        }
+        
+        if (currentQueue.length > 5) {
+          html += '<div style="display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; color: #aaa;">+' + (currentQueue.length - 5) + ' more</div>';
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      function showPairingScreen() {
+        playerContainer.classList.remove('active');
+        idleScreen.classList.remove('active');
+        pairingScreen.style.display = '-webkit-box';
+        pairingScreen.style.display = 'flex';
+      }
+
+      // Send ack back to controller so the app knows the LOAD command
+      // was actually received and processed (or failed) on the TV.
+      function sendAck(status, errorMessage) {
+        if (!sessionId) return;
+        try {
+          callSignaling('ack', {
+            sessionId: sessionId,
+            seq: lastProcessedCommandSeq,
+            status: status,
+            error: errorMessage || null,
+            commandType: 'LOAD',
+          }).catch(function (err) {
+            console.error('[TV] Failed to send ack:', err);
+          });
+          console.log('[TV] ACK sent', { seq: lastProcessedCommandSeq, status: status, error: errorMessage || null });
+        } catch (e) {
+          console.error('[TV] sendAck threw:', e);
+        }
+      }
+      // Expose globally so load/error handlers added later can call it.
+      window.__castSendAck = sendAck;
+
+      function startHeartbeat() {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+
+        heartbeatInterval = setInterval(function() {
+          callSignaling('heartbeat', {
+            sessionId: sessionId,
+            playbackTime: video.currentTime,
+            isPlaying: !video.paused
+          }).catch(function(error) {
+            console.error('Heartbeat error:', error);
+          });
+        }, 2000);
+      }
+
+      // Play next in queue when video ends
+      video.addEventListener('ended', function() {
+        console.log('[TV] Video ended');
+        if (currentQueue.length > 0 && currentQueueIndex < currentQueue.length - 1) {
+          currentQueueIndex++;
+          var nextItem = currentQueue[currentQueueIndex];
+          
+          // Reset loaded URL to allow loading next video
+          loadedVideoUrl = null;
+          
+          callSignaling('command', {
+            sessionId: sessionId,
+            command: 'LOAD',
+            payload: {
+              videoUrl: nextItem.url,
+              title: nextItem.title,
+              thumbnail: nextItem.thumbnail,
+              startTime: 0
+            }
+          });
+        }
+      });
+
+      video.addEventListener('timeupdate', function() {
+        var duration = video.duration || 0;
+        var currentTime = video.currentTime || 0;
+        var progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+        document.getElementById('progressFill').style.width = progress + '%';
+        document.getElementById('timeDisplay').textContent = 
+          formatTime(currentTime) + ' / ' + formatTime(duration);
+      });
+
+      var overlayTimeout;
+      playerContainer.addEventListener('mousemove', function() {
+        document.getElementById('playerOverlay').classList.add('visible');
+        document.getElementById('queuePanel').classList.add('visible');
+        clearTimeout(overlayTimeout);
+        overlayTimeout = setTimeout(function() {
+          document.getElementById('playerOverlay').classList.remove('visible');
+          document.getElementById('queuePanel').classList.remove('visible');
+        }, 3000);
+      });
+
+      function generateQRCode(code) {
+        var qrData = 'hoyeeh://pair?code=' + code;
+        var container = document.getElementById('qrContainer');
+        container.innerHTML = '';
+
+        var windowWidth = window.innerWidth || document.documentElement.clientWidth || 800;
+        var windowHeight = window.innerHeight || document.documentElement.clientHeight || 600;
+        var minDim = Math.min(windowWidth, windowHeight);
+        var size = Math.min(420, Math.max(260, Math.floor(minDim * 0.32)));
+
+        try {
+          if (typeof QRCode !== 'undefined') {
+            new QRCode(container, {
+              text: qrData,
+              width: size,
+              height: size,
+              colorDark: '#000000',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.H
+            });
+          } else {
+            container.textContent = 'QR unavailable';
+          }
+        } catch (e) {
+          console.error('QR generation failed:', e);
+          container.textContent = 'QR unavailable';
+        }
+      }
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', function() {
+        cleanupRealtime();
+        if (pollInterval) clearInterval(pollInterval);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (expiryInterval) clearInterval(expiryInterval);
+      });
+
+      // ============================================
+      // DEBUG PANEL, FORCE REFRESH & BUFFERING
+      // ============================================
+      
+      var debugPanel = document.getElementById('debugPanel');
+      var debugToggleBtn = document.getElementById('debugToggleBtn');
+      var debugCloseBtn = document.getElementById('debugClose');
+      var forceRefreshBtn = document.getElementById('forceRefreshBtn');
+      var bufferingOverlay = document.getElementById('bufferingOverlay');
+      var bufferingProgress = document.getElementById('bufferingProgress');
+      var bufferingPercent = document.getElementById('bufferingPercent');
+      var bufferingText = document.getElementById('bufferingText');
+      
+      // Debug panel toggle
+      debugToggleBtn.addEventListener('click', function() {
+        debugVisible = !debugVisible;
+        if (debugVisible) {
+          debugPanel.classList.add('visible');
+          debugToggleBtn.classList.add('active');
+          updateDebugPanel();
+        } else {
+          debugPanel.classList.remove('visible');
+          debugToggleBtn.classList.remove('active');
+        }
+      });
+      
+      debugCloseBtn.addEventListener('click', function() {
+        debugVisible = false;
+        debugPanel.classList.remove('visible');
+        debugToggleBtn.classList.remove('active');
+      });
+      
+      // Force refresh button
+      forceRefreshBtn.addEventListener('click', function() {
+        console.log('[TV] Force refresh triggered');
+        lastDebugAction = 'FORCE_REFRESH';
+        updateDebugPanel();
+        
+        // Stop all playback
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        
+        // Reset all state
+        activeVideoUrl = null;
+        loadedVideoUrl = null;
+        pendingVideoUrl = null;
+        isVideoLoading = false;
+        lastCommandKey = null;
+        lastLoadAttemptUrl = null;
+        lastLoadAttemptTs = 0;
+        currentQueue = [];
+        currentQueueIndex = 0;
+        retryCount = 0;
+        currentCommandSeq = 0;
+        
+        // Cleanup realtime
+        cleanupRealtime();
+        
+        // Clear intervals
+        if (pollInterval) clearInterval(pollInterval);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (expiryInterval) clearInterval(expiryInterval);
+        
+        // Reset UI
+        hideLoading();
+        hideError();
+        hidePreflight();
+        hideBuffering();
+        
+        // Show pairing screen and regenerate code
+        showPairingScreen();
+        sessionId = null;
+        receiverId = null;
+        pairingCode = null;
+        
+        // Generate new pairing code
+        setTimeout(function() {
+          generatePairingCode();
+        }, 500);
+      });
+      
+      // Update debug panel
+      function updateDebugPanel() {
+        if (!debugVisible) return;
+        
+        document.getElementById('debugCommandSeq').textContent = currentCommandSeq || '0';
+        document.getElementById('debugActiveUrl').textContent = activeVideoUrl ? activeVideoUrl.split('/').pop() : '-';
+        document.getElementById('debugActiveUrl').title = activeVideoUrl || '';
+        document.getElementById('debugLoadedUrl').textContent = loadedVideoUrl ? loadedVideoUrl.split('/').pop() : '-';
+        document.getElementById('debugLoadedUrl').title = loadedVideoUrl || '';
+        
+        var realtimeStatus = realtimeChannel ? 'Connected' : (useRealtimeUpdates ? 'Connecting...' : 'Polling');
+        document.getElementById('debugRealtime').textContent = realtimeStatus;
+        document.getElementById('debugRealtime').className = 'debug-value' + (realtimeChannel ? '' : ' warning');
+        
+        document.getElementById('debugSessionId').textContent = sessionId ? sessionId.substring(0, 8) + '...' : '-';
+        document.getElementById('debugIsPlaying').textContent = video.paused ? 'No' : 'Yes';
+        document.getElementById('debugLastAction').textContent = lastDebugAction;
+        
+        // Buffer info
+        var buffered = getBufferedPercent();
+        document.getElementById('debugBuffer').textContent = buffered.toFixed(1) + '%';
+      }
+      
+      // Update debug action
+      function setDebugAction(action) {
+        lastDebugAction = action;
+        updateDebugPanel();
+      }
+      
+      // Get buffered percentage
+      function getBufferedPercent() {
+        if (!video.duration || video.duration === 0) return 0;
+        if (!video.buffered || video.buffered.length === 0) return 0;
+        
+        var bufferedEnd = 0;
+        for (var i = 0; i < video.buffered.length; i++) {
+          if (video.buffered.start(i) <= video.currentTime && video.buffered.end(i) >= video.currentTime) {
+            bufferedEnd = video.buffered.end(i);
+            break;
+          }
+        }
+        
+        return (bufferedEnd / video.duration) * 100;
+      }
+      
+      // Show buffering overlay with progress
+      function showBuffering() {
+        bufferingOverlay.classList.remove('hidden');
+        updateBufferingProgress();
+      }
+      
+      function hideBuffering() {
+        bufferingOverlay.classList.add('hidden');
+      }
+      
+      function updateBufferingProgress() {
+        if (bufferingOverlay.classList.contains('hidden')) return;
+        
+        var percent = getBufferedPercent();
+        var circumference = 283; // 2 * PI * 45
+        var offset = circumference - (percent / 100) * circumference;
+        
+        bufferingProgress.style.strokeDashoffset = offset;
+        bufferingPercent.textContent = Math.round(percent) + '%';
+        
+        if (percent < 100 && !video.paused && video.readyState < 4) {
+          bufferingText.textContent = 'Buffering...';
+        } else {
+          bufferingText.textContent = 'Ready';
+        }
+      }
+      
+      // Listen for buffer progress
+      video.addEventListener('progress', function() {
+        updateBufferingProgress();
+        updateDebugPanel();
+      });
+      
+      // Show buffering on waiting
+      video.addEventListener('waiting', function() {
+        // Only show buffering indicator if we're actually buffering, not just starting
+        if (loadedVideoUrl && !isVideoLoading) {
+          showBuffering();
+          setDebugAction('BUFFERING');
+        }
+      });
+      
+      // Hide buffering when can play
+      video.addEventListener('canplay', function() {
+        hideBuffering();
+      });
+      
+      video.addEventListener('playing', function() {
+        hideBuffering();
+        setDebugAction('PLAYING');
+      });
+      
+      video.addEventListener('pause', function() {
+        setDebugAction('PAUSED');
+      });
+      
+      // Update debug panel periodically
+      setInterval(function() {
+        updateDebugPanel();
+      }, 1000);
+
+      // Initialize
+      generatePairingCode();
     })();
   </script>
-</head>
-<body>
-  <div class="wrap">
-    <div class="brand">HOYEEH</div>
-    <div class="msg">Loading TV Receiver…</div>
-    <noscript>
-      <p><a style="color:#ff6300" href="/tv-receiver/index.html">Continue to TV Receiver</a></p>
-    </noscript>
-  </div>
+  <script>
+    // Catch script-level errors that prevent the main IIFE from booting
+    // (e.g. CDN polyfill blocked by TV firewall). Pure ES5, no deps.
+    window.addEventListener && window.addEventListener('error', function (e) {
+      try {
+        if (typeof window.__tvTrack === 'function') {
+          window.__tvTrack('receiver_error', {
+            message: (e && e.message) || 'unknown',
+            source: (e && e.filename) || '',
+            line: (e && e.lineno) || 0
+          });
+        }
+      } catch (err) {}
+    });
+  </script>
 </body>
 </html>
+
