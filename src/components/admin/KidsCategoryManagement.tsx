@@ -68,13 +68,13 @@ export const KidsCategoryManagement = () => {
   const { data: kidsContent = [] } = useQuery({
     queryKey: ["admin-kids-content"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select("id, title, thumbnail_url")
-        .in("content_rating", ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG"])
-        .order("title");
-      if (error) throw error;
-      return data || [];
+      return await fetchAllContent(
+        "id, title, thumbnail_url",
+        (q) =>
+          q
+            .in("content_rating", ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG"])
+            .order("title")
+      );
     },
   });
 
