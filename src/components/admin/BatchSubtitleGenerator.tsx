@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllContent } from "@/lib/fetchAllContent";
 import { toast } from "sonner";
 import { Languages, Loader2, Check, X, Play, Pause, Film, Tv, ChevronDown, ChevronRight } from "lucide-react";
 
