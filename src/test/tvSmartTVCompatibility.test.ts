@@ -140,6 +140,11 @@ describe("/tv-receiver shell — Smart TV engine compatibility", () => {
       .join("\n");
     // Hard-blockers for Tizen 2017 / webOS 3 / legacy WebKit:
     expect(inline, "optional chaining is unsupported on legacy Smart TVs").not.toMatch(/\?\./);
+    expect(inline, "nullish coalescing is unsupported on legacy Smart TVs").not.toMatch(/\?\?(?!=)/);
+    expect(inline).not.toMatch(/^\s*await\s+/m);
+  });
+});
+
 describe("/tv ↔ /tv-receiver parity — both paths must work", () => {
   it("both /tv and /tv-receiver expose the pairing UI directly", () => {
     const tv = read(TV_INDEX);
