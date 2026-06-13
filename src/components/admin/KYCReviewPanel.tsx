@@ -1,3 +1,4 @@
+import { matchesSearch } from "@/lib/searchMatch";
 import { useState } from "react";
 import { useAllKYCSubmissions, useReviewKYC } from "@/hooks/useCreatorKYC";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,3 +1,4 @@
+import { matchesSearch } from "@/lib/searchMatch";
 import { useState, useRef } from "react";
 import { 
   Gamepad2, Plus, Pencil, Trash2, Check, X, ExternalLink, 

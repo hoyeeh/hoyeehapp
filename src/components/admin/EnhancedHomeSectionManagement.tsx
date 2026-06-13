@@ -1,3 +1,4 @@
+import { matchesSearch } from "@/lib/searchMatch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -537,7 +538,7 @@ export const EnhancedHomeSectionManagement = () => {
   };
 
   const filteredContent = allContent.filter((c) => {
-    const matches = matchesSearch(contentSearch, c.title, c.description, c.genre);
+    const matches = matchesSearch(contentSearch, c.title, (c as any).description, (c as any).genre);
     const matchesType = contentTypeFilter === "all" || c.content_type === contentTypeFilter;
     const notAlreadyAdded = !sectionContent.some((sc: any) => sc.content_id === c.id);
     // For free_content sections, only show free content (is_premium = false or null)
