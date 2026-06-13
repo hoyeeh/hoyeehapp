@@ -1,3 +1,4 @@
+import { matchesSearch } from "@/lib/searchMatch";
 import { useState, useRef } from "react";
 import { 
   Gamepad2, Plus, Pencil, Trash2, Check, X, ExternalLink, 
@@ -57,8 +58,7 @@ export const PlayablesManagement = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredGames = games?.filter(game =>
-    game.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    game.source.toLowerCase().includes(searchTerm.toLowerCase())
+    matchesSearch(searchTerm, game.title, game.source, (game as any).description)
   );
 
   const resetForm = () => {

@@ -1,3 +1,4 @@
+import { matchesSearch } from "@/lib/searchMatch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -398,14 +399,14 @@ export const HomeSectionManagement = () => {
 
   // Filter available content for curated selection
   const availableContent = allContent.filter((c: any) => {
-    const matchesSearch = c.title.toLowerCase().includes(contentSearch.toLowerCase());
+    const matches = matchesSearch(contentSearch, c.title, c.description, c.genre);
     const notAlreadyAdded = !sectionContent.some((sc: any) => sc.content_id === c.id);
     const isFree = !c.is_premium;
     // Apply content type filter if set
     const matchesType = !managingContentSection?.content_type_filter || 
       managingContentSection.content_type_filter === "all" ||
       c.content_type === managingContentSection.content_type_filter;
-    return matchesSearch && notAlreadyAdded && isFree && matchesType;
+    return matches && notAlreadyAdded && isFree && matchesType;
   });
 
   const handleDragEnd = (event: DragEndEvent) => {

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllContent } from "@/lib/fetchAllContent";
+import { matchesSearch } from "@/lib/searchMatch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -167,11 +168,10 @@ export const Top10Management = () => {
   // Apply search and content type filters
   const filteredContent = useMemo(() => {
     return availableContent.filter((c) => {
-      const matchesSearch = searchQuery === "" || 
-        c.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = contentTypeFilter === "all" || 
+      const matchesType = contentTypeFilter === "all" ||
         c.content_type === contentTypeFilter;
-      return matchesSearch && matchesType;
+      if (!matchesType) return false;
+      return matchesSearch(searchQuery, c.title, c.description, c.genre);
     });
   }, [availableContent, searchQuery, contentTypeFilter]);
 

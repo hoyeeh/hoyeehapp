@@ -1,3 +1,4 @@
+import { matchesSearch } from "@/lib/searchMatch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,13 +124,9 @@ export function SubtitleManagement() {
 
   // Filter subtitles
   const filteredSubtitles = subtitles.filter((sub) => {
-    const matchesSearch = 
-      sub.content?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.language_label.toLowerCase().includes(searchQuery.toLowerCase());
-    
+    const matches = matchesSearch(searchQuery, sub.content?.title, sub.language_label, sub.language_code);
     const matchesLanguage = languageFilter === "all" || sub.language_code === languageFilter;
-    
-    return matchesSearch && matchesLanguage;
+    return matches && matchesLanguage;
   });
 
   // Get unique languages for filter
