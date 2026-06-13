@@ -68,10 +68,9 @@ export const TMDBEpisodeImport = ({ tmdbId, seasonNumber, onSelectEpisode }: TMD
     toast.success(`Selected: E${ep.episode_number} - ${ep.title}`);
   };
 
-  const filteredEpisodes = episodes.filter(ep => 
-    episodeSearch === "" || 
-    ep.title.toLowerCase().includes(episodeSearch.toLowerCase()) ||
-    ep.episode_number.toString().includes(episodeSearch)
+  const filteredEpisodes = episodes.filter(ep =>
+    episodeSearch === "" ||
+    matchesSearch(episodeSearch, ep.title, ep.description, ep.episode_number.toString())
   );
 
   return (

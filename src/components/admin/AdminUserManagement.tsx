@@ -113,12 +113,9 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return users;
-    const query = searchQuery.toLowerCase().trim();
     return users.filter(user => {
-      const email = authEmails.get(user.id)?.toLowerCase() || user.email?.toLowerCase() || '';
-      const name = user.display_name?.toLowerCase() || '';
-      const phone = user.mobile_number || '';
-      return name.includes(query) || email.includes(query) || phone.includes(query);
+      const email = authEmails.get(user.id) || user.email || '';
+      return matchesSearch(searchQuery, user.display_name, email, user.mobile_number, user.country);
     });
   }, [users, searchQuery, authEmails]);
 

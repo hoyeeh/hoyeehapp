@@ -23,9 +23,8 @@ export function KYCReviewPanel() {
   const { data: submissions = [], isLoading } = useAllKYCSubmissions(statusFilter);
   const reviewKYC = useReviewKYC();
 
-  const filteredSubmissions = submissions.filter((sub: any) => 
-    sub.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    sub.creator_profiles?.display_name?.toLowerCase().includes(search.toLowerCase())
+  const filteredSubmissions = submissions.filter((sub: any) =>
+    matchesSearch(search, sub.full_name, sub.creator_profiles?.display_name, sub.email)
   );
 
   const handleApprove = async (kyc: any) => {

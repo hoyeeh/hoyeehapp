@@ -537,13 +537,13 @@ export const EnhancedHomeSectionManagement = () => {
   };
 
   const filteredContent = allContent.filter((c) => {
-    const matchesSearch = c.title.toLowerCase().includes(contentSearch.toLowerCase());
+    const matches = matchesSearch(contentSearch, c.title, c.description, c.genre);
     const matchesType = contentTypeFilter === "all" || c.content_type === contentTypeFilter;
     const notAlreadyAdded = !sectionContent.some((sc: any) => sc.content_id === c.id);
     // For free_content sections, only show free content (is_premium = false or null)
     const isFreeContentSection = managingContentSection?.section_type === "free_content";
     const matchesFreeContent = !isFreeContentSection || !c.is_premium;
-    return matchesSearch && matchesType && notAlreadyAdded && matchesFreeContent;
+    return matches && matchesType && notAlreadyAdded && matchesFreeContent;
   });
 
   return (

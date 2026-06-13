@@ -23,9 +23,8 @@ export function ContentSubmissionReview() {
   const { data: submissions = [], isLoading } = useAllContentSubmissions(statusFilter);
   const reviewSubmission = useReviewContentSubmission();
 
-  const filteredSubmissions = submissions.filter((sub: any) => 
-    sub.title.toLowerCase().includes(search.toLowerCase()) ||
-    sub.creator_profiles?.display_name?.toLowerCase().includes(search.toLowerCase())
+  const filteredSubmissions = submissions.filter((sub: any) =>
+    matchesSearch(search, sub.title, sub.description, sub.creator_profiles?.display_name)
   );
 
   const formatCurrency = (amount: number) => {

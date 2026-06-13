@@ -147,14 +147,14 @@ export const AdminAuditLogViewer = ({ onClose }: AdminAuditLogViewerProps) => {
 
   const filteredLogs = logs.filter(log => {
     if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    const adminName = adminNames.get(log.admin_id)?.toLowerCase() || "";
-    return (
-      log.action.toLowerCase().includes(query) ||
-      log.resource_type.toLowerCase().includes(query) ||
-      log.resource_id?.toLowerCase().includes(query) ||
-      adminName.includes(query) ||
-      JSON.stringify(log.details).toLowerCase().includes(query)
+    const adminName = adminNames.get(log.admin_id) || "";
+    return matchesSearch(
+      searchQuery,
+      log.action,
+      log.resource_type,
+      log.resource_id,
+      adminName,
+      JSON.stringify(log.details)
     );
   });
 
