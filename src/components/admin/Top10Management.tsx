@@ -175,6 +175,21 @@ export const Top10Management = () => {
     });
   }, [availableContent, searchQuery, contentTypeFilter]);
 
+  // Items that match the search but are ALREADY in the Top 10.
+  // Surfacing these prevents the "I searched and got nothing" confusion
+  // when the title is in fact already ranked.
+  const alreadyRankedMatches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return top10.filter((t) => {
+      const c = t.content;
+      if (!c) return false;
+      const matchesType = contentTypeFilter === "all" ||
+        c.content_type === contentTypeFilter;
+      if (!matchesType) return false;
+      return matchesSearch(searchQuery, c.title);
+    });
+  }, [top10, searchQuery, contentTypeFilter]);
+
   // Get available ranks (1-10 not yet used)
   const usedRanks = top10.map((t) => t.rank);
   const availableRanks = Array.from({ length: 10 }, (_, i) => i + 1).filter(
