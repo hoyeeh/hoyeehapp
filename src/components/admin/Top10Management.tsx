@@ -444,9 +444,27 @@ export const Top10Management = () => {
                 </div>
                 
                 {filteredContent.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No content matches your search</p>
+                  <div className="text-center py-8 text-muted-foreground space-y-3">
+                    <div>
+                      <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No content matches your search</p>
+                    </div>
+                    {alreadyRankedMatches.length > 0 && (
+                      <div className="mx-auto max-w-md text-left bg-brand/10 border border-brand/30 rounded-lg p-3">
+                        <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
+                          <Crown className="h-4 w-4 text-brand" />
+                          Already in Top 10
+                        </p>
+                        <ul className="space-y-1">
+                          {alreadyRankedMatches.map((m) => (
+                            <li key={m.id} className="text-xs flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px]">#{m.rank}</Badge>
+                              <span className="truncate">{m.content?.title}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <ScrollArea className="h-[320px] rounded-lg border bg-background/50">
