@@ -175,6 +175,21 @@ export const Top10Management = () => {
     });
   }, [availableContent, searchQuery, contentTypeFilter]);
 
+  // Items that match the search but are ALREADY in the Top 10.
+  // Surfacing these prevents the "I searched and got nothing" confusion
+  // when the title is in fact already ranked.
+  const alreadyRankedMatches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return top10.filter((t) => {
+      const c = t.content;
+      if (!c) return false;
+      const matchesType = contentTypeFilter === "all" ||
+        c.content_type === contentTypeFilter;
+      if (!matchesType) return false;
+      return matchesSearch(searchQuery, c.title);
+    });
+  }, [top10, searchQuery, contentTypeFilter]);
+
   // Get available ranks (1-10 not yet used)
   const usedRanks = top10.map((t) => t.rank);
   const availableRanks = Array.from({ length: 10 }, (_, i) => i + 1).filter(
@@ -429,9 +444,27 @@ export const Top10Management = () => {
                 </div>
                 
                 {filteredContent.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No content matches your search</p>
+                  <div className="text-center py-8 text-muted-foreground space-y-3">
+                    <div>
+                      <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No content matches your search</p>
+                    </div>
+                    {alreadyRankedMatches.length > 0 && (
+                      <div className="mx-auto max-w-md text-left bg-brand/10 border border-brand/30 rounded-lg p-3">
+                        <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
+                          <Crown className="h-4 w-4 text-brand" />
+                          Already in Top 10
+                        </p>
+                        <ul className="space-y-1">
+                          {alreadyRankedMatches.map((m) => (
+                            <li key={m.id} className="text-xs flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px]">#{m.rank}</Badge>
+                              <span className="truncate">{m.content?.title}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <ScrollArea className="h-[320px] rounded-lg border bg-background/50">
