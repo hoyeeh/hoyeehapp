@@ -14,6 +14,8 @@ import { CheckCircle, Play, ShoppingBag, Loader2, CreditCard, Smartphone, Clock,
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaidContentAnalytics } from "@/hooks/usePaidContentAnalytics";
+import { useNewPlayer } from "@/hooks/useNewPlayer";
+import { VideoJSPlayer, type VideoJSPlayerHandle } from "@/components/VideoJSPlayer";
 
 interface PurchaseModalProps {
   open: boolean;
@@ -365,10 +367,12 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
               <div className="relative aspect-video">
                 {isPreviewPlaying && content.video_url ? (
                   <div className="relative w-full h-full bg-black">
-                    <video
-                      ref={videoRef}
+                    <PreviewPlayer
+                      videoRef={videoRef}
                       src={content.video_url}
-                      className="w-full h-full object-contain"
+                      isPremium={Boolean(content.is_premium || content.requires_drm)}
+                      isPaid={Number(paidContent?.price ?? 0) > 0}
+                      startTime={getPreviewStartTime(content.duration)}
                       onEnded={handlePreviewEnd}
                       onError={() => {
                         toast.error("Error playing preview");
@@ -378,12 +382,12 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="absolute top-4 right-4 bg-background/80"
+                      className="absolute top-4 right-4 z-40 bg-background/80"
                       onClick={handlePreviewEnd}
                     >
                       <X className="h-4 w-4" />
                     </Button>
-                    <div className="absolute bottom-4 left-4 bg-background/80 px-3 py-1 rounded-full text-sm">
+                    <div className="absolute bottom-4 left-4 z-40 bg-background/80 px-3 py-1 rounded-full text-sm">
                       Preview: 10 seconds
                     </div>
                   </div>
@@ -606,5 +610,101 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
         </AnimatePresence>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Phase 3 — Creator preview surface.
+ *
+ * Strict guard order (highest → lowest priority):
+ *  1. Premium / Widevine-flagged content  → legacy <video> (DRM/EME path untouched).
+ *  2. Paid creator content (price > 0)    → legacy <video> (free-creator-only rule).
+ *  3. New-player flag (?player=vjs) OFF   → legacy <video>.
+ *  4. Otherwise (free creator MP4, flag on) → VideoJSPlayer with crossOrigin="anonymous"
+ *     so DigitalOcean signed URLs work, and the upstream caller's resolved `src`
+ *     is passed through verbatim — VideoJSPlayer itself stays dumb (no fetching).
+ *
+ * The signed-URL error overlay ("Session expired…") is rendered for both code paths
+ * on `error` events surfaced by the underlying player.
+ */
+function PreviewPlayer({
+  videoRef,
+  src,
+  isPremium,
+  isPaid,
+  startTime,
+  onEnded,
+  onError,
+}: {
+  videoRef: React.RefObject<HTMLVideoElement>;
+  src: string;
+  isPremium: boolean;
+  isPaid: boolean;
+  startTime: number;
+  onEnded: () => void;
+  onError: () => void;
+}) {
+  const newPlayerEnabled = useNewPlayer();
+  const useVjs = newPlayerEnabled && !isPremium && !isPaid;
+  const vjsRef = useRef<VideoJSPlayerHandle | null>(null);
+  const [expired, setExpired] = useState(false);
+
+  // Bridge the VJS-managed <video> element back to the parent's videoRef so the
+  // existing 10-second preview timer/seek logic keeps working unchanged.
+  const handleVideoElement = (el: HTMLVideoElement | null) => {
+    (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+  };
+
+  if (!useVjs) {
+    return (
+      <video
+        ref={videoRef}
+        src={src}
+        crossOrigin="anonymous"
+        className="w-full h-full object-contain"
+        onEnded={onEnded}
+        onError={onError}
+      />
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full">
+      <VideoJSPlayer
+        ref={vjsRef}
+        className="w-full h-full"
+        onVideoElement={handleVideoElement}
+        options={{
+          autoplay: false,
+          controls: false,
+          muted: false,
+          preload: "auto",
+          sources: [{ src, type: "video/mp4" }],
+        }}
+        onReady={(player) => {
+          player.currentTime(startTime);
+          player.play()?.catch(() => {});
+          player.on("ended", onEnded);
+          player.on("error", () => {
+            const err = player.error?.();
+            // 403/404 from expired signed URL surfaces as MEDIA_ERR_NETWORK (2)
+            // or MEDIA_ERR_SRC_NOT_SUPPORTED (4). Treat both as session expiry.
+            if (err && (err.code === 2 || err.code === 4)) {
+              setExpired(true);
+            } else {
+              onError();
+            }
+          });
+        }}
+      />
+      {expired && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/90 text-center p-6">
+          <p className="text-foreground font-medium">Session expired</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Your secure preview link has expired. Please refresh to continue.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
