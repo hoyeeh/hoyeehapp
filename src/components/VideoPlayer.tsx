@@ -191,6 +191,8 @@ export const VideoPlayer = ({
   // TV owns the playback timeline. Guests must NOT push seek corrections to the
   // host, and the host should not echo TV-driven time updates back to guests.
   const [nativeCastActive, setNativeCastActive] = useState(false);
+  const nativeCastActiveRef = useRef(false);
+  useEffect(() => { nativeCastActiveRef.current = nativeCastActive; }, [nativeCastActive]);
   // Google Cast hook
   const cast = useGoogleCast({
     mediaUrl: src,
