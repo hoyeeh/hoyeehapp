@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHand
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
 import { Loader2, AlertCircle, Cast, Airplay } from "lucide-react";
+import { toast } from "sonner";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
 import { MobileGestureLayer } from "@/components/player/MobileGestureLayer";
 
@@ -41,6 +42,9 @@ interface VideoJSPlayerProps {
    * trailers, modal hero loops, and short promos.
    */
   enableMobileGestures?: boolean;
+  /** Casting metadata — surfaced to TV receivers via <video> attributes. */
+  poster?: string;
+  title?: string;
   className?: string;
 }
 
@@ -50,7 +54,7 @@ export interface VideoJSPlayerHandle {
 }
 
 export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>(
-  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, enableMobileGestures, className }, ref) {
+  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, enableMobileGestures, poster, title, className }, ref) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<Player | null>(null);
     const videoElRef = useRef<HTMLVideoElement | null>(null);
@@ -105,7 +109,14 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           if (htmlVideo) {
             // CORS for DigitalOcean Spaces (required for native cast / canvas / etc.)
             htmlVideo.setAttribute("crossorigin", "anonymous");
+            htmlVideo.crossOrigin = "anonymous";
+            // iOS / AirPlay attributes — required so iOS shows inline + allows AirPlay routing.
             htmlVideo.setAttribute("playsinline", "");
+            htmlVideo.setAttribute("webkit-playsinline", "");
+            htmlVideo.setAttribute("x-webkit-airplay", "allow");
+            // TV receiver metadata (title shown on Chromecast / AirPlay overlay).
+            if (poster) htmlVideo.setAttribute("poster", poster);
+            if (title) htmlVideo.setAttribute("title", title);
             videoElRef.current = htmlVideo;
             onVideoElement?.(htmlVideo);
 
@@ -113,6 +124,24 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
             const remote = (htmlVideo as any).remote;
             setCanRemote(Boolean(remote?.prompt));
             setCanAirPlay(typeof (htmlVideo as any).webkitShowPlaybackTargetPicker === "function");
+
+            // Remote playback state → user-friendly error toast on disconnect/failure.
+            try {
+              remote?.addEventListener?.("connecting", () => {
+                toast.message("Connecting to cast device…");
+              });
+              remote?.addEventListener?.("connect", () => {
+                toast.success("Casting started");
+              });
+              remote?.addEventListener?.("disconnect", () => {
+                // Distinguish user disconnect from error: we only warn if media element errored.
+                if (htmlVideo.error) {
+                  toast.error("Casting failed. Please check your network or try again.");
+                }
+              });
+            } catch (e) {
+              console.warn("[VideoJSPlayer] remote listener attach failed:", e);
+            }
           }
           onReady?.(player);
         }
@@ -244,16 +273,53 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
       };
     }, [resume?.contentId, resume?.episodeId, resume?.title, resume?.thumbnail]);
 
+    // Keep cast metadata in sync when props change
+    useEffect(() => {
+      const v = videoElRef.current;
+      if (!v) return;
+      if (poster) v.setAttribute("poster", poster);
+      if (title) v.setAttribute("title", title);
+    }, [poster, title]);
+
     // Native cast handlers
     const handleChromecast = useCallback(() => {
       const v = videoElRef.current as any;
-      v?.remote?.prompt?.().catch((e: any) => console.warn("[Cast] prompt failed:", e));
+      if (!v?.remote?.prompt) {
+        toast.error("Casting failed. Please check your network or try again.");
+        return;
+      }
+      try {
+        const result = v.remote.prompt();
+        if (result?.catch) {
+          result.catch((e: any) => {
+            console.warn("[Cast] prompt failed:", e);
+            // NotAllowedError = user dismissed picker — don't toast.
+            if (e?.name !== "NotAllowedError" && e?.name !== "AbortError") {
+              toast.error("Casting failed. Please check your network or try again.");
+            }
+          });
+        }
+      } catch (e: any) {
+        console.warn("[Cast] prompt threw:", e);
+        toast.error("Casting failed. Please check your network or try again.");
+      }
     }, []);
 
     const handleAirPlay = useCallback(() => {
       const v = videoElRef.current as any;
-      v?.webkitShowPlaybackTargetPicker?.();
+      if (typeof v?.webkitShowPlaybackTargetPicker !== "function") {
+        toast.error("AirPlay is not available on this device.");
+        return;
+      }
+      try {
+        v.webkitShowPlaybackTargetPicker();
+      } catch (e) {
+        console.warn("[AirPlay] picker failed:", e);
+        toast.error("Casting failed. Please check your network or try again.");
+      }
     }, []);
+
+
 
     return (
       <div data-vjs-player className={className} style={{ position: "relative" }}>
