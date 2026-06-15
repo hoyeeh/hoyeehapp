@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VideoJSPlayer } from "@/components/VideoJSPlayer";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
+import { useMiniPlayer } from "@/contexts/MiniPlayerContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import type { Content } from "@/types";
 
 interface Props {
   src: string;
@@ -14,6 +16,12 @@ interface Props {
   title?: string;
   thumbnail?: string;
   className?: string;
+  /**
+   * When provided, on unmount the player will hand off its final {src, currentTime}
+   * to the persistent MiniPlayer so playback continues while navigating away.
+   * The MiniPlayer remains a plain <video> tag — we only pass it state.
+   */
+  miniPlayerContent?: Content;
 }
 
 /**
