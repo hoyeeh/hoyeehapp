@@ -367,10 +367,12 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
               <div className="relative aspect-video">
                 {isPreviewPlaying && content.video_url ? (
                   <div className="relative w-full h-full bg-black">
-                    <video
-                      ref={videoRef}
+                    <PreviewPlayer
+                      videoRef={videoRef}
                       src={content.video_url}
-                      className="w-full h-full object-contain"
+                      isPremium={Boolean(content.is_premium || content.requires_drm)}
+                      isPaid={Number(paidContent?.price ?? 0) > 0}
+                      startTime={getPreviewStartTime(content.duration)}
                       onEnded={handlePreviewEnd}
                       onError={() => {
                         toast.error("Error playing preview");
@@ -380,12 +382,12 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="absolute top-4 right-4 bg-background/80"
+                      className="absolute top-4 right-4 z-40 bg-background/80"
                       onClick={handlePreviewEnd}
                     >
                       <X className="h-4 w-4" />
                     </Button>
-                    <div className="absolute bottom-4 left-4 bg-background/80 px-3 py-1 rounded-full text-sm">
+                    <div className="absolute bottom-4 left-4 z-40 bg-background/80 px-3 py-1 rounded-full text-sm">
                       Preview: 10 seconds
                     </div>
                   </div>
