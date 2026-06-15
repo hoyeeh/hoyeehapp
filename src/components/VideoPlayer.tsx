@@ -672,6 +672,24 @@ export const VideoPlayer = ({
     };
   }, []);
 
+  // Step 4 — local audio muting while native casting (prevents echo between
+  // device speakers and the TV). Restores previous mute state on disconnect.
+  // Does NOT alter `isMuted` UI state so the user's preference is preserved.
+  const preCastMutedRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (nativeCastActive) {
+      if (preCastMutedRef.current === null) {
+        preCastMutedRef.current = video.muted;
+      }
+      video.muted = true;
+    } else if (preCastMutedRef.current !== null) {
+      video.muted = preCastMutedRef.current;
+      preCastMutedRef.current = null;
+    }
+  }, [nativeCastActive]);
+
 
 
   // Keyboard controls
@@ -1029,6 +1047,14 @@ export const VideoPlayer = ({
 
       {/* Unified native cast launcher (Chromecast / AirPlay) */}
       <UnifiedCastButton videoRef={videoRef} title={title} poster={poster} />
+
+      {/* Casting to TV badge */}
+      {nativeCastActive && (
+        <div className="absolute top-3 left-3 z-30 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1.5 pointer-events-none">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          Casting to TV
+        </div>
+      )}
 
 
 

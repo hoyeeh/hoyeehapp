@@ -109,6 +109,22 @@ export function VideoJSPlayerWithWatchParty({
     };
   }, [videoEl]);
 
+  // Step 4 — local audio muting while native casting (prevents echo between
+  // device speakers and the TV). Restores previous mute state on disconnect.
+  const preCastMutedRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!videoEl) return;
+    if (nativeCastActive) {
+      if (preCastMutedRef.current === null) {
+        preCastMutedRef.current = videoEl.muted;
+      }
+      videoEl.muted = true;
+    } else if (preCastMutedRef.current !== null) {
+      videoEl.muted = preCastMutedRef.current;
+      preCastMutedRef.current = null;
+    }
+  }, [nativeCastActive, videoEl]);
+
   // Guest: sync to party state on change
   useEffect(() => {
     if (!party || isHost || !videoEl) return;
@@ -178,16 +194,24 @@ export function VideoJSPlayerWithWatchParty({
   }, [party, isHost, updatePlayback, videoEl]);
 
   return (
-    <VideoJSPlayer
-      options={options}
-      onVideoElement={setVideoEl}
-      resume={{ contentId, episodeId, title, thumbnail }}
-      onBeforeDispose={handleBeforeDispose}
-      enableMobileGestures
-      poster={poster ?? thumbnail}
-      title={title}
-      className={className}
-    />
+    <div className="relative">
+      <VideoJSPlayer
+        options={options}
+        onVideoElement={setVideoEl}
+        resume={{ contentId, episodeId, title, thumbnail }}
+        onBeforeDispose={handleBeforeDispose}
+        enableMobileGestures
+        poster={poster ?? thumbnail}
+        title={title}
+        className={className}
+      />
+      {nativeCastActive && (
+        <div className="absolute top-3 left-3 z-30 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1.5 pointer-events-none">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          Casting to TV
+        </div>
+      )}
+    </div>
   );
 }
 
