@@ -373,6 +373,8 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
                       isPremium={Boolean(content.is_premium || content.requires_drm)}
                       isPaid={Number(paidContent?.price ?? 0) > 0}
                       startTime={getPreviewStartTime(content.duration)}
+                      poster={content.thumbnail_url || content.backdrop_url}
+                      title={content.title}
                       onEnded={handlePreviewEnd}
                       onError={() => {
                         toast.error("Error playing preview");
@@ -633,6 +635,8 @@ function PreviewPlayer({
   isPremium,
   isPaid,
   startTime,
+  poster,
+  title,
   onEnded,
   onError,
 }: {
@@ -641,6 +645,8 @@ function PreviewPlayer({
   isPremium: boolean;
   isPaid: boolean;
   startTime: number;
+  poster?: string;
+  title?: string;
   onEnded: () => void;
   onError: () => void;
 }) {
@@ -662,6 +668,8 @@ function PreviewPlayer({
         ref={videoRef}
         src={src}
         crossOrigin="anonymous"
+        poster={poster}
+        title={title}
         className="w-full h-full object-contain"
         onEnded={onEnded}
         onError={onError}
@@ -675,6 +683,8 @@ function PreviewPlayer({
         ref={vjsRef}
         className="w-full h-full"
         onVideoElement={handleVideoElement}
+        poster={poster}
+        title={title}
         options={{
           autoplay: false,
           controls: false,

@@ -143,6 +143,8 @@ export function VideoJSPlayerWithWatchParty({
       resume={{ contentId, episodeId, title, thumbnail }}
       onBeforeDispose={handleBeforeDispose}
       enableMobileGestures
+      poster={poster ?? thumbnail}
+      title={title}
       className={className}
     />
   );

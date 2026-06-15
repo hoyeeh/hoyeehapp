@@ -109,6 +109,8 @@ const ModalTrailerHero = ({ content }: { content: Content }) => {
         newPlayer ? (
           <VideoJSPlayer
             className="absolute inset-0 [&_.video-js]:!h-full [&_.video-js]:!w-full [&_.vjs-control-bar]:!hidden [&_.vjs-big-play-button]:!hidden"
+            poster={content.thumbnailUrl}
+            title={content.title}
             options={{
               autoplay: "muted",
               muted: true,
@@ -117,6 +119,7 @@ const ModalTrailerHero = ({ content }: { content: Content }) => {
               preload: "auto",
               fluid: false,
               fill: true,
+              poster: content.thumbnailUrl,
               sources: [{ src: trailerUrl!, type: "video/mp4" }],
             }}
           />

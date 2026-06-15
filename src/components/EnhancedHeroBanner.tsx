@@ -260,6 +260,8 @@ export const EnhancedHeroBanner = ({
                 >
                   <VideoJSPlayer
                     key={displayVideo}
+                    poster={displayImage}
+                    title={displayTitle}
                     options={vjsHeroOptions}
                     onReady={(p) => {
                       // Keep the mute toggle behavior parity with the legacy <video>
