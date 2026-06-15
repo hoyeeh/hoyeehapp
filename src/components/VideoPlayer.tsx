@@ -62,6 +62,7 @@ import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
 import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { SubtitleDisplay } from "@/components/SubtitleDisplay";
+import { UnifiedCastButton } from "@/components/player/UnifiedCastButton";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { supabase } from "@/integrations/supabase/client";
