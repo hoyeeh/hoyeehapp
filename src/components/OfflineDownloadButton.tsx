@@ -40,14 +40,12 @@ export const OfflineDownloadButton = ({
     download,
     cancelDownload,
     removeDownload,
-  } = useVideoDownloader({
+  } = useVideoDownloader(
     contentId,
     videoUrl,
-    metadata: { title, poster, duration },
-    isPremium,
-    requiresDrm,
-    isPaid,
-  });
+    { title, poster, duration },
+    Boolean(isPremium || requiresDrm || isPaid),
+  );
 
   if (gated || !videoUrl) return null;
 
