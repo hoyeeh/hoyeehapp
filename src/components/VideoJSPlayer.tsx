@@ -280,43 +280,8 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
       if (title) v.setAttribute("title", title);
     }, [poster, title]);
 
-    // Native cast handlers
-    const handleChromecast = useCallback(() => {
-      const v = videoElRef.current as any;
-      if (!v?.remote?.prompt) {
-        toast.error("Casting failed. Please check your network or try again.");
-        return;
-      }
-      try {
-        const result = v.remote.prompt();
-        if (result?.catch) {
-          result.catch((e: any) => {
-            console.warn("[Cast] prompt failed:", e);
-            // NotAllowedError = user dismissed picker — don't toast.
-            if (e?.name !== "NotAllowedError" && e?.name !== "AbortError") {
-              toast.error("Casting failed. Please check your network or try again.");
-            }
-          });
-        }
-      } catch (e: any) {
-        console.warn("[Cast] prompt threw:", e);
-        toast.error("Casting failed. Please check your network or try again.");
-      }
-    }, []);
 
-    const handleAirPlay = useCallback(() => {
-      const v = videoElRef.current as any;
-      if (typeof v?.webkitShowPlaybackTargetPicker !== "function") {
-        toast.error("AirPlay is not available on this device.");
-        return;
-      }
-      try {
-        v.webkitShowPlaybackTargetPicker();
-      } catch (e) {
-        console.warn("[AirPlay] picker failed:", e);
-        toast.error("Casting failed. Please check your network or try again.");
-      }
-    }, []);
+
 
 
 
