@@ -962,6 +962,12 @@ export const VideoPlayer = ({
         autoPlay
         muted={isMuted}
         playsInline
+        crossOrigin="anonymous"
+        poster={poster}
+        title={title}
+        // @ts-expect-error - non-standard iOS AirPlay attributes
+        webkit-playsinline=""
+        x-webkit-airplay="allow"
         onContextMenu={(e) => e.preventDefault()}
         onLoadedData={() => {
           // Attempt to play with proper error handling for mobile
