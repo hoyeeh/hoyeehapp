@@ -120,6 +120,7 @@ export const VideoPlayer = ({
   recapEndTime,
   nextEpisode,
   onPlayNextEpisode,
+  poster,
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
