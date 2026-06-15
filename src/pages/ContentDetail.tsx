@@ -273,7 +273,7 @@ const ContentDetail = () => {
 
   const [loading, setLoading] = useState(true);
   const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(searchParams.get('offline') === 'true');
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [episodeResumeAt, setEpisodeResumeAt] = useState<number>(0);
   const [episodeAutoPlayAttempted, setEpisodeAutoPlayAttempted] = useState(false);
