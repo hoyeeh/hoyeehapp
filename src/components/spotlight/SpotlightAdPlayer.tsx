@@ -199,15 +199,15 @@ export function SpotlightAdPlayer({ ad, isInView, appContext = 'main' }: Spotlig
   const useVjsBranch = Boolean(showVideo && newPlayerFlag && !isHlsAd);
   const vjsAdOptions = useMemo(
     () => ({
-      controls: false,
-      muted: true,
+      controls: true,
+      muted: false,
       autoplay: true as const,
       loop: true,
       preload: 'auto' as const,
       responsive: true,
       fluid: false,
       fill: true,
-      bigPlayButton: false,
+      bigPlayButton: true,
       sources: ad.video_url ? [{ src: ad.video_url, type: 'video/mp4' }] : [],
     }),
     [ad.video_url]
