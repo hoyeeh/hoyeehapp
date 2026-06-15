@@ -43,11 +43,17 @@ export interface VideoJSPlayerHandle {
 }
 
 export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>(
-  function VideoJSPlayer({ options, onReady, onVideoElement, resume, className }, ref) {
+  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, className }, ref) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<Player | null>(null);
     const videoElRef = useRef<HTMLVideoElement | null>(null);
     const resumeAppliedRef = useRef(false);
+    // Keep latest dispose callback in a ref so the init effect (which runs once) always
+    // sees the freshest closure when the player is torn down on unmount.
+    const onBeforeDisposeRef = useRef<typeof onBeforeDispose>(onBeforeDispose);
+    useEffect(() => {
+      onBeforeDisposeRef.current = onBeforeDispose;
+    }, [onBeforeDispose]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
