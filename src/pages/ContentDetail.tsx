@@ -16,6 +16,8 @@ import { CastQueuePanel } from "@/components/CastQueuePanel";
 import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
 import { TVShowSeasons } from "@/components/TVShowSeasons";
 import { DownloadButton } from "@/components/DownloadButton";
+import { OfflineDownloadButton } from "@/components/OfflineDownloadButton";
+import { OfflinePlayerWrapper } from "@/components/player/OfflinePlayerWrapper";
 import { MoreLikeThisSection } from "@/components/MoreLikeThisSection";
 import { WatchPartyPanel } from "@/components/WatchPartyPanel";
 import { SeriesNotificationButton } from "@/components/SeriesNotificationButton";
@@ -271,7 +273,7 @@ const ContentDetail = () => {
 
   const [loading, setLoading] = useState(true);
   const [tmdbDetails, setTmdbDetails] = useState<TMDBDetails | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(searchParams.get('offline') === 'true');
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [episodeResumeAt, setEpisodeResumeAt] = useState<number>(0);
   const [episodeAutoPlayAttempted, setEpisodeAutoPlayAttempted] = useState(false);
@@ -763,33 +765,46 @@ const ContentDetail = () => {
   // Playing main content (movie or TV show trailer) - only desktop
   if (playing && content && !isMobile) {
     const useVjs = newPlayerEnabled && !content.isPremium;
+    const isOffline = searchParams.get('offline') === 'true';
     return (
       <SecureVideoWrapper>
-        {useVjs ? (
-          <>
-            <VideoJSPlayerWithWatchParty
-              src={content.videoUrl}
-              contentId={content.id}
-              title={content.title}
-              thumbnail={content.thumbnailUrl}
-              autoplay
-              miniPlayerContent={content}
-              className="w-full h-screen bg-black"
-            />
-            <NewPlayerBadge surface="movie" />
-          </>
-        ) : (
-          <VideoPlayer
-            src={content.videoUrl}
-            title={content.title}
-            contentId={content.id}
-            initialProgress={0}
-            onBack={() => setPlaying(false)}
-          />
-        )}
+        <OfflinePlayerWrapper
+          contentId={content.id}
+          networkSrc={content.videoUrl}
+          isOffline={isOffline}
+          isPremium={content.isPremium}
+          poster={content.thumbnailUrl}
+          title={content.title}
+        >
+          {(resolvedSrc) => (
+            useVjs ? (
+              <>
+                <VideoJSPlayerWithWatchParty
+                  src={resolvedSrc}
+                  contentId={content.id}
+                  title={content.title}
+                  thumbnail={content.thumbnailUrl}
+                  autoplay
+                  miniPlayerContent={content}
+                  className="w-full h-screen bg-black"
+                />
+                <NewPlayerBadge surface="movie" />
+              </>
+            ) : (
+              <VideoPlayer
+                src={resolvedSrc}
+                title={content.title}
+                contentId={content.id}
+                initialProgress={0}
+                onBack={() => setPlaying(false)}
+              />
+            )
+          )}
+        </OfflinePlayerWrapper>
       </SecureVideoWrapper>
     );
   }
+
 
   if (loading || contentLoading) {
     return (
@@ -938,6 +953,16 @@ const ContentDetail = () => {
               />
               {/* Download button for movies */}
               {!isTVShow && <DownloadButton content={content} />}
+              {!isTVShow && (
+                <OfflineDownloadButton
+                  contentId={content.id}
+                  videoUrl={content.videoUrl}
+                  title={content.title}
+                  poster={content.thumbnailUrl}
+                  duration={content.duration}
+                  isPremium={content.isPremium}
+                />
+              )}
               {/* Series notification button */}
               <SeriesNotificationButton 
                 contentId={content.id} 
