@@ -109,6 +109,22 @@ export function VideoJSPlayerWithWatchParty({
     };
   }, [videoEl]);
 
+  // Step 4 — local audio muting while native casting (prevents echo between
+  // device speakers and the TV). Restores previous mute state on disconnect.
+  const preCastMutedRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!videoEl) return;
+    if (nativeCastActive) {
+      if (preCastMutedRef.current === null) {
+        preCastMutedRef.current = videoEl.muted;
+      }
+      videoEl.muted = true;
+    } else if (preCastMutedRef.current !== null) {
+      videoEl.muted = preCastMutedRef.current;
+      preCastMutedRef.current = null;
+    }
+  }, [nativeCastActive, videoEl]);
+
   // Guest: sync to party state on change
   useEffect(() => {
     if (!party || isHost || !videoEl) return;
