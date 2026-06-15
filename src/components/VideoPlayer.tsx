@@ -606,6 +606,7 @@ export const VideoPlayer = ({
     if (!video) return;
 
     const handleHostTimeUpdate = () => {
+      if (nativeCastActiveRef.current) return;
       const now = Date.now();
       // Only send updates every second max
       if (now - lastPartySyncRef.current >= 2000) {
@@ -615,10 +616,12 @@ export const VideoPlayer = ({
     };
 
     const handleHostPlayPause = () => {
+      if (nativeCastActiveRef.current) return;
       updatePlayback(video.currentTime, !video.paused);
     };
 
     const handleHostSeeked = () => {
+      if (nativeCastActiveRef.current) return;
       updatePlayback(video.currentTime, !video.paused);
     };
 
