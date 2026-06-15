@@ -651,9 +651,8 @@ const Index = () => {
     );
   }
 
-  // Redirect to profile picker if no profile selected
+  // Redirect handled by the useEffect above — render a loader while it runs.
   if (user && !currentProfile && !profilesLoading) {
-    navigate("/profiles", { replace: true });
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <LoadingSpinner size="lg" text="Loading profiles..." />
