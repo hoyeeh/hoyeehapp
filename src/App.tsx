@@ -78,6 +78,7 @@ const WatchParty = lazy(() => import("./pages/WatchParty"));
 const MyPurchases = lazy(() => import("./pages/MyPurchases"));
 const PurchaseReturn = lazy(() => import("./pages/PurchaseReturn"));
 const FreeContent = lazy(() => import("./pages/FreeContent"));
+const VideoJsTest = lazy(() => import("./pages/VideoJsTest"));
 import { usePendingPurchaseVerification } from "./hooks/usePendingPurchaseVerification";
 
 const queryClient = new QueryClient();
@@ -291,6 +292,7 @@ const App = () => (
                         <Route path="/my-purchases" element={<MyPurchases />} />
                         <Route path="/purchase-return" element={<PurchaseReturn />} />
                         <Route path="/free-content" element={<FreeContent />} />
+                        <Route path="/video-js-test" element={<VideoJsTest />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                       </Suspense>
