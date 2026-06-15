@@ -80,6 +80,11 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           responsive: true,
           fluid: true,
           preload: "metadata",
+          // Touch-friendly defaults: a tap on the surface toggles play/pause and
+          // wakes the controls; controls auto-hide after a short idle window.
+          // Video.js handles "tap to show controls" natively via userActions.
+          userActions: { click: true, ...((options as any).userActions ?? {}) },
+          inactivityTimeout: 3000,
           ...options,
           html5: {
             ...(options.html5 ?? {}),
