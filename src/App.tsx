@@ -46,6 +46,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const ContentDetail = lazy(() => import("./pages/ContentDetail"));
 const MyList = lazy(() => import("./pages/MyList"));
 const Downloads = lazy(() => import("./pages/Downloads"));
+const DownloadsPage = lazy(() => import("./pages/DownloadsPage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Search = lazy(() => import("./pages/Search"));
 const Genres = lazy(() => import("./pages/Genres"));
@@ -260,6 +261,7 @@ const App = () => (
                         <Route path="/content/:id" element={<ContentDetail />} />
                         <Route path="/my-list" element={<MyList />} />
                         <Route path="/downloads" element={<Downloads />} />
+                        <Route path="/offline-downloads" element={<DownloadsPage />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/search" element={<Search />} />
                         <Route path="/genres" element={<Genres />} />
