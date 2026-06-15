@@ -69,10 +69,14 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    // Wraps the underlying <video> in a ref-shaped object so UnifiedCastButton
-    // (which expects React.RefObject<HTMLVideoElement>) can probe it.
-    const videoRefObject = useRef<HTMLVideoElement | null>({ current: null } as any);
-    videoRefObject.current = videoElRef.current;
+    // Proxy ref that always reflects the latest underlying <video> element.
+    // UnifiedCastButton accepts React.RefObject<HTMLVideoElement>.
+    const videoRefObject = useRef<HTMLVideoElement | null>(null);
+    Object.defineProperty(videoRefObject, "current", {
+      configurable: true,
+      get: () => videoElRef.current,
+      set: () => {},
+    });
     const [brightness, setBrightness] = useState(1);
 
     useImperativeHandle(ref, () => ({
