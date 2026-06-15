@@ -116,13 +116,6 @@ export function UnifiedCastButton({ videoRef, videoElement, title, poster, class
     <div
       className={
         className ??
-        "absolute top-3 right-3 z-40 flex gap-2 pointer-events-auto"
-      }
-    >
-  return (
-    <div
-      className={
-        className ??
         // Top-right corner, inside the 56px gesture-exclusion zone reserved
         // by MobileGestureLayer. z-50 keeps it above the VJS control bar.
         "absolute top-2 right-2 z-50 flex gap-2 pointer-events-auto"
