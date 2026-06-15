@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { deleteVideo, hasVideo, saveVideo } from "@/services/offlineVideoStorage";
 
-export interface VideoDownloaderArgs {
-  contentId: string;
-  videoUrl: string;
-  metadata: { title: string; poster: string; duration: number };
-  isPremium?: boolean;
-  requiresDrm?: boolean;
-  isPaid?: boolean;
-}
-
-export interface VideoDownloaderState {
+/**
+ * Return shape of the useVideoDownloader hook.
+ */
+export interface UseVideoDownloaderResult {
   isDownloading: boolean;
   progress: number;
   error: string | null;
@@ -20,45 +14,68 @@ export interface VideoDownloaderState {
   removeDownload: () => Promise<void>;
 }
 
+export interface VideoDownloadMetadata {
+  title: string;
+  poster: string;
+  duration: number;
+}
+
 /**
- * Hook to download a non-DRM video to local IndexedDB storage.
- * SAFETY: Refuses to run for premium / DRM / paid content.
+ * Hook to download a non-DRM video into IndexedDB via offlineVideoStorage.
+ *
+ * SAFETY: If `isPremiumOrDrm` is true, the hook refuses to make any network
+ * request and surfaces a clear error message instead.
+ *
+ * @param contentId       Stable id used as the storage key.
+ * @param videoUrl        Direct URL to a downloadable (non-DRM) asset.
+ * @param metadata        Title / poster / duration kept alongside the blob.
+ * @param isPremiumOrDrm  Hard gate — true blocks all download attempts.
  */
-export function useVideoDownloader({
-  contentId,
-  videoUrl,
-  metadata,
-  isPremium,
-  requiresDrm,
-  isPaid,
-}: VideoDownloaderArgs): VideoDownloaderState {
+export function useVideoDownloader(
+  contentId: string,
+  videoUrl: string,
+  metadata: VideoDownloadMetadata,
+  isPremiumOrDrm: boolean,
+): UseVideoDownloaderResult {
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDownloaded, setIsDownloaded] = useState(false);
+
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
 
+  // Check storage on mount / when contentId changes.
   useEffect(() => {
     mountedRef.current = true;
-    hasVideo(contentId).then((exists) => {
-      if (mountedRef.current) setIsDownloaded(exists);
-    }).catch(() => {});
+    hasVideo(contentId)
+      .then((exists) => {
+        if (mountedRef.current) setIsDownloaded(exists);
+      })
+      .catch(() => {
+        /* non-fatal — assume not downloaded */
+      });
+
     return () => {
       mountedRef.current = false;
+      // Abort any in-flight download on unmount to free memory / bandwidth.
       abortRef.current?.abort();
+      abortRef.current = null;
     };
   }, [contentId]);
 
   const download = useCallback(async () => {
-    if (isPremium || requiresDrm || isPaid) {
-      setError("Downloads are not available for premium or protected content.");
+    // 1. Hard DRM / premium safety gate.
+    if (isPremiumOrDrm) {
+      setError("DRM content cannot be downloaded");
       return;
     }
     if (!videoUrl) {
       setError("No video source available to download.");
       return;
     }
+    if (isDownloading) return;
+
     setError(null);
     setProgress(0);
     setIsDownloading(true);
@@ -68,36 +85,41 @@ export function useVideoDownloader({
 
     try {
       const res = await fetch(videoUrl, { signal: controller.signal });
-      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
 
-      const total = Number(res.headers.get("content-length")) || 0;
-      let received = 0;
+      const totalHeader = res.headers.get("content-length");
+      const total = totalHeader ? Number(totalHeader) : 0;
+
       const chunks: Uint8Array[] = [];
+      let loaded = 0;
 
       if (res.body && typeof res.body.getReader === "function") {
+        // 2. Stream the response so we can report real progress.
         const reader = res.body.getReader();
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           if (value) {
             chunks.push(value);
-            received += value.length;
+            loaded += value.length;
             if (total > 0 && mountedRef.current) {
-              setProgress(Math.min(99, Math.round((received / total) * 100)));
+              setProgress(Math.min(99, Math.round((loaded / total) * 100)));
             }
           }
         }
       } else {
-        // Fallback: no streaming support
+        // Fallback for environments without ReadableStream support.
         const buf = await res.arrayBuffer();
         chunks.push(new Uint8Array(buf));
-        received = buf.byteLength;
+        loaded = buf.byteLength;
       }
 
       const blob = new Blob(chunks as BlobPart[], {
         type: res.headers.get("content-type") || "video/mp4",
       });
 
+      // 3. Persist to IndexedDB via the isolated storage service.
       await saveVideo(contentId, blob, metadata);
 
       if (mountedRef.current) {
@@ -107,18 +129,23 @@ export function useVideoDownloader({
     } catch (e: unknown) {
       const err = e as { name?: string; message?: string };
       if (err?.name === "AbortError") {
-        if (mountedRef.current) setError(null);
+        // User-initiated cancel — clear any prior error, keep state clean.
+        if (mountedRef.current) {
+          setError(null);
+          setProgress(0);
+        }
       } else if (mountedRef.current) {
-        setError(err?.message || "Download failed");
+        setError(err?.message || "Download failed. Please try again.");
       }
     } finally {
       if (mountedRef.current) setIsDownloading(false);
       abortRef.current = null;
     }
-  }, [contentId, videoUrl, metadata, isPremium, requiresDrm, isPaid]);
+  }, [contentId, videoUrl, metadata, isPremiumOrDrm, isDownloading]);
 
   const cancelDownload = useCallback(() => {
     abortRef.current?.abort();
+    abortRef.current = null;
   }, []);
 
   const removeDownload = useCallback(async () => {
@@ -139,3 +166,5 @@ export function useVideoDownloader({
     removeDownload,
   };
 }
+
+export default useVideoDownloader;
