@@ -187,6 +187,10 @@ export const VideoPlayer = ({
   const { party, isHost, isWatchPartyGuest, isSyncing, updatePlayback, syncToParty } = useWatchPartyContext();
   const lastPartySyncRef = useRef<number>(0);
   const initialPartySyncDoneRef = useRef<boolean>(false);
+  // Step 4 — when native casting (Remote Playback / AirPlay) is active, the
+  // TV owns the playback timeline. Guests must NOT push seek corrections to the
+  // host, and the host should not echo TV-driven time updates back to guests.
+  const [nativeCastActive, setNativeCastActive] = useState(false);
   // Google Cast hook
   const cast = useGoogleCast({
     mediaUrl: src,
