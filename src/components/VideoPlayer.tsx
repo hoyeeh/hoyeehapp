@@ -1048,6 +1048,14 @@ export const VideoPlayer = ({
       {/* Unified native cast launcher (Chromecast / AirPlay) */}
       <UnifiedCastButton videoRef={videoRef} title={title} poster={poster} />
 
+      {/* Casting to TV badge */}
+      {nativeCastActive && (
+        <div className="absolute top-3 left-3 z-30 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1.5 pointer-events-none">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          Casting to TV
+        </div>
+      )}
+
 
 
       {/* Subtitle Display */}
