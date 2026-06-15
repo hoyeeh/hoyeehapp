@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHand
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
 import { Loader2, AlertCircle, Cast, Airplay } from "lucide-react";
+import { toast } from "sonner";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
 import { MobileGestureLayer } from "@/components/player/MobileGestureLayer";
 
