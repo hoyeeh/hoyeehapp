@@ -14,6 +14,8 @@ import { CheckCircle, Play, ShoppingBag, Loader2, CreditCard, Smartphone, Clock,
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaidContentAnalytics } from "@/hooks/usePaidContentAnalytics";
+import { useNewPlayer } from "@/hooks/useNewPlayer";
+import { VideoJSPlayer, type VideoJSPlayerHandle } from "@/components/VideoJSPlayer";
 
 interface PurchaseModalProps {
   open: boolean;
