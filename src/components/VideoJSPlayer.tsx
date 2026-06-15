@@ -42,6 +42,9 @@ interface VideoJSPlayerProps {
    * trailers, modal hero loops, and short promos.
    */
   enableMobileGestures?: boolean;
+  /** Casting metadata — surfaced to TV receivers via <video> attributes. */
+  poster?: string;
+  title?: string;
   className?: string;
 }
 
