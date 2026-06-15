@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import { useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNewPlayer } from "@/hooks/useNewPlayer";
+import { VideoJSPlayer } from "@/components/VideoJSPlayer";
+import { NewPlayerBadge } from "@/components/dev/NewPlayerBadge";
 
 // Storage key for persistent random banner index
 const DESKTOP_BANNER_KEY = "hoyeeh-desktop-banner";
