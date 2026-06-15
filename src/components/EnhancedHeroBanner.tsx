@@ -41,6 +41,7 @@ export const EnhancedHeroBanner = ({
     return 0;
   });
   const [isMuted, setIsMuted] = useState(true);
+  const useNewPlayerFlag = useNewPlayer();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const hasInitialized = useRef(false);
   
