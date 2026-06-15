@@ -42,8 +42,20 @@ export function UnifiedCastButton({ videoRef, videoElement, title, poster, class
     const probe = () => {
       const v = getEl() as any;
       if (!v || cancelled) return;
-      setCanRemote(Boolean(v.remote && typeof v.remote.prompt === "function"));
-      setCanAirPlay(typeof v.webkitShowPlaybackTargetPicker === "function");
+      try {
+        setCanRemote(Boolean(v.remote && typeof v.remote.prompt === "function"));
+      } catch {
+        setCanRemote(false);
+      }
+      // iOS standalone PWA: webkit APIs are still exposed on the <video>
+      // element, but guard for environments where `window.webkit` or the
+      // method itself is missing so we never throw at render-time.
+      try {
+        const hasPicker = typeof v.webkitShowPlaybackTargetPicker === "function";
+        setCanAirPlay(hasPicker);
+      } catch {
+        setCanAirPlay(false);
+      }
     };
     probe();
     const t = setTimeout(probe, 250);
