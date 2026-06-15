@@ -149,14 +149,21 @@ export function VideoJSPlayerWithWatchParty({
     if (!party || !isHost || !videoEl) return;
 
     const onTime = () => {
+      if (nativeCastActiveRef.current) return;
       const now = Date.now();
       if (now - lastPartySyncRef.current >= 2000) {
         lastPartySyncRef.current = now;
         updatePlayback(videoEl.currentTime, !videoEl.paused);
       }
     };
-    const onPlayPause = () => updatePlayback(videoEl.currentTime, !videoEl.paused);
-    const onSeeked = () => updatePlayback(videoEl.currentTime, !videoEl.paused);
+    const onPlayPause = () => {
+      if (nativeCastActiveRef.current) return;
+      updatePlayback(videoEl.currentTime, !videoEl.paused);
+    };
+    const onSeeked = () => {
+      if (nativeCastActiveRef.current) return;
+      updatePlayback(videoEl.currentTime, !videoEl.paused);
+    };
 
     videoEl.addEventListener("timeupdate", onTime);
     videoEl.addEventListener("play", onPlayPause);
