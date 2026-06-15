@@ -319,31 +319,8 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           </div>
         )}
 
-        {/* Native cast buttons */}
-        {(canRemote || canAirPlay) && (
-          <div className="absolute top-3 right-3 z-30 flex gap-2">
-            {canRemote && (
-              <button
-                type="button"
-                aria-label="Cast to device"
-                onClick={handleChromecast}
-                className="p-2 rounded-md bg-background/70 hover:bg-background text-foreground"
-              >
-                <Cast className="h-5 w-5" />
-              </button>
-            )}
-            {canAirPlay && (
-              <button
-                type="button"
-                aria-label="AirPlay"
-                onClick={handleAirPlay}
-                className="p-2 rounded-md bg-background/70 hover:bg-background text-foreground"
-              >
-                <Airplay className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-        )}
+        {/* Unified native cast launcher (Chromecast / AirPlay) */}
+        <UnifiedCastButton videoRef={videoRefObject} title={title} poster={poster} />
 
         {/* Phase 4 — opt-in mobile gestures (main full-length player only) */}
         {enableMobileGestures && (
