@@ -84,6 +84,15 @@ const Index = () => {
     contentType: null,
   });
 
+  // Redirect to profile picker if logged in but no profile selected.
+  // Must run in an effect — calling navigate() during render triggers a
+  // setState-in-render loop in React Router.
+  useEffect(() => {
+    if (user && !currentProfile && !profilesLoading) {
+      navigate("/profiles", { replace: true });
+    }
+  }, [user, currentProfile, profilesLoading, navigate]);
+
   const handleFilterChange = useCallback((filters: FilterState) => {
     setActiveFilters(filters);
   }, []);
