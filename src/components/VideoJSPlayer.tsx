@@ -50,7 +50,7 @@ export interface VideoJSPlayerHandle {
 }
 
 export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>(
-  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, className }, ref) {
+  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, enableMobileGestures, className }, ref) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<Player | null>(null);
     const videoElRef = useRef<HTMLVideoElement | null>(null);
@@ -66,6 +66,7 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
     const [error, setError] = useState<string | null>(null);
     const [canAirPlay, setCanAirPlay] = useState(false);
     const [canRemote, setCanRemote] = useState(false);
+    const [brightness, setBrightness] = useState(1);
 
     useImperativeHandle(ref, () => ({
       getPlayer: () => playerRef.current,
