@@ -142,6 +142,7 @@ export function VideoJSPlayerWithWatchParty({
       onVideoElement={setVideoEl}
       resume={{ contentId, episodeId, title, thumbnail }}
       onBeforeDispose={handleBeforeDispose}
+      enableMobileGestures
       className={className}
     />
   );

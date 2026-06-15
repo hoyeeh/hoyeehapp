@@ -3,6 +3,7 @@ import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
 import { Loader2, AlertCircle, Cast, Airplay } from "lucide-react";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
+import { MobileGestureLayer } from "@/components/player/MobileGestureLayer";
 
 type VideoJsOptions = NonNullable<Parameters<typeof videojs>[1]>;
 
@@ -34,6 +35,12 @@ interface VideoJSPlayerProps {
     src: string | null;
     paused: boolean;
   }) => void;
+  /**
+   * Phase 4 — enable mobile swipe gestures (volume / brightness / seek).
+   * Intended ONLY for the main full-length player. Keep false for previews,
+   * trailers, modal hero loops, and short promos.
+   */
+  enableMobileGestures?: boolean;
   className?: string;
 }
 
@@ -43,7 +50,7 @@ export interface VideoJSPlayerHandle {
 }
 
 export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>(
-  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, className }, ref) {
+  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, enableMobileGestures, className }, ref) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<Player | null>(null);
     const videoElRef = useRef<HTMLVideoElement | null>(null);
@@ -59,6 +66,7 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
     const [error, setError] = useState<string | null>(null);
     const [canAirPlay, setCanAirPlay] = useState(false);
     const [canRemote, setCanRemote] = useState(false);
+    const [brightness, setBrightness] = useState(1);
 
     useImperativeHandle(ref, () => ({
       getPlayer: () => playerRef.current,
@@ -305,6 +313,16 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
               </button>
             )}
           </div>
+        )}
+
+        {/* Phase 4 — opt-in mobile gestures (main full-length player only) */}
+        {enableMobileGestures && (
+          <MobileGestureLayer
+            getPlayer={() => playerRef.current}
+            getVideoElement={() => videoElRef.current}
+            brightness={brightness}
+            setBrightness={setBrightness}
+          />
         )}
       </div>
     );

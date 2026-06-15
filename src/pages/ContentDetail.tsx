@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { VideoJSPlayerWithWatchParty } from "@/components/VideoJSPlayerWithWatchParty";
-import { useNewPlayer } from "@/hooks/useNewPlayer";
+import { useNewPlayerForFree } from "@/hooks/useNewPlayer";
 import { NewPlayerBadge } from "@/components/dev/NewPlayerBadge";
 import { SecureVideoWrapper } from "@/components/security/SecureVideoWrapper";
 import { PreviouslyOnRecap } from "@/components/PreviouslyOnRecap";
@@ -262,7 +262,8 @@ const ContentDetail = () => {
   const { isMobileDevice, isTablet } = useMobileDevice();
   const mobilePlayer = useMobileVideoPlayer();
   const isMobile = isMobileDevice || isTablet;
-  const newPlayerEnabled = useNewPlayer();
+  // Phase 4: VJS is default for free / non-DRM content. ?player=legacy forces legacy.
+  const newPlayerEnabled = useNewPlayerForFree();
   
   // Cast Queue
   const castQueue = useCastQueue();
