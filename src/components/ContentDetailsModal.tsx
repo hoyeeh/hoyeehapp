@@ -108,28 +108,38 @@ const ModalTrailerHero = ({ content }: { content: Content }) => {
       {showTrailer ? (
         newPlayer ? (
           <VideoJSPlayer
-            className="absolute inset-0 [&_.video-js]:!h-full [&_.video-js]:!w-full [&_.vjs-control-bar]:!hidden [&_.vjs-big-play-button]:!hidden"
+            className="absolute inset-0 [&_.video-js]:!h-full [&_.video-js]:!w-full"
             poster={content.thumbnailUrl}
             title={content.title}
             options={{
-              autoplay: "muted",
-              muted: true,
+              autoplay: true,
+              muted: false,
               loop: true,
-              controls: false,
+              controls: true,
               preload: "auto",
               fluid: false,
               fill: true,
               poster: content.thumbnailUrl,
               sources: [{ src: trailerUrl!, type: "video/mp4" }],
             }}
+            onReady={(p) => {
+              try {
+                const r: any = p.play();
+                if (r && typeof r.catch === "function") {
+                  r.catch(() => {
+                    console.info("[TrailerModal] Autoplay with sound blocked — user gesture required.");
+                  });
+                }
+              } catch {}
+            }}
           />
         ) : (
           <video
             ref={plainVideoRef}
             src={trailerUrl}
-            muted
             autoPlay
             loop
+            controls
             playsInline
             className="w-full h-full object-cover"
           />
