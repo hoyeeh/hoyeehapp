@@ -3,7 +3,10 @@ import { Cast, Airplay } from "lucide-react";
 import { toast } from "sonner";
 
 interface UnifiedCastButtonProps {
-  videoRef: React.RefObject<HTMLVideoElement>;
+  /** Preferred: a React ref to the underlying <video> element. */
+  videoRef?: React.RefObject<HTMLVideoElement>;
+  /** Alternative: pass the raw element directly (e.g. extracted from Video.js). */
+  videoElement?: HTMLVideoElement | null;
   title?: string;
   poster?: string;
   /** Optional override for positioning. Defaults to absolute top-right overlay. */
