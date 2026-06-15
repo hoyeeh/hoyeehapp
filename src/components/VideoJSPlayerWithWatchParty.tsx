@@ -141,6 +141,7 @@ export function VideoJSPlayerWithWatchParty({
       options={options}
       onVideoElement={setVideoEl}
       resume={{ contentId, episodeId, title, thumbnail }}
+      onBeforeDispose={handleBeforeDispose}
       className={className}
     />
   );
