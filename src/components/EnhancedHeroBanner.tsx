@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import { useWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from "@/hooks/useDatabase";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNewPlayer } from "@/hooks/useNewPlayer";
+import { VideoJSPlayer } from "@/components/VideoJSPlayer";
+import { NewPlayerBadge } from "@/components/dev/NewPlayerBadge";
 
 // Storage key for persistent random banner index
 const DESKTOP_BANNER_KEY = "hoyeeh-desktop-banner";
@@ -38,6 +41,7 @@ export const EnhancedHeroBanner = ({
     return 0;
   });
   const [isMuted, setIsMuted] = useState(true);
+  const useNewPlayerFlag = useNewPlayer();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const hasInitialized = useRef(false);
   
@@ -143,6 +147,24 @@ export const EnhancedHeroBanner = ({
   const displayVideo = activeBanner?.video_url;
   const ctaText = activeBanner?.cta_text || "Play";
 
+  // Hero preview options for the new Video.js player: muted/looped autoplay,
+  // no controls, lightweight. Short MP4 preview only — no Watch Party, no resume.
+  const vjsHeroOptions = useMemo(
+    () => ({
+      controls: false,
+      muted: true,
+      autoplay: true as const,
+      loop: true,
+      preload: "auto" as const,
+      responsive: true,
+      fluid: false,
+      fill: true,
+      bigPlayButton: false,
+      sources: displayVideo ? [{ src: displayVideo, type: "video/mp4" }] : [],
+    }),
+    [displayVideo]
+  );
+
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
@@ -229,19 +251,45 @@ export const EnhancedHeroBanner = ({
                   isVideoPlaying ? "opacity-0" : "opacity-100"
                 )}
               />
-              <video
-                ref={videoRef}
-                src={displayVideo}
-                className={cn(
-                  "w-full h-full object-cover transition-opacity duration-500",
-                  isVideoPlaying ? "opacity-100" : "opacity-0"
-                )}
-                autoPlay
-                loop
-                muted={isMuted}
-                playsInline
-                onPlay={() => setIsVideoPlaying(true)}
-              />
+              {useNewPlayerFlag ? (
+                <div
+                  className={cn(
+                    "w-full h-full transition-opacity duration-500 hero-vjs-shell",
+                    isVideoPlaying ? "opacity-100" : "opacity-0"
+                  )}
+                >
+                  <VideoJSPlayer
+                    key={displayVideo}
+                    options={vjsHeroOptions}
+                    onReady={(p) => {
+                      // Keep the mute toggle behavior parity with the legacy <video>
+                      try { p.muted(isMuted); } catch {}
+                    }}
+                    onVideoElement={(el) => {
+                      // Adopt the underlying <video> so the existing mute toggle still works.
+                      (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+                      if (el) {
+                        const onPlay = () => setIsVideoPlaying(true);
+                        el.addEventListener("playing", onPlay, { once: true });
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <video
+                  ref={videoRef}
+                  src={displayVideo}
+                  className={cn(
+                    "w-full h-full object-cover transition-opacity duration-500",
+                    isVideoPlaying ? "opacity-100" : "opacity-0"
+                  )}
+                  autoPlay
+                  loop
+                  muted={isMuted}
+                  playsInline
+                  onPlay={() => setIsVideoPlaying(true)}
+                />
+              )}
             </>
           ) : (
             <img
@@ -252,6 +300,7 @@ export const EnhancedHeroBanner = ({
           )}
         </motion.div>
       </AnimatePresence>
+      {useNewPlayerFlag && displayVideo && <NewPlayerBadge surface="hero" />}
 
       {/* Apple-style gradient overlays - subtle and refined */}
       <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
