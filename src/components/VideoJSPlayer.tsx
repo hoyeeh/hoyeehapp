@@ -109,7 +109,14 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           if (htmlVideo) {
             // CORS for DigitalOcean Spaces (required for native cast / canvas / etc.)
             htmlVideo.setAttribute("crossorigin", "anonymous");
+            htmlVideo.crossOrigin = "anonymous";
+            // iOS / AirPlay attributes — required so iOS shows inline + allows AirPlay routing.
             htmlVideo.setAttribute("playsinline", "");
+            htmlVideo.setAttribute("webkit-playsinline", "");
+            htmlVideo.setAttribute("x-webkit-airplay", "allow");
+            // TV receiver metadata (title shown on Chromecast / AirPlay overlay).
+            if (poster) htmlVideo.setAttribute("poster", poster);
+            if (title) htmlVideo.setAttribute("title", title);
             videoElRef.current = htmlVideo;
             onVideoElement?.(htmlVideo);
 
@@ -117,6 +124,24 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
             const remote = (htmlVideo as any).remote;
             setCanRemote(Boolean(remote?.prompt));
             setCanAirPlay(typeof (htmlVideo as any).webkitShowPlaybackTargetPicker === "function");
+
+            // Remote playback state → user-friendly error toast on disconnect/failure.
+            try {
+              remote?.addEventListener?.("connecting", () => {
+                toast.message("Connecting to cast device…");
+              });
+              remote?.addEventListener?.("connect", () => {
+                toast.success("Casting started");
+              });
+              remote?.addEventListener?.("disconnect", () => {
+                // Distinguish user disconnect from error: we only warn if media element errored.
+                if (htmlVideo.error) {
+                  toast.error("Casting failed. Please check your network or try again.");
+                }
+              });
+            } catch (e) {
+              console.warn("[VideoJSPlayer] remote listener attach failed:", e);
+            }
           }
           onReady?.(player);
         }
