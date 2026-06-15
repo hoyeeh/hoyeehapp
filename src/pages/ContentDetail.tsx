@@ -961,6 +961,9 @@ const ContentDetail = () => {
                   poster={content.thumbnailUrl}
                   duration={content.duration}
                   isPremium={content.isPremium}
+                  requiresDrm={(content as { requires_drm?: boolean }).requires_drm}
+                  isPaid={(content as { isPaid?: boolean }).isPaid}
+                  price={(content as { price?: number }).price}
                 />
               )}
               {/* Series notification button */}
