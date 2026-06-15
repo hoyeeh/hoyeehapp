@@ -565,6 +565,7 @@ export const VideoPlayer = ({
     if (!party || isHost) return;
     
     const interval = setInterval(() => {
+      if (nativeCastActiveRef.current) return; // suspend during cast
       const video = videoRef.current;
       if (video) {
         syncToParty(video, false);
