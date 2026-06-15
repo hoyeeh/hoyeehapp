@@ -16,6 +16,8 @@ import { CastQueuePanel } from "@/components/CastQueuePanel";
 import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
 import { TVShowSeasons } from "@/components/TVShowSeasons";
 import { DownloadButton } from "@/components/DownloadButton";
+import { OfflineDownloadButton } from "@/components/OfflineDownloadButton";
+import { OfflinePlayerWrapper } from "@/components/player/OfflinePlayerWrapper";
 import { MoreLikeThisSection } from "@/components/MoreLikeThisSection";
 import { WatchPartyPanel } from "@/components/WatchPartyPanel";
 import { SeriesNotificationButton } from "@/components/SeriesNotificationButton";
@@ -938,6 +940,16 @@ const ContentDetail = () => {
               />
               {/* Download button for movies */}
               {!isTVShow && <DownloadButton content={content} />}
+              {!isTVShow && (
+                <OfflineDownloadButton
+                  contentId={content.id}
+                  videoUrl={content.videoUrl}
+                  title={content.title}
+                  poster={content.thumbnailUrl}
+                  duration={content.duration}
+                  isPremium={content.isPremium}
+                />
+              )}
               {/* Series notification button */}
               <SeriesNotificationButton 
                 contentId={content.id} 
