@@ -161,6 +161,20 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
               <span className="hidden md:inline text-sm">Downloads</span>
             </button>
 
+            {/* Offline Downloads (non-DRM) */}
+            <button
+              onClick={() => navigate("/offline-downloads")}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                (currentView as string) === "offline-downloads"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent"
+              )}
+            >
+              <Download className="h-4 w-4 flex-shrink-0 ml-1" />
+              <span className="hidden md:inline text-sm">Offline</span>
+            </button>
+
             {/* Notifications */}
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
               <div className="ml-1">
