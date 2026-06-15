@@ -549,6 +549,7 @@ export const VideoPlayer = ({
   // Force sync on initial join, then use tighter threshold
   useEffect(() => {
     if (!party || isHost) return;
+    if (nativeCastActive) return; // TV owns the timeline during casting
     
     const video = videoRef.current;
     if (!video) return;
@@ -557,7 +558,7 @@ export const VideoPlayer = ({
     const forceSync = !initialPartySyncDoneRef.current;
     syncToParty(video, forceSync);
     initialPartySyncDoneRef.current = true;
-  }, [party?.playback_time, party?.is_playing, isHost, syncToParty]);
+  }, [party?.playback_time, party?.is_playing, isHost, syncToParty, nativeCastActive]);
 
   // Watch Party - periodic sync for guests to catch drift
   useEffect(() => {
