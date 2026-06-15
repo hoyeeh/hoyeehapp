@@ -1,10 +1,13 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Volume2, VolumeX, Play, Pause, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { HomepageAd, useTrackAdEvent } from '@/hooks/useHomepageAds';
 import { useNavigate } from 'react-router-dom';
 import { throttle } from '@/player/core/utils/throttle';
+import { useNewPlayer } from '@/hooks/useNewPlayer';
+import { VideoJSPlayer } from '@/components/VideoJSPlayer';
+import { NewPlayerBadge } from '@/components/dev/NewPlayerBadge';
 
 interface SpotlightAdPlayerProps {
   ad: HomepageAd;
@@ -189,6 +192,27 @@ export function SpotlightAdPlayer({ ad, isInView, appContext = 'main' }: Spotlig
 
   const showVideo = ad.video_url && !hasError && !prefersReducedMotion;
 
+  // Phase 2: Video.js for MP4 promo ads behind the ?player=vjs flag.
+  // HLS ads keep the legacy HLS.js path (no VJS HLS in Phase 2).
+  const newPlayerFlag = useNewPlayer();
+  const isHlsAd = ad.video_type === 'hls' || (ad.video_url?.includes('.m3u8') ?? false);
+  const useVjsBranch = Boolean(showVideo && newPlayerFlag && !isHlsAd);
+  const vjsAdOptions = useMemo(
+    () => ({
+      controls: false,
+      muted: true,
+      autoplay: true as const,
+      loop: true,
+      preload: 'auto' as const,
+      responsive: true,
+      fluid: false,
+      fill: true,
+      bigPlayButton: false,
+      sources: ad.video_url ? [{ src: ad.video_url, type: 'video/mp4' }] : [],
+    }),
+    [ad.video_url]
+  );
+
   return (
     <div className="relative w-full aspect-video md:aspect-[21/9] rounded-xl overflow-hidden bg-black group">
       {/* Poster Image */}
@@ -201,8 +225,37 @@ export function SpotlightAdPlayer({ ad, isInView, appContext = 'main' }: Spotlig
         )}
       />
 
-      {/* Video Element */}
-      {showVideo && (
+      {/* Video Element — VJS branch for MP4 ads under the flag, legacy <video> otherwise */}
+      {showVideo && useVjsBranch && (
+        <div
+          className={cn(
+            "absolute inset-0 w-full h-full transition-opacity duration-500 spotlight-vjs-shell",
+            isVideoLoaded && isPlaying ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <VideoJSPlayer
+            key={ad.video_url}
+            options={vjsAdOptions}
+            onReady={(p) => {
+              try { p.muted(true); } catch {}
+            }}
+            onVideoElement={(el) => {
+              // Adopt the underlying <video> so the existing controls/handlers keep working.
+              (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+              if (!el) return;
+              const onLoaded = () => handleVideoLoaded();
+              const onErr = () => handleVideoError();
+              const onPlay = () => setIsPlaying(true);
+              const onPause = () => setIsPlaying(false);
+              el.addEventListener('loadeddata', onLoaded);
+              el.addEventListener('error', onErr);
+              el.addEventListener('playing', onPlay);
+              el.addEventListener('pause', onPause);
+            }}
+          />
+        </div>
+      )}
+      {showVideo && !useVjsBranch && (
         <video
           ref={videoRef}
           className={cn(
@@ -217,6 +270,7 @@ export function SpotlightAdPlayer({ ad, isInView, appContext = 'main' }: Spotlig
           onError={handleVideoError}
         />
       )}
+      {useVjsBranch && <NewPlayerBadge surface="spotlight" />}
 
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

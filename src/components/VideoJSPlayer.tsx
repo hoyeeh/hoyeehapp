@@ -22,6 +22,18 @@ interface VideoJSPlayerProps {
     /** Treat as completed at this ratio (default 0.95) — clears the saved position. */
     completionRatio?: number;
   };
+  /**
+   * Called immediately BEFORE the underlying Video.js player is disposed (unmount,
+   * source teardown, etc.). Receives a snapshot of the final playback state so
+   * consumers can hand off to the persistent mini-player or persist progress.
+   * Runs synchronously — do not await network calls here.
+   */
+  onBeforeDispose?: (snapshot: {
+    currentTime: number;
+    duration: number;
+    src: string | null;
+    paused: boolean;
+  }) => void;
   className?: string;
 }
 
@@ -31,11 +43,17 @@ export interface VideoJSPlayerHandle {
 }
 
 export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>(
-  function VideoJSPlayer({ options, onReady, onVideoElement, resume, className }, ref) {
+  function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, className }, ref) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<Player | null>(null);
     const videoElRef = useRef<HTMLVideoElement | null>(null);
     const resumeAppliedRef = useRef(false);
+    // Keep latest dispose callback in a ref so the init effect (which runs once) always
+    // sees the freshest closure when the player is torn down on unmount.
+    const onBeforeDisposeRef = useRef<typeof onBeforeDispose>(onBeforeDispose);
+    useEffect(() => {
+      onBeforeDisposeRef.current = onBeforeDispose;
+    }, [onBeforeDispose]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -62,6 +80,11 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           responsive: true,
           fluid: true,
           preload: "metadata",
+          // Touch-friendly defaults: a tap on the surface toggles play/pause and
+          // wakes the controls; controls auto-hide after a short idle window.
+          // Video.js handles "tap to show controls" natively via userActions.
+          userActions: { click: true, ...((options as any).userActions ?? {}) },
+          inactivityTimeout: 3000,
           ...options,
           html5: {
             ...(options.html5 ?? {}),
@@ -102,6 +125,22 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
       });
 
       return () => {
+        // Mini-player handoff: snapshot final state BEFORE disposal so the
+        // persistent <video>-based MiniPlayer can resume seamlessly.
+        try {
+          const p = playerRef.current;
+          if (p && !p.isDisposed() && onBeforeDisposeRef.current) {
+            const vid = videoElRef.current;
+            onBeforeDisposeRef.current({
+              currentTime: Number(p.currentTime() ?? 0),
+              duration: Number(p.duration() ?? 0),
+              src: (vid?.currentSrc || p.currentSrc() || null) as string | null,
+              paused: Boolean(p.paused()),
+            });
+          }
+        } catch (e) {
+          console.warn("[VideoJSPlayer] onBeforeDispose threw:", e);
+        }
         onVideoElement?.(null);
         videoElRef.current = null;
         if (playerRef.current && !playerRef.current.isDisposed()) {
