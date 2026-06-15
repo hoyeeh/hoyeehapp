@@ -47,8 +47,11 @@ export function VideoJSPlayerWithWatchParty({
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const initialPartySyncDoneRef = useRef(false);
   const lastPartySyncRef = useRef(0);
-
-  const { party, isHost, syncToParty, updatePlayback } = useWatchPartyContext();
+  // Step 4 — when native casting is active, the TV owns the timeline.
+  // Suspend guest→host seek sync and host→guest broadcasts to avoid fights.
+  const [nativeCastActive, setNativeCastActive] = useState(false);
+  const nativeCastActiveRef = useRef(false);
+  useEffect(() => { nativeCastActiveRef.current = nativeCastActive; }, [nativeCastActive]);
   const { minimize } = useMiniPlayer();
 
   // Hand off final state to the persistent MiniPlayer just before VJS disposes.
