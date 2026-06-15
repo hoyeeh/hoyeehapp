@@ -147,19 +147,20 @@ export const EnhancedHeroBanner = ({
   const displayVideo = activeBanner?.video_url;
   const ctaText = activeBanner?.cta_text || "Play";
 
-  // Hero preview options for the new Video.js player: muted/looped autoplay,
-  // no controls, lightweight. Short MP4 preview only — no Watch Party, no resume.
+  // Hero preview options for the new Video.js player. Trailers play with sound:
+  // controls visible + unmuted. Browsers block unmuted autoplay — Video.js will
+  // surface the play button gracefully if `play()` is rejected.
   const vjsHeroOptions = useMemo(
     () => ({
-      controls: false,
-      muted: true,
+      controls: true,
+      muted: false,
       autoplay: true as const,
       loop: true,
       preload: "auto" as const,
       responsive: true,
       fluid: false,
       fill: true,
-      bigPlayButton: false,
+      bigPlayButton: true,
       sources: displayVideo ? [{ src: displayVideo, type: "video/mp4" }] : [],
     }),
     [displayVideo]
