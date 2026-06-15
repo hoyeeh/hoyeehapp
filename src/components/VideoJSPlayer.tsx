@@ -22,6 +22,18 @@ interface VideoJSPlayerProps {
     /** Treat as completed at this ratio (default 0.95) — clears the saved position. */
     completionRatio?: number;
   };
+  /**
+   * Called immediately BEFORE the underlying Video.js player is disposed (unmount,
+   * source teardown, etc.). Receives a snapshot of the final playback state so
+   * consumers can hand off to the persistent mini-player or persist progress.
+   * Runs synchronously — do not await network calls here.
+   */
+  onBeforeDispose?: (snapshot: {
+    currentTime: number;
+    duration: number;
+    src: string | null;
+    paused: boolean;
+  }) => void;
   className?: string;
 }
 
