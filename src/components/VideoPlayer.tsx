@@ -631,6 +631,42 @@ export const VideoPlayer = ({
     };
   }, [party, isHost, updatePlayback]);
 
+  // Step 4 — track native cast (Chromecast Remote Playback API + AirPlay) and
+  // suspend Watch Party sync while active so guests don't fight the TV.
+  useEffect(() => {
+    const video = videoRef.current as any;
+    if (!video) return;
+
+    const setActive = () => setNativeCastActive(true);
+    const setInactive = () => setNativeCastActive(false);
+
+    const remote = video.remote;
+    try {
+      remote?.addEventListener?.("connecting", setActive);
+      remote?.addEventListener?.("connect", setActive);
+      remote?.addEventListener?.("disconnect", setInactive);
+    } catch (e) {
+      console.warn("[VideoPlayer] remote listener attach failed", e);
+    }
+    const onAirplayChange = (e: any) => {
+      const state = e?.availability ?? e?.target?.webkitCurrentPlaybackTargetIsWireless;
+      if (typeof state === "boolean") setNativeCastActive(state);
+      else setNativeCastActive(Boolean(video.webkitCurrentPlaybackTargetIsWireless));
+    };
+    video.addEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplayChange);
+
+    return () => {
+      try {
+        remote?.removeEventListener?.("connecting", setActive);
+        remote?.removeEventListener?.("connect", setActive);
+        remote?.removeEventListener?.("disconnect", setInactive);
+      } catch {}
+      video.removeEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplayChange);
+    };
+  }, []);
+
+
+
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
