@@ -373,6 +373,8 @@ export function PurchaseModal({ open, onClose, paidContent, onPurchased }: Purch
                       isPremium={Boolean(content.is_premium || content.requires_drm)}
                       isPaid={Number(paidContent?.price ?? 0) > 0}
                       startTime={getPreviewStartTime(content.duration)}
+                      poster={content.thumbnail_url || content.backdrop_url}
+                      title={content.title}
                       onEnded={handlePreviewEnd}
                       onError={() => {
                         toast.error("Error playing preview");
