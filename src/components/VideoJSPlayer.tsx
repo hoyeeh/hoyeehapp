@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
-import { Loader2, AlertCircle, Cast, Airplay } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
 import { MobileGestureLayer } from "@/components/player/MobileGestureLayer";
+import { UnifiedCastButton } from "@/components/player/UnifiedCastButton";
 
 type VideoJsOptions = NonNullable<Parameters<typeof videojs>[1]>;
 
