@@ -52,6 +52,8 @@ export function VideoJSPlayerWithWatchParty({
   const [nativeCastActive, setNativeCastActive] = useState(false);
   const nativeCastActiveRef = useRef(false);
   useEffect(() => { nativeCastActiveRef.current = nativeCastActive; }, [nativeCastActive]);
+
+  const { party, isHost, syncToParty, updatePlayback } = useWatchPartyContext();
   const { minimize } = useMiniPlayer();
 
   // Hand off final state to the persistent MiniPlayer just before VJS disposes.
