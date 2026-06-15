@@ -119,12 +119,22 @@ export function UnifiedCastButton({ videoRef, videoElement, title, poster, class
         "absolute top-3 right-3 z-40 flex gap-2 pointer-events-auto"
       }
     >
+  return (
+    <div
+      className={
+        className ??
+        // Top-right corner, inside the 56px gesture-exclusion zone reserved
+        // by MobileGestureLayer. z-50 keeps it above the VJS control bar.
+        "absolute top-2 right-2 z-50 flex gap-2 pointer-events-auto"
+      }
+    >
       {canRemote && (
         <button
           type="button"
           aria-label="Cast to device"
           onClick={handleChromecast}
-          className="p-2 rounded-md bg-background/70 hover:bg-background text-foreground backdrop-blur-sm transition-colors"
+          onTouchStart={(e) => e.stopPropagation()}
+          className="min-w-[44px] min-h-[44px] w-11 h-11 p-2 inline-flex items-center justify-center rounded-md bg-background/70 hover:bg-background text-foreground backdrop-blur-sm transition-colors touch-manipulation"
         >
           <Cast className="h-5 w-5" />
         </button>
@@ -134,7 +144,8 @@ export function UnifiedCastButton({ videoRef, videoElement, title, poster, class
           type="button"
           aria-label="AirPlay"
           onClick={handleAirPlay}
-          className="p-2 rounded-md bg-background/70 hover:bg-background text-foreground backdrop-blur-sm transition-colors"
+          onTouchStart={(e) => e.stopPropagation()}
+          className="min-w-[44px] min-h-[44px] w-11 h-11 p-2 inline-flex items-center justify-center rounded-md bg-background/70 hover:bg-background text-foreground backdrop-blur-sm transition-colors touch-manipulation"
         >
           <Airplay className="h-5 w-5" />
         </button>
