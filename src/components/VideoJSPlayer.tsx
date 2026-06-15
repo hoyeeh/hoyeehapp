@@ -125,6 +125,22 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
       });
 
       return () => {
+        // Mini-player handoff: snapshot final state BEFORE disposal so the
+        // persistent <video>-based MiniPlayer can resume seamlessly.
+        try {
+          const p = playerRef.current;
+          if (p && !p.isDisposed() && onBeforeDisposeRef.current) {
+            const vid = videoElRef.current;
+            onBeforeDisposeRef.current({
+              currentTime: Number(p.currentTime() ?? 0),
+              duration: Number(p.duration() ?? 0),
+              src: (vid?.currentSrc || p.currentSrc() || null) as string | null,
+              paused: Boolean(p.paused()),
+            });
+          }
+        } catch (e) {
+          console.warn("[VideoJSPlayer] onBeforeDispose threw:", e);
+        }
         onVideoElement?.(null);
         videoElRef.current = null;
         if (playerRef.current && !playerRef.current.isDisposed()) {
