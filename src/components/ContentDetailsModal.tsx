@@ -292,19 +292,10 @@ export const ContentDetailsModal = ({
         </button>
 
         <ScrollArea className="h-[90vh]">
-          {/* Hero Image */}
-          <div className="relative h-64 md:h-80">
-            <img
-              src={content.thumbnailUrl}
-              alt={content.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
-            
-            <div className="absolute top-4 left-4 flex gap-2">
-              <ContentRatingBadge rating={content.contentRating} size="md" />
-            </div>
-          </div>
+          {/* Hero — muted/looped trailer for non-premium when available, else thumbnail.
+              Premium items always render the static image (DRM gate untouched). */}
+          <ModalTrailerHero content={content} />
+
 
           {/* Content */}
           <div className="p-6 md:p-8 -mt-16 relative">
