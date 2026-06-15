@@ -14,7 +14,7 @@ import { CheckCircle, Play, ShoppingBag, Loader2, CreditCard, Smartphone, Clock,
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaidContentAnalytics } from "@/hooks/usePaidContentAnalytics";
-import { useNewPlayer } from "@/hooks/useNewPlayer";
+import { useNewPlayerForFree } from "@/hooks/useNewPlayer";
 import { VideoJSPlayer, type VideoJSPlayerHandle } from "@/components/VideoJSPlayer";
 
 interface PurchaseModalProps {
@@ -644,7 +644,8 @@ function PreviewPlayer({
   onEnded: () => void;
   onError: () => void;
 }) {
-  const newPlayerEnabled = useNewPlayer();
+  // Phase 4: VJS is default for free creator content. Strict guards remain.
+  const newPlayerEnabled = useNewPlayerForFree();
   const useVjs = newPlayerEnabled && !isPremium && !isPaid;
   const vjsRef = useRef<VideoJSPlayerHandle | null>(null);
   const [expired, setExpired] = useState(false);
