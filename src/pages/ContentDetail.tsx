@@ -262,6 +262,7 @@ const ContentDetail = () => {
   const { isMobileDevice, isTablet } = useMobileDevice();
   const mobilePlayer = useMobileVideoPlayer();
   const isMobile = isMobileDevice || isTablet;
+  const newPlayerEnabled = useNewPlayer();
   
   // Cast Queue
   const castQueue = useCastQueue();
