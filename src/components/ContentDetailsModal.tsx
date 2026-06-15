@@ -136,7 +136,7 @@ const ModalTrailerHero = ({ content }: { content: Content }) => {
         )
       ) : (
         <img
-          src={content.thumbnailUrlUrl}
+          src={content.thumbnailUrl}
           alt={content.title}
           className="w-full h-full object-cover"
         />
