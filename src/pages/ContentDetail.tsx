@@ -772,6 +772,7 @@ const ContentDetail = () => {
               title={content.title}
               thumbnail={content.thumbnailUrl}
               autoplay
+              miniPlayerContent={content}
               className="w-full h-screen bg-black"
             />
             <NewPlayerBadge surface="movie" />
