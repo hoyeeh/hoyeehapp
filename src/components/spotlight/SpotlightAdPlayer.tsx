@@ -235,6 +235,8 @@ export function SpotlightAdPlayer({ ad, isInView, appContext = 'main' }: Spotlig
         >
           <VideoJSPlayer
             key={ad.video_url}
+            poster={ad.poster_url}
+            title={ad.title}
             options={vjsAdOptions}
             onReady={(p) => {
               try { p.muted(true); } catch {}
