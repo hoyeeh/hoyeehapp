@@ -99,6 +99,10 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           responsive: true,
           fluid: true,
           preload: "metadata",
+          // Casting / iOS inline attributes — declared up-front so Video.js
+          // applies them to the underlying <video> at construction time.
+          crossOrigin: "anonymous",
+          playsinline: true,
           // Touch-friendly defaults: a tap on the surface toggles play/pause and
           // wakes the controls; controls auto-hide after a short idle window.
           // Video.js handles "tap to show controls" natively via userActions.
