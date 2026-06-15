@@ -760,15 +760,30 @@ const ContentDetail = () => {
 
   // Playing main content (movie or TV show trailer) - only desktop
   if (playing && content && !isMobile) {
+    const useVjs = newPlayerEnabled && !content.isPremium;
     return (
       <SecureVideoWrapper>
-        <VideoPlayer
-          src={content.videoUrl}
-          title={content.title}
-          contentId={content.id}
-          initialProgress={0}
-          onBack={() => setPlaying(false)}
-        />
+        {useVjs ? (
+          <>
+            <VideoJSPlayerWithWatchParty
+              src={content.videoUrl}
+              contentId={content.id}
+              title={content.title}
+              thumbnail={content.thumbnailUrl}
+              autoplay
+              className="w-full h-screen bg-black"
+            />
+            <NewPlayerBadge surface="movie" />
+          </>
+        ) : (
+          <VideoPlayer
+            src={content.videoUrl}
+            title={content.title}
+            contentId={content.id}
+            initialProgress={0}
+            onBack={() => setPlaying(false)}
+          />
+        )}
       </SecureVideoWrapper>
     );
   }
