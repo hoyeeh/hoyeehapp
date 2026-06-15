@@ -42,12 +42,29 @@ export function VideoJSPlayerWithWatchParty({
   title,
   thumbnail,
   className,
+  miniPlayerContent,
 }: Props) {
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const initialPartySyncDoneRef = useRef(false);
   const lastPartySyncRef = useRef(0);
 
   const { party, isHost, syncToParty, updatePlayback } = useWatchPartyContext();
+  const { minimize } = useMiniPlayer();
+
+  // Hand off final state to the persistent MiniPlayer just before VJS disposes.
+  // Skipped during an active Watch Party (host/guest sync owns that lifecycle)
+  // and when no content was provided.
+  const handleBeforeDispose = useCallback(
+    (snap: { currentTime: number; duration: number; src: string | null; paused: boolean }) => {
+      if (!miniPlayerContent) return;
+      if (party) return;
+      if (!snap.src) return;
+      if (snap.duration > 0 && snap.currentTime / snap.duration >= 0.95) return; // finished
+      if (snap.currentTime < 5) return; // not enough watched to bother
+      minimize(miniPlayerContent, snap.src, snap.currentTime, snap.duration);
+    },
+    [miniPlayerContent, party, minimize]
+  );
 
   const options = useMemo(
     () => ({
