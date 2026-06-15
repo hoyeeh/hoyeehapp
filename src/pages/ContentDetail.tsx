@@ -716,25 +716,44 @@ const ContentDetail = () => {
 
     const epData = playingEpisode as any;
 
+    // Phase 2: feature-flagged swap to VideoJSPlayer for non-premium content only.
+    // Premium continues to use the legacy DRM-aware VideoPlayer (Phase 3 territory).
+    const useVjs = newPlayerEnabled && !content.isPremium;
+
     return (
       <SecureVideoWrapper>
-        <VideoPlayer
-          src={playingEpisode.video_url || ''}
-          title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
-          contentId={content.id}
-          episodeId={playingEpisode.id}
-          initialProgress={episodeResumeAt}
-          introStartTime={epData.intro_start_time ?? 0}
-          introEndTime={epData.intro_end_time ?? 90}
-          recapStartTime={epData.recap_start_time ?? undefined}
-          recapEndTime={epData.recap_end_time ?? undefined}
-          onBack={() => {
-            setPlayingEpisode(null);
-            setEpisodeResumeAt(0);
-          }}
-          nextEpisode={nextEpisodeInfo}
-          onPlayNextEpisode={handlePlayNextEpisode}
-        />
+        {useVjs ? (
+          <>
+            <VideoJSPlayerWithWatchParty
+              src={playingEpisode.video_url || ''}
+              contentId={content.id}
+              episodeId={playingEpisode.id}
+              title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
+              thumbnail={content.thumbnailUrl}
+              autoplay
+              className="w-full h-screen bg-black"
+            />
+            <NewPlayerBadge surface="episode" />
+          </>
+        ) : (
+          <VideoPlayer
+            src={playingEpisode.video_url || ''}
+            title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
+            contentId={content.id}
+            episodeId={playingEpisode.id}
+            initialProgress={episodeResumeAt}
+            introStartTime={epData.intro_start_time ?? 0}
+            introEndTime={epData.intro_end_time ?? 90}
+            recapStartTime={epData.recap_start_time ?? undefined}
+            recapEndTime={epData.recap_end_time ?? undefined}
+            onBack={() => {
+              setPlayingEpisode(null);
+              setEpisodeResumeAt(0);
+            }}
+            nextEpisode={nextEpisodeInfo}
+            onPlayNextEpisode={handlePlayNextEpisode}
+          />
+        )}
       </SecureVideoWrapper>
     );
   }
