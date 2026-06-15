@@ -324,7 +324,7 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
         )}
 
         {/* Unified native cast launcher (Chromecast / AirPlay) */}
-        <UnifiedCastButton videoRef={videoRefObject} title={title} poster={poster} />
+        <UnifiedCastButton videoRef={videoRefObject.current!} title={title} poster={poster} />
 
         {/* Phase 4 — opt-in mobile gestures (main full-length player only) */}
         {enableMobileGestures && (
