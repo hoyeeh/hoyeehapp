@@ -73,7 +73,9 @@ const DownloadsPage = () => {
   };
 
   const handlePlay = (item: OfflineVideoMetadata) => {
-    navigate(`/watch?contentId=${encodeURIComponent(item.contentId)}&offline=true`);
+    // Route to the real content detail page; ContentDetail reads ?offline=true
+    // and OfflinePlayerWrapper swaps in the local blob URL.
+    navigate(`/content/${encodeURIComponent(item.contentId)}?offline=true`);
   };
 
   return (
