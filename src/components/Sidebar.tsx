@@ -166,7 +166,7 @@ export const Sidebar = ({ currentView, onNavigate, onLogout, userName }: Sidebar
               onClick={() => navigate("/offline-downloads")}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-                currentView === "offline-downloads"
+                (currentView as string) === "offline-downloads"
                   ? "bg-sidebar-primary text-sidebar-primary-foreground"
                   : "text-sidebar-foreground hover:bg-sidebar-accent"
               )}
