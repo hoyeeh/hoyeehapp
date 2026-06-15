@@ -67,6 +67,86 @@ const parseCast = (castMembers: any): CastMember[] => {
   }
 };
 
+/**
+ * Hero area for the modal. Shows a muted/looped trailer preview when:
+ *   - the item is NOT premium (DRM gating — premium items always render the
+ *     static thumbnail to keep Widevine/legacy paths untouched), AND
+ *   - a `trailer_url` (MP4) is available.
+ * Otherwise falls back to the static <img> thumbnail (current baseline).
+ *
+ * When the feature flag `?player=vjs` is on, uses <VideoJSPlayer />;
+ * otherwise uses a plain HTML5 <video> to match baseline behaviour.
+ *
+ * On unmount the player is paused + disposed (handled by VideoJSPlayer's
+ * own cleanup, and explicitly for the plain <video>) to prevent audio
+ * ghosting when the modal closes.
+ */
+const ModalTrailerHero = ({ content }: { content: Content }) => {
+  const newPlayer = useNewPlayer();
+  const trailerUrl: string | undefined =
+    (content as any).trailer_url || (content as any).trailerUrl || undefined;
+  const plainVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Pause the plain <video> on unmount as a defensive cleanup.
+  useEffect(() => {
+    return () => {
+      const v = plainVideoRef.current;
+      if (v) {
+        try {
+          v.pause();
+          v.removeAttribute("src");
+          v.load();
+        } catch {}
+      }
+    };
+  }, []);
+
+  const showTrailer = !content.isPremium && !!trailerUrl;
+
+  return (
+    <div className="relative h-64 md:h-80 bg-black overflow-hidden">
+      {showTrailer ? (
+        newPlayer ? (
+          <VideoJSPlayer
+            className="absolute inset-0 [&_.video-js]:!h-full [&_.video-js]:!w-full [&_.vjs-control-bar]:!hidden [&_.vjs-big-play-button]:!hidden"
+            options={{
+              autoplay: "muted",
+              muted: true,
+              loop: true,
+              controls: false,
+              preload: "auto",
+              fluid: false,
+              fill: true,
+              sources: [{ src: trailerUrl!, type: "video/mp4" }],
+            }}
+          />
+        ) : (
+          <video
+            ref={plainVideoRef}
+            src={trailerUrl}
+            muted
+            autoPlay
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+          />
+        )
+      ) : (
+        <img
+          src={content.thumbnailUrl}
+          alt={content.title}
+          className="w-full h-full object-cover"
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent pointer-events-none" />
+
+      <div className="absolute top-4 left-4 flex gap-2 z-10">
+        <ContentRatingBadge rating={content.contentRating} size="md" />
+      </div>
+    </div>
+  );
+};
+
 export const ContentDetailsModal = ({
   content,
   onClose,
