@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Play, Trash2, Download as DownloadIcon } from "lucide-react";
+import { Play, Trash2, Download as DownloadIcon, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import {
   deleteVideo,
   getAllDownloads,
@@ -16,16 +17,36 @@ const formatSize = (bytes: number) => {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 };
 
+const PosterImage = ({ src, alt }: { src: string; alt: string }) => {
+  const [failed, setFailed] = useState(!src);
+  if (failed) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 via-muted to-secondary">
+        <Film className="h-10 w-10 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      className="w-full h-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
 const DownloadsPage = () => {
   const navigate = useNavigate();
-  const [items, setItems] = useState<OfflineVideoMetadata[]>([]);
+  const [downloads, setDownloads] = useState<OfflineVideoMetadata[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const list = await getAllDownloads();
-      setItems(list);
+      setDownloads(list);
     } finally {
       setLoading(false);
     }
@@ -35,13 +56,24 @@ const DownloadsPage = () => {
     refresh();
   }, [refresh]);
 
-  const handleDelete = async (contentId: string) => {
-    await deleteVideo(contentId);
-    setItems((prev) => prev.filter((i) => i.contentId !== contentId));
+  const handleDelete = async (item: OfflineVideoMetadata) => {
+    const ok = window.confirm(`Remove "${item.title}" from your downloads?`);
+    if (!ok) return;
+    try {
+      await deleteVideo(item.contentId);
+      setDownloads((prev) => prev.filter((i) => i.contentId !== item.contentId));
+      toast({ title: "Download removed", description: item.title });
+    } catch (e) {
+      toast({
+        title: "Failed to remove",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handlePlay = (contentId: string) => {
-    navigate(`/content/${encodeURIComponent(contentId)}?offline=true`);
+  const handlePlay = (item: OfflineVideoMetadata) => {
+    navigate(`/watch?contentId=${encodeURIComponent(item.contentId)}&offline=true`);
   };
 
   return (
@@ -50,7 +82,7 @@ const DownloadsPage = () => {
         <header className="mb-8 flex items-center gap-3">
           <DownloadIcon className="h-7 w-7 text-primary" />
           <div>
-            <h1 className="font-display text-2xl md:text-3xl">Offline Downloads</h1>
+            <h1 className="font-display text-2xl md:text-3xl">Downloads</h1>
             <p className="text-sm text-muted-foreground">
               Watch your saved videos without an internet connection.
             </p>
@@ -59,35 +91,31 @@ const DownloadsPage = () => {
 
         {loading ? (
           <div className="text-muted-foreground">Loading…</div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-border rounded-lg">
+        ) : downloads.length === 0 ? (
+          <div className="text-center py-20 border border-dashed border-border rounded-lg">
             <DownloadIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
             <h2 className="text-lg font-semibold mb-1">No downloads yet</h2>
-            <p className="text-muted-foreground text-sm">
-              Tap the download icon on a free title to save it for offline viewing.
+            <p className="text-muted-foreground text-sm mb-5">
+              Find free content to watch offline!
             </p>
+            <Button onClick={() => navigate("/free-content")}>
+              Browse free content
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((item) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {downloads.map((item) => (
               <div
                 key={item.contentId}
-                className="bg-secondary border border-border rounded-lg overflow-hidden group"
+                className="bg-secondary border border-border rounded-lg overflow-hidden group flex flex-col"
               >
                 <div className="relative aspect-video bg-muted">
-                  {item.poster ? (
-                    <img
-                      src={item.poster}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : null}
+                  <PosterImage src={item.poster} alt={item.title} />
                   <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                     <Button
                       size="icon"
                       className="rounded-full"
-                      onClick={() => handlePlay(item.contentId)}
+                      onClick={() => handlePlay(item)}
                       aria-label={`Play ${item.title}`}
                     >
                       <Play className="h-5 w-5" fill="currentColor" />
@@ -96,16 +124,16 @@ const DownloadsPage = () => {
                       size="icon"
                       variant="outline"
                       className="rounded-full"
-                      onClick={() => handleDelete(item.contentId)}
+                      onClick={() => handleDelete(item)}
                       aria-label={`Delete ${item.title}`}
                     >
                       <Trash2 className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
-                <div className="p-3">
-                  <h3 className="font-semibold truncate">{item.title}</h3>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <div className="p-3 flex-1 flex flex-col">
+                  <h3 className="font-semibold text-sm line-clamp-2">{item.title}</h3>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
                     <span>{item.duration ? formatDurationCompact(item.duration) : ""}</span>
                     <span>{formatSize(item.size)}</span>
                   </div>
