@@ -41,7 +41,7 @@ const DownloadsPage = () => {
   };
 
   const handlePlay = (contentId: string) => {
-    navigate(`/watch?contentId=${encodeURIComponent(contentId)}&offline=true`);
+    navigate(`/content/${encodeURIComponent(contentId)}?offline=true`);
   };
 
   return (
