@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
-import { Loader2, AlertCircle, Cast, Airplay } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
 import { MobileGestureLayer } from "@/components/player/MobileGestureLayer";
+import { UnifiedCastButton } from "@/components/player/UnifiedCastButton";
 
 type VideoJsOptions = NonNullable<Parameters<typeof videojs>[1]>;
 
@@ -68,8 +69,14 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [canAirPlay, setCanAirPlay] = useState(false);
-    const [canRemote, setCanRemote] = useState(false);
+    // Proxy ref that always reflects the latest underlying <video> element.
+    // UnifiedCastButton accepts React.RefObject<HTMLVideoElement>.
+    const videoRefObject = useRef<React.RefObject<HTMLVideoElement>>();
+    if (!videoRefObject.current) {
+      videoRefObject.current = Object.defineProperty({} as React.RefObject<HTMLVideoElement>, "current", {
+        get: () => videoElRef.current,
+      });
+    }
     const [brightness, setBrightness] = useState(1);
 
     useImperativeHandle(ref, () => ({
@@ -120,12 +127,9 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
             videoElRef.current = htmlVideo;
             onVideoElement?.(htmlVideo);
 
-            // Native cast capability detection
+            // Native cast lifecycle — toast on connect/disconnect; cast button
+            // visibility/handling is owned by <UnifiedCastButton />.
             const remote = (htmlVideo as any).remote;
-            setCanRemote(Boolean(remote?.prompt));
-            setCanAirPlay(typeof (htmlVideo as any).webkitShowPlaybackTargetPicker === "function");
-
-            // Remote playback state → user-friendly error toast on disconnect/failure.
             try {
               remote?.addEventListener?.("connecting", () => {
                 toast.message("Connecting to cast device…");
@@ -134,7 +138,6 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
                 toast.success("Casting started");
               });
               remote?.addEventListener?.("disconnect", () => {
-                // Distinguish user disconnect from error: we only warn if media element errored.
                 if (htmlVideo.error) {
                   toast.error("Casting failed. Please check your network or try again.");
                 }
@@ -281,43 +284,8 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
       if (title) v.setAttribute("title", title);
     }, [poster, title]);
 
-    // Native cast handlers
-    const handleChromecast = useCallback(() => {
-      const v = videoElRef.current as any;
-      if (!v?.remote?.prompt) {
-        toast.error("Casting failed. Please check your network or try again.");
-        return;
-      }
-      try {
-        const result = v.remote.prompt();
-        if (result?.catch) {
-          result.catch((e: any) => {
-            console.warn("[Cast] prompt failed:", e);
-            // NotAllowedError = user dismissed picker — don't toast.
-            if (e?.name !== "NotAllowedError" && e?.name !== "AbortError") {
-              toast.error("Casting failed. Please check your network or try again.");
-            }
-          });
-        }
-      } catch (e: any) {
-        console.warn("[Cast] prompt threw:", e);
-        toast.error("Casting failed. Please check your network or try again.");
-      }
-    }, []);
 
-    const handleAirPlay = useCallback(() => {
-      const v = videoElRef.current as any;
-      if (typeof v?.webkitShowPlaybackTargetPicker !== "function") {
-        toast.error("AirPlay is not available on this device.");
-        return;
-      }
-      try {
-        v.webkitShowPlaybackTargetPicker();
-      } catch (e) {
-        console.warn("[AirPlay] picker failed:", e);
-        toast.error("Casting failed. Please check your network or try again.");
-      }
-    }, []);
+
 
 
 
@@ -355,31 +323,8 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           </div>
         )}
 
-        {/* Native cast buttons */}
-        {(canRemote || canAirPlay) && (
-          <div className="absolute top-3 right-3 z-30 flex gap-2">
-            {canRemote && (
-              <button
-                type="button"
-                aria-label="Cast to device"
-                onClick={handleChromecast}
-                className="p-2 rounded-md bg-background/70 hover:bg-background text-foreground"
-              >
-                <Cast className="h-5 w-5" />
-              </button>
-            )}
-            {canAirPlay && (
-              <button
-                type="button"
-                aria-label="AirPlay"
-                onClick={handleAirPlay}
-                className="p-2 rounded-md bg-background/70 hover:bg-background text-foreground"
-              >
-                <Airplay className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-        )}
+        {/* Unified native cast launcher (Chromecast / AirPlay) */}
+        <UnifiedCastButton videoRef={videoRefObject.current!} title={title} poster={poster} />
 
         {/* Phase 4 — opt-in mobile gestures (main full-length player only) */}
         {enableMobileGestures && (

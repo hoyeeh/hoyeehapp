@@ -62,6 +62,7 @@ import { AirPlayButton } from "@/components/cast/AirPlayButton";
 import { CastPanel } from "@/components/cast/CastPanel";
 import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { SubtitleDisplay } from "@/components/SubtitleDisplay";
+import { UnifiedCastButton } from "@/components/player/UnifiedCastButton";
 import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,6 +94,8 @@ interface VideoPlayerProps {
   // Next episode support
   nextEpisode?: NextEpisodeInfo;
   onPlayNextEpisode?: (episode: NextEpisodeInfo) => void;
+  // Poster art for TV cast metadata (optional)
+  poster?: string;
 }
 
 const QUALITY_OPTIONS = [
@@ -117,6 +120,7 @@ export const VideoPlayer = ({
   recapEndTime,
   nextEpisode,
   onPlayNextEpisode,
+  poster,
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -183,6 +187,12 @@ export const VideoPlayer = ({
   const { party, isHost, isWatchPartyGuest, isSyncing, updatePlayback, syncToParty } = useWatchPartyContext();
   const lastPartySyncRef = useRef<number>(0);
   const initialPartySyncDoneRef = useRef<boolean>(false);
+  // Step 4 — when native casting (Remote Playback / AirPlay) is active, the
+  // TV owns the playback timeline. Guests must NOT push seek corrections to the
+  // host, and the host should not echo TV-driven time updates back to guests.
+  const [nativeCastActive, setNativeCastActive] = useState(false);
+  const nativeCastActiveRef = useRef(false);
+  useEffect(() => { nativeCastActiveRef.current = nativeCastActive; }, [nativeCastActive]);
   // Google Cast hook
   const cast = useGoogleCast({
     mediaUrl: src,
@@ -539,6 +549,7 @@ export const VideoPlayer = ({
   // Force sync on initial join, then use tighter threshold
   useEffect(() => {
     if (!party || isHost) return;
+    if (nativeCastActive) return; // TV owns the timeline during casting
     
     const video = videoRef.current;
     if (!video) return;
@@ -547,13 +558,14 @@ export const VideoPlayer = ({
     const forceSync = !initialPartySyncDoneRef.current;
     syncToParty(video, forceSync);
     initialPartySyncDoneRef.current = true;
-  }, [party?.playback_time, party?.is_playing, isHost, syncToParty]);
+  }, [party?.playback_time, party?.is_playing, isHost, syncToParty, nativeCastActive]);
 
   // Watch Party - periodic sync for guests to catch drift
   useEffect(() => {
     if (!party || isHost) return;
     
     const interval = setInterval(() => {
+      if (nativeCastActiveRef.current) return; // suspend during cast
       const video = videoRef.current;
       if (video) {
         syncToParty(video, false);
@@ -594,6 +606,7 @@ export const VideoPlayer = ({
     if (!video) return;
 
     const handleHostTimeUpdate = () => {
+      if (nativeCastActiveRef.current) return;
       const now = Date.now();
       // Only send updates every second max
       if (now - lastPartySyncRef.current >= 2000) {
@@ -603,10 +616,12 @@ export const VideoPlayer = ({
     };
 
     const handleHostPlayPause = () => {
+      if (nativeCastActiveRef.current) return;
       updatePlayback(video.currentTime, !video.paused);
     };
 
     const handleHostSeeked = () => {
+      if (nativeCastActiveRef.current) return;
       updatePlayback(video.currentTime, !video.paused);
     };
 
@@ -622,6 +637,42 @@ export const VideoPlayer = ({
       video.removeEventListener('seeked', handleHostSeeked);
     };
   }, [party, isHost, updatePlayback]);
+
+  // Step 4 — track native cast (Chromecast Remote Playback API + AirPlay) and
+  // suspend Watch Party sync while active so guests don't fight the TV.
+  useEffect(() => {
+    const video = videoRef.current as any;
+    if (!video) return;
+
+    const setActive = () => setNativeCastActive(true);
+    const setInactive = () => setNativeCastActive(false);
+
+    const remote = video.remote;
+    try {
+      remote?.addEventListener?.("connecting", setActive);
+      remote?.addEventListener?.("connect", setActive);
+      remote?.addEventListener?.("disconnect", setInactive);
+    } catch (e) {
+      console.warn("[VideoPlayer] remote listener attach failed", e);
+    }
+    const onAirplayChange = (e: any) => {
+      const state = e?.availability ?? e?.target?.webkitCurrentPlaybackTargetIsWireless;
+      if (typeof state === "boolean") setNativeCastActive(state);
+      else setNativeCastActive(Boolean(video.webkitCurrentPlaybackTargetIsWireless));
+    };
+    video.addEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplayChange);
+
+    return () => {
+      try {
+        remote?.removeEventListener?.("connecting", setActive);
+        remote?.removeEventListener?.("connect", setActive);
+        remote?.removeEventListener?.("disconnect", setInactive);
+      } catch {}
+      video.removeEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplayChange);
+    };
+  }, []);
+
+
 
   // Keyboard controls
   useEffect(() => {
@@ -958,6 +1009,10 @@ export const VideoPlayer = ({
         autoPlay
         muted={isMuted}
         playsInline
+        crossOrigin="anonymous"
+        poster={poster}
+        title={title}
+        {...({ "webkit-playsinline": "", "x-webkit-airplay": "allow" } as Record<string, string>)}
         onContextMenu={(e) => e.preventDefault()}
         onLoadedData={() => {
           // Attempt to play with proper error handling for mobile
@@ -971,6 +1026,11 @@ export const VideoPlayer = ({
           }
         }}
       />
+
+      {/* Unified native cast launcher (Chromecast / AirPlay) */}
+      <UnifiedCastButton videoRef={videoRef} title={title} poster={poster} />
+
+
 
       {/* Subtitle Display */}
       {subtitles.isSubtitlesEnabled && (

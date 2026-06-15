@@ -47,6 +47,11 @@ export function VideoJSPlayerWithWatchParty({
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const initialPartySyncDoneRef = useRef(false);
   const lastPartySyncRef = useRef(0);
+  // Step 4 — when native casting is active, the TV owns the timeline.
+  // Suspend guest→host seek sync and host→guest broadcasts to avoid fights.
+  const [nativeCastActive, setNativeCastActive] = useState(false);
+  const nativeCastActiveRef = useRef(false);
+  useEffect(() => { nativeCastActiveRef.current = nativeCastActive; }, [nativeCastActive]);
 
   const { party, isHost, syncToParty, updatePlayback } = useWatchPartyContext();
   const { minimize } = useMiniPlayer();
@@ -79,18 +84,47 @@ export function VideoJSPlayerWithWatchParty({
     [src, type, poster, autoplay]
   );
 
+  // Step 4 — detect native cast (Remote Playback + AirPlay) on the element.
+  useEffect(() => {
+    if (!videoEl) return;
+    const v = videoEl as any;
+    const setActive = () => setNativeCastActive(true);
+    const setInactive = () => setNativeCastActive(false);
+    const onAirplay = () =>
+      setNativeCastActive(Boolean(v.webkitCurrentPlaybackTargetIsWireless));
+    try {
+      v.remote?.addEventListener?.("connecting", setActive);
+      v.remote?.addEventListener?.("connect", setActive);
+      v.remote?.addEventListener?.("disconnect", setInactive);
+    } catch {}
+    v.addEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplay);
+    return () => {
+      try {
+        v.remote?.removeEventListener?.("connecting", setActive);
+        v.remote?.removeEventListener?.("connect", setActive);
+        v.remote?.removeEventListener?.("disconnect", setInactive);
+      } catch {}
+      v.removeEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplay);
+      setNativeCastActive(false);
+    };
+  }, [videoEl]);
+
   // Guest: sync to party state on change
   useEffect(() => {
     if (!party || isHost || !videoEl) return;
+    if (nativeCastActive) return; // TV owns the timeline during casting
     const forceSync = !initialPartySyncDoneRef.current;
     syncToParty(videoEl, forceSync);
     initialPartySyncDoneRef.current = true;
-  }, [party?.playback_time, party?.is_playing, isHost, syncToParty, videoEl]);
+  }, [party?.playback_time, party?.is_playing, isHost, syncToParty, videoEl, nativeCastActive]);
 
   // Guest: periodic drift correction
   useEffect(() => {
     if (!party || isHost || !videoEl) return;
-    const id = setInterval(() => syncToParty(videoEl, false), 5000);
+    const id = setInterval(() => {
+      if (nativeCastActiveRef.current) return;
+      syncToParty(videoEl, false);
+    }, 5000);
     return () => clearInterval(id);
   }, [party, isHost, syncToParty, videoEl]);
 
@@ -115,14 +149,21 @@ export function VideoJSPlayerWithWatchParty({
     if (!party || !isHost || !videoEl) return;
 
     const onTime = () => {
+      if (nativeCastActiveRef.current) return;
       const now = Date.now();
       if (now - lastPartySyncRef.current >= 2000) {
         lastPartySyncRef.current = now;
         updatePlayback(videoEl.currentTime, !videoEl.paused);
       }
     };
-    const onPlayPause = () => updatePlayback(videoEl.currentTime, !videoEl.paused);
-    const onSeeked = () => updatePlayback(videoEl.currentTime, !videoEl.paused);
+    const onPlayPause = () => {
+      if (nativeCastActiveRef.current) return;
+      updatePlayback(videoEl.currentTime, !videoEl.paused);
+    };
+    const onSeeked = () => {
+      if (nativeCastActiveRef.current) return;
+      updatePlayback(videoEl.currentTime, !videoEl.paused);
+    };
 
     videoEl.addEventListener("timeupdate", onTime);
     videoEl.addEventListener("play", onPlayPause);
