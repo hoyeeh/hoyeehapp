@@ -94,6 +94,8 @@ interface VideoPlayerProps {
   // Next episode support
   nextEpisode?: NextEpisodeInfo;
   onPlayNextEpisode?: (episode: NextEpisodeInfo) => void;
+  // Poster art for TV cast metadata (optional)
+  poster?: string;
 }
 
 const QUALITY_OPTIONS = [
