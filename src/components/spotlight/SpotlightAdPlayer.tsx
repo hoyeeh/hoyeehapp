@@ -1,10 +1,13 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Volume2, VolumeX, Play, Pause, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { HomepageAd, useTrackAdEvent } from '@/hooks/useHomepageAds';
 import { useNavigate } from 'react-router-dom';
 import { throttle } from '@/player/core/utils/throttle';
+import { useNewPlayer } from '@/hooks/useNewPlayer';
+import { VideoJSPlayer } from '@/components/VideoJSPlayer';
+import { NewPlayerBadge } from '@/components/dev/NewPlayerBadge';
 
 interface SpotlightAdPlayerProps {
   ad: HomepageAd;
