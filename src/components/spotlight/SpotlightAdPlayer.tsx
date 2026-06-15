@@ -239,7 +239,15 @@ export function SpotlightAdPlayer({ ad, isInView, appContext = 'main' }: Spotlig
             title={ad.title}
             options={vjsAdOptions}
             onReady={(p) => {
-              try { p.muted(true); } catch {}
+              try {
+                p.muted(false);
+                const r: any = p.play();
+                if (r && typeof r.catch === "function") {
+                  r.catch(() => {
+                    console.info("[Spotlight] Autoplay with sound blocked — user gesture required.");
+                  });
+                }
+              } catch {}
             }}
             onVideoElement={(el) => {
               // Adopt the underlying <video> so the existing controls/handlers keep working.
