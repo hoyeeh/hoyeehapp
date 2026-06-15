@@ -1027,6 +1027,11 @@ export const VideoPlayer = ({
         }}
       />
 
+      {/* Unified native cast launcher (Chromecast / AirPlay) */}
+      <UnifiedCastButton videoRef={videoRef} title={title} poster={poster} />
+
+
+
       {/* Subtitle Display */}
       {subtitles.isSubtitlesEnabled && (
         <SubtitleDisplay cue={subtitles.currentCue} />
