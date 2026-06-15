@@ -265,8 +265,17 @@ export const EnhancedHeroBanner = ({
                     title={displayTitle}
                     options={vjsHeroOptions}
                     onReady={(p) => {
-                      // Keep the mute toggle behavior parity with the legacy <video>
-                      try { p.muted(isMuted); } catch {}
+                      // Try to autoplay with sound; if blocked, leave paused with
+                      // controls visible so the user can tap play.
+                      try {
+                        p.muted(false);
+                        const r: any = p.play();
+                        if (r && typeof r.catch === "function") {
+                          r.catch(() => {
+                            console.info("[HeroBanner] Autoplay with sound blocked — user gesture required.");
+                          });
+                        }
+                      } catch {}
                     }}
                     onVideoElement={(el) => {
                       // Adopt the underlying <video> so the existing mute toggle still works.
