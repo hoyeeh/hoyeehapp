@@ -25,16 +25,22 @@ const isUserCancel = (e: any) =>
  * positioned in the top-right corner so it doesn't collide with the
  * mobile gesture swipe zones (left/right thirds of the player surface).
  */
-export function UnifiedCastButton({ videoRef, title, poster, className }: UnifiedCastButtonProps) {
+export function UnifiedCastButton({ videoRef, videoElement, title, poster, className }: UnifiedCastButtonProps) {
   const [canRemote, setCanRemote] = useState(false);
   const [canAirPlay, setCanAirPlay] = useState(false);
+
+  // Resolve the underlying <video> element from whichever prop the caller passed.
+  const getEl = useCallback(
+    (): HTMLVideoElement | null => videoRef?.current ?? videoElement ?? null,
+    [videoRef, videoElement]
+  );
 
   // Probe capabilities once the video element is available. Re-probe shortly
   // after mount because some platforms expose `remote` asynchronously.
   useEffect(() => {
     let cancelled = false;
     const probe = () => {
-      const v = videoRef.current as any;
+      const v = getEl() as any;
       if (!v || cancelled) return;
       setCanRemote(Boolean(v.remote && typeof v.remote.prompt === "function"));
       setCanAirPlay(typeof v.webkitShowPlaybackTargetPicker === "function");
@@ -45,18 +51,18 @@ export function UnifiedCastButton({ videoRef, title, poster, className }: Unifie
       cancelled = true;
       clearTimeout(t);
     };
-  }, [videoRef]);
+  }, [getEl]);
 
   // Keep TV metadata fresh on the underlying element.
   useEffect(() => {
-    const v = videoRef.current;
+    const v = getEl();
     if (!v) return;
     if (poster) v.setAttribute("poster", poster);
     if (title) v.setAttribute("title", title);
-  }, [videoRef, poster, title]);
+  }, [getEl, poster, title]);
 
   const handleChromecast = useCallback(() => {
-    const v = videoRef.current as any;
+    const v = getEl() as any;
     if (!v?.remote?.prompt) {
       toast.error("Casting failed. Please check your network or try again.");
       return;
@@ -75,10 +81,10 @@ export function UnifiedCastButton({ videoRef, title, poster, className }: Unifie
       console.warn("[UnifiedCast] Chromecast prompt threw:", e);
       toast.error("Casting failed. Please check your network or try again.");
     }
-  }, [videoRef]);
+  }, [getEl]);
 
   const handleAirPlay = useCallback(() => {
-    const v = videoRef.current as any;
+    const v = getEl() as any;
     if (typeof v?.webkitShowPlaybackTargetPicker !== "function") {
       toast.error("Casting failed. Please check your network or try again.");
       return;
@@ -90,7 +96,7 @@ export function UnifiedCastButton({ videoRef, title, poster, className }: Unifie
       console.warn("[UnifiedCast] AirPlay picker failed:", e);
       toast.error("Casting failed. Please check your network or try again.");
     }
-  }, [videoRef]);
+  }, [getEl]);
 
   if (!canRemote && !canAirPlay) return null;
 
