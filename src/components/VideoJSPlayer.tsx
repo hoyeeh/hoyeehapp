@@ -123,12 +123,9 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
             videoElRef.current = htmlVideo;
             onVideoElement?.(htmlVideo);
 
-            // Native cast capability detection
+            // Native cast lifecycle — toast on connect/disconnect; cast button
+            // visibility/handling is owned by <UnifiedCastButton />.
             const remote = (htmlVideo as any).remote;
-            setCanRemote(Boolean(remote?.prompt));
-            setCanAirPlay(typeof (htmlVideo as any).webkitShowPlaybackTargetPicker === "function");
-
-            // Remote playback state → user-friendly error toast on disconnect/failure.
             try {
               remote?.addEventListener?.("connecting", () => {
                 toast.message("Connecting to cast device…");
@@ -137,7 +134,6 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
                 toast.success("Casting started");
               });
               remote?.addEventListener?.("disconnect", () => {
-                // Distinguish user disconnect from error: we only warn if media element errored.
                 if (htmlVideo.error) {
                   toast.error("Casting failed. Please check your network or try again.");
                 }
