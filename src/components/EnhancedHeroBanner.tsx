@@ -147,6 +147,24 @@ export const EnhancedHeroBanner = ({
   const displayVideo = activeBanner?.video_url;
   const ctaText = activeBanner?.cta_text || "Play";
 
+  // Hero preview options for the new Video.js player: muted/looped autoplay,
+  // no controls, lightweight. Short MP4 preview only — no Watch Party, no resume.
+  const vjsHeroOptions = useMemo(
+    () => ({
+      controls: false,
+      muted: true,
+      autoplay: true as const,
+      loop: true,
+      preload: "auto" as const,
+      responsive: true,
+      fluid: false,
+      fill: true,
+      bigPlayButton: false,
+      sources: displayVideo ? [{ src: displayVideo, type: "video/mp4" }] : [],
+    }),
+    [displayVideo]
+  );
+
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
