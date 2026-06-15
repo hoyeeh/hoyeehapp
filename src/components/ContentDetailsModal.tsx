@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Content } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ContentRatingBadge } from "./ContentRatingBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useNewPlayer } from "@/hooks/useNewPlayer";
+import { VideoJSPlayer } from "./VideoJSPlayer";
 import {
   DropdownMenu,
   DropdownMenuContent,
