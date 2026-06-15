@@ -635,6 +635,8 @@ function PreviewPlayer({
   isPremium,
   isPaid,
   startTime,
+  poster,
+  title,
   onEnded,
   onError,
 }: {
@@ -643,6 +645,8 @@ function PreviewPlayer({
   isPremium: boolean;
   isPaid: boolean;
   startTime: number;
+  poster?: string;
+  title?: string;
   onEnded: () => void;
   onError: () => void;
 }) {
@@ -664,6 +668,8 @@ function PreviewPlayer({
         ref={videoRef}
         src={src}
         crossOrigin="anonymous"
+        poster={poster}
+        title={title}
         className="w-full h-full object-contain"
         onEnded={onEnded}
         onError={onError}
@@ -677,6 +683,8 @@ function PreviewPlayer({
         ref={vjsRef}
         className="w-full h-full"
         onVideoElement={handleVideoElement}
+        poster={poster}
+        title={title}
         options={{
           autoplay: false,
           controls: false,
