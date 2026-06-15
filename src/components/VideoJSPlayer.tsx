@@ -99,6 +99,10 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
           responsive: true,
           fluid: true,
           preload: "metadata",
+          // Casting / iOS inline attributes — declared up-front so Video.js
+          // applies them to the underlying <video> at construction time.
+          crossOrigin: "anonymous",
+          playsinline: true,
           // Touch-friendly defaults: a tap on the surface toggles play/pause and
           // wakes the controls; controls auto-hide after a short idle window.
           // Video.js handles "tap to show controls" natively via userActions.
@@ -126,25 +130,8 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
             if (title) htmlVideo.setAttribute("title", title);
             videoElRef.current = htmlVideo;
             onVideoElement?.(htmlVideo);
-
-            // Native cast lifecycle — toast on connect/disconnect; cast button
-            // visibility/handling is owned by <UnifiedCastButton />.
-            const remote = (htmlVideo as any).remote;
-            try {
-              remote?.addEventListener?.("connecting", () => {
-                toast.message("Connecting to cast device…");
-              });
-              remote?.addEventListener?.("connect", () => {
-                toast.success("Casting started");
-              });
-              remote?.addEventListener?.("disconnect", () => {
-                if (htmlVideo.error) {
-                  toast.error("Casting failed. Please check your network or try again.");
-                }
-              });
-            } catch (e) {
-              console.warn("[VideoJSPlayer] remote listener attach failed:", e);
-            }
+            // Native cast lifecycle (connect/disconnect toasts, prompt handling,
+            // and AirPlay picker) is owned entirely by <UnifiedCastButton />.
           }
           onReady?.(player);
         }
