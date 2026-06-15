@@ -314,6 +314,16 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
             )}
           </div>
         )}
+
+        {/* Phase 4 — opt-in mobile gestures (main full-length player only) */}
+        {enableMobileGestures && (
+          <MobileGestureLayer
+            getPlayer={() => playerRef.current}
+            getVideoElement={() => videoElRef.current}
+            brightness={brightness}
+            setBrightness={setBrightness}
+          />
+        )}
       </div>
     );
   }
