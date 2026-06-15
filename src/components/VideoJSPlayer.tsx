@@ -3,6 +3,7 @@ import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
 import { Loader2, AlertCircle, Cast, Airplay } from "lucide-react";
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
+import { MobileGestureLayer } from "@/components/player/MobileGestureLayer";
 
 type VideoJsOptions = NonNullable<Parameters<typeof videojs>[1]>;
 
@@ -34,6 +35,12 @@ interface VideoJSPlayerProps {
     src: string | null;
     paused: boolean;
   }) => void;
+  /**
+   * Phase 4 — enable mobile swipe gestures (volume / brightness / seek).
+   * Intended ONLY for the main full-length player. Keep false for previews,
+   * trailers, modal hero loops, and short promos.
+   */
+  enableMobileGestures?: boolean;
   className?: string;
 }
 
