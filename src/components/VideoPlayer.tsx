@@ -672,6 +672,24 @@ export const VideoPlayer = ({
     };
   }, []);
 
+  // Step 4 — local audio muting while native casting (prevents echo between
+  // device speakers and the TV). Restores previous mute state on disconnect.
+  // Does NOT alter `isMuted` UI state so the user's preference is preserved.
+  const preCastMutedRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (nativeCastActive) {
+      if (preCastMutedRef.current === null) {
+        preCastMutedRef.current = video.muted;
+      }
+      video.muted = true;
+    } else if (preCastMutedRef.current !== null) {
+      video.muted = preCastMutedRef.current;
+      preCastMutedRef.current = null;
+    }
+  }, [nativeCastActive]);
+
 
 
   // Keyboard controls
