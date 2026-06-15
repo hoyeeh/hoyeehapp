@@ -84,18 +84,47 @@ export function VideoJSPlayerWithWatchParty({
     [src, type, poster, autoplay]
   );
 
+  // Step 4 — detect native cast (Remote Playback + AirPlay) on the element.
+  useEffect(() => {
+    if (!videoEl) return;
+    const v = videoEl as any;
+    const setActive = () => setNativeCastActive(true);
+    const setInactive = () => setNativeCastActive(false);
+    const onAirplay = () =>
+      setNativeCastActive(Boolean(v.webkitCurrentPlaybackTargetIsWireless));
+    try {
+      v.remote?.addEventListener?.("connecting", setActive);
+      v.remote?.addEventListener?.("connect", setActive);
+      v.remote?.addEventListener?.("disconnect", setInactive);
+    } catch {}
+    v.addEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplay);
+    return () => {
+      try {
+        v.remote?.removeEventListener?.("connecting", setActive);
+        v.remote?.removeEventListener?.("connect", setActive);
+        v.remote?.removeEventListener?.("disconnect", setInactive);
+      } catch {}
+      v.removeEventListener?.("webkitcurrentplaybacktargetiswirelesschanged", onAirplay);
+      setNativeCastActive(false);
+    };
+  }, [videoEl]);
+
   // Guest: sync to party state on change
   useEffect(() => {
     if (!party || isHost || !videoEl) return;
+    if (nativeCastActive) return; // TV owns the timeline during casting
     const forceSync = !initialPartySyncDoneRef.current;
     syncToParty(videoEl, forceSync);
     initialPartySyncDoneRef.current = true;
-  }, [party?.playback_time, party?.is_playing, isHost, syncToParty, videoEl]);
+  }, [party?.playback_time, party?.is_playing, isHost, syncToParty, videoEl, nativeCastActive]);
 
   // Guest: periodic drift correction
   useEffect(() => {
     if (!party || isHost || !videoEl) return;
-    const id = setInterval(() => syncToParty(videoEl, false), 5000);
+    const id = setInterval(() => {
+      if (nativeCastActiveRef.current) return;
+      syncToParty(videoEl, false);
+    }, 5000);
     return () => clearInterval(id);
   }, [party, isHost, syncToParty, videoEl]);
 
