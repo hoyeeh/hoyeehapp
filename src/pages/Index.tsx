@@ -797,6 +797,7 @@ const Index = () => {
                           key={section.id}
                           onPlay={(c, progress) => setPlayingContent({ content: c, progress })}
                           onDetails={handleDetails}
+                          maxItems={section.max_items || 10}
                         />
                       );
                     }
@@ -808,6 +809,7 @@ const Index = () => {
                           key={section.id}
                           onPlay={handlePlay}
                           onDetails={handleDetails}
+                          maxItems={section.max_items || 20}
                         />
                       );
                     }
