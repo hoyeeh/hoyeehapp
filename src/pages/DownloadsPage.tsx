@@ -50,15 +50,25 @@ const DownloadsPage = () => {
   }, []);
 
 
-  const handleDelete = async (contentId: string) => {
+  const handleDelete = async (item: UnifiedDownload) => {
     try {
-      await deleteDownload(contentId);
-      setItems((prev) => prev.filter((it) => it.contentId !== contentId));
+      if (item.source === "legacy") {
+        await deleteLegacyDownload(getDownloadId(item.contentId, item.episodeId));
+      } else {
+        await deleteNewDownload(item.contentId);
+      }
+      setItems((prev) =>
+        prev.filter(
+          (it) =>
+            !(it.contentId === item.contentId && it.episodeId === item.episodeId && it.source === item.source),
+        ),
+      );
       toast.success("Removed from downloads");
     } catch {
       toast.error("Failed to delete download");
     }
   };
+
 
   const handlePlay = (contentId: string) => {
     navigate(`/watch?contentId=${contentId}&offline=true`);
