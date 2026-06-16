@@ -837,16 +837,28 @@ export function MobileContentDetail({
                             {ep.video_url ? "Available" : "Coming soon"}
                           </span>
                         </div>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            lightTap();
-                            toast.info("Episode download started");
-                          }}
-                          className="active:scale-95 transition-transform"
-                        >
-                          <Download className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                        </button>
+                        {ep.video_url && (() => {
+                          const c = content as unknown as Record<string, unknown>;
+                          const priceNum = Number(c.price ?? 0);
+                          const restricted =
+                            Boolean(c.isPremium) || Boolean(c.premium) ||
+                            Boolean(c.requires_drm) || Boolean(c.drm) ||
+                            Boolean(c.isPaid) || Boolean(c.paid) ||
+                            (Number.isFinite(priceNum) && priceNum > 0);
+                          if (restricted) return null;
+                          return (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <OfflineDownloadButton
+                                contentId={`${content.id}_${ep.id}`}
+                                videoUrl={ep.video_url}
+                                title={`${content.title} — E${ep.episode_number}`}
+                                poster={ep.thumbnail_url || content.thumbnailUrl}
+                                duration={ep.duration || 0}
+                              />
+                            </div>
+                          );
+                        })()}
+
                       </div>
                         <span className="text-xs text-muted-foreground">
                           {ep.duration ? `${Math.floor(ep.duration / 60)}m` : ""}
