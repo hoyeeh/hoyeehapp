@@ -3,11 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { deleteDownload as deleteNewDownload } from "@/services/offlineStorage";
 import {
-  deleteDownload,
-  getAllDownloads,
-  type DownloadMetadata,
-} from "@/services/offlineStorage";
+  listUnifiedDownloads,
+  type UnifiedDownload,
+} from "@/services/unifiedOfflineVideo";
+import { deleteDownload as deleteLegacyDownload, getDownloadId } from "@/lib/downloadStorage";
 
 const formatDuration = (seconds?: number): string => {
   if (!seconds || seconds <= 0) return "";
@@ -26,15 +27,15 @@ const formatSize = (bytes?: number): string => {
 
 const DownloadsPage = () => {
   const navigate = useNavigate();
-  const [items, setItems] = useState<DownloadMetadata[]>([]);
+  const [items, setItems] = useState<UnifiedDownload[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    getAllDownloads()
+    listUnifiedDownloads()
       .then((rows) => {
         // eslint-disable-next-line no-console
-        console.log("Downloads from DB:", rows);
+        console.log("Downloads from DB (unified):", rows);
         if (!cancelled) setItems(rows);
       })
       .catch(() => {
@@ -47,6 +48,7 @@ const DownloadsPage = () => {
       cancelled = true;
     };
   }, []);
+
 
   const handleDelete = async (contentId: string) => {
     try {
