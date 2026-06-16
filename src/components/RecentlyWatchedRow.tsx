@@ -154,7 +154,7 @@ export function RecentlyWatchedRow({ onPlay, onDetails, maxItems = 20 }: Recentl
         }
       });
 
-      return items.slice(0, 20);
+      return items.slice(0, maxItems);
     },
     enabled: !!user,
     staleTime: 1000 * 60 * 5, // 5 minutes
