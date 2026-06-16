@@ -17,6 +17,8 @@ import { MobileCastSheet } from "./MobileCastSheet";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
 import { Episode } from "@/hooks/useSeasons";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
+import { OfflineDownloadButton } from "@/components/OfflineDownloadButton";
+
 
 interface MobileContentDetailProps {
   content: Content;
