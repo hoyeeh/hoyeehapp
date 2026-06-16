@@ -67,7 +67,7 @@ export const RecommendationsRow = ({
     return null;
   }
 
-  const recommendations = data?.recommendations || [];
+  const recommendations = (data?.recommendations || []).slice(0, maxItems);
 
   if (recommendations.length === 0) return null;
 
