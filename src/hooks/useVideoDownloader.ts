@@ -79,10 +79,6 @@ export function useVideoDownloader(
       setError("No video URL available");
       return;
     }
-    if (!videoUrl) {
-      setError("No video URL available");
-      return;
-    }
     if (isDownloading) return;
 
     setError(null);
