@@ -163,8 +163,7 @@ export function useVideoDownloader(
     }
 
     try {
-      const res = await fetch(videoUrl, { signal: controller.signal });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const res = await fetchVideoResilient(videoUrl, controller.signal);
 
       // Many CDNs (DigitalOcean Spaces, Cloudflare) strip content-length on
       // streaming responses. Fall back to indeterminate progress and let the
