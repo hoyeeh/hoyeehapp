@@ -13,6 +13,7 @@ interface AIRecommendationsRowProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   userList: string[];
+  maxItems?: number;
 }
 
 interface AIRecommendation {
@@ -27,6 +28,7 @@ export const AIRecommendationsRow = ({
   onToggleList,
   onDetails,
   userList,
+  maxItems = 15,
 }: AIRecommendationsRowProps) => {
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
