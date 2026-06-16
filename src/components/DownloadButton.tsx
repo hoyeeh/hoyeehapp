@@ -38,12 +38,29 @@ export const DownloadButton = ({
   variant = "button",
   className,
 }: DownloadButtonProps) => {
+  // SAFETY GATE — never render for DRM / premium / paid / PPV content.
+  // Defense in depth: backend `download-start` enforces too, but we must not
+  // even show the UI affordance on restricted titles.
+  const c = content as unknown as Record<string, unknown>;
+  const priceNum = Number(c.price ?? 0);
+  const restricted =
+    Boolean(c.isPremium) ||
+    Boolean(c.premium) ||
+    Boolean(c.requires_drm) ||
+    Boolean(c.drm) ||
+    Boolean(c.isPaid) ||
+    Boolean(c.paid) ||
+    (Number.isFinite(priceNum) && priceNum > 0);
+
   const { startDownload, pauseDownload, resumeDownload, cancelDownload, deleteDownload, isDownloaded, getProgress } = useDownloadManager();
   const { autoQuality, isLoading: isLoadingQuality } = useAutoDownloadQuality();
   const [showQualityMenu, setShowQualityMenu] = useState(false);
 
   const downloaded = isDownloaded(content.id, episodeId);
   const progress = getProgress(content.id, episodeId);
+
+  if (restricted) return null;
+
 
   const handleQualitySelect = (quality: QualityOption) => {
     setShowQualityMenu(false);

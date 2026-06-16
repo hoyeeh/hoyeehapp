@@ -17,6 +17,8 @@ import { MobileCastSheet } from "./MobileCastSheet";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
 import { Episode } from "@/hooks/useSeasons";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
+import { OfflineDownloadButton } from "@/components/OfflineDownloadButton";
+
 
 interface MobileContentDetailProps {
   content: Content;
@@ -377,9 +379,10 @@ export function MobileContentDetail({
   };
 
   const handleDownload = () => {
+    // Legacy no-op kept for safety; primary action is now <OfflineDownloadButton />.
     lightTap();
-    toast.info("Download started");
   };
+
 
   const handleToggleList = () => {
     selectionTap();
@@ -570,18 +573,31 @@ export function MobileContentDetail({
               Play
             </button>
             
-            <button
-              onClick={handleDownload}
-              className={cn(
-                "w-full flex items-center justify-center gap-2 py-3 rounded-md",
-                "bg-secondary text-foreground font-medium",
-                "border border-border/50",
-                "active:scale-[0.98] transition-transform"
-              )}
-            >
-              <Download className="h-5 w-5" />
-              Download
-            </button>
+            {(() => {
+              const c = content as unknown as Record<string, unknown>;
+              const priceNum = Number(c.price ?? 0);
+              const restricted =
+                Boolean(c.isPremium) || Boolean(c.premium) ||
+                Boolean(c.requires_drm) || Boolean(c.drm) ||
+                Boolean(c.isPaid) || Boolean(c.paid) ||
+                (Number.isFinite(priceNum) && priceNum > 0);
+              if (restricted || content.contentType === "series") return null;
+              return (
+                <OfflineDownloadButton
+                  contentId={content.id}
+                  videoUrl={content.videoUrl}
+                  title={content.title}
+                  poster={content.thumbnailUrl}
+                  duration={content.duration}
+                  isPremium={Boolean(c.isPremium) || Boolean(c.premium)}
+                  requiresDrm={Boolean(c.requires_drm) || Boolean(c.drm)}
+                  isPaid={Boolean(c.isPaid) || Boolean(c.paid)}
+                  price={priceNum}
+                  className="w-full [&>button]:w-full"
+                />
+              );
+            })()}
+
           </div>
 
           {/* Description */}
@@ -821,16 +837,28 @@ export function MobileContentDetail({
                             {ep.video_url ? "Available" : "Coming soon"}
                           </span>
                         </div>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            lightTap();
-                            toast.info("Episode download started");
-                          }}
-                          className="active:scale-95 transition-transform"
-                        >
-                          <Download className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                        </button>
+                        {ep.video_url && (() => {
+                          const c = content as unknown as Record<string, unknown>;
+                          const priceNum = Number(c.price ?? 0);
+                          const restricted =
+                            Boolean(c.isPremium) || Boolean(c.premium) ||
+                            Boolean(c.requires_drm) || Boolean(c.drm) ||
+                            Boolean(c.isPaid) || Boolean(c.paid) ||
+                            (Number.isFinite(priceNum) && priceNum > 0);
+                          if (restricted) return null;
+                          return (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <OfflineDownloadButton
+                                contentId={`${content.id}_${ep.id}`}
+                                videoUrl={ep.video_url}
+                                title={`${content.title} — E${ep.episode_number}`}
+                                poster={ep.thumbnail_url || content.thumbnailUrl}
+                                duration={ep.duration || 0}
+                              />
+                            </div>
+                          );
+                        })()}
+
                       </div>
                         <span className="text-xs text-muted-foreground">
                           {ep.duration ? `${Math.floor(ep.duration / 60)}m` : ""}
