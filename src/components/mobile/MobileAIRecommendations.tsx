@@ -95,19 +95,18 @@ export function MobileAIRecommendations({ onDetails, maxItems = 12 }: MobileAIRe
   // If we don't have enough matches, supplement with content from user's preferred genres
   const recommendedContent = useMemo(() => {
     if (matchedContent.length >= 5) {
-      return matchedContent.slice(0, 12);
+      return matchedContent.slice(0, maxItems);
     }
     
-    // Get additional content based on view count and not in user's list
     const existingIds = new Set(matchedContent.map(m => m.content.id));
     const additionalContent = allContent
       .filter(c => !watchlistIds.includes(c.id) && !existingIds.has(c.id))
       .sort((a, b) => (b.duration || 0) - (a.duration || 0))
-      .slice(0, 12 - matchedContent.length)
+      .slice(0, maxItems - matchedContent.length)
       .map(c => ({ content: c, reason: "Recommended for you" }));
     
-    return [...matchedContent, ...additionalContent].slice(0, 12);
-  }, [matchedContent, allContent, watchlistIds]);
+    return [...matchedContent, ...additionalContent].slice(0, maxItems);
+  }, [matchedContent, allContent, watchlistIds, maxItems]);
 
   const displayName = currentProfile?.name || profile?.display_name || "You";
 
