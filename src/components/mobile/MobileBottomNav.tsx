@@ -133,18 +133,21 @@ export function MobileBottomNav() {
   const { downloads, getProgress } = useDownloadManager();
   
   // Calculate aggregate download progress
+  // NOTE: getProgress signature is (contentId, episodeId?) — passing the
+  // compound `d.id` here always returned null and the ring never animated.
   const activeDownloads = downloads.filter(d => {
-    const progress = getProgress(d.id);
+    const progress = getProgress(d.contentId, d.episodeId);
     return progress && progress.status === 'downloading';
   });
-  
+
   const hasActiveDownloads = activeDownloads.length > 0;
   const aggregateProgress = hasActiveDownloads
     ? activeDownloads.reduce((sum, d) => {
-        const progress = getProgress(d.id);
+        const progress = getProgress(d.contentId, d.episodeId);
         return sum + (progress?.progress || 0);
       }, 0) / activeDownloads.length
     : 0;
+
 
   const handleNavClick = (path: string) => {
     selectionTap();
