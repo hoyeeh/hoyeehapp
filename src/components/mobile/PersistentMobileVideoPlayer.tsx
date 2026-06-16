@@ -125,7 +125,9 @@ export function PersistentMobileVideoPlayer() {
           kidsTimeLimitReached={localTimeLimitReached}
           kidsBedtimeReached={localBedtimeReached}
         />
+        )}
       </motion.div>
+
     </AnimatePresence>
   );
 }
