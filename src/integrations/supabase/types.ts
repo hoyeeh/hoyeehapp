@@ -2150,6 +2150,62 @@ export type Database = {
           },
         ]
       }
+      homepage_ai_suggestions: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          priority: number
+          proposed_payload: Json
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          suggestion_type: string
+          target_section_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          priority?: number
+          proposed_payload?: Json
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggestion_type: string
+          target_section_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          priority?: number
+          proposed_payload?: Json
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggestion_type?: string
+          target_section_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_ai_suggestions_target_section_id_fkey"
+            columns: ["target_section_id"]
+            isOneToOne: false
+            referencedRelation: "home_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kids_approved_content: {
         Row: {
           approved_at: string

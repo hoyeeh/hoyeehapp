@@ -1,75 +1,65 @@
-# Video Player & Casting E2E Audit + /tv Fix
+# AI Homepage Manager — Netflix-Style
 
-## Goal
-Audit the video player end-to-end across desktop and mobile, close real gaps, gate casting to only verified-working protocols, and fix `hoyeeh.com/tv`. Deliver a written report. Zero regressions to existing playback.
+Goal: AI continuously audits admin homepage configuration, proposes fixes and new sections for admin approval, and personalizes section ordering + content per visitor.
 
-## Scope (in)
-- Desktop player: `src/player/ui/desktop/DesktopPlayer.tsx` + `PlayerEngine`, HLS/MP4 sources, DRM/signed URL flow, subtitles, PiP, resume.
-- Mobile player: `src/player/ui/mobile/MobilePlayer.tsx`, gesture controls, mini-player, mobile YouTube player context.
-- Casting stack: `CastContext`, `useGoogleCast`, `useAirPlay`, `useDLNA`, `useNativeCast`, `useUniversalCast`, `useScreenMirror`, TV pairing/QR fallback.
-- `/tv` route — `TV.tsx`, `TVApp.tsx`, `TVReceiver.tsx`, public `/tv/index.html` redirect.
+## What gets built
 
-## Scope (out)
-- New player features, codec changes, redesign.
-- Editing DRM keys, Widevine config, Mux processing pipeline.
-- Server-side signed-URL TTL or IP-binding logic.
+### 1. Admin: AI Suggestions Queue
+New admin tab **Homepage → AI Suggestions** showing pending AI proposals with Approve / Reject / Edit:
+- **Heal**: empty section, too few items, stale content, broken `max_items`, duplicate sections, broken thumbnails
+- **New section**: e.g. "Trending in Action", "K-Drama Picks", "Because viewers loved X"
+- **Reorder**: global section order tuned to engagement
+Each suggestion stores: type, target_section_id (nullable), proposed_payload (jsonb), reason, status, created_at. Approve writes the change to `home_sections` / `section_content`.
 
-## Audit checklist (per surface)
-1. Mount/unmount: no leaked listeners, channels, MediaSession, timers.
-2. Source loading: HLS + MP4 happy path, error path, retry, signed-URL refresh.
-3. Controls: play/pause, seek, volume, fullscreen, PiP, captions, quality, speed.
-4. Resume: 60s trigger, IndexedDB persistence, 95% completion clear.
-5. Subtitles: load, switch, off, style settings.
-6. Mobile gestures: brightness/volume swipes don't fight scroll, double-tap seek.
-7. Mini-player: handoff, dismissal, route changes.
-8. Casting per protocol: discovery, connect, load media, play/pause/seek, disconnect, error surfacing.
-9. Analytics events fire once per state transition (no duplicates).
-10. Accessibility: focus trap in fullscreen, ARIA on controls, keyboard shortcuts.
+### 2. Daily AI Audit (cron)
+New edge function `ai-homepage-audit` runs daily via pg_cron:
+- Pulls `home_sections`, counts actual content per section vs `max_items`, flags gaps
+- Pulls last 30d view/CTR data from `watch_history` and `homepage_ads_events`
+- Calls Lovable AI (`google/gemini-3-flash-preview`) with the snapshot + catalog summary
+- Writes proposals to `homepage_ai_suggestions` (status=pending)
+- Sends admin notification: "X new homepage suggestions"
 
-## Casting capability gating
-Build a single `CAST_CAPABILITIES` matrix (web / iOS PWA / Android PWA / native iOS / native Android) listing which protocols are **verified working**:
-- Chromecast (web SDK) — only when `window.cast` available AND `useGoogleCast` reports `apiAvailable=true`.
-- AirPlay — only on Safari/iOS with `WebKitPlaybackTargetAvailabilityEvent`.
-- Native Google Cast (Capacitor) — only when running native and plugin is registered.
-- DLNA — only when relay/discovery returns ≥1 device within 3s.
-- TV pairing code / QR — always available as fallback.
+### 3. Per-visitor Netflix-style rows
+Four new dynamic row types rendered on Home (desktop + mobile), respecting admin `max_items`:
+- **Because You Watched [Title]** — uses last completed item from `watch_history`, finds similar by genre/keywords
+- **Top 10 in [Country]** — geo from `profiles.country`, ranks by 7d view count
+- **New Releases For You** — `recently_added` filtered by user's top 3 genres
+- **Continue Watching + Up Next** — extends existing resume row with AI-picked "next" suggestion
 
-Hide UI entries for protocols that fail capability check. Today the UI shows Chromecast even though the SDK timed out (`[GoogleCast] SDK load timeout` in current logs) — that button will now hide automatically.
+Ordering: a lightweight client scorer (existing watch history + section type) reorders admin-enabled sections per visitor without changing admin config. Pinned/featured sections from admin stay locked at top.
 
-## /tv fix
-Investigate why `hoyeeh.com/tv` 404s:
-- Confirm `/tv` route is registered in `App.tsx` (it is — `TV` component) but `public/tv/index.html` may be intercepting on the published host. Either remove the static stub or make it redirect into the SPA route via `<meta http-equiv="refresh">` + history fallback in `public/_headers` / hosting config.
-- Verify SPA fallback rewrite for `/tv` and `/tv/*` so deep links hit `index.html`.
+### 4. Enforcement of admin `max_items`
+Audit also verifies every section component slices to `max_items`. The earlier audit already patched the row components; this step adds an automated regression check that flags any section returning more than configured.
 
-## Implementation steps
-1. Read player + casting + TV files; map current behavior into the checklist.
-2. Create `src/player/castCapabilities.ts` with detection + gating helper. Wire it into `CastContext` so unsupported entries are filtered out everywhere (desktop player menu, mobile cast sheet, mini-player cast button).
-3. Fix any concrete gaps found during audit using **minimal, surgical patches** (no rewrites). Each fix gets a comment referencing the audit item.
-4. Fix `/tv`:
-   - Update `public/tv/index.html` to redirect to `/tv-app` (or whatever the SPA route should be) instead of serving a competing shell, OR delete it if redundant.
-   - Add SPA fallback rule so `/tv` resolves to `index.html` on the published host.
-5. Add focused vitest specs:
-   - `castCapabilities.test.ts` — matrix returns expected protocols per env.
-   - `tvRoute.test.ts` — `/tv` resolves to `TV` page component.
-6. Run vitest suite; do not break existing tests.
-7. Write report at `docs/audits/player-cast-2026-05-21.md` with: surfaces audited, gaps found, fixes applied, capabilities matrix, and known limitations (e.g. "DLNA disabled in web PWA because relay not deployed").
+## Technical details
 
-## Technical notes
-- Capability detection must be SSR/preview-safe — guard every `window`, `navigator`, `cast`, `WebKit*` access.
-- Do not remove existing cast code paths; only hide their UI entry points when unsupported. Keeps door open for re-enabling once tested.
-- `/tv` fix should also work for `/tv-receiver` and `/tv-app` deep links.
-- Report is markdown, committed to repo so it's auditable.
+**New table** `homepage_ai_suggestions`
+- columns: `suggestion_type` (heal|new_section|reorder|content_swap), `target_section_id uuid null`, `proposed_payload jsonb`, `reason text`, `priority int`, `status` (pending|approved|rejected|applied), `reviewed_by`, `reviewed_at`
+- RLS: admins/super_admins read+write; full GRANTs to authenticated + service_role
+- Service-role insert from edge function
 
-## Deliverables
-- Capability gating module + UI integration.
-- Concrete bug fixes from audit (list in report).
-- Working `/tv` route on production host.
-- 2 new vitest files, all green.
-- `docs/audits/player-cast-2026-05-21.md` full report.
+**New edge functions**
+- `ai-homepage-audit` (cron, service-role): snapshot → Gemini → insert suggestions
+- `apply-homepage-suggestion` (admin JWT): applies an approved suggestion atomically to `home_sections`/`section_content`
+- `personalize-home-sections` (user JWT): returns per-visitor ordered section IDs + dynamic "Because you watched" target, cached 1h in localStorage
 
-## Out-of-scope follow-ups (will list in report, not implement)
-- Adding new cast protocols.
-- Migrating off Mux or DRM.
-- E2E browser tests (Playwright) — not currently in stack.
+**Existing functions reused**: `get-recommendations`, `ai-recommendations` (already personalized); homepage rendering already dynamic from `home_sections` (per Core memory rule).
 
-Approve to proceed.
+**pg_cron**: daily 04:00 UTC trigger calling `ai-homepage-audit`.
+
+**Frontend**
+- `src/pages/admin/HomepageAISuggestions.tsx` — queue UI with diff preview
+- `src/hooks/usePersonalizedHomeOrder.ts` — fetch + cache personalized order
+- `src/components/BecauseYouWatchedRow.tsx`, `TopInCountryRow.tsx`, `NewReleasesForYouRow.tsx` (+ mobile variants)
+- Wire new section_types into `Index.tsx` and `MobileHome.tsx` dynamic mapper
+
+**Guardrails**
+- Admin pinned sections never reordered
+- Kids profiles: suggestions filtered to G/PG and Animation/Family (existing kids constraint memory)
+- All AI output validated against existing `home_sections` schema before insertion
+- Suggestions auto-expire after 14 days if not reviewed
+
+## Out of scope
+- Auto-apply without admin approval (explicitly chose "AI suggests, admin approves")
+- Real-time per-request AI calls (using cached daily output + cheap client-side reorder)
+- Changing existing section rendering contract
