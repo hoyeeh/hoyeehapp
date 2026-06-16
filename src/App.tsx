@@ -262,6 +262,9 @@ const App = () => (
                         <Route path="/content/:id" element={<ContentDetail />} />
                         <Route path="/my-list" element={<MyList />} />
                         <Route path="/downloads" element={<Downloads />} />
+                        <Route path="/offline-downloads" element={<DownloadsPage />} />
+                        <Route path="/watch" element={<WatchRedirect />} />
+                        
                         
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/search" element={<Search />} />
