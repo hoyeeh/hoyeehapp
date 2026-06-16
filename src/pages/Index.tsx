@@ -19,6 +19,8 @@ import { NewReleasesRow } from "@/components/NewReleasesRow";
 import { AIRecommendationsRow } from "@/components/AIRecommendationsRow";
 import { RecentlyWatchedRow } from "@/components/RecentlyWatchedRow";
 import { BecauseYouWatchedRow } from "@/components/BecauseYouWatchedRow";
+import { TopInCountryRow } from "@/components/TopInCountryRow";
+import { NewReleasesForYouRow } from "@/components/NewReleasesForYouRow";
 import { ContentDetailsModal } from "@/components/ContentDetailsModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { UserDashboard } from "@/components/UserDashboard";
@@ -860,6 +862,40 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
+                          cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                          cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                          maxItems={section.max_items || 15}
+                        />
+                      );
+                    }
+
+                    // Top 10 in your country
+                    if (section.section_type === "top_in_country") {
+                      return (
+                        <TopInCountryRow
+                          key={section.id}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                          title={section.title}
+                          cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                          cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                          maxItems={section.max_items || 10}
+                        />
+                      );
+                    }
+
+                    // New Releases For You (personalized)
+                    if (section.section_type === "new_releases_for_you") {
+                      return (
+                        <NewReleasesForYouRow
+                          key={section.id}
+                          onPlay={handlePlay}
+                          onToggleList={handleToggleList}
+                          onDetails={handleDetails}
+                          userList={watchlistIds}
+                          title={section.title}
                           cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                           cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                           maxItems={section.max_items || 15}

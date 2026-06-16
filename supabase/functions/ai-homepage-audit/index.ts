@@ -107,7 +107,7 @@ Propose up to 5 improvements as a strict JSON array. Each item:
   "priority": 1-10
 }
 
-For "new_section": payload = { title, section_type ('genre'|'trending'|'recently_added'|'top10'|'recommendations'|'continue_watching'), genre_name?, max_items (10-20), card_style ('full'|'poster'|'wide'), card_size ('sm'|'md'|'lg') }
+For "new_section": payload = { title, section_type ('genre'|'trending'|'recently_added'|'top10'|'recommendations'|'continue_watching'|'because_you_watched'|'top_in_country'|'new_releases_for_you'|'ai_recommendations'), genre_name?, max_items (10-20), card_style ('full'|'poster'|'wide'), card_size ('sm'|'md'|'lg') }
 For "reorder": payload = { ordered_titles: [exact existing section titles in desired top-to-bottom order] }
 
 Only return the JSON array.`;

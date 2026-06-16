@@ -33,6 +33,8 @@ import { MobileRecentlyWatched } from "./MobileRecentlyWatched";
 import { MobileAIRecommendations } from "./MobileAIRecommendations";
 import { MobileRecommendationsRow } from "./MobileRecommendationsRow";
 import { MobileBecauseYouWatchedRow } from "./MobileBecauseYouWatchedRow";
+import { MobileTopInCountryRow } from "./MobileTopInCountryRow";
+import { MobileNewReleasesForYouRow } from "./MobileNewReleasesForYouRow";
 import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { MobilePaidContentRow } from "./MobilePaidContentRow";
 import { MobilePurchasesShortcut } from "./MobilePurchasesShortcut";
@@ -705,6 +707,38 @@ export function MobileHome() {
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                       maxItems={section.max_items || 15}
+                    />
+                  </FadeIn>
+                );
+              }
+
+              // Top 10 in your country
+              if (section.section_type === "top_in_country") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileTopInCountryRow
+                      onDetails={handleDetails}
+                      title={section.title}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      maxItems={section.max_items || 10}
+                      sectionBannerUrl={section.section_banner_url || undefined}
+                    />
+                  </FadeIn>
+                );
+              }
+
+              // New Releases For You (personalized)
+              if (section.section_type === "new_releases_for_you") {
+                return (
+                  <FadeIn key={section.id} delay={50 + index * 25}>
+                    <MobileNewReleasesForYouRow
+                      onDetails={handleDetails}
+                      title={section.title}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      maxItems={section.max_items || 15}
+                      sectionBannerUrl={section.section_banner_url || undefined}
                     />
                   </FadeIn>
                 );
