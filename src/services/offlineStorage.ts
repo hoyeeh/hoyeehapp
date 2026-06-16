@@ -21,11 +21,13 @@ interface StoredRecord {
   metadata: DownloadMetadata;
 }
 
-const db = localforage.createInstance({
+export const offlineDB = localforage.createInstance({
   name: "StreamingApp",
   storeName: "offline_videos",
   description: "Offline video downloads (non-DRM only)",
 });
+
+const db = offlineDB;
 
 /** Save a video blob and its metadata under `contentId`. */
 export async function saveDownload(

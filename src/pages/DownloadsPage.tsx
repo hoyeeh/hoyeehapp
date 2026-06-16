@@ -33,6 +33,8 @@ const DownloadsPage = () => {
     let cancelled = false;
     getAllDownloads()
       .then((rows) => {
+        // eslint-disable-next-line no-console
+        console.log("Downloads from DB:", rows);
         if (!cancelled) setItems(rows);
       })
       .catch(() => {
