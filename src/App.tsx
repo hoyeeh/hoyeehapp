@@ -92,7 +92,10 @@ if (typeof window !== 'undefined') {
   migrateLegacyKeys();
   // Initialize cache management asynchronously
   initializeCacheManagement().catch(console.error);
+  // Bridge background-fetch blobs (Cache Storage) into IndexedDB
+  initBackgroundFetchBridge();
 }
+
 
 // PWA Update Handler - auto-updates the app when new version is available
 function PWAUpdateHandler() {
