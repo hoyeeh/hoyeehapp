@@ -956,9 +956,8 @@ const ContentDetail = () => {
               {!isTVShow && <DownloadButton content={content} />}
               {(() => {
                 const c = content as unknown as Record<string, unknown>;
-                // eslint-disable-next-line no-console
-                console.log('Content Debug:', content);
                 const priceNum = Number(c.price ?? 0);
+
                 const isRestricted =
                   Boolean(c.isPremium) ||
                   Boolean(c.premium) ||
