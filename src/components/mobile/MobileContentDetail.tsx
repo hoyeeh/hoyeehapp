@@ -379,9 +379,10 @@ export function MobileContentDetail({
   };
 
   const handleDownload = () => {
+    // Legacy no-op kept for safety; primary action is now <OfflineDownloadButton />.
     lightTap();
-    toast.info("Download started");
   };
+
 
   const handleToggleList = () => {
     selectionTap();
