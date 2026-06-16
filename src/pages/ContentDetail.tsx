@@ -954,19 +954,34 @@ const ContentDetail = () => {
               />
               {/* Download button for movies */}
               {!isTVShow && <DownloadButton content={content} />}
-              {!isTVShow && (
-                <OfflineDownloadButton
-                  contentId={content.id}
-                  videoUrl={content.videoUrl}
-                  title={content.title}
-                  poster={content.thumbnailUrl}
-                  duration={content.duration}
-                  isPremium={content.isPremium}
-                  requiresDrm={(content as { requires_drm?: boolean }).requires_drm}
-                  isPaid={(content as { isPaid?: boolean }).isPaid}
-                  price={(content as { price?: number }).price}
-                />
-              )}
+              {(() => {
+                const c = content as unknown as Record<string, unknown>;
+                // eslint-disable-next-line no-console
+                console.log('Content Debug:', content);
+                const priceNum = Number(c.price ?? 0);
+                const isRestricted =
+                  Boolean(c.isPremium) ||
+                  Boolean(c.premium) ||
+                  Boolean(c.requires_drm) ||
+                  Boolean(c.drm) ||
+                  Boolean(c.isPaid) ||
+                  Boolean(c.paid) ||
+                  (Number.isFinite(priceNum) && priceNum > 0);
+                if (isTVShow || isRestricted) return null;
+                return (
+                  <OfflineDownloadButton
+                    contentId={content.id}
+                    videoUrl={content.videoUrl}
+                    title={content.title}
+                    poster={content.thumbnailUrl}
+                    duration={content.duration}
+                    isPremium={Boolean(c.isPremium) || Boolean(c.premium)}
+                    requiresDrm={Boolean(c.requires_drm) || Boolean(c.drm)}
+                    isPaid={Boolean(c.isPaid) || Boolean(c.paid)}
+                    price={priceNum}
+                  />
+                );
+              })()}
               {/* Series notification button */}
               <SeriesNotificationButton 
                 contentId={content.id} 

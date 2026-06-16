@@ -70,7 +70,9 @@ export function useVideoDownloader(
 
   const download = useCallback(async () => {
     if (isRestricted) {
-      setError("DRM/Paid content cannot be downloaded");
+      // eslint-disable-next-line no-console
+      console.error('Blocked download attempt on restricted content');
+      setError('This content cannot be downloaded.');
       return;
     }
     if (!videoUrl) {
