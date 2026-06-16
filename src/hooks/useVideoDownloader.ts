@@ -5,6 +5,14 @@ import {
   saveDownload,
   type DownloadMetadata,
 } from "@/services/offlineStorage";
+import {
+  estimateStorage,
+  formatBytes,
+  hasSpaceFor,
+  isQuotaExceededError,
+  requestPersistentStorage,
+} from "@/utils/storageQuota";
+
 
 export interface UseVideoDownloaderResult {
   isDownloading: boolean;
@@ -89,6 +97,20 @@ export function useVideoDownloader(
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Best-effort: ask the browser to persist storage so iOS / Chrome don't
+    // evict the download under disk pressure. Safe to call repeatedly.
+    void requestPersistentStorage();
+
+    // Pre-flight quota check (best-effort — passes through if unsupported).
+    const preflight = await hasSpaceFor(0);
+    if (!preflight.ok) {
+      setError(
+        `Not enough storage. ${formatBytes(preflight.estimate.available)} free of ${formatBytes(preflight.estimate.quota)}.`,
+      );
+      setIsDownloading(false);
+      return;
+    }
+
     try {
       const res = await fetch(videoUrl, { signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -101,6 +123,14 @@ export function useVideoDownloader(
       if (!contentLength && mountedRef.current) {
         setIndeterminate(true);
         setProgress(50);
+      } else if (contentLength) {
+        // We know the size — re-check available quota now that we have it.
+        const sized = await hasSpaceFor(parseInt(contentLength, 10));
+        if (!sized.ok) {
+          throw Object.assign(new Error("Not enough storage on this device"), {
+            name: "QuotaExceededError",
+          });
+        }
       }
 
       const blob = await res.blob();
@@ -111,7 +141,20 @@ export function useVideoDownloader(
         type: blob.type,
       });
 
-      await saveDownload(contentId, blob, metadata);
+      try {
+        await saveDownload(contentId, blob, metadata);
+      } catch (writeErr) {
+        if (isQuotaExceededError(writeErr)) {
+          const est = await estimateStorage();
+          throw Object.assign(
+            new Error(
+              `Storage full. ${formatBytes(est.available)} free of ${formatBytes(est.quota)}. Delete some downloads and try again.`,
+            ),
+            { name: "QuotaExceededError" },
+          );
+        }
+        throw writeErr;
+      }
       // eslint-disable-next-line no-console
       console.log("[Downloader] saved to IndexedDB:", contentId);
 
@@ -136,6 +179,7 @@ export function useVideoDownloader(
       abortRef.current = null;
     }
   }, [contentId, videoUrl, metadata, isRestricted, isDownloading]);
+
 
   const removeDownload = useCallback(async () => {
     await deleteDownload(contentId);

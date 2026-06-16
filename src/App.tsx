@@ -23,6 +23,8 @@ import { EnhancedDownloadQueue } from "@/components/EnhancedDownloadQueue";
 import { useDownloadManager } from "@/hooks/useDownloadManager";
 import { useScheduledDownloadNotifications } from "@/hooks/useScheduledDownloadNotifications";
 import { migrateLegacyKeys, initializeCacheManagement } from "@/utils/cacheManager";
+import { initBackgroundFetchBridge } from "@/services/backgroundFetchBridge";
+
 import { usePWAUpdates } from "@/hooks/usePWAUpdates";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { PusherNotificationHandler } from "@/components/PusherNotificationHandler";
@@ -90,7 +92,10 @@ if (typeof window !== 'undefined') {
   migrateLegacyKeys();
   // Initialize cache management asynchronously
   initializeCacheManagement().catch(console.error);
+  // Bridge background-fetch blobs (Cache Storage) into IndexedDB
+  initBackgroundFetchBridge();
 }
+
 
 // PWA Update Handler - auto-updates the app when new version is available
 function PWAUpdateHandler() {
