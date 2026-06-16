@@ -17,7 +17,7 @@ import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
 import { TVShowSeasons } from "@/components/TVShowSeasons";
 import { DownloadButton } from "@/components/DownloadButton";
 import { OfflineDownloadButton } from "@/components/OfflineDownloadButton";
-import { OfflinePlayerWrapper } from "@/components/player/OfflinePlayerWrapper";
+
 import { MoreLikeThisSection } from "@/components/MoreLikeThisSection";
 import { WatchPartyPanel } from "@/components/WatchPartyPanel";
 import { SeriesNotificationButton } from "@/components/SeriesNotificationButton";
@@ -765,45 +765,35 @@ const ContentDetail = () => {
   // Playing main content (movie or TV show trailer) - only desktop
   if (playing && content && !isMobile) {
     const useVjs = newPlayerEnabled && !content.isPremium;
-    const isOffline = searchParams.get('offline') === 'true';
+    const resolvedSrc = content.videoUrl;
     return (
       <SecureVideoWrapper>
-        <OfflinePlayerWrapper
-          contentId={content.id}
-          networkSrc={content.videoUrl}
-          isOffline={isOffline}
-          isPremium={content.isPremium}
-          poster={content.thumbnailUrl}
-          title={content.title}
-        >
-          {(resolvedSrc) => (
-            useVjs ? (
-              <>
-                <VideoJSPlayerWithWatchParty
-                  src={resolvedSrc}
-                  contentId={content.id}
-                  title={content.title}
-                  thumbnail={content.thumbnailUrl}
-                  autoplay
-                  miniPlayerContent={content}
-                  className="w-full h-screen bg-black"
-                />
-                <NewPlayerBadge surface="movie" />
-              </>
-            ) : (
-              <VideoPlayer
-                src={resolvedSrc}
-                title={content.title}
-                contentId={content.id}
-                initialProgress={0}
-                onBack={() => setPlaying(false)}
-              />
-            )
-          )}
-        </OfflinePlayerWrapper>
+        {useVjs ? (
+          <>
+            <VideoJSPlayerWithWatchParty
+              src={resolvedSrc}
+              contentId={content.id}
+              title={content.title}
+              thumbnail={content.thumbnailUrl}
+              autoplay
+              miniPlayerContent={content}
+              className="w-full h-screen bg-black"
+            />
+            <NewPlayerBadge surface="movie" />
+          </>
+        ) : (
+          <VideoPlayer
+            src={resolvedSrc}
+            title={content.title}
+            contentId={content.id}
+            initialProgress={0}
+            onBack={() => setPlaying(false)}
+          />
+        )}
       </SecureVideoWrapper>
     );
   }
+
 
 
   if (loading || contentLoading) {
