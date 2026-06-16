@@ -11,6 +11,7 @@ interface RecommendationsRowProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   userList: string[];
+  maxItems?: number;
 }
 
 export const RecommendationsRow = ({
@@ -18,6 +19,7 @@ export const RecommendationsRow = ({
   onToggleList,
   onDetails,
   userList,
+  maxItems = 15,
 }: RecommendationsRowProps) => {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
