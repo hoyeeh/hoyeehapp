@@ -46,6 +46,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const ContentDetail = lazy(() => import("./pages/ContentDetail"));
 const MyList = lazy(() => import("./pages/MyList"));
 const Downloads = lazy(() => import("./pages/Downloads"));
+const DownloadsPage = lazy(() => import("./pages/DownloadsPage"));
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Search = lazy(() => import("./pages/Search"));
