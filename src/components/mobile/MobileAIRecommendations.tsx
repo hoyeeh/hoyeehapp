@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 interface MobileAIRecommendationsProps {
   onDetails: (content: Content) => void;
+  maxItems?: number;
 }
 
 interface AIRecommendation {
@@ -18,7 +19,7 @@ interface AIRecommendation {
   type: "movie" | "series";
 }
 
-export function MobileAIRecommendations({ onDetails }: MobileAIRecommendationsProps) {
+export function MobileAIRecommendations({ onDetails, maxItems = 12 }: MobileAIRecommendationsProps) {
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
   const { data: allContent = [] } = useContent();
