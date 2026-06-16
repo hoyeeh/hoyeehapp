@@ -619,6 +619,7 @@ const Admin = () => {
         return (
           <div className="space-y-6">
             <h2 className="text-2xl font-display">Home Page Management</h2>
+            <HomepageAISuggestions />
             <EnhancedHomeSectionManagement />
           </div>
         );
