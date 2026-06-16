@@ -480,9 +480,9 @@ const Index = () => {
         // Return empty - we'll use the dedicated LeavingSoonRow component instead
         return [];
       case "recently_added":
-        return recentlyAddedContent;
+        return recentlyAddedContent.slice(0, section.max_items || 15);
       case "trending":
-        return trendingContentItems;
+        return trendingContentItems.slice(0, section.max_items || 20);
       case "genre":
         const genreName = section.genre?.name;
         if (!genreName) return [];
