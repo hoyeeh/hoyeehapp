@@ -780,7 +780,7 @@ export function MobileHome() {
               if (section.section_type === "coming_soon") {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
-                    <MobileComingSoonRow maxItems={section.max_items || 10} />
+                    <MobileComingSoonRow maxItems={section.max_items || 15} />
                   </FadeIn>
                 );
               }
