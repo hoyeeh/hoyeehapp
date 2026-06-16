@@ -846,6 +846,7 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }
@@ -861,6 +862,7 @@ const Index = () => {
                           userList={watchlistIds}
                           cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                           cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }
