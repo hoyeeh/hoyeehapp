@@ -26,7 +26,7 @@ interface RecentlyWatchedItem {
   content: Content;
 }
 
-export function RecentlyWatchedRow({ onPlay, onDetails }: RecentlyWatchedRowProps) {
+export function RecentlyWatchedRow({ onPlay, onDetails, maxItems = 20 }: RecentlyWatchedRowProps) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
 
