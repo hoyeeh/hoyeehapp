@@ -122,7 +122,7 @@ const navItems: NavItem[] = [
   { label: "Home", path: "/", icon: (active) => <HomeIcon active={active} /> },
   { label: "Search", path: "/search", icon: (active) => <SearchIcon active={active} /> },
   { label: "My List", path: "/my-list", icon: (active) => <ListIcon active={active} /> },
-  { label: "Downloads", path: "/downloads", icon: (active) => <DownloadIcon active={active} /> },
+  { label: "Downloads", path: "/offline-downloads", icon: (active) => <DownloadIcon active={active} /> },
   { label: "My Hoyeeh", path: "/profile", icon: (active) => <UserIcon active={active} /> },
 ];
 
@@ -157,7 +157,7 @@ export function MobileBottomNav() {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || 
             (item.path === "/" && location.pathname === "/");
-          const isDownloadsTab = item.path === "/downloads";
+          const isDownloadsTab = item.path === "/offline-downloads";
           
           return (
             <button
