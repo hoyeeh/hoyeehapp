@@ -4,7 +4,10 @@ import { MobileVideoPlayer } from "./MobileVideoPlayer";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
+import { useResolvedVideoSrc } from "@/hooks/useResolvedVideoSrc";
 import { useCallback, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+
 
 export function PersistentMobileVideoPlayer() {
   const { isMobileDevice, isTablet } = useMobileDevice();
@@ -70,6 +73,15 @@ export function PersistentMobileVideoPlayer() {
     return null;
   }
 
+  // Transparently resolve offline blob URLs (legacy DRM-store wins, then
+  // the lightweight new store). Falls back to the network URL when nothing
+  // is downloaded. Lifecycle of the blob URL is managed by the hook.
+  const { src: resolvedVideoUrl, isResolving, isOffline } = useResolvedVideoSrc(
+    playerState.content?.id,
+    playerState.episodeId,
+    playerState.videoUrl,
+  );
+
   return (
     <AnimatePresence>
       <motion.div
@@ -79,11 +91,17 @@ export function PersistentMobileVideoPlayer() {
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] bg-black"
       >
-        <MobileVideoPlayer
-          key={`${playerState.content.id}-${playerState.episodeId || 'movie'}`}
-          content={playerState.content}
-          videoUrl={playerState.videoUrl}
-          title={playerState.title}
+        {isResolving ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <Loader2 className="h-10 w-10 animate-spin text-white" />
+          </div>
+        ) : (
+          <MobileVideoPlayer
+            key={`${playerState.content.id}-${playerState.episodeId || 'movie'}-${isOffline ? 'offline' : 'online'}`}
+            content={playerState.content}
+            videoUrl={resolvedVideoUrl}
+            title={playerState.title}
+
           episodeTitle={playerState.episodeTitle}
           episodeId={playerState.episodeId}
           onClose={handleClose}
@@ -107,7 +125,9 @@ export function PersistentMobileVideoPlayer() {
           kidsTimeLimitReached={localTimeLimitReached}
           kidsBedtimeReached={localBedtimeReached}
         />
+        )}
       </motion.div>
+
     </AnimatePresence>
   );
 }

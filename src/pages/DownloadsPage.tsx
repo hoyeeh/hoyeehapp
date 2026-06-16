@@ -3,11 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { deleteDownload as deleteNewDownload } from "@/services/offlineStorage";
 import {
-  deleteDownload,
-  getAllDownloads,
-  type DownloadMetadata,
-} from "@/services/offlineStorage";
+  listUnifiedDownloads,
+  type UnifiedDownload,
+} from "@/services/unifiedOfflineVideo";
+import { deleteDownload as deleteLegacyDownload, getDownloadId } from "@/lib/downloadStorage";
 
 const formatDuration = (seconds?: number): string => {
   if (!seconds || seconds <= 0) return "";
@@ -26,15 +27,15 @@ const formatSize = (bytes?: number): string => {
 
 const DownloadsPage = () => {
   const navigate = useNavigate();
-  const [items, setItems] = useState<DownloadMetadata[]>([]);
+  const [items, setItems] = useState<UnifiedDownload[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    getAllDownloads()
+    listUnifiedDownloads()
       .then((rows) => {
         // eslint-disable-next-line no-console
-        console.log("Downloads from DB:", rows);
+        console.log("Downloads from DB (unified):", rows);
         if (!cancelled) setItems(rows);
       })
       .catch(() => {
@@ -48,15 +49,26 @@ const DownloadsPage = () => {
     };
   }, []);
 
-  const handleDelete = async (contentId: string) => {
+
+  const handleDelete = async (item: UnifiedDownload) => {
     try {
-      await deleteDownload(contentId);
-      setItems((prev) => prev.filter((it) => it.contentId !== contentId));
+      if (item.source === "legacy") {
+        await deleteLegacyDownload(getDownloadId(item.contentId, item.episodeId));
+      } else {
+        await deleteNewDownload(item.contentId);
+      }
+      setItems((prev) =>
+        prev.filter(
+          (it) =>
+            !(it.contentId === item.contentId && it.episodeId === item.episodeId && it.source === item.source),
+        ),
+      );
       toast.success("Removed from downloads");
     } catch {
       toast.error("Failed to delete download");
     }
   };
+
 
   const handlePlay = (contentId: string) => {
     navigate(`/watch?contentId=${contentId}&offline=true`);
@@ -106,7 +118,7 @@ const DownloadsPage = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {items.map((item) => (
               <div
-                key={item.contentId}
+                key={`${item.source}:${item.contentId}:${item.episodeId ?? ""}`}
                 className="group rounded-lg overflow-hidden bg-card border border-border flex flex-col"
               >
                 <button
@@ -114,9 +126,9 @@ const DownloadsPage = () => {
                   className="relative aspect-[2/3] bg-muted overflow-hidden"
                   aria-label={`Play ${item.title}`}
                 >
-                  {item.poster ? (
+                  {item.thumbnailUrl ? (
                     <img
-                      src={item.poster}
+                      src={item.thumbnailUrl}
                       alt={item.title}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -126,6 +138,7 @@ const DownloadsPage = () => {
                       <Play className="h-10 w-10" />
                     </div>
                   )}
+
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity h-12 w-12 rounded-full bg-white/90 flex items-center justify-center">
                       <Play className="h-6 w-6 text-black fill-black" />
@@ -156,7 +169,7 @@ const DownloadsPage = () => {
                       size="icon"
                       variant="ghost"
                       className="min-h-[36px] min-w-[36px]"
-                      onClick={() => handleDelete(item.contentId)}
+                      onClick={() => handleDelete(item)}
                       aria-label={`Delete ${item.title}`}
                     >
                       <Trash2 className="h-4 w-4" />
