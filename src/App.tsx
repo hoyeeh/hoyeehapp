@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
@@ -46,6 +46,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const ContentDetail = lazy(() => import("./pages/ContentDetail"));
 const MyList = lazy(() => import("./pages/MyList"));
 const Downloads = lazy(() => import("./pages/Downloads"));
+const DownloadsPage = lazy(() => import("./pages/DownloadsPage"));
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Search = lazy(() => import("./pages/Search"));
@@ -219,6 +220,17 @@ function PendingPurchaseVerifier() {
   return null;
 }
 
+/** /watch?contentId=X&offline=true → /content/X?offline=true (preserves all query params). */
+const WatchRedirect = () => {
+  const [params] = useSearchParams();
+  const contentId = params.get("contentId");
+  if (!contentId) return <Navigate to="/" replace />;
+  const forwarded = new URLSearchParams(params);
+  forwarded.delete("contentId");
+  const qs = forwarded.toString();
+  return <Navigate to={`/content/${contentId}${qs ? `?${qs}` : ""}`} replace />;
+};
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -261,6 +273,9 @@ const App = () => (
                         <Route path="/content/:id" element={<ContentDetail />} />
                         <Route path="/my-list" element={<MyList />} />
                         <Route path="/downloads" element={<Downloads />} />
+                        <Route path="/offline-downloads" element={<DownloadsPage />} />
+                        <Route path="/watch" element={<WatchRedirect />} />
+                        
                         
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/search" element={<Search />} />
