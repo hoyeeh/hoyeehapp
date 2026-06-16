@@ -19,13 +19,14 @@ export const ComingSoonRow = ({ onWatchTrailer, maxItems = 15 }: ComingSoonRowPr
 
   // Fetch coming soon content
   const { data: comingSoon = [] } = useQuery({
-    queryKey: ["coming-soon"],
+    queryKey: ["coming-soon", maxItems],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("coming_soon")
         .select("*")
         .eq("is_active", true)
-        .order("expected_release_date", { ascending: true });
+        .order("expected_release_date", { ascending: true })
+        .limit(maxItems);
       if (error) throw error;
       return data || [];
     },
