@@ -675,7 +675,7 @@ export function MobileHome() {
               if (section.section_type === "ai_recommendations") {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
-                    <MobileAIRecommendations onDetails={handleDetails} />
+                    <MobileAIRecommendations onDetails={handleDetails} maxItems={section.max_items || 12} />
                   </FadeIn>
                 );
               }
@@ -704,6 +704,7 @@ export function MobileHome() {
                       onDetails={handleDetails}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                      maxItems={section.max_items || 15}
                     />
                   </FadeIn>
                 );
@@ -713,7 +714,7 @@ export function MobileHome() {
               if (section.section_type === "coming_soon") {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
-                    <MobileComingSoonRow />
+                    <MobileComingSoonRow maxItems={section.max_items || 10} />
                   </FadeIn>
                 );
               }
