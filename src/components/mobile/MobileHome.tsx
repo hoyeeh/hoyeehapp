@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useContent, useWatchlist, useAddToWatchlist, useRemoveFromWatchlist, useProfile } from "@/hooks/useDatabase";
+import { useUserPurchases } from "@/hooks/usePaidContent";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
@@ -56,6 +57,7 @@ export function MobileHome() {
   const removeFromWatchlist = useRemoveFromWatchlist();
   const { canAccessPremium, isLoading: subscriptionLoading } = useSubscriptionAccess();
   const mobilePlayer = useMobileVideoPlayer();
+  const { data: userPurchases = [] } = useUserPurchases();
 
   // Get TV show content IDs for new episode/season badges
   const tvShowIds = useMemo(() => 
@@ -350,16 +352,11 @@ export function MobileHome() {
           .slice(0, section.max_items || 15);
       
       default:
-        // Generic fallback
-        let defaultFiltered = [...content];
-        if (section.content_type_filter === "movie") {
-          defaultFiltered = movies;
-        } else if (section.content_type_filter === "series") {
-          defaultFiltered = series;
-        }
-        return defaultFiltered
-          .sort((a, b) => (b.year || 0) - (a.year || 0))
-          .slice(0, section.max_items || 15);
+        // Unknown section types render nothing (mirrors desktop). Specialized
+        // section_types (continue_watching, purchases, top10, youtube, etc.)
+        // are rendered by their dedicated components below and don't rely on
+        // this helper for content.
+        return [];
     }
   };
 
@@ -654,9 +651,44 @@ export function MobileHome() {
 
               // Purchases section
               if (section.section_type === "purchases") {
+                const purchasedContent: Content[] = userPurchases
+                  .filter((p: any) => p.content)
+                  .map((p: any) => ({
+                    id: p.content.id,
+                    title: p.content.title,
+                    description: p.content.description || "",
+                    thumbnailUrl: p.content.thumbnail_url || "",
+                    videoUrl: p.content.video_url || "",
+                    genre: p.content.genre || "",
+                    contentType: p.content.content_type as "movie" | "series",
+                    isPremium: p.content.is_premium || false,
+                    duration: p.content.duration || 0,
+                    year: p.content.year,
+                  }))
+                  .slice(0, section.max_items || 15);
+
+                if (purchasedContent.length === 0) {
+                  // Fall back to the shortcut card when the user has no purchases yet
+                  return (
+                    <FadeIn key={section.id} delay={50 + index * 25}>
+                      <MobilePurchasesShortcut onDetails={handleDetails} />
+                    </FadeIn>
+                  );
+                }
+
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
-                    <MobilePurchasesShortcut onDetails={handleDetails} />
+                    <MobileContentRow
+                      title={section.title}
+                      content={purchasedContent}
+                      onDetails={handleDetails}
+                      onPlay={handlePlay}
+                      showSeeAll
+                      onSeeAll={() => navigate("/my-purchases")}
+                      cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                      cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal" | "full") || "poster"}
+                      sectionBannerUrl={section.section_banner_url || undefined}
+                    />
                   </FadeIn>
                 );
               }
@@ -748,7 +780,7 @@ export function MobileHome() {
               if (section.section_type === "coming_soon") {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
-                    <MobileComingSoonRow maxItems={section.max_items || 10} />
+                    <MobileComingSoonRow maxItems={section.max_items || 15} />
                   </FadeIn>
                 );
               }
