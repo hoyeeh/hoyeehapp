@@ -261,7 +261,10 @@ const Subscription = () => {
     );
   }
 
-  const isSubscribed = profile?.is_subscribed;
+  const { hasFullAccess, isAdminUser, isImpersonating } = useSubscriptionAccess();
+  // Treat as subscribed only if flag is set AND (no expiry OR expiry in the future)
+  const subActive = profile?.is_subscribed && (!profile?.subscription_expiry || new Date(profile.subscription_expiry) > new Date());
+  const isSubscribed = subActive || hasFullAccess;
   const currentPrice = selectedPlan === "yearly" ? yearlyPrice : monthlyPrice;
 
   return (
