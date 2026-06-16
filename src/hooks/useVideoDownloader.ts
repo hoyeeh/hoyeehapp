@@ -5,6 +5,14 @@ import {
   saveDownload,
   type DownloadMetadata,
 } from "@/services/offlineStorage";
+import {
+  estimateStorage,
+  formatBytes,
+  hasSpaceFor,
+  isQuotaExceededError,
+  requestPersistentStorage,
+} from "@/utils/storageQuota";
+
 
 export interface UseVideoDownloaderResult {
   isDownloading: boolean;
