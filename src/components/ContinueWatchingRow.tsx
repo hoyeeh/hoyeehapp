@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 interface ContinueWatchingRowProps {
   onPlay: (content: Content, progress: number, episodeId?: string) => void;
   onDetails: (content: Content) => void;
+  maxItems?: number;
 }
 
 interface WatchHistoryItem {
