@@ -91,43 +91,29 @@ export function useVideoDownloader(
 
     try {
       const res = await fetch(videoUrl, { signal: controller.signal });
-      if (!res.ok) throw new Error("Network error");
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-      const totalHeader = res.headers.get("content-length");
-      const total = totalHeader ? Number(totalHeader) : 0;
-      const canStream =
-        !!res.body && typeof (res.body as ReadableStream).getReader === "function";
-
-      let blob: Blob;
-
-      if (canStream && total > 0) {
-        // Determinate progress path.
-        const reader = (res.body as ReadableStream<Uint8Array>).getReader();
-        const chunks: Uint8Array[] = [];
-        let loaded = 0;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            chunks.push(value);
-            loaded += value.length;
-            if (mountedRef.current) {
-              setProgress(Math.min(99, Math.round((loaded / total) * 100)));
-            }
-          }
-        }
-        blob = new Blob(chunks as BlobPart[], {
-          type: res.headers.get("content-type") || "video/mp4",
-        });
-      } else {
-        // Indeterminate path — avoid buffering chunks ourselves on mobile when
-        // content-length is unknown; let the browser materialize the blob.
-        if (mountedRef.current) setIndeterminate(true);
-        blob = await res.blob();
+      // Many CDNs (DigitalOcean Spaces, Cloudflare) strip content-length on
+      // streaming responses. Fall back to indeterminate progress and let the
+      // browser materialize the blob — far more reliable than manual streaming
+      // inside a PWA on mobile.
+      const contentLength = res.headers.get("content-length");
+      if (!contentLength && mountedRef.current) {
+        setIndeterminate(true);
+        setProgress(50);
       }
 
+      const blob = await res.blob();
+      // eslint-disable-next-line no-console
+      console.log("[Downloader] fetched blob", {
+        contentId,
+        size: blob.size,
+        type: blob.type,
+      });
+
       await saveDownload(contentId, blob, metadata);
+      // eslint-disable-next-line no-console
+      console.log("[Downloader] saved to IndexedDB:", contentId);
 
       if (mountedRef.current) {
         setProgress(100);
