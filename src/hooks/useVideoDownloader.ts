@@ -12,6 +12,57 @@ import {
   isQuotaExceededError,
   requestPersistentStorage,
 } from "@/utils/storageQuota";
+import { supabase } from "@/integrations/supabase/client";
+
+// Fetch the asset, falling back through the authenticated proxy when the CDN
+// rejects the direct request (403 hotlink protection, signed-URL expiry, etc).
+async function fetchVideoResilient(
+  videoUrl: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  // 1. Try direct fetch first — fastest path for public assets.
+  try {
+    const direct = await fetch(videoUrl, { signal });
+    if (direct.ok) return direct;
+    // 401/403 typically mean the CDN requires our signed proxy.
+    if (direct.status !== 401 && direct.status !== 403) {
+      throw new Error(`HTTP error! status: ${direct.status}`);
+    }
+    // eslint-disable-next-line no-console
+    console.warn("[Downloader] direct fetch denied", direct.status, "— retrying via proxy");
+  } catch (e) {
+    if ((e as { name?: string }).name === "AbortError") throw e;
+    // CORS / network — fall through to proxy.
+    // eslint-disable-next-line no-console
+    console.warn("[Downloader] direct fetch failed, retrying via proxy:", (e as Error).message);
+  }
+
+  // 2. Authenticated proxy: download-video edge function.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error("Sign in required to download this video");
+  }
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
+  const proxied = await fetch(`${supabaseUrl}/functions/v1/download-video`, {
+    method: "POST",
+    signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ videoUrl }),
+  });
+  if (!proxied.ok) {
+    let msg = `HTTP error! status: ${proxied.status}`;
+    try {
+      const j = await proxied.clone().json();
+      if (j?.error) msg = j.error;
+    } catch { /* ignore */ }
+    if (proxied.status === 403) msg = "Active subscription required to download";
+    throw new Error(msg);
+  }
+  return proxied;
+}
 
 
 export interface UseVideoDownloaderResult {
@@ -112,8 +163,7 @@ export function useVideoDownloader(
     }
 
     try {
-      const res = await fetch(videoUrl, { signal: controller.signal });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const res = await fetchVideoResilient(videoUrl, controller.signal);
 
       // Many CDNs (DigitalOcean Spaces, Cloudflare) strip content-length on
       // streaming responses. Fall back to indeterminate progress and let the
