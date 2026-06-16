@@ -9,9 +9,10 @@ import { format } from "date-fns";
 
 interface ComingSoonRowProps {
   onWatchTrailer?: (trailerUrl: string, title: string) => void;
+  maxItems?: number;
 }
 
-export const ComingSoonRow = ({ onWatchTrailer }: ComingSoonRowProps) => {
+export const ComingSoonRow = ({ onWatchTrailer, maxItems = 15 }: ComingSoonRowProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
