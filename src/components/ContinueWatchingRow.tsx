@@ -50,7 +50,7 @@ interface WatchHistoryItem {
   } | null;
 }
 
-export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowProps) => {
+export const ContinueWatchingRow = ({ onPlay, onDetails, maxItems = 10 }: ContinueWatchingRowProps) => {
   const { user } = useAuth();
   const { currentProfile } = useProfileContext();
   const scrollRef = useRef<HTMLDivElement>(null);
