@@ -4,7 +4,10 @@ import { MobileVideoPlayer } from "./MobileVideoPlayer";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
+import { useResolvedVideoSrc } from "@/hooks/useResolvedVideoSrc";
 import { useCallback, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+
 
 export function PersistentMobileVideoPlayer() {
   const { isMobileDevice, isTablet } = useMobileDevice();
