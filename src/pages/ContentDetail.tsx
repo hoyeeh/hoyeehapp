@@ -967,10 +967,20 @@ const ContentDetail = () => {
                   Boolean(c.paid) ||
                   (Number.isFinite(priceNum) && priceNum > 0);
                 if (isTVShow || isRestricted) return null;
+                // Ensure absolute URL — prepend DigitalOcean Spaces CDN base if relative.
+                const rawUrl = content.videoUrl || "";
+                const doBase = (import.meta.env.VITE_DO_SPACES_CDN_ENDPOINT as string | undefined) || "";
+                const absoluteVideoUrl = /^https?:\/\//i.test(rawUrl)
+                  ? rawUrl
+                  : rawUrl
+                    ? `${doBase.replace(/\/$/, "")}/${rawUrl.replace(/^\//, "")}`
+                    : rawUrl;
+                // eslint-disable-next-line no-console
+                console.log("Downloader initialized with URL:", absoluteVideoUrl);
                 return (
                   <OfflineDownloadButton
                     contentId={content.id}
-                    videoUrl={content.videoUrl}
+                    videoUrl={absoluteVideoUrl}
                     title={content.title}
                     poster={content.thumbnailUrl}
                     duration={content.duration}
@@ -981,6 +991,7 @@ const ContentDetail = () => {
                   />
                 );
               })()}
+
               {/* Series notification button */}
               <SeriesNotificationButton 
                 contentId={content.id} 
