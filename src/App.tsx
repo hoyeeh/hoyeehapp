@@ -220,6 +220,17 @@ function PendingPurchaseVerifier() {
   return null;
 }
 
+/** /watch?contentId=X&offline=true → /content/X?offline=true (preserves all query params). */
+const WatchRedirect = () => {
+  const [params] = useSearchParams();
+  const contentId = params.get("contentId");
+  if (!contentId) return <Navigate to="/" replace />;
+  const forwarded = new URLSearchParams(params);
+  forwarded.delete("contentId");
+  const qs = forwarded.toString();
+  return <Navigate to={`/content/${contentId}${qs ? `?${qs}` : ""}`} replace />;
+};
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
