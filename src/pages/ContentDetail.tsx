@@ -955,7 +955,7 @@ const ContentDetail = () => {
               {/* Download button for movies */}
               {!isTVShow && <DownloadButton content={content} />}
               {(() => {
-                const c = content as Record<string, unknown>;
+                const c = content as unknown as Record<string, unknown>;
                 // eslint-disable-next-line no-console
                 console.log('Content Debug:', content);
                 const priceNum = Number(c.price ?? 0);
