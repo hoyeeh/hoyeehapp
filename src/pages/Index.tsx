@@ -997,6 +997,7 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           myList={watchlistIds}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }
