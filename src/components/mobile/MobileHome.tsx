@@ -57,6 +57,7 @@ export function MobileHome() {
   const removeFromWatchlist = useRemoveFromWatchlist();
   const { canAccessPremium, isLoading: subscriptionLoading } = useSubscriptionAccess();
   const mobilePlayer = useMobileVideoPlayer();
+  const { data: userPurchases = [] } = useUserPurchases();
 
   // Get TV show content IDs for new episode/season badges
   const tvShowIds = useMemo(() => 
