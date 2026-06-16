@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 interface RecentlyWatchedRowProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
+  maxItems?: number;
 }
 
 interface RecentlyWatchedItem {
