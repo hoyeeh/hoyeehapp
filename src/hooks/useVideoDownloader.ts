@@ -21,12 +21,25 @@ async function fetchVideoResilient(
   signal: AbortSignal,
 ): Promise<Response> {
   // 1. Try direct fetch first — fastest path for public assets.
+  // Strictly CORS-compliant: omit credentials so static CDNs (DigitalOcean
+  // Spaces, Cloudflare) don't reject the preflight, and request explicit
+  // video Accept types.
+  // eslint-disable-next-line no-console
+  console.log("Attempting to download URL:", videoUrl);
   try {
-    const direct = await fetch(videoUrl, { signal });
+    const direct = await fetch(videoUrl, {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit",
+      headers: {
+        Accept: "video/mp4, video/*, */*",
+      },
+      signal,
+    });
     if (direct.ok) return direct;
     // 401/403 typically mean the CDN requires our signed proxy.
     if (direct.status !== 401 && direct.status !== 403) {
-      throw new Error(`HTTP error! status: ${direct.status}`);
+      throw new Error(`HTTP error! status: ${direct.status} ${direct.statusText}`);
     }
     // eslint-disable-next-line no-console
     console.warn("[Downloader] direct fetch denied", direct.status, "— retrying via proxy");
