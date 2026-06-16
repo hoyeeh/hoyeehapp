@@ -286,13 +286,22 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
   const handleToggleSubscription = async (userId: string, currentStatus: boolean) => {
     setIsLoading(true);
     try {
+      const nextStatus = !currentStatus;
+      // When granting: set a 1-year complimentary expiry. When revoking: clear expiry.
+      const newExpiry = nextStatus
+        ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+        : null;
       const { error } = await supabase
         .from("profiles")
-        .update({ is_subscribed: !currentStatus })
+        .update({ is_subscribed: nextStatus, subscription_expiry: newExpiry })
         .eq("id", userId);
 
       if (error) throw error;
-      toast.success(`Subscription ${!currentStatus ? "activated" : "deactivated"}`);
+      toast.success(
+        nextStatus
+          ? "Premium granted (1 year complimentary)"
+          : "Premium revoked"
+      );
       onRefresh();
     } catch (error) {
       toast.error("Failed to update subscription");
@@ -300,6 +309,7 @@ export const AdminUserManagement = ({ users, onRefresh }: AdminUserManagementPro
       setIsLoading(false);
     }
   };
+
 
   const sendSecurityNotification = async (email: string, actionType: "pin_reset" | "secret_reset", userName?: string) => {
     try {
