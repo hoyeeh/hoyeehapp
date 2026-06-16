@@ -24,9 +24,10 @@ const extractYouTubeVideoId = (url: string): string | null => {
 
 interface MobileComingSoonRowProps {
   onWatchTrailer?: (trailerUrl: string, title: string) => void;
+  maxItems?: number;
 }
 
-export function MobileComingSoonRow({ onWatchTrailer }: MobileComingSoonRowProps) {
+export function MobileComingSoonRow({ onWatchTrailer, maxItems = 10 }: MobileComingSoonRowProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -34,14 +35,14 @@ export function MobileComingSoonRow({ onWatchTrailer }: MobileComingSoonRowProps
 
   // Fetch coming soon content
   const { data: comingSoon = [], isLoading } = useQuery({
-    queryKey: ["coming-soon"],
+    queryKey: ["coming-soon", maxItems],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("coming_soon")
         .select("*")
         .eq("is_active", true)
         .order("expected_release_date", { ascending: true })
-        .limit(10);
+        .limit(maxItems);
       if (error) throw error;
       return data || [];
     },
