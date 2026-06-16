@@ -157,7 +157,7 @@ export function MobileBottomNav() {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || 
             (item.path === "/" && location.pathname === "/");
-          const isDownloadsTab = item.path === "/downloads";
+          const isDownloadsTab = item.path === "/offline-downloads";
           
           return (
             <button
