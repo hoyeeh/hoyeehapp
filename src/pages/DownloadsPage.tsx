@@ -118,7 +118,7 @@ const DownloadsPage = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {items.map((item) => (
               <div
-                key={item.contentId}
+                key={`${item.source}:${item.contentId}:${item.episodeId ?? ""}`}
                 className="group rounded-lg overflow-hidden bg-card border border-border flex flex-col"
               >
                 <button
@@ -126,9 +126,9 @@ const DownloadsPage = () => {
                   className="relative aspect-[2/3] bg-muted overflow-hidden"
                   aria-label={`Play ${item.title}`}
                 >
-                  {item.poster ? (
+                  {item.thumbnailUrl ? (
                     <img
-                      src={item.poster}
+                      src={item.thumbnailUrl}
                       alt={item.title}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -138,6 +138,7 @@ const DownloadsPage = () => {
                       <Play className="h-10 w-10" />
                     </div>
                   )}
+
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity h-12 w-12 rounded-full bg-white/90 flex items-center justify-center">
                       <Play className="h-6 w-6 text-black fill-black" />
