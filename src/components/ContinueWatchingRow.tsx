@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 interface ContinueWatchingRowProps {
   onPlay: (content: Content, progress: number, episodeId?: string) => void;
   onDetails: (content: Content) => void;
+  maxItems?: number;
 }
 
 interface WatchHistoryItem {
@@ -49,7 +50,7 @@ interface WatchHistoryItem {
   } | null;
 }
 
-export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowProps) => {
+export const ContinueWatchingRow = ({ onPlay, onDetails, maxItems = 10 }: ContinueWatchingRowProps) => {
   const { user } = useAuth();
   const { currentProfile } = useProfileContext();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -186,8 +187,8 @@ export const ContinueWatchingRow = ({ onPlay, onDetails }: ContinueWatchingRowPr
         new Date(b.last_watched).getTime() - new Date(a.last_watched).getTime()
       );
 
-      // Limit to 10 items for display
-      return combinedHistory.slice(0, 10);
+      // Limit to maxItems for display
+      return combinedHistory.slice(0, maxItems);
     },
     enabled: !!user && !!currentProfile,
   });

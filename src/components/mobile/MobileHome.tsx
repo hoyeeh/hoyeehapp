@@ -675,7 +675,7 @@ export function MobileHome() {
               if (section.section_type === "ai_recommendations") {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
-                    <MobileAIRecommendations onDetails={handleDetails} />
+                    <MobileAIRecommendations onDetails={handleDetails} maxItems={section.max_items || 12} />
                   </FadeIn>
                 );
               }
@@ -704,6 +704,7 @@ export function MobileHome() {
                       onDetails={handleDetails}
                       cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
                       cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
+                      maxItems={section.max_items || 15}
                     />
                   </FadeIn>
                 );
@@ -713,7 +714,7 @@ export function MobileHome() {
               if (section.section_type === "coming_soon") {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>
-                    <MobileComingSoonRow />
+                    <MobileComingSoonRow maxItems={section.max_items || 10} />
                   </FadeIn>
                 );
               }
@@ -733,7 +734,7 @@ export function MobileHome() {
                   <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileContentRow
                       title={section.title}
-                      content={top10Content}
+                      content={top10Content.slice(0, section.max_items || 10)}
                       onDetails={handleDetails}
                       showRank
                       variant="poster"
@@ -748,7 +749,9 @@ export function MobileHome() {
 
               // My List section
               if (section.section_type === "my_list") {
-                const myListContent = content.filter((c) => watchlistIds.includes(c.id));
+                const myListContent = content
+                  .filter((c) => watchlistIds.includes(c.id))
+                  .slice(0, section.max_items || 15);
                 return myListContent.length > 0 ? (
                   <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileContentRow

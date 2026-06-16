@@ -13,6 +13,7 @@ interface AIRecommendationsRowProps {
   onToggleList: (content: Content) => void;
   onDetails: (content: Content) => void;
   userList: string[];
+  maxItems?: number;
 }
 
 interface AIRecommendation {
@@ -27,6 +28,7 @@ export const AIRecommendationsRow = ({
   onToggleList,
   onDetails,
   userList,
+  maxItems = 15,
 }: AIRecommendationsRowProps) => {
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
@@ -102,7 +104,7 @@ export const AIRecommendationsRow = ({
   // If we don't have enough matches, supplement with content from user's preferred genres
   const recommendedContent = useMemo(() => {
     if (matchedContent.length >= 5) {
-      return matchedContent.slice(0, 15);
+      return matchedContent.slice(0, maxItems);
     }
     
     // Get additional content based on view count and not in user's list
@@ -110,11 +112,11 @@ export const AIRecommendationsRow = ({
     const additionalContent = allContent
       .filter(c => !userList.includes(c.id) && !existingIds.has(c.id))
       .sort((a, b) => (b.duration || 0) - (a.duration || 0))
-      .slice(0, 15 - matchedContent.length)
+      .slice(0, maxItems - matchedContent.length)
       .map(c => ({ content: c, reason: "Recommended for you" }));
     
-    return [...matchedContent, ...additionalContent].slice(0, 15);
-  }, [matchedContent, allContent, userList]);
+    return [...matchedContent, ...additionalContent].slice(0, maxItems);
+  }, [matchedContent, allContent, userList, maxItems]);
 
   const displayName = currentProfile?.name || profile?.display_name || "You";
 

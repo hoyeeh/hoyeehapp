@@ -480,9 +480,9 @@ const Index = () => {
         // Return empty - we'll use the dedicated LeavingSoonRow component instead
         return [];
       case "recently_added":
-        return recentlyAddedContent;
+        return recentlyAddedContent.slice(0, section.max_items || 15);
       case "trending":
-        return trendingContentItems;
+        return trendingContentItems.slice(0, section.max_items || 20);
       case "genre":
         const genreName = section.genre?.name;
         if (!genreName) return [];
@@ -797,6 +797,7 @@ const Index = () => {
                           key={section.id}
                           onPlay={(c, progress) => setPlayingContent({ content: c, progress })}
                           onDetails={handleDetails}
+                          maxItems={section.max_items || 10}
                         />
                       );
                     }
@@ -808,6 +809,7 @@ const Index = () => {
                           key={section.id}
                           onPlay={handlePlay}
                           onDetails={handleDetails}
+                          maxItems={section.max_items || 20}
                         />
                       );
                     }
@@ -844,6 +846,7 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }
@@ -859,6 +862,7 @@ const Index = () => {
                           userList={watchlistIds}
                           cardStyle={(section.card_style as "poster" | "backdrop" | "wide" | "square" | "minimal") || "poster"}
                           cardSize={(section.card_size as "sm" | "md" | "lg") || "md"}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }
@@ -870,7 +874,7 @@ const Index = () => {
 
                     // Coming Soon section
                     if (section.section_type === "coming_soon") {
-                      return <ComingSoonRow key={section.id} />;
+                      return <ComingSoonRow key={section.id} maxItems={section.max_items || 15} />;
                     }
 
                     // AI Recommendations section
@@ -882,6 +886,7 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }
@@ -891,7 +896,7 @@ const Index = () => {
                       return top10Content.length > 0 ? (
                         <Top10Row
                           key={section.id}
-                          content={top10Content}
+                          content={top10Content.slice(0, section.max_items || 10)}
                           onPlay={handlePlay}
                           onDetails={handleDetails}
                         />
@@ -900,11 +905,14 @@ const Index = () => {
 
                     // My List section
                     if (section.section_type === "my_list") {
-                      return watchlistIds.length > 0 ? (
+                      const myListContent = content
+                        .filter((c) => watchlistIds.includes(c.id))
+                        .slice(0, section.max_items || 15);
+                      return myListContent.length > 0 ? (
                         <ContentRow
                           key={section.id}
                           title={section.title}
-                          content={content.filter((c) => watchlistIds.includes(c.id))}
+                          content={myListContent}
                           onPlay={handlePlay}
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
@@ -989,6 +997,7 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           myList={watchlistIds}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }

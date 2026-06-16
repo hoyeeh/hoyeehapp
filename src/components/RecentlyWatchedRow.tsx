@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 interface RecentlyWatchedRowProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
+  maxItems?: number;
 }
 
 interface RecentlyWatchedItem {
@@ -25,7 +26,7 @@ interface RecentlyWatchedItem {
   content: Content;
 }
 
-export function RecentlyWatchedRow({ onPlay, onDetails }: RecentlyWatchedRowProps) {
+export function RecentlyWatchedRow({ onPlay, onDetails, maxItems = 20 }: RecentlyWatchedRowProps) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -153,7 +154,7 @@ export function RecentlyWatchedRow({ onPlay, onDetails }: RecentlyWatchedRowProp
         }
       });
 
-      return items.slice(0, 20);
+      return items.slice(0, maxItems);
     },
     enabled: !!user,
     staleTime: 1000 * 60 * 5, // 5 minutes

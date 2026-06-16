@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 interface MobileAIRecommendationsProps {
   onDetails: (content: Content) => void;
+  maxItems?: number;
 }
 
 interface AIRecommendation {
@@ -18,7 +19,7 @@ interface AIRecommendation {
   type: "movie" | "series";
 }
 
-export function MobileAIRecommendations({ onDetails }: MobileAIRecommendationsProps) {
+export function MobileAIRecommendations({ onDetails, maxItems = 12 }: MobileAIRecommendationsProps) {
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
   const { data: allContent = [] } = useContent();
@@ -94,19 +95,18 @@ export function MobileAIRecommendations({ onDetails }: MobileAIRecommendationsPr
   // If we don't have enough matches, supplement with content from user's preferred genres
   const recommendedContent = useMemo(() => {
     if (matchedContent.length >= 5) {
-      return matchedContent.slice(0, 12);
+      return matchedContent.slice(0, maxItems);
     }
     
-    // Get additional content based on view count and not in user's list
     const existingIds = new Set(matchedContent.map(m => m.content.id));
     const additionalContent = allContent
       .filter(c => !watchlistIds.includes(c.id) && !existingIds.has(c.id))
       .sort((a, b) => (b.duration || 0) - (a.duration || 0))
-      .slice(0, 12 - matchedContent.length)
+      .slice(0, maxItems - matchedContent.length)
       .map(c => ({ content: c, reason: "Recommended for you" }));
     
-    return [...matchedContent, ...additionalContent].slice(0, 12);
-  }, [matchedContent, allContent, watchlistIds]);
+    return [...matchedContent, ...additionalContent].slice(0, maxItems);
+  }, [matchedContent, allContent, watchlistIds, maxItems]);
 
   const displayName = currentProfile?.name || profile?.display_name || "You";
 
