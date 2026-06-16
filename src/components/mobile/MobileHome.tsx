@@ -352,16 +352,11 @@ export function MobileHome() {
           .slice(0, section.max_items || 15);
       
       default:
-        // Generic fallback
-        let defaultFiltered = [...content];
-        if (section.content_type_filter === "movie") {
-          defaultFiltered = movies;
-        } else if (section.content_type_filter === "series") {
-          defaultFiltered = series;
-        }
-        return defaultFiltered
-          .sort((a, b) => (b.year || 0) - (a.year || 0))
-          .slice(0, section.max_items || 15);
+        // Unknown section types render nothing (mirrors desktop). Specialized
+        // section_types (continue_watching, purchases, top10, youtube, etc.)
+        // are rendered by their dedicated components below and don't rely on
+        // this helper for content.
+        return [];
     }
   };
 
