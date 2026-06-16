@@ -169,7 +169,7 @@ const DownloadsPage = () => {
                       size="icon"
                       variant="ghost"
                       className="min-h-[36px] min-w-[36px]"
-                      onClick={() => handleDelete(item.contentId)}
+                      onClick={() => handleDelete(item)}
                       aria-label={`Delete ${item.title}`}
                     >
                       <Trash2 className="h-4 w-4" />
