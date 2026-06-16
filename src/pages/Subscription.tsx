@@ -286,47 +286,63 @@ const Subscription = () => {
           <Card className="bg-card border-primary/20">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center">
-                <Crown className="h-8 w-8 text-primary" />
+                {hasFullAccess ? <Shield className="h-8 w-8 text-primary" /> : <Crown className="h-8 w-8 text-primary" />}
               </div>
-              <CardTitle className="text-2xl">You're a Premium Member!</CardTitle>
+              <CardTitle className="text-2xl">
+                {hasFullAccess ? "Admin Access — Unlimited" : "You're a Premium Member!"}
+              </CardTitle>
               <CardDescription>
-                Enjoy unlimited access to all our content
+                {hasFullAccess
+                  ? "Your admin role grants full access to all premium content. No subscription needed."
+                  : "Enjoy unlimited access to all our content"}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center space-y-6">
-              <p className="text-muted-foreground">
-                Your subscription is active until{" "}
-                <span className="text-foreground font-medium">
-                  {profile.subscription_expiry
-                    ? new Date(profile.subscription_expiry).toLocaleDateString()
-                    : "forever"}
-                </span>
-              </p>
-              
+              {!hasFullAccess && (
+                <p className="text-muted-foreground">
+                  Your subscription is active until{" "}
+                  <span className="text-foreground font-medium">
+                    {profile?.subscription_expiry
+                      ? new Date(profile.subscription_expiry).toLocaleDateString()
+                      : "forever"}
+                  </span>
+                </p>
+              )}
+              {isAdminUser && isImpersonating && (
+                <p className="text-xs text-amber-500">
+                  Impersonation mode is ON — toggle it off in the admin badge to restore full access.
+                </p>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button onClick={() => navigate("/")} className="gap-2">
                   Continue Watching
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleManageSubscription}
-                  disabled={loading}
-                  className="gap-2"
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Settings className="h-4 w-4" />
-                  )}
-                  Manage Subscription
-                </Button>
+                {!hasFullAccess && (
+                  <Button
+                    variant="outline"
+                    onClick={handleManageSubscription}
+                    disabled={loading}
+                    className="gap-2"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Settings className="h-4 w-4" />
+                    )}
+                    Manage Subscription
+                  </Button>
+                )}
               </div>
-              
-              <p className="text-xs text-muted-foreground">
-                Change payment method, view invoices, or cancel your subscription
-              </p>
+
+              {!hasFullAccess && (
+                <p className="text-xs text-muted-foreground">
+                  Change payment method, view invoices, or cancel your subscription
+                </p>
+              )}
             </CardContent>
           </Card>
+
         ) : (
           <>
             <div className="text-center mb-8">
