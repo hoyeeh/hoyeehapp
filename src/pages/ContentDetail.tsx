@@ -766,34 +766,44 @@ const ContentDetail = () => {
   // Playing main content (movie or TV show trailer) - only desktop
   if (playing && content && !isMobile) {
     const useVjs = newPlayerEnabled && !content.isPremium;
-    const resolvedSrc = content.videoUrl;
+    const isOffline =
+      searchParams.get('offline') === 'true' && !content.isPremium;
     return (
       <SecureVideoWrapper>
-        {useVjs ? (
-          <>
-            <VideoJSPlayerWithWatchParty
-              src={resolvedSrc}
-              contentId={content.id}
-              title={content.title}
-              thumbnail={content.thumbnailUrl}
-              autoplay
-              miniPlayerContent={content}
-              className="w-full h-screen bg-black"
-            />
-            <NewPlayerBadge surface="movie" />
-          </>
-        ) : (
-          <VideoPlayer
-            src={resolvedSrc}
-            title={content.title}
-            contentId={content.id}
-            initialProgress={0}
-            onBack={() => setPlaying(false)}
-          />
-        )}
+        <OfflinePlayerWrapper
+          contentId={content.id}
+          networkSrc={content.videoUrl}
+          isOffline={isOffline}
+        >
+          {(resolvedSrc) =>
+            useVjs ? (
+              <>
+                <VideoJSPlayerWithWatchParty
+                  src={resolvedSrc}
+                  contentId={content.id}
+                  title={content.title}
+                  thumbnail={content.thumbnailUrl}
+                  autoplay
+                  miniPlayerContent={content}
+                  className="w-full h-screen bg-black"
+                />
+                <NewPlayerBadge surface="movie" />
+              </>
+            ) : (
+              <VideoPlayer
+                src={resolvedSrc}
+                title={content.title}
+                contentId={content.id}
+                initialProgress={0}
+                onBack={() => setPlaying(false)}
+              />
+            )
+          }
+        </OfflinePlayerWrapper>
       </SecureVideoWrapper>
     );
   }
+
 
 
 
