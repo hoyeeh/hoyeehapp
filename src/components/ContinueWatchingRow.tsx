@@ -187,8 +187,8 @@ export const ContinueWatchingRow = ({ onPlay, onDetails, maxItems = 10 }: Contin
         new Date(b.last_watched).getTime() - new Date(a.last_watched).getTime()
       );
 
-      // Limit to 10 items for display
-      return combinedHistory.slice(0, 10);
+      // Limit to maxItems for display
+      return combinedHistory.slice(0, maxItems);
     },
     enabled: !!user && !!currentProfile,
   });
