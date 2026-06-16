@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useDatabase";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useSEO } from "@/hooks/useSEO";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, CreditCard, Smartphone, Check, ArrowLeft, Crown, Star, Sparkles, Settings } from "lucide-react";
+import { Loader2, CreditCard, Smartphone, Check, ArrowLeft, Crown, Star, Sparkles, Settings, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 // Currency conversion rates (approximate)
