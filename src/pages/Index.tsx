@@ -874,7 +874,7 @@ const Index = () => {
 
                     // Coming Soon section
                     if (section.section_type === "coming_soon") {
-                      return <ComingSoonRow key={section.id} />;
+                      return <ComingSoonRow key={section.id} maxItems={section.max_items || 15} />;
                     }
 
                     // AI Recommendations section
@@ -886,6 +886,7 @@ const Index = () => {
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
                           userList={watchlistIds}
+                          maxItems={section.max_items || 15}
                         />
                       );
                     }
@@ -895,7 +896,7 @@ const Index = () => {
                       return top10Content.length > 0 ? (
                         <Top10Row
                           key={section.id}
-                          content={top10Content}
+                          content={top10Content.slice(0, section.max_items || 10)}
                           onPlay={handlePlay}
                           onDetails={handleDetails}
                         />
@@ -904,11 +905,14 @@ const Index = () => {
 
                     // My List section
                     if (section.section_type === "my_list") {
-                      return watchlistIds.length > 0 ? (
+                      const myListContent = content
+                        .filter((c) => watchlistIds.includes(c.id))
+                        .slice(0, section.max_items || 15);
+                      return myListContent.length > 0 ? (
                         <ContentRow
                           key={section.id}
                           title={section.title}
-                          content={content.filter((c) => watchlistIds.includes(c.id))}
+                          content={myListContent}
                           onPlay={handlePlay}
                           onToggleList={handleToggleList}
                           onDetails={handleDetails}
