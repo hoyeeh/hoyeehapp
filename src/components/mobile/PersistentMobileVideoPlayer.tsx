@@ -64,6 +64,17 @@ export function PersistentMobileVideoPlayer() {
     closePlayer();
   }, [playerState.isKidsMode, playerState.content, logViewingHistory, closePlayer]);
 
+  // Transparently resolve offline blob URLs (legacy DRM-store wins, then
+  // the lightweight new store). Falls back to the network URL when nothing
+  // is downloaded. Lifecycle of the blob URL is managed by the hook.
+  // IMPORTANT: Must be called unconditionally before any early returns to
+  // preserve React hook order — otherwise the player renders as a blank screen.
+  const { src: resolvedVideoUrl, isResolving, isOffline } = useResolvedVideoSrc(
+    playerState.content?.id,
+    playerState.episodeId,
+    playerState.videoUrl,
+  );
+
   // Only render on mobile/tablet devices
   if (!isMobileDevice && !isTablet) {
     return null;
@@ -72,15 +83,6 @@ export function PersistentMobileVideoPlayer() {
   if (!playerState.isOpen || !playerState.content) {
     return null;
   }
-
-  // Transparently resolve offline blob URLs (legacy DRM-store wins, then
-  // the lightweight new store). Falls back to the network URL when nothing
-  // is downloaded. Lifecycle of the blob URL is managed by the hook.
-  const { src: resolvedVideoUrl, isResolving, isOffline } = useResolvedVideoSrc(
-    playerState.content?.id,
-    playerState.episodeId,
-    playerState.videoUrl,
-  );
 
   return (
     <AnimatePresence>
