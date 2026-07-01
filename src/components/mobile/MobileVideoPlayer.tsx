@@ -394,6 +394,19 @@ export function MobileVideoPlayer({
     };
   }, [resetControlsTimeout]);
 
+  // Auto-hide controls once playback starts; keep visible while paused.
+  useEffect(() => {
+    if (isPlaying) {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = setTimeout(() => {
+        if (!showSettings && !showCastSheet) setShowControls(false);
+      }, 1500);
+    } else {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      setShowControls(true);
+    }
+  }, [isPlaying, showSettings, showCastSheet]);
+
   // Skip intro visibility
   // Handle intro skip (auto or manual)
   useEffect(() => {
