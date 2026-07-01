@@ -347,6 +347,13 @@ export type Database = {
             referencedRelation: "content"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "coming_soon_sync_log_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       coming_soon_watchlist: {
@@ -518,6 +525,13 @@ export type Database = {
             referencedRelation: "content"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "content_lifecycle_logs_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       content_purchases: {
@@ -572,6 +586,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_purchases_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
           {
@@ -766,6 +787,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "creator_content_submissions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "creator_content_submissions_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
@@ -895,6 +923,13 @@ export type Database = {
             columns: ["imported_content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_imported_content_imported_content_id_fkey"
+            columns: ["imported_content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
           {
@@ -1342,10 +1377,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "download_licenses_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "download_licenses_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "download_licenses_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1835,6 +1884,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "free_content_analytics_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "free_content_analytics_section_id_fkey"
             columns: ["section_id"]
             isOneToOne: false
@@ -1933,6 +1989,13 @@ export type Database = {
             referencedRelation: "content"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "hero_banners_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       home_sections: {
@@ -2017,6 +2080,13 @@ export type Database = {
             columns: ["featured_content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "home_sections_featured_content_id_fkey"
+            columns: ["featured_content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
           {
@@ -2240,6 +2310,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kids_approved_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "kids_approved_content_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -2315,6 +2392,13 @@ export type Database = {
             referencedRelation: "content"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kids_content_categories_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       kids_content_restrictions: {
@@ -2357,6 +2441,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kids_content_restrictions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "kids_content_restrictions_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -2396,6 +2487,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kids_viewing_history_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
           {
@@ -2565,6 +2663,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -2626,6 +2731,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: true
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: true
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
           {
@@ -3052,6 +3164,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -3154,6 +3273,13 @@ export type Database = {
             referencedRelation: "content"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "seasons_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       section_content: {
@@ -3184,6 +3310,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
           {
@@ -3220,6 +3353,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "series_subscriptions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3434,10 +3574,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "subtitle_generation_logs_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "subtitle_generation_logs_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtitle_generation_logs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3533,10 +3687,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "subtitle_sync_jobs_current_content_id_fkey"
+            columns: ["current_content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "subtitle_sync_jobs_current_episode_id_fkey"
             columns: ["current_episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtitle_sync_jobs_current_episode_id_fkey"
+            columns: ["current_episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3635,10 +3803,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "subtitles_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "subtitles_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtitles_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes_public"
             referencedColumns: ["id"]
           },
           {
@@ -3772,6 +3954,13 @@ export type Database = {
             referencedRelation: "content"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "top_10_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: true
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       transcoding_jobs: {
@@ -3829,6 +4018,13 @@ export type Database = {
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transcoding_jobs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4070,6 +4266,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "watch_history_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "watch_history_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -4127,10 +4330,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "watch_parties_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "watch_parties_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watch_parties_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4224,6 +4441,13 @@ export type Database = {
             columns: ["content_id"]
             isOneToOne: false
             referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watchlist_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4473,6 +4697,90 @@ export type Database = {
       }
     }
     Views: {
+      content_public: {
+        Row: {
+          admin_override: boolean | null
+          age_limit: number | null
+          cast_members: Json | null
+          content_rating: string | null
+          content_type: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          director: string | null
+          duration: number | null
+          expires_at: string | null
+          genre: string | null
+          id: string | null
+          is_premium: boolean | null
+          lifecycle_reason: string | null
+          lifecycle_status: string | null
+          lifecycle_updated_at: string | null
+          rating: string | null
+          thumbnail_url: string | null
+          title: string | null
+          tmdb_id: number | null
+          updated_at: string | null
+          view_count: number | null
+          views_last_30_days: number | null
+          year: number | null
+        }
+        Insert: {
+          admin_override?: boolean | null
+          age_limit?: number | null
+          cast_members?: Json | null
+          content_rating?: string | null
+          content_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          director?: string | null
+          duration?: number | null
+          expires_at?: string | null
+          genre?: string | null
+          id?: string | null
+          is_premium?: boolean | null
+          lifecycle_reason?: string | null
+          lifecycle_status?: string | null
+          lifecycle_updated_at?: string | null
+          rating?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          tmdb_id?: number | null
+          updated_at?: string | null
+          view_count?: number | null
+          views_last_30_days?: number | null
+          year?: number | null
+        }
+        Update: {
+          admin_override?: boolean | null
+          age_limit?: number | null
+          cast_members?: Json | null
+          content_rating?: string | null
+          content_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          director?: string | null
+          duration?: number | null
+          expires_at?: string | null
+          genre?: string | null
+          id?: string | null
+          is_premium?: boolean | null
+          lifecycle_reason?: string | null
+          lifecycle_status?: string | null
+          lifecycle_updated_at?: string | null
+          rating?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          tmdb_id?: number | null
+          updated_at?: string | null
+          view_count?: number | null
+          views_last_30_days?: number | null
+          year?: number | null
+        }
+        Relationships: []
+      }
       creator_profiles_public: {
         Row: {
           avatar_url: string | null
@@ -4514,6 +4822,65 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      episodes_public: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          duration: number | null
+          episode_number: number | null
+          id: string | null
+          intro_end_time: number | null
+          intro_start_time: number | null
+          is_premium: boolean | null
+          recap_end_time: number | null
+          recap_start_time: number | null
+          season_id: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          episode_number?: number | null
+          id?: string | null
+          intro_end_time?: number | null
+          intro_start_time?: number | null
+          is_premium?: boolean | null
+          recap_end_time?: number | null
+          recap_start_time?: number | null
+          season_id?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          episode_number?: number | null
+          id?: string | null
+          intro_end_time?: number | null
+          intro_start_time?: number | null
+          is_premium?: boolean | null
+          recap_end_time?: number | null
+          recap_start_time?: number | null
+          season_id?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episodes_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles_safe: {
         Row: {
