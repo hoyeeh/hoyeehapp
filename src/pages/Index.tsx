@@ -224,7 +224,8 @@ const Index = () => {
         contentType: item.content.content_type as "movie" | "series",
         isPremium: item.content.is_premium || false,
         duration: item.content.duration || 0,
-        year: item.content.year,
+        year: item.content.year ?? item.content.release_year,
+
       } as Content,
     }));
 
