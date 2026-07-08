@@ -119,32 +119,49 @@ const PinAuth = () => {
       
       setIsLoading(true);
       try {
-        // Create account with temporary email/password
-        const tempEmail = `${formData.mobileNumber.replace(/\+/g, '')}@hoyeeh.pin`;
-        const tempPassword = `pin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        // Create account with a deterministic temp email tied to mobile (use .app - valid TLD)
+        const cleanMobile = formData.mobileNumber.replace(/[^0-9]/g, '');
+        const tempEmail = `pin_${cleanMobile}@hoyeeh.app`;
+        const tempPassword = `Pin_${cleanMobile}_${Math.random().toString(36).slice(2, 10)}!A9`;
         
-        const { error: signUpError } = await signUp(tempEmail, tempPassword, formData.name.trim());
+        // Sign up directly so we get the returned session/user immediately
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: tempEmail,
+          password: tempPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: { display_name: formData.name.trim() },
+          },
+        });
         
         if (signUpError) {
-          if (signUpError.message.includes('already registered')) {
-            toast.error("This mobile number is already registered");
+          if (signUpError.message.toLowerCase().includes('already') || signUpError.message.toLowerCase().includes('registered')) {
+            toast.error("This mobile number is already registered. Please sign in.");
           } else {
-            toast.error("Failed to create account. Please try again.");
+            console.error('signUp error:', signUpError);
+            toast.error(signUpError.message || "Failed to create account. Please try again.");
           }
           setIsLoading(false);
           return;
         }
         
-        // Wait for user to be created and get their ID
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          toast.error("Failed to create account. Please try again.");
-          setIsLoading(false);
-          return;
+        // Ensure an active session exists (auto_confirm should provide one; fallback to signIn)
+        let session = signUpData.session;
+        if (!session) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: tempEmail,
+            password: tempPassword,
+          });
+          if (signInError || !signInData.session) {
+            console.error('post-signup sign-in error:', signInError);
+            toast.error("Account created but sign-in failed. Please try again.");
+            setIsLoading(false);
+            return;
+          }
+          session = signInData.session;
         }
         
-        // Use secure edge function to register PIN data (PIN never sent in plaintext to DB)
+        // Call secure edge function to register PIN data (hashed server-side)
         const { data, error: registerError } = await supabase.functions.invoke('register-pin', {
           body: {
             mobileNumber: formData.mobileNumber,
@@ -154,9 +171,10 @@ const PinAuth = () => {
           }
         });
 
-        if (registerError || data?.error) {
+        if (registerError || (data && data.error)) {
+          const errMsg = (data && data.error) || registerError?.message || "Failed to complete registration.";
           console.error('PIN registration error:', registerError || data?.error);
-          toast.error(data?.error || "Failed to complete registration. Please try again.");
+          toast.error(errMsg);
           setIsLoading(false);
           return;
         }
