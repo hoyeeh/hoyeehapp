@@ -105,40 +105,58 @@ export const MobileAuth = () => {
     try {
       // For PIN registration, create account with just the name (no email/password required)
       if (isRegistering && pinAuthData) {
-        // Create a temporary email based on mobile number for PIN-only users
-        const tempEmail = `${pinAuthData.mobileNumber.replace(/[^0-9]/g, '')}@hoyeeh.pin`;
-        const tempPassword = `pin_${pinAuthData.pin}_${Date.now()}`;
+        const cleanMobile = pinAuthData.mobileNumber.replace(/[^0-9]/g, '');
+        const tempEmail = `pin_${cleanMobile}@hoyeeh.app`;
+        const tempPassword = `Pin_${cleanMobile}_${Math.random().toString(36).slice(2, 10)}!A9`;
         
-        const { error } = await signUp(tempEmail, tempPassword, formData.name);
-        if (error) {
-          toast.error(error.message);
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+          email: tempEmail,
+          password: tempPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: { display_name: formData.name },
+          },
+        });
+        
+        if (signUpErr) {
+          toast.error(signUpErr.message);
           setIsLoading(false);
           return;
         }
         
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { error: updateError } = await supabase
-            .from("profiles")
-            .update({
-              display_name: formData.name,
-              mobile_number: pinAuthData.mobileNumber,
-              pin_code: pinAuthData.pin,
-              secret_word: pinAuthData.secretWord,
-            })
-            .eq("id", user.id);
-
-          if (updateError) {
-            console.error('Failed to update profile with PIN data:', updateError);
-            toast.error("Account created but PIN setup failed.");
-          } else {
-            toast.success("Account created successfully!");
+        let session = signUpData.session;
+        if (!session) {
+          const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+            email: tempEmail,
+            password: tempPassword,
+          });
+          if (signInErr || !signInData.session) {
+            toast.error("Account created but sign-in failed. Please try again.");
+            setIsLoading(false);
+            return;
           }
-          
-        sessionStorage.removeItem('pinAuthData');
+          session = signInData.session;
         }
+        
+        const { data: rpData, error: rpErr } = await supabase.functions.invoke('register-pin', {
+          body: {
+            mobileNumber: pinAuthData.mobileNumber,
+            pin: pinAuthData.pin,
+            secretWord: pinAuthData.secretWord,
+            displayName: formData.name,
+          },
+        });
+
+        if (rpErr || (rpData && rpData.error)) {
+          const msg = (rpData && rpData.error) || rpErr?.message || "PIN setup failed.";
+          console.error('register-pin error:', rpErr || rpData?.error);
+          toast.error(msg);
+          setIsLoading(false);
+          return;
+        }
+        
+        toast.success("Account created successfully!");
+        sessionStorage.removeItem('pinAuthData');
         
         // Clear current profile to force profile selection
         localStorage.removeItem("hoyeeh_current_profile");
