@@ -103,18 +103,30 @@ const Index = () => {
   const { data: userPurchases = [] } = useUserPurchases();
 
 
-  // Fetch Top 10 content
+  // Fetch Top 10 content — use content_public view so anonymous visitors
+  // (who no longer have SELECT on the base `content` table) still see the row.
   const { data: top10Data = [] } = useQuery({
     queryKey: ["top-10-display"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: ranks, error: ranksErr } = await supabase
         .from("top_10")
-        .select(`id, rank, content:content_id (id, title, description, thumbnail_url, video_url, genre, content_type, is_premium, duration, year)`)
+        .select("id, rank, content_id")
         .order("rank");
-      if (error) throw error;
-      return data || [];
+      if (ranksErr) throw ranksErr;
+      const ids = (ranks || []).map((r: any) => r.content_id).filter(Boolean);
+      if (ids.length === 0) return [];
+      const { data: items, error: itemsErr } = await supabase
+        .from("content_public" as any)
+        .select("id, title, description, thumbnail_url, genre, content_type, is_premium, duration, release_year")
+        .in("id", ids);
+      if (itemsErr) throw itemsErr;
+      const byId = new Map((items || []).map((c: any) => [c.id, c]));
+      return (ranks || [])
+        .map((r: any) => ({ id: r.id, rank: r.rank, content: byId.get(r.content_id) || null }))
+        .filter((r: any) => r.content);
     },
   });
+
 
   // Fetch home sections config - filter for desktop display
   const { data: homeSections = [] } = useQuery({
