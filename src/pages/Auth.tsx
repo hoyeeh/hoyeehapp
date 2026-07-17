@@ -150,7 +150,9 @@ const Auth = () => {
         
         // Clear current profile to force profile selection
         localStorage.removeItem("hoyeeh_current_profile");
-        navigate("/profiles");
+        setShowWelcome(true);
+        setIsLoading(false);
+        return;
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
