@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { MobileAuth } from "@/components/mobile/MobileAuth";
+import { MobileWelcomeScreen } from "@/components/mobile/MobileWelcomeScreen";
 
 interface PinAuthData {
   mobileNumber: string;
@@ -32,6 +33,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [pinAuthData, setPinAuthData] = useState<PinAuthData | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   
   const [formData, setFormData] = useState({
     email: "",
@@ -148,7 +150,9 @@ const Auth = () => {
         
         // Clear current profile to force profile selection
         localStorage.removeItem("hoyeeh_current_profile");
-        navigate("/profiles");
+        setShowWelcome(true);
+        setIsLoading(false);
+        return;
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
@@ -170,6 +174,15 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  if (showWelcome) {
+    return (
+      <MobileWelcomeScreen
+        userName={formData.name.trim() || "there"}
+        onStartExploring={() => navigate("/profiles")}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
