@@ -179,9 +179,11 @@ export const MobileAuth = () => {
         }
         
         toast.success("Account created successfully!");
-        // Clear current profile to force profile selection
+        // Clear current profile to force profile selection on next entry
         localStorage.removeItem("hoyeeh_current_profile");
-        navigate("/profiles");
+        setShowWelcome(true);
+        setIsLoading(false);
+        return;
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
