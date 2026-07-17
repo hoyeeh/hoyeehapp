@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { MobileAuth } from "@/components/mobile/MobileAuth";
+import { MobileWelcomeScreen } from "@/components/mobile/MobileWelcomeScreen";
 
 interface PinAuthData {
   mobileNumber: string;
