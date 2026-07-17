@@ -14,8 +14,10 @@ type AuthMode = "login" | "register" | "reset-pin";
 
 const PinAuth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signUp } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const initialMode: AuthMode = (location.state as any)?.initialMode === "register" ? "register" : "login";
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [showWelcome, setShowWelcome] = useState(false);
