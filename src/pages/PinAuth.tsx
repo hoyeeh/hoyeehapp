@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,10 @@ type AuthMode = "login" | "register" | "reset-pin";
 
 const PinAuth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signUp } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const initialMode: AuthMode = (location.state as any)?.initialMode === "register" ? "register" : "login";
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [showWelcome, setShowWelcome] = useState(false);

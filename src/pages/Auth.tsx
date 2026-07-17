@@ -312,10 +312,16 @@ const Auth = () => {
 
           <div className="mt-6 pt-6 border-t border-border text-center">
             <button
-              onClick={() => navigate("/pin-auth")}
+              onClick={() =>
+                navigate("/pin-auth", {
+                  state: { initialMode: isRegistering ? "register" : "login" },
+                })
+              }
               className="text-brand hover:underline font-medium"
             >
-              Sign in with PIN instead
+              {isRegistering
+                ? "Sign up with Mobile Number & PIN"
+                : "Sign in with Mobile Number & PIN"}
             </button>
           </div>
         </div>
