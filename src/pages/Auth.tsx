@@ -33,6 +33,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [pinAuthData, setPinAuthData] = useState<PinAuthData | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   
   const [formData, setFormData] = useState({
     email: "",
