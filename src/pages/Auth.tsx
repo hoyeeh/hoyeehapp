@@ -175,6 +175,15 @@ const Auth = () => {
     }
   };
 
+  if (showWelcome) {
+    return (
+      <MobileWelcomeScreen
+        userName={formData.name.trim() || "there"}
+        onStartExploring={() => navigate("/profiles")}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
