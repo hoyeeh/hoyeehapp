@@ -1,6 +1,9 @@
-// AI Homepage Audit — daily cron. Snapshots home_sections, content, and
-// engagement, asks Lovable AI for proposals, writes them to homepage_ai_suggestions.
+// AI Homepage Audit — scheduled + on-demand.
+// Snapshots home_sections, catalog, internal engagement AND real-world TMDB trends,
+// asks Lovable AI for proposals, writes them to homepage_ai_suggestions and
+// (when autopilot is on) applies high-confidence ones automatically.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { applyHomepageSuggestion } from "../_shared/homepageSuggestions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +29,21 @@ Deno.serve(async (req) => {
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) throw new Error("Missing LOVABLE_API_KEY");
 
+    // 0. Refresh external trends first (best effort — audit still runs on failure)
+    try {
+      const syncUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/tmdb-trends-sync`;
+      await fetch(syncUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: "{}",
+      });
+    } catch (e) {
+      console.error("Trend sync failed (continuing)", e);
+    }
+
     // 1. Snapshot sections
     const { data: sections, error: secErr } = await supabase
       .from("home_sections")
@@ -45,7 +63,7 @@ Deno.serve(async (req) => {
     // 3. Genre catalog summary
     const { data: genres } = await supabase.from("genres").select("id,name");
 
-    // 4. Trending genres (last 30d)
+    // 4. Trending genres internally (last 30d)
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
     const { data: watch } = await supabase
       .from("watch_history")
@@ -62,7 +80,34 @@ Deno.serve(async (req) => {
       .slice(0, 8)
       .map(([g, c]) => ({ genre: g, views: c }));
 
-    // 5. Heal: detect gap sections (curated only — auto sections fill themselves)
+    // 5. External (TMDB) trends
+    const { data: trends } = await supabase
+      .from("external_trends")
+      .select("title,media_type,genres,popularity,vote_average,trend_rank,trend_window,is_owned,content_id")
+      .order("trend_rank")
+      .limit(300);
+
+    const ownedTrends = (trends ?? []).filter((t: any) => t.is_owned && t.content_id);
+    // De-duplicate owned titles, keep the best rank
+    const ownedByContent = new Map<string, any>();
+    for (const t of ownedTrends) {
+      const existing = ownedByContent.get(t.content_id);
+      if (!existing || t.trend_rank < existing.trend_rank) ownedByContent.set(t.content_id, t);
+    }
+    const ownedList = [...ownedByContent.values()].sort((a, b) => a.trend_rank - b.trend_rank);
+
+    const externalGenreCounts: Record<string, number> = {};
+    (trends ?? []).forEach((t: any) => {
+      (t.genres ?? []).forEach((g: string) => {
+        externalGenreCounts[g] = (externalGenreCounts[g] ?? 0) + 1;
+      });
+    });
+    const globalHotGenres = Object.entries(externalGenreCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([g, c]) => ({ genre: g, titles: c }));
+
+    // 6. Heal: detect gap sections (curated only — auto sections fill themselves)
     const healHints: Suggestion[] = [];
     for (const s of sections ?? []) {
       const max = s.max_items ?? 20;
@@ -88,7 +133,37 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. Ask AI for new sections + reorder
+    // 7. Deterministic trend-driven content swap for curated "trending"-style sections
+    const trendSwaps: Suggestion[] = [];
+    if (ownedList.length >= 5) {
+      const trendingSection = (sections ?? []).find(
+        (s: any) =>
+          s.is_curated &&
+          s.is_active &&
+          /trend|popular|hot|worldwide/i.test(s.title ?? ""),
+      );
+      if (trendingSection) {
+        const max = Math.max(1, Number(trendingSection.max_items) || 20);
+        trendSwaps.push({
+          suggestion_type: "content_swap",
+          target_section_id: trendingSection.id,
+          proposed_payload: {
+            section_id: trendingSection.id,
+            content_ids: ownedList.slice(0, max).map((t) => t.content_id),
+            titles: ownedList.slice(0, max).map((t) => t.title),
+            source: "tmdb_trending",
+          },
+          reason: `Refresh "${trendingSection.title}" with the ${Math.min(max, ownedList.length)} titles trending worldwide right now that we already have in the library.`,
+          priority: 9,
+        });
+      }
+    }
+
+    // 8. Ask AI for new sections + reorder, grounded in owned trending titles
+    const ownedForPrompt = ownedList.slice(0, 40).map(
+      (t) => `- ${t.title} (${t.media_type}, rank ${t.trend_rank} in ${t.trend_window}, score ${t.vote_average}) id=${t.content_id}`,
+    );
+
     const prompt = `You are a homepage curator for a Netflix-style streaming app.
 
 Current sections (title | type | active | max_items | actual_items):
@@ -96,20 +171,29 @@ ${(sections ?? []).map((s: any) => `- ${s.title} | ${s.section_type} | ${s.is_ac
 
 Available genres: ${(genres ?? []).map((g: any) => g.name).join(", ")}
 
-Trending genres (last 30d by views):
+Internal trending genres (last 30d by views):
 ${trendingGenres.map((t) => `- ${t.genre}: ${t.views}`).join("\n") || "- (no data)"}
+
+Real-world trending genres right now (TMDB):
+${globalHotGenres.map((t) => `- ${t.genre}: ${t.titles} trending titles`).join("\n") || "- (no data)"}
+
+Titles trending worldwide THAT WE OWN (use only these content ids):
+${ownedForPrompt.join("\n") || "- (none matched our catalog)"}
 
 Propose up to 5 improvements as a strict JSON array. Each item:
 {
-  "suggestion_type": "new_section" | "reorder",
+  "suggestion_type": "new_section" | "reorder" | "content_swap",
+  "target_section_id": "<uuid, required for content_swap>",
   "proposed_payload": { ... },
   "reason": "short admin-facing explanation",
   "priority": 1-10
 }
 
-For "new_section": payload = { title, section_type ('genre'|'trending'|'recently_added'|'top10'|'recommendations'|'continue_watching'|'because_you_watched'|'top_in_country'|'new_releases_for_you'|'ai_recommendations'), genre_name?, max_items (10-20), card_style ('full'|'poster'|'wide'), card_size ('sm'|'md'|'lg') }
+For "new_section": payload = { title, section_type ('genre'|'trending'|'recently_added'|'top10'|'recommendations'|'continue_watching'|'because_you_watched'|'top_in_country'|'new_releases_for_you'|'ai_recommendations'), genre_name?, max_items (10-20), card_style ('full'|'poster'|'wide'), card_size ('sm'|'md'|'lg'), content_ids? (only ids listed above) }
 For "reorder": payload = { ordered_titles: [exact existing section titles in desired top-to-bottom order] }
+For "content_swap": payload = { section_id, content_ids: [ids from the owned-trending list, best first] }
 
+Rules: never invent content ids. Never propose a section that would be empty. Do not change max_items of existing sections.
 Only return the JSON array.`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -145,15 +229,38 @@ Only return the JSON array.`;
       console.error("Failed to parse AI response", e);
     }
 
-    // 7. Validate + insert
+    // 9. Validate + insert (AI may only reference content ids we own & sections that exist)
+    const ownedIds = new Set(ownedList.map((t) => t.content_id));
+    const sectionIds = new Set((sections ?? []).map((s: any) => s.id));
+
     const valid: any[] = [];
-    for (const s of [...healHints, ...aiSuggestions]) {
+    for (const s of [...healHints, ...trendSwaps, ...aiSuggestions]) {
       if (!s?.suggestion_type) continue;
       if (!["heal", "new_section", "reorder", "content_swap"].includes(s.suggestion_type)) continue;
+
+      const payload: any = { ...(s.proposed_payload ?? {}) };
+
+      if (Array.isArray(payload.content_ids)) {
+        payload.content_ids = payload.content_ids.filter((id: string) => ownedIds.has(id));
+      }
+      if (s.suggestion_type === "content_swap") {
+        const sectionId = s.target_section_id ?? payload.section_id;
+        if (!sectionId || !sectionIds.has(sectionId)) continue;
+        if (!Array.isArray(payload.content_ids) || payload.content_ids.length === 0) continue;
+        payload.section_id = sectionId;
+        s.target_section_id = sectionId;
+      }
+      if (s.suggestion_type === "new_section") {
+        if (!payload.title) continue;
+        if (Array.isArray(payload.content_ids) && payload.content_ids.length === 0) {
+          delete payload.content_ids;
+        }
+      }
+
       valid.push({
         suggestion_type: s.suggestion_type,
         target_section_id: s.target_section_id ?? null,
-        proposed_payload: s.proposed_payload ?? {},
+        proposed_payload: payload,
         reason: (s.reason ?? "").slice(0, 1000),
         priority: Math.max(1, Math.min(10, Number(s.priority) || 5)),
         status: "pending",
@@ -167,15 +274,50 @@ Only return the JSON array.`;
       .eq("status", "pending")
       .lt("expires_at", new Date().toISOString());
 
+    let insertedRows: any[] = [];
     if (valid.length > 0) {
-      const { error: insErr } = await supabase
+      const { data: ins, error: insErr } = await supabase
         .from("homepage_ai_suggestions")
-        .insert(valid);
+        .insert(valid)
+        .select("id,suggestion_type,priority");
       if (insErr) console.error("Insert error", insErr);
+      else insertedRows = ins ?? [];
+    }
+
+    // 10. Autopilot — auto-apply high-confidence suggestions of allowed types
+    let autoApplied = 0;
+    const { data: settings } = await supabase
+      .from("ai_homepage_settings")
+      .select("*")
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+
+    if (settings?.autopilot_enabled) {
+      const threshold = Number(settings.confidence_threshold ?? 8);
+      const allowed: string[] = settings.allowed_types ?? ["content_swap"];
+      for (const row of insertedRows) {
+        if (!allowed.includes(row.suggestion_type)) continue;
+        if (Number(row.priority) < threshold) continue;
+        try {
+          await applyHomepageSuggestion(supabase, row.id, null, true);
+          autoApplied++;
+        } catch (e) {
+          console.error("Autopilot apply failed", row.id, e);
+        }
+      }
     }
 
     return new Response(
-      JSON.stringify({ ok: true, inserted: valid.length, ai_count: aiSuggestions.length, heal_count: healHints.length }),
+      JSON.stringify({
+        ok: true,
+        inserted: valid.length,
+        ai_count: aiSuggestions.length,
+        heal_count: healHints.length,
+        trend_swaps: trendSwaps.length,
+        owned_trending: ownedList.length,
+        auto_applied: autoApplied,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
