@@ -38,6 +38,86 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_homepage_change_log: {
+        Row: {
+          applied_by: string | null
+          applied_payload: Json
+          auto_applied: boolean
+          created_at: string
+          id: string
+          previous_state: Json
+          reverted_at: string | null
+          reverted_by: string | null
+          suggestion_id: string | null
+          suggestion_type: string
+          target_section_id: string | null
+        }
+        Insert: {
+          applied_by?: string | null
+          applied_payload?: Json
+          auto_applied?: boolean
+          created_at?: string
+          id?: string
+          previous_state?: Json
+          reverted_at?: string | null
+          reverted_by?: string | null
+          suggestion_id?: string | null
+          suggestion_type: string
+          target_section_id?: string | null
+        }
+        Update: {
+          applied_by?: string | null
+          applied_payload?: Json
+          auto_applied?: boolean
+          created_at?: string
+          id?: string
+          previous_state?: Json
+          reverted_at?: string | null
+          reverted_by?: string | null
+          suggestion_id?: string | null
+          suggestion_type?: string
+          target_section_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_homepage_change_log_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "homepage_ai_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_homepage_settings: {
+        Row: {
+          allowed_types: string[]
+          autopilot_enabled: boolean
+          confidence_threshold: number
+          created_at: string
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed_types?: string[]
+          autopilot_enabled?: boolean
+          confidence_threshold?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed_types?: string[]
+          autopilot_enabled?: boolean
+          confidence_threshold?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1780,6 +1860,81 @@ export type Database = {
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_trends: {
+        Row: {
+          content_id: string | null
+          created_at: string
+          fetched_at: string
+          genres: string[]
+          id: string
+          imdb_id: string | null
+          is_owned: boolean
+          media_type: string
+          popularity: number
+          poster_path: string | null
+          release_year: number | null
+          source: string
+          title: string
+          tmdb_id: number
+          trend_rank: number
+          trend_window: string
+          vote_average: number
+        }
+        Insert: {
+          content_id?: string | null
+          created_at?: string
+          fetched_at?: string
+          genres?: string[]
+          id?: string
+          imdb_id?: string | null
+          is_owned?: boolean
+          media_type: string
+          popularity?: number
+          poster_path?: string | null
+          release_year?: number | null
+          source?: string
+          title: string
+          tmdb_id: number
+          trend_rank?: number
+          trend_window?: string
+          vote_average?: number
+        }
+        Update: {
+          content_id?: string | null
+          created_at?: string
+          fetched_at?: string
+          genres?: string[]
+          id?: string
+          imdb_id?: string | null
+          is_owned?: boolean
+          media_type?: string
+          popularity?: number
+          poster_path?: string | null
+          release_year?: number | null
+          source?: string
+          title?: string
+          tmdb_id?: number
+          trend_rank?: number
+          trend_window?: string
+          vote_average?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_trends_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_trends_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_public"
             referencedColumns: ["id"]
           },
         ]
