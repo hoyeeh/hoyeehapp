@@ -25,6 +25,7 @@ export function MobileAIRecommendations({ onDetails, maxItems = 12 }: MobileAIRe
   const { data: profile } = useProfile();
   const { data: allContent = [] } = useContent();
   const { data: watchlistIds = [] } = useWatchlist();
+  const { getReason } = useAIPickReasons();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["mobile-ai-recommendations", currentProfile?.id],
