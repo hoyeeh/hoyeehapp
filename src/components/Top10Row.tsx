@@ -6,9 +6,10 @@ interface Top10RowProps {
   content: Array<{ rank: number; content: Content }>;
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
+  title?: string;
 }
 
-export const Top10Row = ({ content, onPlay, onDetails }: Top10RowProps) => {
+export const Top10Row = ({ content, onPlay, onDetails, title }: Top10RowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
@@ -26,7 +27,13 @@ export const Top10Row = ({ content, onPlay, onDetails }: Top10RowProps) => {
   return (
     <section className="mb-8">
       <h2 className="font-display text-xl md:text-2xl mb-4 px-4 md:px-12 flex items-center gap-2">
-        <span className="text-brand">Top 10</span> in Hoyeeh Today
+        {title ? (
+          title
+        ) : (
+          <>
+            <span className="text-brand">Top 10</span> in Hoyeeh Today
+          </>
+        )}
       </h2>
       
       <div className="relative group/row">

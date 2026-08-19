@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useProfile, useContent, useWatchlist } from "@/hooks/useDatabase";
+import { useAIPickReasons } from "@/hooks/useAIPickReasons";
 import { Content } from "@/types";
 import { Loader2, Sparkles, RefreshCw, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export function MobileAIRecommendations({ onDetails, maxItems = 12 }: MobileAIRe
   const { data: profile } = useProfile();
   const { data: allContent = [] } = useContent();
   const { data: watchlistIds = [] } = useWatchlist();
+  const { getReason } = useAIPickReasons();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["mobile-ai-recommendations", currentProfile?.id],
@@ -139,45 +141,50 @@ export function MobileAIRecommendations({ onDetails, maxItems = 12 }: MobileAIRe
           className="flex gap-4 overflow-x-auto scrollbar-hide px-4 pb-2"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {recommendedContent.map(({ content, reason }) => (
-            <div
-              key={content.id}
-              className="flex-shrink-0 w-64 active:scale-95 transition-transform"
-              onClick={() => onDetails(content)}
-            >
-              <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
-                <img
-                  src={content.thumbnailUrl}
-                  alt={content.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
-                
-                {/* AI Badge */}
-                <div className="absolute top-2 right-2 bg-brand/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  <span className="text-[10px] font-medium">AI Pick</span>
-                </div>
+          {recommendedContent.map(({ content, reason }) => {
+            const why = getReason(content.id, reason);
+            return (
+              <div
+                key={content.id}
+                className="flex-shrink-0 w-64 active:scale-95 transition-transform"
+                onClick={() => onDetails(content)}
+              >
+                <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-secondary shadow-lg ring-1 ring-border/10">
+                  <img
+                    src={content.thumbnailUrl}
+                    alt={content.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
 
-                {content.isPremium && (
-                  <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-[10px] font-semibold text-primary-foreground">
-                    PRO
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+
+                  {/* AI Badge */}
+                  <div className="absolute top-2 right-2 bg-brand/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    <span className="text-[10px] font-medium">AI Pick</span>
                   </div>
-                )}
-                
-                {/* Title overlay at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <h3 className="font-semibold text-sm line-clamp-2 text-foreground">{content.title}</h3>
-                  {content.genre && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{content.genre.split(',')[0]}</p>
+
+                  {content.isPremium && (
+                    <div className="absolute top-2 left-2 bg-brand px-2 py-0.5 rounded text-[10px] font-semibold text-primary-foreground">
+                      PRO
+                    </div>
                   )}
+
+                  {/* Title + why it was suggested */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <h3 className="font-semibold text-sm line-clamp-1 text-foreground">{content.title}</h3>
+                    {why && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                        {why.label} · {why.confidence}% match
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>

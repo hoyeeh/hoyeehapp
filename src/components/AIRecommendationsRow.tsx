@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useProfile, useContent } from "@/hooks/useDatabase";
+import { useAIPickReasons } from "@/hooks/useAIPickReasons";
 import { Content } from "@/types";
 import { Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
@@ -33,6 +34,7 @@ export const AIRecommendationsRow = ({
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
   const { data: allContent = [] } = useContent();
+  const { getReason } = useAIPickReasons();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["ai-recommendations", currentProfile?.id],
@@ -151,31 +153,37 @@ export const AIRecommendationsRow = ({
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-          {recommendedContent.map(({ content, reason }) => (
-            <div
-              key={content.id}
-              className="flex-shrink-0 w-48 md:w-56 group cursor-pointer"
-              onClick={() => onDetails(content)}
-            >
-              <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-secondary shadow-lg ring-0 group-hover:ring-2 ring-brand/50 transition-all">
-                <img
-                  src={content.thumbnailUrl}
-                  alt={content.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                
-                {/* AI Badge - Hidden per user request */}
+          {recommendedContent.map(({ content, reason }) => {
+            const why = getReason(content.id, reason);
+            return (
+              <div
+                key={content.id}
+                className="flex-shrink-0 w-48 md:w-56 group cursor-pointer"
+                onClick={() => onDetails(content)}
+              >
+                <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-secondary shadow-lg ring-0 group-hover:ring-2 ring-brand/50 transition-all">
+                  <img
+                    src={content.thumbnailUrl}
+                    alt={content.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
 
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+
+                <div className="mt-2">
+                  <h3 className="font-medium text-sm truncate">{content.title}</h3>
+                  {why && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2" title={why.label}>
+                      {why.label} · {why.confidence}% match
+                    </p>
+                  )}
+                </div>
               </div>
-              
-              <div className="mt-2">
-                <h3 className="font-medium text-sm truncate">{content.title}</h3>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
