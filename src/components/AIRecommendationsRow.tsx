@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useProfile, useContent } from "@/hooks/useDatabase";
+import { useAIPickReasons } from "@/hooks/useAIPickReasons";
 import { Content } from "@/types";
 import { Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
