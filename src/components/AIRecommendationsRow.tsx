@@ -33,6 +33,7 @@ export const AIRecommendationsRow = ({
   const { currentProfile } = useProfileContext();
   const { data: profile } = useProfile();
   const { data: allContent = [] } = useContent();
+  const { getReason } = useAIPickReasons();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["ai-recommendations", currentProfile?.id],
