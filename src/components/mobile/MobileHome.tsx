@@ -794,13 +794,20 @@ export function MobileHome() {
                 );
               }
 
-              // Top 10 section
+              // Top 10 section — mirrors desktop: honours the Movies/Series filter
               if (section.section_type === "top10") {
-                return top10Content.length > 0 ? (
+                const typeFilter = section.content_type_filter as "all" | "movie" | "series" | null;
+                const typedTop10 = top10Content
+                  .filter((c: Content) =>
+                    !typeFilter || typeFilter === "all" ? true : c.contentType === typeFilter
+                  )
+                  .slice(0, section.max_items || 10);
+
+                return typedTop10.length > 0 ? (
                   <FadeIn key={section.id} delay={50 + index * 25}>
                     <MobileContentRow
                       title={section.title}
-                      content={top10Content.slice(0, section.max_items || 10)}
+                      content={typedTop10}
                       onDetails={handleDetails}
                       showRank
                       variant="poster"
