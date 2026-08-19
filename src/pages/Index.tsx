@@ -940,12 +940,22 @@ const Index = () => {
                       );
                     }
 
-                    // Top 10 section
+                    // Top 10 section — respects the admin's Movies/Series filter and
+                    // re-ranks 1..N within that type so each row reads 1-10.
                     if (section.section_type === "top10") {
-                      return top10Content.length > 0 ? (
+                      const typeFilter = section.content_type_filter as "all" | "movie" | "series" | null;
+                      const typedTop10 = top10Content
+                        .filter(({ content: c }) =>
+                          !typeFilter || typeFilter === "all" ? true : c.contentType === typeFilter
+                        )
+                        .slice(0, section.max_items || 10)
+                        .map((item, i) => ({ ...item, rank: i + 1 }));
+
+                      return typedTop10.length > 0 ? (
                         <Top10Row
                           key={section.id}
-                          content={top10Content.slice(0, section.max_items || 10)}
+                          title={section.title}
+                          content={typedTop10}
                           onPlay={handlePlay}
                           onDetails={handleDetails}
                         />
