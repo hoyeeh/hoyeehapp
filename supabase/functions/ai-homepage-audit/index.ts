@@ -233,6 +233,12 @@ Only return the JSON array.`;
     const ownedIds = new Set(ownedList.map((t) => t.content_id));
     const sectionIds = new Set((sections ?? []).map((s: any) => s.id));
 
+    // Layout hygiene: the homepage keeps exactly two Top 10 rows (Movies + Series),
+    // and never two sections with the same name.
+    const norm = (t: unknown) => String(t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    const existingTitles = new Set((sections ?? []).map((s: any) => norm(s.title)));
+    const proposedTitles = new Set<string>();
+
     const valid: any[] = [];
     for (const s of [...healHints, ...trendSwaps, ...aiSuggestions]) {
       if (!s?.suggestion_type) continue;
@@ -252,8 +258,15 @@ Only return the JSON array.`;
       }
       if (s.suggestion_type === "new_section") {
         if (!payload.title) continue;
+        // Never create another Top 10 row — the two curated ones are fixed.
+        if (String(payload.section_type ?? "") === "top10") continue;
+        // Never duplicate an existing (or already-proposed) section title.
+        const key = norm(payload.title);
+        if (existingTitles.has(key) || proposedTitles.has(key)) continue;
+        proposedTitles.add(key);
         if (Array.isArray(payload.content_ids) && payload.content_ids.length === 0) {
           delete payload.content_ids;
+
         }
       }
 
