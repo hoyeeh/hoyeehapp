@@ -280,22 +280,34 @@ Only return the JSON array.`;
       });
     }
 
-    // Expire stale pending suggestions
+    // Keep the board clean: only ever surface the TWO strongest suggestions,
+    // de-duplicated by (type + target + payload signature).
+    const seenSig = new Set<string>();
+    const deduped = valid.filter((v) => {
+      const sig = `${v.suggestion_type}|${v.target_section_id ?? ""}|${JSON.stringify(v.proposed_payload)}`;
+      if (seenSig.has(sig)) return false;
+      seenSig.add(sig);
+      return true;
+    });
+    deduped.sort((a, b) => b.priority - a.priority);
+    const shortlist = deduped.slice(0, 2).map((v, i) => ({ ...v, is_recommended: i === 0 }));
+
+    // Retire every previous pending suggestion so the list never accumulates.
     await supabase
       .from("homepage_ai_suggestions")
       .update({ status: "expired" })
-      .eq("status", "pending")
-      .lt("expires_at", new Date().toISOString());
+      .eq("status", "pending");
 
     let insertedRows: any[] = [];
-    if (valid.length > 0) {
+    if (shortlist.length > 0) {
       const { data: ins, error: insErr } = await supabase
         .from("homepage_ai_suggestions")
-        .insert(valid)
-        .select("id,suggestion_type,priority");
+        .insert(shortlist)
+        .select("id,suggestion_type,priority,is_recommended");
       if (insErr) console.error("Insert error", insErr);
       else insertedRows = ins ?? [];
     }
+
 
     // 10. Autopilot — auto-apply high-confidence suggestions of allowed types
     let autoApplied = 0;
