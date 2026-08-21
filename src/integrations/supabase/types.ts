@@ -2381,6 +2381,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          is_recommended: boolean
           priority: number
           proposed_payload: Json
           reason: string
@@ -2396,6 +2397,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          is_recommended?: boolean
           priority?: number
           proposed_payload?: Json
           reason?: string
@@ -2411,6 +2413,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          is_recommended?: boolean
           priority?: number
           proposed_payload?: Json
           reason?: string
