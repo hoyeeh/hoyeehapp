@@ -180,7 +180,7 @@ ${globalHotGenres.map((t) => `- ${t.genre}: ${t.titles} trending titles`).join("
 Titles trending worldwide THAT WE OWN (use only these content ids):
 ${ownedForPrompt.join("\n") || "- (none matched our catalog)"}
 
-Propose up to 5 improvements as a strict JSON array. Each item:
+Propose at most 3 improvements (only the 2 best will be kept) as a strict JSON array. Each item:
 {
   "suggestion_type": "new_section" | "reorder" | "content_swap",
   "target_section_id": "<uuid, required for content_swap>",
@@ -336,7 +336,7 @@ Only return the JSON array.`;
     return new Response(
       JSON.stringify({
         ok: true,
-        inserted: valid.length,
+        inserted: shortlist.length,
         ai_count: aiSuggestions.length,
         heal_count: healHints.length,
         trend_swaps: trendSwaps.length,
