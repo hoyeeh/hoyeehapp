@@ -193,7 +193,7 @@ For "new_section": payload = { title, section_type ('genre'|'trending'|'recently
 For "reorder": payload = { ordered_titles: [exact existing section titles in desired top-to-bottom order] }
 For "content_swap": payload = { section_id, content_ids: [ids from the owned-trending list, best first] }
 
-Rules: never invent content ids. Never propose a section that would be empty. Do not change max_items of existing sections.
+Rules: never invent content ids. Never propose a section that would be empty. Do not change max_items of existing sections. Never propose a new "top10" section — the homepage already has exactly two (Movies and Series). Never propose a section whose title duplicates an existing section title.
 Only return the JSON array.`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
