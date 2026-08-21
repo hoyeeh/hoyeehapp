@@ -180,7 +180,7 @@ ${globalHotGenres.map((t) => `- ${t.genre}: ${t.titles} trending titles`).join("
 Titles trending worldwide THAT WE OWN (use only these content ids):
 ${ownedForPrompt.join("\n") || "- (none matched our catalog)"}
 
-Propose up to 5 improvements as a strict JSON array. Each item:
+Propose at most 3 improvements (only the 2 best will be kept) as a strict JSON array. Each item:
 {
   "suggestion_type": "new_section" | "reorder" | "content_swap",
   "target_section_id": "<uuid, required for content_swap>",
@@ -280,22 +280,34 @@ Only return the JSON array.`;
       });
     }
 
-    // Expire stale pending suggestions
+    // Keep the board clean: only ever surface the TWO strongest suggestions,
+    // de-duplicated by (type + target + payload signature).
+    const seenSig = new Set<string>();
+    const deduped = valid.filter((v) => {
+      const sig = `${v.suggestion_type}|${v.target_section_id ?? ""}|${JSON.stringify(v.proposed_payload)}`;
+      if (seenSig.has(sig)) return false;
+      seenSig.add(sig);
+      return true;
+    });
+    deduped.sort((a, b) => b.priority - a.priority);
+    const shortlist = deduped.slice(0, 2).map((v, i) => ({ ...v, is_recommended: i === 0 }));
+
+    // Retire every previous pending suggestion so the list never accumulates.
     await supabase
       .from("homepage_ai_suggestions")
       .update({ status: "expired" })
-      .eq("status", "pending")
-      .lt("expires_at", new Date().toISOString());
+      .eq("status", "pending");
 
     let insertedRows: any[] = [];
-    if (valid.length > 0) {
+    if (shortlist.length > 0) {
       const { data: ins, error: insErr } = await supabase
         .from("homepage_ai_suggestions")
-        .insert(valid)
-        .select("id,suggestion_type,priority");
+        .insert(shortlist)
+        .select("id,suggestion_type,priority,is_recommended");
       if (insErr) console.error("Insert error", insErr);
       else insertedRows = ins ?? [];
     }
+
 
     // 10. Autopilot — auto-apply high-confidence suggestions of allowed types
     let autoApplied = 0;
@@ -324,7 +336,7 @@ Only return the JSON array.`;
     return new Response(
       JSON.stringify({
         ok: true,
-        inserted: valid.length,
+        inserted: shortlist.length,
         ai_count: aiSuggestions.length,
         heal_count: healHints.length,
         trend_swaps: trendSwaps.length,

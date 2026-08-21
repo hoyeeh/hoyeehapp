@@ -26,6 +26,13 @@ export async function applyHomepageSuggestion(
   let previousState: Record<string, unknown> = {};
 
   if (sug.suggestion_type === "new_section") {
+    // Never create a row that duplicates an existing active row title.
+    const desiredTitle = String(payload.title ?? "New Section").trim();
+    const { data: dupes } = await admin.from("home_sections").select("id,title,is_active");
+    const norm = (t: unknown) => String(t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    if ((dupes ?? []).some((s: any) => s.is_active && norm(s.title) === norm(desiredTitle))) {
+      throw new Error(`A homepage row named "${desiredTitle}" already exists`);
+    }
     let genreId: string | null = null;
     if (payload.genre_name) {
       const { data: g } = await admin
@@ -38,7 +45,7 @@ export async function applyHomepageSuggestion(
     const nextOrder = ((maxOrder?.display_order as number | undefined) ?? 0) + 1;
 
     const { data: created, error: insErr } = await admin.from("home_sections").insert({
-      title: String(payload.title ?? "New Section"),
+      title: desiredTitle,
       section_type: String(payload.section_type ?? "genre"),
       genre_id: genreId,
       card_style: String(payload.card_style ?? "full"),
@@ -55,7 +62,7 @@ export async function applyHomepageSuggestion(
     if (insErr) throw insErr;
 
     // Optional seeded content (trend-driven sections)
-    const ids: string[] = Array.isArray(payload.content_ids) ? payload.content_ids : [];
+    const ids: string[] = [...new Set(Array.isArray(payload.content_ids) ? payload.content_ids : [])];
     if (created?.id && ids.length > 0) {
       const max = Math.max(1, Math.min(50, Number(payload.max_items) || 15));
       const rows = ids.slice(0, max).map((cid, i) => ({
@@ -69,7 +76,7 @@ export async function applyHomepageSuggestion(
   } else if (sug.suggestion_type === "content_swap") {
     const sectionId = sug.target_section_id ?? payload.section_id;
     if (!sectionId) throw new Error("content_swap requires a target section");
-    const ids: string[] = Array.isArray(payload.content_ids) ? payload.content_ids : [];
+    const ids: string[] = [...new Set(Array.isArray(payload.content_ids) ? payload.content_ids : [])];
     if (ids.length === 0) throw new Error("content_swap requires content_ids");
 
     const { data: section } = await admin
