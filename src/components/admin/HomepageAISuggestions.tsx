@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Sparkles, Check, X, RefreshCw, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, Check, X, Loader2, Wand2, Star } from "lucide-react";
 
 interface Suggestion {
   id: string;
@@ -14,6 +14,7 @@ interface Suggestion {
   reason: string;
   priority: number;
   status: string;
+  is_recommended?: boolean;
   created_at: string;
 }
 
@@ -27,8 +28,10 @@ export function HomepageAISuggestions() {
         .from("homepage_ai_suggestions" as any)
         .select("*")
         .in("status", ["pending"])
+        .order("is_recommended", { ascending: false })
         .order("priority", { ascending: false })
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(2);
       if (error) throw error;
       return (data ?? []) as unknown as Suggestion[];
     },
@@ -86,7 +89,7 @@ export function HomepageAISuggestions() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-brand" />
           <h3 className="text-lg font-semibold">AI Homepage Suggestions</h3>
-          <Badge variant="secondary">{suggestions.length} pending</Badge>
+          <Badge variant="secondary">{suggestions.length} of 2 pending</Badge>
         </div>
         <Button onClick={() => runAudit.mutate()} disabled={runAudit.isPending} size="sm">
           {runAudit.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
@@ -100,14 +103,14 @@ export function HomepageAISuggestions() {
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
             No pending suggestions. Click <strong>Run AI Audit</strong> to scan your homepage now,
-            or wait for the daily run.
+            or wait for the daily run. Each audit surfaces only the two strongest ideas.
           </CardContent>
         </Card>
       )}
 
       <div className="space-y-3">
         {suggestions.map((s) => (
-          <Card key={s.id}>
+          <Card key={s.id} className={s.is_recommended ? "border-brand ring-1 ring-brand/40" : undefined}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -115,13 +118,23 @@ export function HomepageAISuggestions() {
                     {s.suggestion_type.replace("_", " ")}
                   </Badge>
                   <Badge variant="outline">priority {s.priority}</Badge>
+                  {s.is_recommended && (
+                    <Badge className="gap-1">
+                      <Star className="h-3 w-3" /> Recommended
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => reject.mutate(s.id)} disabled={reject.isPending}>
                     <X className="h-4 w-4 mr-1" /> Reject
                   </Button>
-                  <Button size="sm" onClick={() => approve.mutate(s.id)} disabled={approve.isPending}>
-                    <Check className="h-4 w-4 mr-1" /> Approve & Apply
+                  <Button
+                    size="sm"
+                    variant={s.is_recommended ? "default" : "secondary"}
+                    onClick={() => approve.mutate(s.id)}
+                    disabled={approve.isPending}
+                  >
+                    <Check className="h-4 w-4 mr-1" /> {s.is_recommended ? "Apply recommended" : "Approve & Apply"}
                   </Button>
                 </div>
               </div>
