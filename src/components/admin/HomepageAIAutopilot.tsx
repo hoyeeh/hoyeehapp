@@ -113,8 +113,41 @@ export function HomepageAIAutopilot() {
     onError: (e: any) => toast.error(`Revert failed: ${e.message}`),
   });
 
+  const { data: layout } = useQuery({
+    queryKey: ["homepage-layout-state"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("homepage_layout_state" as any)
+        .select("mode,switched_at")
+        .order("created_at")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  const resetLayout = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("apply-homepage-suggestion", {
+        body: { reset_to_default: true },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Homepage reset to your manual layout");
+      qc.invalidateQueries({ queryKey: ["homepage-layout-state"] });
+      qc.invalidateQueries({ queryKey: ["home-sections"] });
+      qc.invalidateQueries({ queryKey: ["home-sections-display"] });
+      qc.invalidateQueries({ queryKey: ["mobile-home-sections"] });
+    },
+    onError: (e: any) => toast.error(`Reset failed: ${e.message}`),
+  });
+
   const allowed = settings?.allowed_types ?? [];
   const ownedCount = trends.filter((t) => t.is_owned).length;
+  const mode = layout?.mode ?? "manual";
 
   return (
     <Card>
@@ -125,6 +158,32 @@ export function HomepageAIAutopilot() {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded border border-border px-3 py-2">
+          <div className="text-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Live homepage</span>
+              <Badge variant={mode === "ai" ? "default" : "secondary"}>
+                {mode === "ai" ? "AI homepage" : "Manual homepage"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Only one layout is ever live — applying an AI suggestion deactivates the manual rows,
+              and resetting restores them exactly as you configured them.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => resetLayout.mutate()}
+            disabled={resetLayout.isPending || mode === "manual"}
+          >
+            {resetLayout.isPending
+              ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              : <RotateCcw className="h-4 w-4 mr-2" />}
+            Reset to default
+          </Button>
+        </div>
+
         <Tabs defaultValue="autopilot">
           <TabsList>
             <TabsTrigger value="autopilot">Autopilot</TabsTrigger>
@@ -145,6 +204,7 @@ export function HomepageAIAutopilot() {
                 onCheckedChange={(v) => saveSettings.mutate({ autopilot_enabled: v })}
               />
             </div>
+
 
             <div className="space-y-2">
               <Label>Confidence threshold: {settings?.confidence_threshold ?? 8}</Label>
