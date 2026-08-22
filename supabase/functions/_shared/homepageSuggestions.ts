@@ -230,9 +230,12 @@ export async function applyHomepageSuggestion(
   } else if (sug.suggestion_type === "reorder") {
     const orderedTitles: string[] = Array.isArray(payload.ordered_titles) ? payload.ordered_titles : [];
     if (orderedTitles.length === 0) throw new Error("Empty reorder list");
-    const { data: existing } = await admin.from("home_sections").select("id,title,display_order");
+    const { data: existing } = await admin
+      .from("home_sections").select("id,title,display_order")
+      .eq("source", "ai").eq("is_active", true);
     previousState = { sections: existing ?? [] };
     const titleToId = new Map((existing ?? []).map((s: any) => [s.title, s.id]));
+
     let order = 1;
     for (const t of orderedTitles) {
       const id = titleToId.get(t);
