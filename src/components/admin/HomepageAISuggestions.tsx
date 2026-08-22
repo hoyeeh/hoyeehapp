@@ -59,9 +59,12 @@ export function HomepageAISuggestions() {
       return data;
     },
     onSuccess: () => {
-      toast.success("Suggestion applied");
+      toast.success("Applied — the AI homepage is now the only live layout");
       qc.invalidateQueries({ queryKey: ["homepage-ai-suggestions"] });
       qc.invalidateQueries({ queryKey: ["home-sections"] });
+      qc.invalidateQueries({ queryKey: ["homepage-layout-state"] });
+      qc.invalidateQueries({ queryKey: ["home-sections-display"] });
+      qc.invalidateQueries({ queryKey: ["mobile-home-sections"] });
     },
     onError: (e: any) => toast.error(`Apply failed: ${e.message}`),
   });
