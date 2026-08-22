@@ -182,6 +182,7 @@ export async function applyHomepageSuggestion(
       show_on_kids: false,
       is_curated: Array.isArray(payload.content_ids) && payload.content_ids.length > 0,
       allow_duplicates: false,
+      source: "ai",
     }).select("id").single();
     if (insErr) throw insErr;
 
@@ -198,8 +199,9 @@ export async function applyHomepageSuggestion(
     }
     previousState = { created_section_id: created?.id ?? null };
   } else if (sug.suggestion_type === "content_swap") {
-    const sectionId = sug.target_section_id ?? payload.section_id;
+    const sectionId = sug.target_section_id ?? await resolveAiSectionId(admin, payload.section_id ?? null);
     if (!sectionId) throw new Error("content_swap requires a target section");
+
     const ids: string[] = [...new Set(Array.isArray(payload.content_ids) ? payload.content_ids : [])];
     if (ids.length === 0) throw new Error("content_swap requires content_ids");
 
