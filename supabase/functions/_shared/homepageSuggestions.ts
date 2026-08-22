@@ -6,6 +6,124 @@ export interface ApplyResult {
   ok: boolean;
   already_applied?: boolean;
   change_log_id?: string | null;
+  mode?: string;
+}
+
+const CLONE_FIELDS = [
+  "title", "section_type", "genre_id", "card_style", "display_order", "max_items",
+  "content_type_filter", "allow_duplicates", "show_on_desktop", "show_on_mobile",
+  "show_on_kids", "is_curated", "year_filter", "featured_content_id",
+  "section_banner_url", "first_card_style", "card_size", "year_min", "year_max",
+];
+
+async function getLayoutState(admin: any) {
+  const { data } = await admin
+    .from("homepage_layout_state").select("*").order("created_at").limit(1).maybeSingle();
+  if (data) return data;
+  const { data: created } = await admin
+    .from("homepage_layout_state").insert({ mode: "manual" }).select("*").single();
+  return created;
+}
+
+export async function getHomepageMode(admin: any): Promise<string> {
+  const state = await getLayoutState(admin);
+  return String(state?.mode ?? "manual");
+}
+
+/**
+ * Makes the AI homepage the single live layout.
+ * The manual layout is snapshotted and fully deactivated — the two layouts are
+ * never active at the same time, so the homepage never shows a merged mix.
+ */
+export async function activateAiLayout(admin: any, userId: string | null) {
+  const state = await getLayoutState(admin);
+  if (String(state?.mode) === "ai") return state;
+
+  const { data: sections } = await admin
+    .from("home_sections").select("*").eq("source", "manual");
+  const manual = sections ?? [];
+  const snapshot = manual.map((s: any) => ({ id: s.id, is_active: s.is_active }));
+
+  // Existing AI rows cloned from manual rows are reused instead of duplicated.
+  const { data: aiRows } = await admin
+    .from("home_sections").select("id,cloned_from").eq("source", "ai");
+  const alreadyCloned = new Set((aiRows ?? []).map((r: any) => r.cloned_from).filter(Boolean));
+
+  for (const s of manual) {
+    if (!s.is_active || alreadyCloned.has(s.id)) continue;
+    const copy: Record<string, unknown> = { source: "ai", cloned_from: s.id, is_active: false };
+    for (const f of CLONE_FIELDS) copy[f] = s[f];
+    const { data: clone } = await admin
+      .from("home_sections").insert(copy).select("id").maybeSingle();
+    if (!clone?.id) continue;
+    const { data: sc } = await admin
+      .from("section_content").select("content_id,display_order").eq("section_id", s.id);
+    if ((sc ?? []).length > 0) {
+      await admin.from("section_content").insert(
+        (sc ?? []).map((r: any, i: number) => ({
+          section_id: clone.id,
+          content_id: r.content_id,
+          display_order: r.display_order ?? i + 1,
+        })),
+      );
+    }
+  }
+
+  // Order matters: deactivate manual first so unique active-title rules hold.
+  await admin.from("home_sections").update({ is_active: false }).eq("source", "manual");
+  await admin.from("home_sections").update({ is_active: true }).eq("source", "ai");
+
+  const { data: updated } = await admin.from("homepage_layout_state").update({
+    mode: "ai",
+    manual_snapshot: snapshot,
+    switched_by: userId,
+    switched_at: new Date().toISOString(),
+  }).eq("id", state.id).select("*").maybeSingle();
+  return updated ?? state;
+}
+
+/**
+ * Restores the admin's manual homepage exactly as it was and deactivates every
+ * AI-generated row.
+ */
+export async function resetHomepageToDefault(admin: any, userId: string | null) {
+  const state = await getLayoutState(admin);
+  const snapshot: any[] = Array.isArray(state?.manual_snapshot) ? state.manual_snapshot : [];
+
+  await admin.from("home_sections").update({ is_active: false }).eq("source", "ai");
+
+  if (snapshot.length > 0) {
+    const activeIds = snapshot.filter((s) => s.is_active).map((s) => s.id);
+    const inactiveIds = snapshot.filter((s) => !s.is_active).map((s) => s.id);
+    if (activeIds.length > 0) {
+      await admin.from("home_sections").update({ is_active: true }).in("id", activeIds);
+    }
+    if (inactiveIds.length > 0) {
+      await admin.from("home_sections").update({ is_active: false }).in("id", inactiveIds);
+    }
+  } else {
+    await admin.from("home_sections").update({ is_active: true }).eq("source", "manual");
+  }
+
+  await admin.from("homepage_layout_state").update({
+    mode: "manual",
+    switched_by: userId,
+    switched_at: new Date().toISOString(),
+  }).eq("id", state.id);
+
+  return { ok: true, mode: "manual" };
+}
+
+/** Maps a manual section id onto its live AI counterpart while in AI mode. */
+async function resolveAiSectionId(admin: any, sectionId: string | null) {
+  if (!sectionId) return null;
+  const { data: s } = await admin
+    .from("home_sections").select("id,source").eq("id", sectionId).maybeSingle();
+  if (!s) return sectionId;
+  if (s.source === "ai") return s.id;
+  const { data: clone } = await admin
+    .from("home_sections").select("id").eq("cloned_from", sectionId).eq("source", "ai").maybeSingle();
+  return clone?.id ?? sectionId;
 }
 
 export async function applyHomepageSuggestion(
@@ -22,8 +140,14 @@ export async function applyHomepageSuggestion(
   if (sugErr || !sug) throw new Error("Suggestion not found");
   if (sug.status === "applied") return { ok: true, already_applied: true };
 
+  // Applying an AI suggestion switches the site to the AI homepage only.
+  await activateAiLayout(admin, appliedBy);
+  const targetSectionId = await resolveAiSectionId(admin, sug.target_section_id ?? null);
+  sug.target_section_id = targetSectionId;
+
   const payload = sug.proposed_payload ?? {};
   let previousState: Record<string, unknown> = {};
+
 
   if (sug.suggestion_type === "new_section") {
     // Never create a row that duplicates an existing active row title.
