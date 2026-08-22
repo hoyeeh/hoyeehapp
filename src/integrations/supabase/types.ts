@@ -2158,6 +2158,7 @@ export type Database = {
           allow_duplicates: boolean
           card_size: string | null
           card_style: string
+          cloned_from: string | null
           content_type_filter: string | null
           created_at: string
           display_order: number
@@ -2173,6 +2174,7 @@ export type Database = {
           show_on_desktop: boolean
           show_on_kids: boolean
           show_on_mobile: boolean
+          source: string
           title: string
           updated_at: string
           year_filter: number | null
@@ -2183,6 +2185,7 @@ export type Database = {
           allow_duplicates?: boolean
           card_size?: string | null
           card_style?: string
+          cloned_from?: string | null
           content_type_filter?: string | null
           created_at?: string
           display_order?: number
@@ -2198,6 +2201,7 @@ export type Database = {
           show_on_desktop?: boolean
           show_on_kids?: boolean
           show_on_mobile?: boolean
+          source?: string
           title: string
           updated_at?: string
           year_filter?: number | null
@@ -2208,6 +2212,7 @@ export type Database = {
           allow_duplicates?: boolean
           card_size?: string | null
           card_style?: string
+          cloned_from?: string | null
           content_type_filter?: string | null
           created_at?: string
           display_order?: number
@@ -2223,6 +2228,7 @@ export type Database = {
           show_on_desktop?: boolean
           show_on_kids?: boolean
           show_on_mobile?: boolean
+          source?: string
           title?: string
           updated_at?: string
           year_filter?: number | null
@@ -2433,6 +2439,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      homepage_layout_state: {
+        Row: {
+          created_at: string
+          id: string
+          manual_snapshot: Json
+          mode: string
+          switched_at: string
+          switched_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manual_snapshot?: Json
+          mode?: string
+          switched_at?: string
+          switched_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manual_snapshot?: Json
+          mode?: string
+          switched_at?: string
+          switched_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       kids_approved_content: {
         Row: {
