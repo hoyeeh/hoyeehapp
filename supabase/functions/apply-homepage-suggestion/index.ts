@@ -1,6 +1,11 @@
 // Applies an approved homepage suggestion, or reverts a previously applied change.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { applyHomepageSuggestion, revertHomepageChange } from "../_shared/homepageSuggestions.ts";
+import {
+  applyHomepageSuggestion,
+  revertHomepageChange,
+  resetHomepageToDefault,
+  getHomepageMode,
+} from "../_shared/homepageSuggestions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,6 +46,19 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
 
+    if (body?.reset_to_default) {
+      const result = await resetHomepageToDefault(admin, user.id);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body?.mode_only) {
+      return new Response(JSON.stringify({ ok: true, mode: await getHomepageMode(admin) }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (body?.revert_change_log_id) {
       const result = await revertHomepageChange(admin, String(body.revert_change_log_id), user.id);
       return new Response(JSON.stringify(result), {
@@ -56,6 +74,7 @@ Deno.serve(async (req) => {
     }
 
     const result = await applyHomepageSuggestion(admin, String(suggestion_id), user.id, false);
+    result.mode = "ai";
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
