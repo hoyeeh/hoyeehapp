@@ -37,12 +37,16 @@ export async function getHomepageMode(admin: any): Promise<string> {
  */
 export async function activateAiLayout(admin: any, userId: string | null) {
   const state = await getLayoutState(admin);
-  if (String(state?.mode) === "ai") return state;
+  const alreadyAi = String(state?.mode) === "ai";
 
   const { data: sections } = await admin
     .from("home_sections").select("*").eq("source", "manual");
   const manual = sections ?? [];
-  const snapshot = manual.map((s: any) => ({ id: s.id, is_active: s.is_active }));
+  // Keep the original snapshot once AI mode is live so resetting always restores
+  // the layout the admin last configured.
+  const snapshot = alreadyAi && Array.isArray(state?.manual_snapshot) && state.manual_snapshot.length > 0
+    ? state.manual_snapshot
+    : manual.map((s: any) => ({ id: s.id, is_active: s.is_active }));
 
   // Existing AI rows cloned from manual rows are reused instead of duplicated.
   const { data: aiRows } = await admin
@@ -50,7 +54,10 @@ export async function activateAiLayout(admin: any, userId: string | null) {
   const alreadyCloned = new Set((aiRows ?? []).map((r: any) => r.cloned_from).filter(Boolean));
 
   for (const s of manual) {
-    if (!s.is_active || alreadyCloned.has(s.id)) continue;
+    const wasActive = alreadyAi
+      ? (snapshot as any[]).some((x: any) => x.id === s.id && x.is_active)
+      : s.is_active;
+    if (!wasActive || alreadyCloned.has(s.id)) continue;
     const copy: Record<string, unknown> = { source: "ai", cloned_from: s.id, is_active: false };
     for (const f of CLONE_FIELDS) copy[f] = s[f];
     const { data: clone } = await admin
