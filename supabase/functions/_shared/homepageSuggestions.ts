@@ -69,9 +69,35 @@ export async function activateAiLayout(admin: any, userId: string | null) {
     }
   }
 
+  // Retire duplicate AI rows so the AI layout has one row per title.
+  const { data: allAi } = await admin
+    .from("home_sections").select("id,title,cloned_from,created_at").eq("source", "ai");
+  const norm = (t: unknown) => String(t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const keep = new Map<string, any>();
+  const drop: string[] = [];
+  for (const row of (allAi ?? []).slice().sort((a: any, b: any) =>
+    String(a.created_at).localeCompare(String(b.created_at))
+  )) {
+    const k = norm(row.title);
+    const current = keep.get(k);
+    if (!current) { keep.set(k, row); continue; }
+    // Prefer the clone of a live manual row, otherwise the newest row.
+    const winner = row.cloned_from && !current.cloned_from ? row : row;
+    const loser = winner === row ? current : row;
+    keep.set(k, winner);
+    drop.push(loser.id);
+  }
+  if (drop.length > 0) {
+    await admin.from("section_content").delete().in("section_id", drop);
+    await admin.from("home_sections").delete().in("id", drop);
+  }
+
   // Order matters: deactivate manual first so unique active-title rules hold.
   await admin.from("home_sections").update({ is_active: false }).eq("source", "manual");
-  await admin.from("home_sections").update({ is_active: true }).eq("source", "ai");
+  const { error: actErr } = await admin
+    .from("home_sections").update({ is_active: true }).eq("source", "ai");
+  if (actErr) throw actErr;
+
 
   const { data: updated } = await admin.from("homepage_layout_state").update({
     mode: "ai",
