@@ -37,12 +37,16 @@ export async function getHomepageMode(admin: any): Promise<string> {
  */
 export async function activateAiLayout(admin: any, userId: string | null) {
   const state = await getLayoutState(admin);
-  if (String(state?.mode) === "ai") return state;
+  const alreadyAi = String(state?.mode) === "ai";
 
   const { data: sections } = await admin
     .from("home_sections").select("*").eq("source", "manual");
   const manual = sections ?? [];
-  const snapshot = manual.map((s: any) => ({ id: s.id, is_active: s.is_active }));
+  // Keep the original snapshot once AI mode is live so resetting always restores
+  // the layout the admin last configured.
+  const snapshot = alreadyAi && Array.isArray(state?.manual_snapshot) && state.manual_snapshot.length > 0
+    ? state.manual_snapshot
+    : manual.map((s: any) => ({ id: s.id, is_active: s.is_active }));
 
   // Existing AI rows cloned from manual rows are reused instead of duplicated.
   const { data: aiRows } = await admin
@@ -50,7 +54,10 @@ export async function activateAiLayout(admin: any, userId: string | null) {
   const alreadyCloned = new Set((aiRows ?? []).map((r: any) => r.cloned_from).filter(Boolean));
 
   for (const s of manual) {
-    if (!s.is_active || alreadyCloned.has(s.id)) continue;
+    const wasActive = alreadyAi
+      ? (snapshot as any[]).some((x: any) => x.id === s.id && x.is_active)
+      : s.is_active;
+    if (!wasActive || alreadyCloned.has(s.id)) continue;
     const copy: Record<string, unknown> = { source: "ai", cloned_from: s.id, is_active: false };
     for (const f of CLONE_FIELDS) copy[f] = s[f];
     const { data: clone } = await admin
@@ -69,9 +76,35 @@ export async function activateAiLayout(admin: any, userId: string | null) {
     }
   }
 
+  // Retire duplicate AI rows so the AI layout has one row per title.
+  const { data: allAi } = await admin
+    .from("home_sections").select("id,title,cloned_from,created_at").eq("source", "ai");
+  const norm = (t: unknown) => String(t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const keep = new Map<string, any>();
+  const drop: string[] = [];
+  for (const row of (allAi ?? []).slice().sort((a: any, b: any) =>
+    String(a.created_at).localeCompare(String(b.created_at))
+  )) {
+    const k = norm(row.title);
+    const current = keep.get(k);
+    if (!current) { keep.set(k, row); continue; }
+    // Prefer the clone of a live manual row, otherwise the newest row.
+    const winner = row.cloned_from && !current.cloned_from ? row : row;
+    const loser = winner === row ? current : row;
+    keep.set(k, winner);
+    drop.push(loser.id);
+  }
+  if (drop.length > 0) {
+    await admin.from("section_content").delete().in("section_id", drop);
+    await admin.from("home_sections").delete().in("id", drop);
+  }
+
   // Order matters: deactivate manual first so unique active-title rules hold.
   await admin.from("home_sections").update({ is_active: false }).eq("source", "manual");
-  await admin.from("home_sections").update({ is_active: true }).eq("source", "ai");
+  const { error: actErr } = await admin
+    .from("home_sections").update({ is_active: true }).eq("source", "ai");
+  if (actErr) throw actErr;
+
 
   const { data: updated } = await admin.from("homepage_layout_state").update({
     mode: "ai",
