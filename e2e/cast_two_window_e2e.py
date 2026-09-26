@@ -71,7 +71,6 @@ async def main():
             return await phone.evaluate("""async ([cmd, payload, key]) => {
               const s = JSON.parse(localStorage.getItem(key));
               const sid = Object.keys(localStorage).filter(k => k.startsWith('hoyeeh_paired_devices:')).map(k => JSON.parse(localStorage.getItem(k))).flat().pop().sessionId;
-              const r = await fetch(import.meta?.env ? '' : '', {method:'HEAD'}).catch(()=>null);
               return {sid, token: s.access_token};
             }""", [cmd, payload, minted["storage_key"]])
 
@@ -89,8 +88,6 @@ async def main():
 
         # Unauthorized command (no JWT) is rejected by cast-signaling
         info = await send("noop")
-        url = os.environ.get("SIGNALING_URL") or ""
-        sb = await phone.evaluate("(() => [...document.scripts].length)")
         env = open(HERE.parent / ".env").read()
         sup = [l.split("=",1)[1].strip().strip('"') for l in env.splitlines() if l.startswith("VITE_SUPABASE_URL")][0]
         anon = [l.split("=",1)[1].strip().strip('"') for l in env.splitlines() if l.startswith("VITE_SUPABASE_PUBLISHABLE_KEY")][0]
