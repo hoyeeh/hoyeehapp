@@ -16,56 +16,6 @@ interface CastToTVButtonProps {
   className?: string;
 }
 
-// Simple QR code generator for displaying on screen
-const generateQRCodeSVG = (data: string, size: number = 200): string => {
-  // This is a simplified QR-like pattern for display
-  // In production, you'd use a proper QR library
-  const tvUrl = 'hoyeeh.com/tv';
-  const encoded = btoa(data).slice(0, 20);
-  
-  // Create a visual pattern (not a real QR code, just for display)
-  const cells = 21;
-  const cellSize = size / cells;
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}">`;
-  svg += `<rect width="${size}" height="${size}" fill="white"/>`;
-  
-  // Generate pattern based on data
-  const pattern: boolean[][] = [];
-  for (let y = 0; y < cells; y++) {
-    pattern[y] = [];
-    for (let x = 0; x < cells; x++) {
-      // Corner markers
-      const isCorner = 
-        (x < 7 && y < 7) || 
-        (x >= cells - 7 && y < 7) || 
-        (x < 7 && y >= cells - 7);
-      
-      if (isCorner) {
-        const inCorner = 
-          (x < 7 && y < 7 && (x === 0 || x === 6 || y === 0 || y === 6 || (x >= 2 && x <= 4 && y >= 2 && y <= 4))) ||
-          (x >= cells - 7 && y < 7 && (x === cells - 1 || x === cells - 7 || y === 0 || y === 6 || (x >= cells - 5 && x <= cells - 3 && y >= 2 && y <= 4))) ||
-          (x < 7 && y >= cells - 7 && (x === 0 || x === 6 || y === cells - 1 || y === cells - 7 || (x >= 2 && x <= 4 && y >= cells - 5 && y <= cells - 3)));
-        pattern[y][x] = inCorner;
-      } else {
-        // Data cells - generate based on data hash
-        const hash = (data.charCodeAt(x % data.length) || 0) + (data.charCodeAt(y % data.length) || 0) + x * y;
-        pattern[y][x] = (hash % 3) === 0;
-      }
-    }
-  }
-  
-  for (let y = 0; y < cells; y++) {
-    for (let x = 0; x < cells; x++) {
-      if (pattern[y][x]) {
-        svg += `<rect x="${x * cellSize}" y="${y * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`;
-      }
-    }
-  }
-  
-  svg += '</svg>';
-  return svg;
-};
-
 export function CastToTVButton({
   videoUrl,
   videoTitle,
@@ -79,8 +29,9 @@ export function CastToTVButton({
   const [error, setError] = useState('');
   const cast = useCast();
   
+  // No QR is drawn here: the TV receiver shows the only real, scannable QR
+  // (https://hoyeeh.com/cast?code=<live code>) for this phone to scan.
   const tvReceiverUrl = 'hoyeeh.com/tv';
-  const qrCodeData = `hoyeeh://pair?url=${encodeURIComponent(tvReceiverUrl)}`;
 
   const handlePair = async () => {
     if (pairingCode.length !== 6) {
@@ -94,7 +45,7 @@ export function CastToTVButton({
     if (sessionId) {
       const result = await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime, sessionId);
       if (result?.success) {
-        toast.success('Connected to TV!');
+        toast.success('Casting to TV');
         setShowDialog(false);
         setPairingCode('');
       } else {
@@ -184,21 +135,17 @@ export function CastToTVButton({
               
               <div className="ml-8">
                 <div className="relative rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 p-6">
-                  {/* QR Code Display */}
                   <div className="flex flex-col items-center gap-4">
-                    <div 
-                      className="w-40 h-40 bg-white rounded-xl p-3 shadow-lg"
-                      dangerouslySetInnerHTML={{ 
-                        __html: generateQRCodeSVG(qrCodeData, 140) 
-                      }}
-                    />
                     <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Or visit</p>
+                      <p className="text-xs text-muted-foreground mb-1">On your TV, open</p>
                       <div className="px-4 py-2 rounded-lg bg-card border border-border">
                         <span className="text-lg font-bold text-primary tracking-wide">
                           {tvReceiverUrl}
                         </span>
                       </div>
+                      <p className="text-xs text-muted-foreground mt-3 max-w-[240px]">
+                        Then scan the QR code shown on the TV with your phone camera, or type the TV's code below.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -257,9 +204,13 @@ export function CastToTVButton({
                     <button
                       key={device.id}
                       onClick={async () => {
+                        if (!device.sessionId) {
+                          setError('Enter the code shown on your TV to pair again.');
+                          return;
+                        }
                         const success = await cast.reconnectToDevice(device);
                         if (success) {
-                          const result = await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime);
+                          const result = await cast.loadVideo(videoUrl, videoTitle, videoThumbnail, duration, startTime, device.sessionId);
                           if (result?.success) {
                             setShowDialog(false);
                           } else {

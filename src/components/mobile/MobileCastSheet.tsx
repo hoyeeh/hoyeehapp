@@ -10,6 +10,7 @@ import { toast } from "sonner";
 // Hooks
 import { useCast } from "@/contexts/CastContext";
 import { useCastHistory, CastDevice as HistoryDevice } from "@/hooks/useCastHistory";
+import type { CastDevice as PairedDevice } from "@/hooks/useUniversalCast";
 import { getCastCapabilities } from "@/player/castCapabilities";
 
 // Components
@@ -115,7 +116,6 @@ export function MobileCastSheet({
       const sessionId = await cast.pairWithCode(code);
       if (!sessionId) return false;
       setShowPairingDialog(false);
-      castHistory.addDevice({ id: `remote:${sessionId}`, name: "Smart TV", type: "remote", sessionId });
       if (videoUrl) await loadOnTv(sessionId, "TV");
       else toast.success("Connected to TV");
       return true;
@@ -126,34 +126,33 @@ export function MobileCastSheet({
     }
   };
 
-  // Reconnect to a previously used device.
-  const handleReconnect = async (device: HistoryDevice) => {
-    if (device.type === "chromecast") return handleChromecast();
-    if (device.type === "airplay") return handleAirPlay();
-    if (device.type === "dlna") {
-      setActiveTab("dlna");
-      return;
-    }
-    const paired = cast.pairedDevices.find((d) => d.sessionId && (d.sessionId === device.sessionId || d.id === device.id));
-    const sessionId = device.sessionId || paired?.sessionId;
-    if (!sessionId) {
+  // Reconnect to a TV-code device. Sessions are resolved ONLY from the
+  // signed-in account's own paired-device list; otherwise ask for a new code.
+  const handleReconnectPaired = async (device: PairedDevice) => {
+    const paired = cast.pairedDevices.find((d) => d.id === device.id && d.sessionId);
+    if (!paired?.sessionId) {
       toast.error("Enter the code shown on your TV to pair again.");
       setShowPairingDialog(true);
       return;
     }
-    const name = device.customName || device.name;
     try {
-      const ok = await cast.reconnectToDevice({ id: paired?.id || device.id, name, type: "remote", sessionId });
+      const ok = await cast.reconnectToDevice(paired);
       if (!ok) {
-        castHistory.removeDevice(device.id, device.type);
         setShowPairingDialog(true);
         return;
       }
-      if (videoUrl) await loadOnTv(sessionId, name);
+      if (videoUrl) await loadOnTv(paired.sessionId, paired.name);
     } catch (error) {
       console.error("[MobileCastSheet] Reconnect error:", error);
-      toast.error(`Failed to reconnect to ${name}`);
+      toast.error(`Failed to reconnect to ${paired.name}`);
     }
+  };
+
+  // Reconnect to a Chromecast / AirPlay / DLNA history entry.
+  const handleReconnect = async (device: HistoryDevice) => {
+    if (device.type === "chromecast") return handleChromecast();
+    if (device.type === "airplay") return handleAirPlay();
+    setActiveTab("dlna");
   };
 
   // Handle DLNA device selection
@@ -508,6 +507,27 @@ export function MobileCastSheet({
                 {/* Recent Devices Tab */}
                 {activeTab === "history" && (
                   <div className="space-y-3">
+                    {cast.pairedDevices.length > 0 && (
+                      <>
+                        <p className="text-sm text-muted-foreground">Paired TVs</p>
+                        {cast.pairedDevices.slice(0, 5).map((device) => (
+                          <button
+                            key={`paired-${device.id}`}
+                            onClick={() => handleReconnectPaired(device)}
+                            className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
+                          >
+                            <div className="p-3 rounded-full bg-primary/10">
+                              <Tv className="h-6 w-6 text-primary" />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className="font-medium">{device.name}</p>
+                              <p className="text-sm text-muted-foreground">TV code</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          </button>
+                        ))}
+                      </>
+                    )}
                     {recentDevices.length > 0 ? (
                       <>
                         <p className="text-sm text-muted-foreground">Recently used devices</p>
@@ -536,7 +556,7 @@ export function MobileCastSheet({
                           </button>
                         ))}
                       </>
-                    ) : (
+                    ) : cast.pairedDevices.length > 0 ? null : (
                       <div className="text-center py-8">
                         <Smartphone className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
                         <p className="text-muted-foreground">No recent devices</p>
