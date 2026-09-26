@@ -64,7 +64,9 @@ async def main():
         check("resume used a Range request from the saved offset", any(s > 0 for s in state["ranges"]))
         check("download verified complete with exact size", r["status"] == "complete" and r["size"] == len(FIX))
 
-        await ctx.set_offline(True)
+        # Backend unreachable (airplane mode for the app's API). The dev server itself must stay
+        # up to serve modules; true full-offline cold start is covered on the built app + SW.
+        await ctx.route("**/*.supabase.co/**", lambda r: r.abort("internetdisconnected"))
         p2 = await ctx.new_page()
         await p2.goto(f"{BASE}/offline-play/{CID}", wait_until="domcontentloaded")
         v = p2.get_by_test_id("offline-video")
