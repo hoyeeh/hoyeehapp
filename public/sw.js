@@ -13,11 +13,11 @@ self.addEventListener("install", (event) => {
   console.log("Service Worker installing, version:", SW_VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        "/",
-        "/pwa-icon-192.png",
-        "/pwa-icon-512.png",
-      ]);
+      // Build-time precache list (app shell + hashed bundles) injected by vite-plugin-pwa.
+      const injected = (self.__WB_MANIFEST || []).map((e) => (typeof e === "string" ? e : e.url));
+      const urls = Array.from(new Set(["/", "/index.html", "/pwa-icon-192.png", "/pwa-icon-512.png", ...injected]))
+        .map((u) => (u.startsWith("/") ? u : "/" + u));
+      return Promise.allSettled(urls.map((u) => cache.add(u)));
     })
   );
   // Skip waiting to activate immediately

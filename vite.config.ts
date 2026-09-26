@@ -67,48 +67,14 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
-      workbox: {
+      // Ship our hand-written worker (offline shell, downloads, push) instead of
+      // a generated one; Workbox only injects the precache list into it.
+      strategies: "injectManifest",
+      srcDir: "public",
+      filename: "sw.js",
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-cache",
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/image\.tmdb\.org\/.*/i,
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "tmdb-images",
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 7,
-              },
-            },
-          },
-          {
-            urlPattern: /\.(?:js|css)$/i,
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "static-resources",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-            },
-          },
-        ],
       },
       devOptions: {
         enabled: false,
