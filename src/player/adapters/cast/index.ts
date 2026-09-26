@@ -1,10 +1,5 @@
-// Cast Adapters - Re-exports
-export { createCastController } from './CastController';
-export type { CastControllerInstance, CastControllerOptions } from './CastController';
-
-export { createCastReceiver } from './CastReceiver';
-export type { CastReceiverInstance, CastReceiverOptions } from './CastReceiver';
-
+// Cast adapters: the legacy CastController/CastReceiver direct-DB adapters were removed.
+// All casting goes through the cast-signaling function (see useUniversalCast).
 export {
   CastCommandType,
   parseCastSession,

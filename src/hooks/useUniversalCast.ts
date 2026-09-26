@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { castLog } from '@/lib/castLog';
+import { CastAckTracker } from '@/lib/castAckTracker';
 
 // How long the controller waits for the TV receiver to send an ack
 // (success or error) after a LOAD command. After this expires we
@@ -18,6 +19,8 @@ export interface LoadVideoResult {
   acked?: boolean;
   /** True when the LOAD was sent successfully but no ack arrived in time. */
   timedOut?: boolean;
+  /** A newer command replaced this LOAD before the TV confirmed it. */
+  superseded?: boolean;
 }
 
 export interface CastDevice {
@@ -79,19 +82,38 @@ export function useUniversalCast() {
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const ackTrackerRef = useRef(new CastAckTracker(15000));
+  const callSignalingRef = useRef<(a: string, b?: Record<string, unknown>) => Promise<any>>(async () => ({ success: false }));
 
   // Load paired devices from local storage
+  const devicesKey = user?.id ? `hoyeeh_paired_devices:${user.id}` : null;
+  const devicesKeyRef = useRef<string | null>(devicesKey);
+  devicesKeyRef.current = devicesKey;
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
-    const saved = localStorage.getItem('hoyeeh_paired_devices');
-    if (saved) {
-      try {
-        const devices = JSON.parse(saved);
-        setState(prev => ({ ...prev, pairedDevices: devices }));
-      } catch (e) {
-        console.error('Error loading paired devices:', e);
-      }
+    // Legacy un-scoped list could leak across accounts on shared devices.
+    localStorage.removeItem('hoyeeh_paired_devices');
+    let devices: CastDevice[] = [];
+    if (devicesKey) {
+      try { devices = JSON.parse(localStorage.getItem(devicesKey) || '[]'); } catch { devices = []; }
     }
-  }, []);
+    const uid = user?.id ?? null;
+    const switched = prevUserIdRef.current !== undefined && prevUserIdRef.current !== uid;
+    prevUserIdRef.current = uid;
+    if (switched) {
+      // Logout / account switch: drop the live session locally; the old
+      // account's ownership is enforced server-side.
+      if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+      if (realtimeChannelRef.current) { supabase.removeChannel(realtimeChannelRef.current); realtimeChannelRef.current = null; }
+      ackTrackerRef.current.cancelAll('Signed out');
+      sessionIdRef.current = null;
+      setState(prev => ({ ...prev, connectedDevice: null, sessionId: null, playbackState: initialPlaybackState, pairedDevices: devices }));
+    } else {
+      setState(prev => ({ ...prev, pairedDevices: devices }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devicesKey]);
 
   // Save paired devices
   const savePairedDevice = useCallback((device: CastDevice) => {
@@ -100,7 +122,7 @@ export function useUniversalCast() {
       if (exists) return prev;
 
       const newDevices = [...prev.pairedDevices, device];
-      localStorage.setItem('hoyeeh_paired_devices', JSON.stringify(newDevices));
+      if (devicesKeyRef.current) localStorage.setItem(devicesKeyRef.current, JSON.stringify(newDevices));
       return { ...prev, pairedDevices: newDevices };
     });
   }, []);
@@ -109,7 +131,7 @@ export function useUniversalCast() {
   const removePairedDevice = useCallback((deviceId: string) => {
     setState(prev => {
       const newDevices = prev.pairedDevices.filter(d => d.id !== deviceId);
-      localStorage.setItem('hoyeeh_paired_devices', JSON.stringify(newDevices));
+      if (devicesKeyRef.current) localStorage.setItem(devicesKeyRef.current, JSON.stringify(newDevices));
       return { ...prev, pairedDevices: newDevices };
     });
   }, []);
@@ -131,7 +153,7 @@ export function useUniversalCast() {
       const accessToken = data.session?.access_token;
 
       // If action likely requires auth and user isn't signed in, fail fast.
-      if (!accessToken && (action === 'pair' || action === 'command' || action === 'disconnect')) {
+      if (!accessToken && (action === 'pair' || action === 'command' || action === 'disconnect' || action === 'status')) {
         return { success: false, error: 'Please sign in to cast to TV.' };
       }
 
@@ -167,6 +189,8 @@ export function useUniversalCast() {
     []
   );
 
+
+  callSignalingRef.current = callSignaling;
 
   // Session ID ref for immediate access after pairing
   const sessionIdRef = useRef<string | null>(null);
@@ -232,15 +256,10 @@ export function useUniversalCast() {
 
     try {
       // Check if session is still valid
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${device.sessionId}`;
-      const response = await fetch(url, {
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-      });
-      const result = await response.json();
+      const result = await callSignaling('status', { sessionId: device.sessionId });
 
-      if (result.success && result.session.status !== 'disconnected') {
+      if (result.success && (result.session.status === 'paired' || result.session.status === 'active')) {
+        sessionIdRef.current = device.sessionId!;
         setState(prev => ({
           ...prev,
           isConnecting: false,
@@ -276,7 +295,7 @@ export function useUniversalCast() {
       setState(prev => ({ ...prev, isConnecting: false }));
       return false;
     }
-  }, [removePairedDevice]);
+  }, [removePairedDevice, callSignaling]);
 
   // Reference to disconnect function for use in polling
   const disconnectRef = useRef<() => void>(() => {});
@@ -289,17 +308,26 @@ export function useUniversalCast() {
 
     // Polling is now a fallback - realtime is primary
     // Poll every 10 seconds instead of 2 to reduce load
+    let lastPoll = 0;
     pollIntervalRef.current = setInterval(async () => {
+      // Fast poll while waiting on an ACK (realtime may be unavailable), else slow.
+      const interval = ackTrackerRef.current.pendingCount > 0 ? 1500 : 10000;
+      if (Date.now() - lastPoll < interval) return;
+      lastPoll = Date.now();
       try {
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${sessionId}`;
-        const response = await fetch(url, {
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-        });
-        const result = await response.json();
+        const result = await callSignalingRef.current('status', { sessionId });
 
+        if (!result.success && (result.error === 'Not authorized' || result.error === 'Authentication required')) {
+          disconnectRef.current();
+          return;
+        }
         if (result.success) {
+          ackTrackerRef.current.observe({
+            lastAckedSeq: result.session.lastAckedSeq,
+            lastAckStatus: result.session.lastAckStatus,
+            lastAckError: result.session.lastAckError,
+            commandSeq: result.session.commandSeq,
+          });
           setState(prev => ({
             ...prev,
             playbackState: {
@@ -314,42 +342,15 @@ export function useUniversalCast() {
             },
           }));
 
-          if (result.session.status === 'disconnected') {
+          if (result.session.status === 'disconnected' || result.session.status === 'expired') {
             disconnectRef.current();
           }
         }
       } catch (error) {
         console.error('Polling error:', error);
       }
-    }, 10000); // Reduced from 2s to 10s - realtime handles immediate updates
+    }, 500);
   }, []);
-
-  // Pending ack resolvers keyed by command_seq. When the receiver POSTs
-  // /ack, our realtime / polling listener resolves the matching promise.
-  const pendingAcksRef = useRef<
-    Map<number, { resolve: (r: { acked: boolean; error?: string }) => void; timer: ReturnType<typeof setTimeout> }>
-  >(new Map());
-
-  const resolveAcksUpTo = useCallback(
-    (lastAckedSeq: number, status?: string | null, errorMessage?: string | null) => {
-      if (!lastAckedSeq) return;
-      const pending = pendingAcksRef.current;
-      for (const [seq, entry] of pending.entries()) {
-        if (seq <= lastAckedSeq) {
-          clearTimeout(entry.timer);
-          pending.delete(seq);
-          const isError = status === 'error';
-          castLog.log(
-            isError ? 'error' : 'success',
-            `LOAD ack received seq=${seq} status=${status || 'success'}`,
-            errorMessage ? { error: errorMessage } : undefined
-          );
-          entry.resolve({ acked: !isError, error: isError ? errorMessage || 'TV reported playback error' : undefined });
-        }
-      }
-    },
-    []
-  );
 
   // Setup realtime subscription for instant updates
   const setupRealtimeSubscription = useCallback((sessionId: string) => {
@@ -384,14 +385,16 @@ export function useUniversalCast() {
           }));
 
           // Resolve any pending ack waiters when the receiver posts an ack.
-          const lastAckedSeq = Number(session.last_acked_seq) || 0;
-          const lastAckStatus = (session.last_ack_status as string | null) ?? null;
-          const lastAckError = (session.last_ack_error as string | null) ?? null;
-          resolveAcksUpTo(lastAckedSeq, lastAckStatus, lastAckError);
+          ackTrackerRef.current.observe({
+            lastAckedSeq: Number(session.last_acked_seq) || 0,
+            lastAckStatus: (session.last_ack_status as string | null) ?? null,
+            lastAckError: (session.last_ack_error as string | null) ?? null,
+            commandSeq: Number(session.command_seq) || 0,
+          });
         }
       )
       .subscribe();
-  }, [resolveAcksUpTo]);
+  }, []);
 
   // Send command to receiver - uses ref for immediate sessionId access
   const sendCommand = useCallback(async (
@@ -425,23 +428,6 @@ export function useUniversalCast() {
     }
   }, [state.sessionId, callSignaling]);
 
-  // Wait for the receiver to ack the given command_seq within a timeout.
-  const awaitAck = useCallback(
-    (seq: number): Promise<{ acked: boolean; error?: string; timedOut?: boolean }> => {
-      return new Promise((resolve) => {
-        const timer = setTimeout(() => {
-          if (pendingAcksRef.current.has(seq)) {
-            pendingAcksRef.current.delete(seq);
-            castLog.warn(`LOAD ack timed out seq=${seq}`, { timeoutMs: LOAD_ACK_TIMEOUT_MS });
-            resolve({ acked: false, timedOut: true, error: 'TV did not confirm playback in time' });
-          }
-        }, LOAD_ACK_TIMEOUT_MS);
-        pendingAcksRef.current.set(seq, { resolve: (r) => resolve(r), timer });
-      });
-    },
-    []
-  );
-
   // Load video on receiver — sends LOAD then waits for the TV ack handshake.
   const loadVideo = useCallback(async (
     videoUrl: string,
@@ -472,21 +458,25 @@ export function useUniversalCast() {
     // Wait for the TV receiver to acknowledge it actually loaded the stream.
     const seq = typeof result.seq === 'number' ? result.seq : undefined;
     if (seq === undefined) {
-      // Server didn't return a seq — best effort, treat as success without ack.
-      castLog.warn('LOAD accepted but no seq returned; skipping ack wait');
-      return { success: true, acked: false, seq: undefined };
+      // Without a seq we cannot correlate a receiver ACK — never report success.
+      castLog.error('LOAD accepted but server returned no seq');
+      toast.error('TV did not confirm playback');
+      return { success: false, acked: false, error: 'TV did not confirm playback' };
     }
 
-    const ack = await awaitAck(seq);
+    const ack = await ackTrackerRef.current.wait(seq);
     if (ack.acked) {
       return { success: true, acked: true, seq };
+    }
+    if (ack.superseded) {
+      return { success: false, acked: false, superseded: true, seq, error: ack.error };
     }
 
     const message = ack.error || 'TV failed to load the video';
     castLog.error('LOAD did not complete on TV', { seq, timedOut: ack.timedOut, error: message });
     toast.error(message);
     return { success: false, acked: false, timedOut: !!ack.timedOut, seq, error: message };
-  }, [sendCommand, awaitAck]);
+  }, [sendCommand]);
 
   // Playback controls
   const play = useCallback(() => sendCommand('PLAY'), [sendCommand]);
@@ -521,6 +511,7 @@ export function useUniversalCast() {
     }
 
     sessionIdRef.current = null;
+    ackTrackerRef.current.cancelAll();
 
     setState(prev => ({
       ...prev,

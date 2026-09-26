@@ -186,6 +186,24 @@ export type Database = {
           },
         ]
       }
+      cast_rate_limits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       cast_receivers: {
         Row: {
           created_at: string | null
@@ -215,6 +233,7 @@ export type Database = {
       }
       cast_sessions: {
         Row: {
+          claimed_at: string | null
           command_payload: Json | null
           command_seq: number | null
           command_type: string | null
@@ -236,6 +255,7 @@ export type Database = {
           receiver_id: string | null
           receiver_is_playing: boolean | null
           receiver_playback_time: number | null
+          receiver_secret_hash: string | null
           status: string | null
           video_duration: number | null
           video_thumbnail: string | null
@@ -244,6 +264,7 @@ export type Database = {
           volume_level: number | null
         }
         Insert: {
+          claimed_at?: string | null
           command_payload?: Json | null
           command_seq?: number | null
           command_type?: string | null
@@ -265,6 +286,7 @@ export type Database = {
           receiver_id?: string | null
           receiver_is_playing?: boolean | null
           receiver_playback_time?: number | null
+          receiver_secret_hash?: string | null
           status?: string | null
           video_duration?: number | null
           video_thumbnail?: string | null
@@ -273,6 +295,7 @@ export type Database = {
           volume_level?: number | null
         }
         Update: {
+          claimed_at?: string | null
           command_payload?: Json | null
           command_seq?: number | null
           command_type?: string | null
@@ -294,6 +317,7 @@ export type Database = {
           receiver_id?: string | null
           receiver_is_playing?: boolean | null
           receiver_playback_time?: number | null
+          receiver_secret_hash?: string | null
           status?: string | null
           video_duration?: number | null
           video_thumbnail?: string | null
@@ -5188,6 +5212,39 @@ export type Database = {
           user_email: string
         }[]
       }
+      cast_apply_command: {
+        Args: {
+          _bump: boolean
+          _command: string
+          _patch: Json
+          _session_id: string
+          _user_id: string
+        }
+        Returns: number
+      }
+      cast_claim_pairing: {
+        Args: { _code: string; _user_id: string }
+        Returns: {
+          device_name: string
+          device_type: string
+          receiver_id: string
+          session_id: string
+        }[]
+      }
+      cast_rate_limit_hit: {
+        Args: { _key: string; _max: number; _window_seconds: number }
+        Returns: boolean
+      }
+      cast_record_ack: {
+        Args: {
+          _error: string
+          _secret_hash: string
+          _seq: number
+          _session_id: string
+          _status: string
+        }
+        Returns: boolean
+      }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
       clear_session: { Args: never; Returns: undefined }
       delete_email: {
@@ -5383,12 +5440,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5412,11 +5469,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5437,11 +5494,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5462,11 +5519,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5479,11 +5536,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

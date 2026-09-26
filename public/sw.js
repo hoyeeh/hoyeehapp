@@ -32,7 +32,8 @@ self.addEventListener("activate", (event) => {
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
+            // Never wipe user downloads on update.
+            if (cacheName !== CACHE_NAME && !cacheName.includes("download")) {
               console.log("Deleting old cache:", cacheName);
               return caches.delete(cacheName);
             }
@@ -519,7 +520,12 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   // Handle requests for downloaded content
-  if (event.request.url.includes("/downloads/")) {
+  const reqUrl = new URL(event.request.url);
+  if (
+    event.request.mode !== "navigate" &&
+    reqUrl.origin === self.location.origin &&
+    reqUrl.pathname.startsWith("/downloads/")
+  ) {
     event.respondWith(
       caches.match(event.request, { cacheName: "hoyeeh-downloads" }).then(response => {
         if (response) return response;
@@ -544,7 +550,16 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request)
       .then((networkResponse) => {
         // Cache successful GET responses
-        if (networkResponse.status === 200) {
+        // Never put media, tokenised URLs or private responses in the shared cache.
+        const ct = networkResponse.headers.get("content-type") || "";
+        const cc = networkResponse.headers.get("cache-control") || "";
+        const tokenised = /[?&](token|sig|signature|expires|X-Amz-[^=]+)=/i.test(reqUrl.search);
+        if (
+          networkResponse.status === 200 &&
+          !tokenised &&
+          !/^(video|audio)\//i.test(ct) &&
+          !/no-store|private/i.test(cc)
+        ) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             // Add timestamp header for cache age tracking
@@ -561,8 +576,10 @@ self.addEventListener("fetch", (event) => {
         }
         
         // Return offline page for navigation requests
+        // SPA: every route boots from the cached app shell (e.g. /offline-downloads).
         if (event.request.mode === "navigate") {
-          return caches.match(OFFLINE_URL);
+          const shell = (await caches.match(OFFLINE_URL)) || (await caches.match("/index.html"));
+          if (shell) return shell;
         }
         
         // Return error for other requests
@@ -582,6 +599,9 @@ async function cleanupOldCacheEntries() {
       const response = await cache.match(request);
       if (response) {
         const dateHeader = response.headers.get('date');
+        const p = new URL(request.url).pathname;
+        // Keep the app shell and hashed bundles so offline cold start keeps working.
+        if (p === "/" || p === "/index.html" || p.startsWith("/assets/")) continue;
         if (dateHeader) {
           const cacheTime = new Date(dateHeader).getTime();
           if (now - cacheTime > CACHE_MAX_AGE) {

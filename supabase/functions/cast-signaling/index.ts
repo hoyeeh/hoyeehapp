@@ -1,571 +1,327 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  generatePairingCode,
+  generateReceiverSecret,
+  sha256Hex,
+  validateCommand,
+  isSafeMediaUrl,
+} from "./protocol.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-cast-receiver-secret",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-// Rate limiting for pairing attempts (in-memory, resets on function restart)
-const pairingAttempts = new Map<string, { count: number; resetAt: number }>();
-// Rate limiting for commands (max 10/sec per session)
-const commandAttempts = new Map<string, { count: number; resetAt: number }>();
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
-function checkRateLimit(identifier: string, maxAttempts = 10, windowMs = 60000): boolean {
-  const now = Date.now();
-  const record = pairingAttempts.get(identifier);
-  
-  if (!record || now > record.resetAt) {
-    pairingAttempts.set(identifier, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  
-  if (record.count >= maxAttempts) {
-    return false;
-  }
-  
-  record.count++;
-  return true;
-}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function checkCommandRateLimit(sessionId: string, maxAttempts = 10, windowMs = 1000): boolean {
-  const now = Date.now();
-  const record = commandAttempts.get(sessionId);
-  
-  if (!record || now > record.resetAt) {
-    commandAttempts.set(sessionId, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  
-  if (record.count >= maxAttempts) {
-    return false;
-  }
-  
-  record.count++;
-  return true;
-}
-
-// Generate a random 6-character pairing code
-function generatePairingCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
-// Get authenticated user from request
 async function getAuthUser(req: Request, supabase: any) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) return null;
-  
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
+  const h = req.headers.get("authorization") || "";
+  if (!h.startsWith("Bearer ")) return null;
+  const token = h.slice(7);
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error) return null;
+  return data?.user ?? null;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+async function readBody(req: Request): Promise<Record<string, unknown>> {
+  if (req.method !== "POST") return {};
+  const text = await req.text();
+  if (text.length > 64_000) throw new Error("PAYLOAD_TOO_LARGE");
+  if (!text) return {};
+  try {
+    const v = JSON.parse(text);
+    return v && typeof v === "object" ? v : {};
+  } catch {
+    return {};
   }
+}
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+  const url = new URL(req.url);
+  const action = url.searchParams.get("action");
+  const clientIp =
+    (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+    req.headers.get("cf-connecting-ip") || "unknown";
+
+  const rateOk = async (key: string, max: number, windowSec: number) => {
+    const { data, error } = await supabase.rpc("cast_rate_limit_hit", {
+      _key: key, _max: max, _window_seconds: windowSec,
+    });
+    if (error) {
+      console.error("[cast-signaling] rate limit error", error.message);
+      return false; // fail closed
+    }
+    return data === true;
+  };
+
+  // Resolve the receiver identity from the credential header.
+  const loadReceiverSession = async (sessionId: unknown) => {
+    const secret = req.headers.get("x-cast-receiver-secret") || "";
+    if (typeof sessionId !== "string" || !UUID_RE.test(sessionId) || secret.length < 32 || secret.length > 128) {
+      return null;
+    }
+    const hash = await sha256Hex(secret);
+    const { data } = await supabase
+      .from("cast_sessions")
+      .select("*, cast_receivers(device_name, device_type)")
+      .eq("id", sessionId)
+      .eq("receiver_secret_hash", hash)
+      .maybeSingle();
+    return data ? { session: data, hash } : null;
+  };
 
   try {
-    const url = new URL(req.url);
-    const action = url.searchParams.get('action');
-    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
-
-    // Health check endpoint
-    if (action === 'health') {
-      console.log('[cast-signaling] Health check requested');
-      return new Response(JSON.stringify({
-        success: true,
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        version: '1.0.0',
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    let body: Record<string, unknown>;
+    try {
+      body = await readBody(req);
+    } catch {
+      return json({ success: false, error: "Payload too large" }, 413);
     }
 
-    // Generate pairing code for TV receiver (no auth needed)
-    if (action === 'generate-code') {
-      let body;
-      try {
-        body = await req.json();
-      } catch (e) {
-        body = {};
+    if (action === "health") {
+      return json({ success: true, status: "ok", version: "2.0.0", timestamp: new Date().toISOString() });
+    }
+
+    // ---------------- Receiver: create pending session ----------------
+    if (action === "generate-code") {
+      if (!(await rateOk(`gen:ip:${clientIp}`, 30, 600))) {
+        return json({ success: false, error: "Too many requests" }, 429);
       }
-      const { deviceName, deviceType } = body;
-      
-      console.log('[cast-signaling] Generating code for device:', deviceName || 'Smart TV');
-      
-      const { data: receiver, error: receiverError } = await supabase
-        .from('cast_receivers')
-        .insert({ device_name: deviceName || 'Smart TV', device_type: deviceType || 'smart_tv' })
-        .select()
+      const deviceName = typeof body.deviceName === "string" ? body.deviceName.slice(0, 60) : "Smart TV";
+      const deviceType = body.deviceType === "screen_mirror" ? "screen_mirror" : "smart_tv";
+
+      const { data: receiver, error: rErr } = await supabase
+        .from("cast_receivers")
+        .insert({ device_name: deviceName || "Smart TV", device_type: deviceType })
+        .select("id")
         .single();
+      if (rErr) throw rErr;
 
-      if (receiverError) throw receiverError;
-
-      let pairingCode = generatePairingCode();
-      let attempts = 0;
-      while (attempts < 10) {
-        const { data: existing } = await supabase
-          .from('cast_sessions')
-          .select('id')
-          .eq('pairing_code', pairingCode)
-          .eq('status', 'pending')
+      const secret = generateReceiverSecret();
+      const hash = await sha256Hex(secret);
+      let session: any = null;
+      for (let i = 0; i < 8 && !session; i++) {
+        const { data, error } = await supabase
+          .from("cast_sessions")
+          .insert({
+            pairing_code: generatePairingCode(),
+            receiver_id: receiver.id,
+            receiver_secret_hash: hash,
+            status: "pending",
+            expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          })
+          .select("id, pairing_code, expires_at")
           .single();
-        if (!existing) break;
-        pairingCode = generatePairingCode();
-        attempts++;
+        if (!error) session = data;
+        else if (error.code !== "23505") throw error; // retry only on code collision
       }
+      if (!session) throw new Error("Could not allocate pairing code");
 
-      const { data: session, error: sessionError } = await supabase
-        .from('cast_sessions')
-        .insert({
-          pairing_code: pairingCode,
-          receiver_id: receiver.id,
-          status: 'pending',
-          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        })
-        .select()
-        .single();
-
-      if (sessionError) throw sessionError;
-
-      // Log event
-      await supabase.from('cast_events').insert({
-        session_id: session.id,
-        actor: 'system',
-        event_type: 'GENERATE_CODE',
-        payload: { deviceName: deviceName || 'Smart TV' }
+      await supabase.from("cast_events").insert({
+        session_id: session.id, actor: "system", event_type: "GENERATE_CODE", payload: { deviceType },
       });
 
-      console.log('Generated pairing code:', pairingCode);
-      return new Response(JSON.stringify({
+      return json({
         success: true,
-        pairingCode,
+        pairingCode: session.pairing_code,
         sessionId: session.id,
         receiverId: receiver.id,
+        receiverSecret: secret, // returned once, never stored in plaintext
         expiresAt: session.expires_at,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      });
     }
 
-    // Pair controller with receiver - REQUIRES AUTH + RATE LIMITING
-    if (action === 'pair') {
-      // Rate limit by IP
-      if (!checkRateLimit(clientIp, 10, 60000)) {
-        console.warn(`Rate limit exceeded for IP: ${clientIp}`);
-        return new Response(JSON.stringify({ success: false, error: 'Too many attempts. Try again in a minute.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
+    // ---------------- Controller: pair (atomic claim) ----------------
+    if (action === "pair") {
       const user = await getAuthUser(req, supabase);
-      if (!user) {
-        return new Response(JSON.stringify({ success: false, error: 'Authentication required' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      if (!user) return json({ success: false, error: "Authentication required" }, 401);
+      if (!(await rateOk(`pair:ip:${clientIp}`, 10, 60)) || !(await rateOk(`pair:user:${user.id}`, 10, 60))) {
+        return json({ success: false, error: "Too many attempts. Try again in a minute." }, 429);
       }
-
-      const { pairingCode } = await req.json();
-
-      const { data: session, error: sessionError } = await supabase
-        .from('cast_sessions')
-        .select('*, cast_receivers(*)')
-        .eq('pairing_code', pairingCode.toUpperCase())
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .single();
-
-      if (sessionError || !session) {
-        return new Response(JSON.stringify({ success: false, error: 'Invalid or expired pairing code' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      const code = typeof body.pairingCode === "string" ? body.pairingCode.trim().toUpperCase() : "";
+      if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) {
+        return json({ success: false, error: "Invalid or expired pairing code" }, 400);
       }
+      const { data, error } = await supabase.rpc("cast_claim_pairing", { _code: code, _user_id: user.id });
+      if (error) throw error;
+      const claimed = Array.isArray(data) ? data[0] : null;
+      if (!claimed) return json({ success: false, error: "Invalid or expired pairing code" }, 400);
 
-      await supabase
-        .from('cast_sessions')
-        .update({ status: 'paired', controller_user_id: user.id, last_heartbeat: new Date().toISOString() })
-        .eq('id', session.id);
-
-      // Log event
-      await supabase.from('cast_events').insert({
-        session_id: session.id,
-        actor: 'controller',
-        event_type: 'PAIR',
-        payload: { userId: user.id }
+      await supabase.from("cast_events").insert({
+        session_id: claimed.session_id, actor: "controller", event_type: "PAIR", payload: { userId: user.id },
       });
-
-      console.log('Paired session:', session.id, 'with user:', user.id);
-      return new Response(JSON.stringify({
+      return json({
         success: true,
-        sessionId: session.id,
-        receiverId: session.receiver_id,
-        deviceName: session.cast_receivers?.device_name,
-        deviceType: session.cast_receivers?.device_type,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    // Send command - REQUIRES AUTH + SESSION OWNERSHIP
-    if (action === 'command') {
-      const user = await getAuthUser(req, supabase);
-      if (!user) {
-        return new Response(JSON.stringify({ success: false, error: 'Authentication required' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const { sessionId, command, payload } = await req.json();
-
-      // Command rate limiting (max 10/sec per session)
-      if (!checkCommandRateLimit(sessionId, 10, 1000)) {
-        console.warn(`Command rate limit exceeded for session: ${sessionId}`);
-        return new Response(JSON.stringify({ success: false, error: 'Too many commands. Please slow down.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Verify session ownership
-      const { data: session, error: sessionError } = await supabase
-        .from('cast_sessions')
-        .select('controller_user_id')
-        .eq('id', sessionId)
-        .single();
-
-      if (sessionError || !session) {
-        return new Response(JSON.stringify({ success: false, error: 'Session not found' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (session.controller_user_id !== user.id) {
-        console.warn(`Unauthorized command by ${user.id} on session ${sessionId}`);
-        return new Response(JSON.stringify({ success: false, error: 'Not authorized to control this session' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Get current command_seq to increment for actual commands
-      const { data: currentSession } = await supabase
-        .from('cast_sessions')
-        .select('command_seq')
-        .eq('id', sessionId)
-        .single();
-      
-      const currentCommandSeq = currentSession?.command_seq || 0;
-      let updateData: Record<string, unknown> = { last_heartbeat: new Date().toISOString() };
-      let isActualCommand = false; // Track if this is a real command that should increment command_seq
-
-      console.log(`[cast-signaling] Processing command: ${command} for session: ${sessionId}`);
-      console.log(`[cast-signaling] Payload:`, JSON.stringify(payload));
-
-      switch (command) {
-        case 'LOAD':
-          console.log(`[cast-signaling] LOAD command - videoUrl: ${payload?.videoUrl}, title: ${payload?.title}`);
-          isActualCommand = true;
-          updateData = { 
-            ...updateData, 
-            video_url: payload.videoUrl, 
-            video_title: payload.title, 
-            video_thumbnail: payload.thumbnail, 
-            playback_time: payload.startTime || 0, 
-            video_duration: payload.duration || 0, 
-            is_playing: true, 
-            status: 'active',
-            // Command tracking fields
-            command_seq: currentCommandSeq + 1,
-            command_type: 'LOAD',
-            command_payload: { 
-              videoUrl: payload.videoUrl, 
-              title: payload.title,
-              startTime: payload.startTime || 0
-            },
-            command_updated_at: new Date().toISOString()
-          };
-          console.log(`[cast-signaling] LOAD updateData with command_seq:`, currentCommandSeq + 1);
-          break;
-        case 'PLAY': 
-          console.log(`[cast-signaling] PLAY command`);
-          isActualCommand = true;
-          updateData = {
-            ...updateData,
-            is_playing: true,
-            command_seq: currentCommandSeq + 1,
-            command_type: 'PLAY',
-            command_payload: {},
-            command_updated_at: new Date().toISOString()
-          };
-          break;
-        case 'PAUSE': 
-          console.log(`[cast-signaling] PAUSE command`);
-          isActualCommand = true;
-          updateData = {
-            ...updateData,
-            is_playing: false,
-            command_seq: currentCommandSeq + 1,
-            command_type: 'PAUSE',
-            command_payload: {},
-            command_updated_at: new Date().toISOString()
-          };
-          break;
-        case 'SEEK': 
-          console.log(`[cast-signaling] SEEK command to time: ${payload?.time}`);
-          isActualCommand = true;
-          updateData = {
-            ...updateData,
-            playback_time: payload.time,
-            command_seq: currentCommandSeq + 1,
-            command_type: 'SEEK',
-            command_payload: { time: payload.time },
-            command_updated_at: new Date().toISOString()
-          };
-          break;
-        case 'VOLUME': 
-          console.log(`[cast-signaling] VOLUME command: ${payload?.volume}`);
-          isActualCommand = true;
-          updateData = {
-            ...updateData,
-            volume_level: payload.volume,
-            command_seq: currentCommandSeq + 1,
-            command_type: 'VOLUME',
-            command_payload: { volume: payload.volume },
-            command_updated_at: new Date().toISOString()
-          };
-          break;
-        case 'STOP': 
-          console.log(`[cast-signaling] STOP command`);
-          isActualCommand = true;
-          updateData = { 
-            ...updateData, 
-            is_playing: false, 
-            video_url: null, 
-            video_title: null, 
-            playback_time: 0,
-            command_seq: currentCommandSeq + 1,
-            command_type: 'STOP',
-            command_payload: {},
-            command_updated_at: new Date().toISOString()
-          };
-          break;
-        case 'UPDATE_TIME': 
-          // UPDATE_TIME is NOT a command - it's just syncing receiver state
-          // Do NOT increment command_seq - this prevents reload loops
-          console.log(`[cast-signaling] UPDATE_TIME (receiver sync, not incrementing command_seq)`);
-          updateData.playback_time = payload.time; 
-          if (payload.duration) updateData.video_duration = payload.duration; 
-          break;
-        case 'UPDATE_QUEUE': 
-          console.log(`[cast-signaling] UPDATE_QUEUE command with ${payload?.queue?.length || 0} items`);
-          isActualCommand = true;
-          updateData = {
-            ...updateData,
-            queue: payload.queue,
-            command_seq: currentCommandSeq + 1,
-            command_type: 'UPDATE_QUEUE',
-            command_payload: { queueLength: payload?.queue?.length || 0 },
-            command_updated_at: new Date().toISOString()
-          };
-          break;
-        default:
-          console.log(`[cast-signaling] Unknown command: ${command}`);
-      }
-
-      const { error: updateError } = await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
-      
-      if (updateError) {
-        console.error(`[cast-signaling] Failed to update session:`, updateError);
-        return new Response(JSON.stringify({ success: false, error: 'Failed to update session', details: updateError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Log command event (skip UPDATE_TIME to reduce noise)
-      if (isActualCommand) {
-        await supabase.from('cast_events').insert({
-          session_id: sessionId,
-          actor: 'controller',
-          event_type: 'COMMAND',
-          payload: { command, ...payload }
-        });
-      }
-      
-      console.log(`[cast-signaling] Command ${command} executed successfully for session ${sessionId}${isActualCommand ? ' (command_seq incremented)' : ' (no command_seq change)'}`);
-      return new Response(JSON.stringify({ success: true, command, sessionId }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        sessionId: claimed.session_id,
+        receiverId: claimed.receiver_id,
+        deviceName: claimed.device_name,
+        deviceType: claimed.device_type,
       });
     }
 
-    // Get session status - receiver polling (no strict auth for pending sessions)
-    if (action === 'status') {
-      const sessionId = url.searchParams.get('sessionId');
-      const { data: session, error } = await supabase
-        .from('cast_sessions')
-        .select('*, cast_receivers(*)')
-        .eq('id', sessionId)
-        .single();
-
-      if (error || !session) {
-        return new Response(JSON.stringify({ success: false, error: 'Session not found' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    // ---------------- Controller: command ----------------
+    if (action === "command") {
+      const user = await getAuthUser(req, supabase);
+      if (!user) return json({ success: false, error: "Authentication required" }, 401);
+      const sessionId = body.sessionId;
+      if (typeof sessionId !== "string" || !UUID_RE.test(sessionId)) {
+        return json({ success: false, error: "Invalid sessionId" }, 400);
+      }
+      if (!(await rateOk(`cmd:${sessionId}`, 40, 10))) {
+        return json({ success: false, error: "Too many commands. Please slow down." }, 429);
+      }
+      const v = validateCommand(body.command, body.payload);
+      if (!v.ok) return json({ success: false, error: v.error }, 400);
+      if (v.patch.video_url && !isSafeMediaUrl(String(v.patch.video_url))) {
+        return json({ success: false, error: "Unsupported video URL" }, 400);
       }
 
-      // For active sessions, verify ownership if user is authenticated
-      if (session.status !== 'pending') {
+      const { data: seq, error } = await supabase.rpc("cast_apply_command", {
+        _session_id: sessionId, _user_id: user.id, _command: v.command, _patch: v.patch, _bump: v.bump,
+      });
+      if (error) throw error;
+      if (seq === null || seq === undefined) {
+        return json({ success: false, error: "Session not found, expired, or not yours" }, 403);
+      }
+      if (v.bump) {
+        await supabase.from("cast_events").insert({
+          session_id: sessionId, actor: "controller", event_type: "COMMAND",
+          payload: { command: v.command, seq }, // never log media URLs
+        });
+      }
+      return json({ success: true, command: v.command, sessionId, seq: Number(seq) });
+    }
+
+    // ---------------- Status (receiver credential OR owning controller) ----------------
+    if (action === "status") {
+      const sessionId = url.searchParams.get("sessionId") ?? body.sessionId;
+      let session: any = null;
+      let role: "receiver" | "controller" | null = null;
+
+      const rec = await loadReceiverSession(sessionId);
+      if (rec) { session = rec.session; role = "receiver"; }
+      else {
         const user = await getAuthUser(req, supabase);
-        if (user && session.controller_user_id && session.controller_user_id !== user.id) {
-          return new Response(JSON.stringify({ success: false, error: 'Not authorized' }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+        if (!user) return json({ success: false, error: "Authentication required" }, 401);
+        if (typeof sessionId !== "string" || !UUID_RE.test(sessionId)) {
+          return json({ success: false, error: "Invalid sessionId" }, 400);
         }
+        const { data } = await supabase
+          .from("cast_sessions").select("*, cast_receivers(device_name, device_type)")
+          .eq("id", sessionId).eq("controller_user_id", user.id).maybeSingle();
+        if (!data) return json({ success: false, error: "Not authorized" }, 403);
+        session = data; role = "controller";
       }
 
-      return new Response(JSON.stringify({
+      let status = session.status;
+      if (status !== "disconnected" && new Date(session.expires_at).getTime() < Date.now()) {
+        status = "expired";
+        await supabase.from("cast_sessions").update({ status: "disconnected", video_url: null }).eq("id", session.id);
+      }
+      const live = status === "paired" || status === "active";
+      return json({
         success: true,
+        role,
         session: {
-          id: session.id, status: session.status, videoUrl: session.video_url,
-          videoTitle: session.video_title, videoThumbnail: session.video_thumbnail,
-          playbackTime: session.playback_time, duration: session.video_duration,
-          isPlaying: session.is_playing, volume: session.volume_level, queue: session.queue,
-          deviceName: session.cast_receivers?.device_name, lastHeartbeat: session.last_heartbeat,
-          // Command tracking for receiver deduplication
-          commandSeq: session.command_seq,
+          id: session.id,
+          status,
+          // Media URL only for a live, claimed session.
+          videoUrl: live ? session.video_url : null,
+          videoTitle: live ? session.video_title : null,
+          videoThumbnail: live ? session.video_thumbnail : null,
+          playbackTime: session.receiver_playback_time ?? session.playback_time,
+          duration: session.video_duration,
+          isPlaying: session.receiver_is_playing ?? session.is_playing,
+          volume: session.volume_level,
+          queue: live ? session.queue : [],
+          deviceName: session.cast_receivers?.device_name,
+          lastHeartbeat: session.last_heartbeat,
+          expiresAt: session.expires_at,
+          commandSeq: Number(session.command_seq || 0),
           commandType: session.command_type,
-          commandUpdatedAt: session.command_updated_at,
-          // Ack handshake (receiver -> controller)
-          lastAckedSeq: session.last_acked_seq,
+          commandPayload: live ? session.command_payload : null,
+          lastAckedSeq: Number(session.last_acked_seq || 0),
           lastAckStatus: session.last_ack_status,
           lastAckError: session.last_ack_error,
           lastAckAt: session.last_ack_at,
         },
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    // Heartbeat (receiver only, no auth needed)
-    // CRITICAL: Heartbeats ONLY update heartbeat-specific fields
-    // They do NOT increment command_seq to prevent reload loops on TV receiver
-    if (action === 'heartbeat') {
-      const { sessionId, playbackTime, isPlaying } = await req.json();
-      
-      // ONLY update heartbeat fields - NOT command fields!
-      const updateData: Record<string, unknown> = { 
-        last_heartbeat: new Date().toISOString() 
-      };
-      
-      // These are "receiver state" updates, not commands
-      if (playbackTime !== undefined) updateData.playback_time = playbackTime;
-      if (isPlaying !== undefined) updateData.is_playing = isPlaying;
-      
-      // DO NOT update: command_seq, command_type, command_payload, command_updated_at
-
-      await supabase.from('cast_sessions').update(updateData).eq('id', sessionId);
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // ACK (receiver -> controller) — confirms the TV processed a command.
-    // No auth required: the receiver is identified by sessionId only.
-    // Body: { sessionId, seq, status: 'success'|'error', error?, commandType? }
-    if (action === 'ack') {
-      const body = await req.json().catch(() => ({}));
-      const { sessionId, seq, status, error: ackError, commandType } = body || {};
-
-      if (!sessionId || typeof seq !== 'number' || !status) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Missing sessionId, seq, or status',
-        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // ---------------- Receiver heartbeat ----------------
+    if (action === "heartbeat") {
+      const rec = await loadReceiverSession(body.sessionId);
+      if (!rec) return json({ success: false, error: "Invalid receiver credential" }, 401);
+      const s = rec.session;
+      if (!["pending", "paired", "active"].includes(s.status) || new Date(s.expires_at).getTime() < Date.now()) {
+        return json({ success: false, error: "Session ended", status: s.status }, 410);
       }
-
-      console.log(`[cast-signaling] ACK session=${sessionId} seq=${seq} status=${status}${ackError ? ' err=' + ackError : ''}`);
-
-      const { error: updateError } = await supabase
-        .from('cast_sessions')
-        .update({
-          last_acked_seq: seq,
-          last_ack_status: status,
-          last_ack_error: status === 'error' ? (typeof ackError === 'string' ? ackError.slice(0, 500) : 'Unknown error') : null,
-          last_ack_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId);
-
-      if (updateError) {
-        console.error('[cast-signaling] Failed to persist ack:', updateError);
-        return new Response(JSON.stringify({ success: false, error: 'Failed to persist ack' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Log to cast_events for audit / debug timeline.
-      await supabase.from('cast_events').insert({
-        session_id: sessionId,
-        actor: 'receiver',
-        event_type: status === 'success' ? 'ACK' : 'ACK_ERROR',
-        payload: { seq, commandType: commandType || null, error: ackError || null },
-      });
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const update: Record<string, unknown> = { last_heartbeat: new Date().toISOString() };
+      const t = Number(body.playbackTime);
+      if (Number.isFinite(t) && t >= 0 && t < 86400 * 2) update.receiver_playback_time = t;
+      if (typeof body.isPlaying === "boolean") update.receiver_is_playing = body.isPlaying;
+      await supabase.from("cast_sessions").update(update).eq("id", s.id);
+      return json({ success: true });
     }
 
-    // Disconnect - REQUIRES AUTH for owned sessions
-    if (action === 'disconnect') {
-      const { sessionId } = await req.json();
-      const user = await getAuthUser(req, supabase);
-
-      const { data: session } = await supabase.from('cast_sessions').select('controller_user_id').eq('id', sessionId).single();
-
-      // Allow disconnect if owner or receiver (no controller yet)
-      if (session?.controller_user_id && user?.id !== session.controller_user_id) {
-        return new Response(JSON.stringify({ success: false, error: 'Not authorized' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    // ---------------- Receiver ACK ----------------
+    if (action === "ack") {
+      const rec = await loadReceiverSession(body.sessionId);
+      if (!rec) return json({ success: false, error: "Invalid receiver credential" }, 401);
+      const seq = body.seq;
+      const status = body.status;
+      if (typeof seq !== "number" || !Number.isInteger(seq) || seq < 1 || (status !== "success" && status !== "error")) {
+        return json({ success: false, error: "Invalid ack" }, 400);
       }
-
-      await supabase.from('cast_sessions').update({ status: 'disconnected' }).eq('id', sessionId);
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      const err = typeof body.error === "string" ? body.error.slice(0, 500) : null;
+      const { data: ok, error } = await supabase.rpc("cast_record_ack", {
+        _session_id: rec.session.id, _secret_hash: rec.hash, _seq: seq, _status: status, _error: err,
       });
+      if (error) throw error;
+      if (!ok) return json({ success: false, error: "Stale or duplicate ack" }, 409);
+      await supabase.from("cast_events").insert({
+        session_id: rec.session.id, actor: "receiver",
+        event_type: status === "success" ? "ACK" : "ACK_ERROR", payload: { seq, error: err },
+      });
+      return json({ success: true });
     }
 
-    console.error('[cast-signaling] Invalid action requested:', action);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: 'Invalid action',
-      validActions: ['health', 'generate-code', 'pair', 'command', 'status', 'heartbeat', 'ack', 'disconnect']
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // ---------------- Disconnect (owner or credentialed receiver) ----------------
+    if (action === "disconnect") {
+      const rec = await loadReceiverSession(body.sessionId);
+      let sessionId: string | null = rec?.session.id ?? null;
+      if (!sessionId) {
+        const user = await getAuthUser(req, supabase);
+        if (!user || typeof body.sessionId !== "string" || !UUID_RE.test(body.sessionId)) {
+          return json({ success: false, error: "Not authorized" }, 403);
+        }
+        const { data } = await supabase.from("cast_sessions").select("id")
+          .eq("id", body.sessionId).eq("controller_user_id", user.id).maybeSingle();
+        if (!data) return json({ success: false, error: "Not authorized" }, 403);
+        sessionId = data.id;
+      }
+      await supabase.from("cast_sessions")
+        .update({ status: "disconnected", video_url: null, is_playing: false }).eq("id", sessionId);
+      return json({ success: true });
+    }
 
+    return json({ success: false, error: "Invalid action" }, 400);
   } catch (error) {
-    console.error('[cast-signaling] Error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error("[cast-signaling] Error:", error instanceof Error ? error.message : error);
+    return json({ success: false, error: "Internal error" }, 500);
   }
 });

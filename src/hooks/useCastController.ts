@@ -118,7 +118,12 @@ export function useCastController(options?: UseCastControllerOptions) {
   // Fetch session status
   const fetchSessionStatus = useCallback(async (sessionId: string) => {
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${sessionId}`);
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+      if (!token) return;
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/cast-signaling?action=status&sessionId=${encodeURIComponent(sessionId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const result = await response.json();
 
       if (result.success && result.session) {

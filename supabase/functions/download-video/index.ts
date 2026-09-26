@@ -1,266 +1,90 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Entitlement-checked offline download proxy.
+// Body: { contentId: uuid, episodeId?: uuid }  Header: Range (optional, passed through)
+// The server resolves the media URL itself; the client never supplies a URL.
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, range",
+  "Access-Control-Expose-Headers": "content-length, content-range, content-type, accept-ranges, etag",
 };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const json = (b: unknown, status: number) =>
+  new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-// Rate limit configuration
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10; // 10 downloads per minute per user
-
-interface RateLimitData {
-  count: number;
-  window_start: string;
-}
-
-// Persistent rate limiting using database
-async function checkPersistentRateLimit(
-  supabase: any,
-  userId: string,
-  action: string
-): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
-  const now = Date.now();
-  
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
-    // Get current rate limit record
-    const { data, error: rateError } = await supabase
-      .from('rate_limits')
-      .select('count, window_start')
-      .eq('user_id', userId)
-      .eq('action', action)
-      .maybeSingle();
+    const auth = req.headers.get("Authorization") || "";
+    if (!auth.startsWith("Bearer ")) return json({ error: "Authorization required" }, 401);
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: u, error: authErr } = await admin.auth.getUser(auth.slice(7));
+    if (authErr || !u?.user) return json({ error: "Authentication failed" }, 401);
+    const userId = u.user.id;
 
-    const rateData = data as RateLimitData | null;
-
-    if (rateError) {
-      console.error('[rate-limit] Database error:', rateError);
-      // Fail open but log - don't block legitimate users due to DB issues
-      return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1, resetIn: RATE_LIMIT_WINDOW_MS };
-    }
-
-    const windowStart = rateData?.window_start ? new Date(rateData.window_start).getTime() : 0;
-    const elapsed = now - windowStart;
-
-    // Check if within rate limit window and exceeded
-    if (rateData && elapsed < RATE_LIMIT_WINDOW_MS && rateData.count >= MAX_REQUESTS_PER_WINDOW) {
-      const resetIn = RATE_LIMIT_WINDOW_MS - elapsed;
-      console.warn(`[rate-limit] User ${userId} exceeded limit for ${action}: ${rateData.count}/${MAX_REQUESTS_PER_WINDOW}`);
-      return { allowed: false, remaining: 0, resetIn };
-    }
-
-    // Update or create rate limit record
-    const newCount = (rateData && elapsed < RATE_LIMIT_WINDOW_MS) ? rateData.count + 1 : 1;
-    const newWindowStart = (rateData && elapsed < RATE_LIMIT_WINDOW_MS) 
-      ? rateData.window_start 
-      : new Date().toISOString();
-
-    await supabase
-      .from('rate_limits')
-      .upsert({
-        user_id: userId,
-        action: action,
-        count: newCount,
-        window_start: newWindowStart,
-      }, {
-        onConflict: 'user_id,action'
-      });
-
-    const remaining = MAX_REQUESTS_PER_WINDOW - newCount;
-    const resetIn = RATE_LIMIT_WINDOW_MS - (now - new Date(newWindowStart).getTime());
-
-    console.log(`[rate-limit] User ${userId} ${action}: ${newCount}/${MAX_REQUESTS_PER_WINDOW}, remaining: ${remaining}`);
-    return { allowed: true, remaining: Math.max(0, remaining), resetIn };
-  } catch (error) {
-    console.error('[rate-limit] Unexpected error:', error);
-    // Fail open
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1, resetIn: RATE_LIMIT_WINDOW_MS };
-  }
-}
-
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header provided');
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Initialize Supabase client with service role for rate limit management
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    
-    // Use anon key for user auth verification
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
+    const { data: allowed } = await admin.rpc("cast_rate_limit_hit", {
+      _key: `dl:${userId}`, _max: 60, _window_seconds: 60,
     });
-    
-    // Use service role for rate limits and admin queries
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    if (allowed !== true) return json({ error: "Rate limit exceeded. Please try again later." }, 429);
 
-    // Verify the user is authenticated
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Authentication failed' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const body = await req.json().catch(() => ({}));
+    const contentId = body?.contentId;
+    const episodeId = body?.episodeId;
+    if (typeof contentId !== "string" || !UUID_RE.test(contentId)) return json({ error: "contentId required" }, 400);
+    if (episodeId != null && (typeof episodeId !== "string" || !UUID_RE.test(episodeId))) {
+      return json({ error: "Invalid episodeId" }, 400);
     }
 
-    console.log('Authenticated user:', user.id);
+    const { data: content } = await admin.from("content")
+      .select("id, video_url, is_premium, lifecycle_status").eq("id", contentId).maybeSingle();
+    if (!content || content.lifecycle_status === "hidden") return json({ error: "Not found" }, 404);
 
-    // Check persistent rate limit
-    const rateLimit = await checkPersistentRateLimit(supabaseAdmin, user.id, 'download_video');
-    if (!rateLimit.allowed) {
-      console.warn('Rate limit exceeded for user:', user.id);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Rate limit exceeded. Please try again later.',
-          retryAfter: Math.ceil(rateLimit.resetIn / 1000)
-        }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetIn / 1000))
-          } 
-        }
-      );
+    let videoUrl: string | null = content.video_url;
+    let premium = !!content.is_premium;
+    if (episodeId) {
+      const { data: ep } = await admin.from("episodes").select("video_url, is_premium").eq("id", episodeId).maybeSingle();
+      if (!ep) return json({ error: "Not found" }, 404);
+      videoUrl = ep.video_url;
+      premium = premium || !!ep.is_premium;
     }
 
-    // Check if user has an active subscription or is an admin
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('subscription_expiry')
-      .eq('id', user.id)
-      .single();
+    // Paid titles are never downloadable (fail closed on lookup error).
+    const { data: paid, error: paidErr } = await admin.from("paid_content").select("id").eq("content_id", contentId).eq("is_active", true).eq("is_free", false).limit(1);
+    if (paidErr || (paid && paid.length > 0)) return json({ error: "This title cannot be downloaded" }, 403);
+    // Premium titles would need real DRM for offline use, which a browser PWA cannot provide.
+    if (premium) return json({ error: "This title cannot be downloaded" }, 403);
 
-    const { data: roles } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-
-    const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
-    const hasActiveSubscription = profile?.subscription_expiry && 
-      new Date(profile.subscription_expiry) > new Date();
-
-    if (!isAdmin && !hasActiveSubscription) {
-      console.error('User does not have active subscription:', user.id);
-      return new Response(
-        JSON.stringify({ error: 'Active subscription required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!videoUrl) return json({ error: "No downloadable file" }, 404);
+    let parsed: URL;
+    try { parsed = new URL(videoUrl); } catch { return json({ error: "No downloadable file" }, 404); }
+    if (parsed.protocol !== "https:") return json({ error: "No downloadable file" }, 404);
+    if (/\.m3u8$/i.test(parsed.pathname)) {
+      return json({ error: "This title is streaming-only (HLS). An MP4 version is needed for offline viewing.", code: "HLS_UNSUPPORTED" }, 415);
     }
 
-    const { videoUrl, rangeStart } = await req.json();
-    
-    if (!videoUrl) {
-      return new Response(
-        JSON.stringify({ error: 'Video URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const range = req.headers.get("range");
+    const upstreamHeaders: Record<string, string> = {};
+    if (range && /^bytes=\d+-\d*$/.test(range)) upstreamHeaders["Range"] = range;
+    const upstream = await fetch(videoUrl, { headers: upstreamHeaders });
+    if (!upstream.ok && upstream.status !== 206) {
+      await upstream.body?.cancel();
+      return json({ error: "Source unavailable" }, upstream.status === 416 ? 416 : 502);
     }
-
-    // Validate the video URL belongs to allowed domains (CDN or storage)
-    const allowedDomains = [
-      'cdn.digitaloceanspaces.com',
-      'digitaloceanspaces.com',
-      'supabase.co',
-      'supabase.com',
-      'nyc3.digitaloceanspaces.com',
-      'nyc3.cdn.digitaloceanspaces.com',
-    ];
-    
-    try {
-      const urlObj = new URL(videoUrl);
-      const isAllowedDomain = allowedDomains.some(domain => 
-        urlObj.hostname.includes(domain) || urlObj.hostname.endsWith(domain)
-      );
-      
-      if (!isAllowedDomain) {
-        console.error('[download-video] Invalid video URL domain:', urlObj.hostname, 'Allowed:', allowedDomains);
-        return new Response(
-          JSON.stringify({ error: 'Invalid video source', domain: urlObj.hostname }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      console.log('[download-video] Domain validated:', urlObj.hostname);
-    } catch (urlError) {
-      console.error('[download-video] Invalid URL format:', videoUrl, urlError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid URL format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const ct = upstream.headers.get("content-type") || "video/mp4";
+    if (/mpegurl/i.test(ct)) {
+      await upstream.body?.cancel();
+      return json({ error: "Streaming-only source", code: "HLS_UNSUPPORTED" }, 415);
     }
-
-    console.log('Proxying video download for user:', user.id, 'URL:', videoUrl, 'rangeStart:', rangeStart);
-
-    // Build fetch headers for range request if resuming
-    const fetchHeaders: Record<string, string> = {};
-    if (rangeStart && rangeStart > 0) {
-      fetchHeaders['Range'] = `bytes=${rangeStart}-`;
-      console.log('Requesting range:', fetchHeaders['Range']);
+    const h: Record<string, string> = { ...corsHeaders, "Content-Type": ct, "Cache-Control": "no-store" };
+    for (const k of ["content-length", "content-range", "accept-ranges", "etag"]) {
+      const v = upstream.headers.get(k);
+      if (v) h[k] = v;
     }
-
-    // Fetch the video from the CDN
-    const videoResponse = await fetch(videoUrl, { headers: fetchHeaders });
-    
-    if (!videoResponse.ok && videoResponse.status !== 206) {
-      console.error('Failed to fetch video:', videoResponse.status, videoResponse.statusText);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch video from source' }),
-        { status: videoResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const contentLength = videoResponse.headers.get('content-length');
-    const contentRange = videoResponse.headers.get('content-range');
-    const contentType = videoResponse.headers.get('content-type') || 'video/mp4';
-
-    // Build response headers with rate limit info
-    const responseHeaders: Record<string, string> = {
-      ...corsHeaders,
-      'Content-Type': contentType,
-      'Cache-Control': 'no-cache',
-      'X-RateLimit-Remaining': String(rateLimit.remaining),
-      'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetIn / 1000))
-    };
-
-    if (contentLength) {
-      responseHeaders['Content-Length'] = contentLength;
-    }
-    if (contentRange) {
-      responseHeaders['Content-Range'] = contentRange;
-    }
-
-    const statusCode = rangeStart && rangeStart > 0 ? 206 : 200;
-    console.log('Streaming video, size:', contentLength, 'range:', contentRange, 'type:', contentType, 'rate limit remaining:', rateLimit.remaining);
-
-    return new Response(videoResponse.body, {
-      status: statusCode,
-      headers: responseHeaders,
-    });
-  } catch (error) {
-    console.error('Download proxy error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.log("[download-video] ok", { userId, contentId, episodeId: episodeId ?? null, status: upstream.status });
+    return new Response(upstream.body, { status: upstream.status, headers: h });
+  } catch (e) {
+    console.error("[download-video] error", e instanceof Error ? e.message : "unknown");
+    return json({ error: "Internal error" }, 500);
   }
 });

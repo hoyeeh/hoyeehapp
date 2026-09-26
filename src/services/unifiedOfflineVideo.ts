@@ -30,6 +30,7 @@ import {
 import {
   getAllDownloads as getAllNewDownloads,
   getDownload as getNewDownload,
+  downloadKey,
   type DownloadMetadata as NewDownloadMetadata,
 } from "@/services/offlineStorage";
 
@@ -82,9 +83,9 @@ async function resolveLegacy(
 }
 
 /** Fall back to the lightweight new store. */
-async function resolveNew(contentId: string): Promise<string | null> {
+async function resolveNew(contentId: string, episodeId?: string): Promise<string | null> {
   try {
-    const rec = await getNewDownload(contentId);
+    const rec = await getNewDownload(downloadKey(contentId, episodeId));
     if (!rec?.blob) return null;
     return URL.createObjectURL(rec.blob);
   } catch (err) {
@@ -103,13 +104,7 @@ export async function resolveOfflineSrc(
 ): Promise<string | null> {
   const legacy = await resolveLegacy(contentId, episodeId);
   if (legacy) return legacy;
-  // Episode-scoped lookups don't exist in the new store yet; only resolve
-  // movie-level downloads from there.
-  if (!episodeId) {
-    const fresh = await resolveNew(contentId);
-    if (fresh) return fresh;
-  }
-  return null;
+  return resolveNew(contentId, episodeId);
 }
 
 /** Check whether a given content/episode is available offline in any store. */
@@ -127,11 +122,8 @@ export async function hasUnifiedDownload(
   } catch {
     /* ignore */
   }
-  if (!episodeId) {
-    const rec = await getNewDownload(contentId);
-    if (rec?.blob) return true;
-  }
-  return false;
+  const { hasDownload } = await import("@/services/offlineStorage");
+  return hasDownload(downloadKey(contentId, episodeId));
 }
 
 function mapLegacy(d: LegacyDownloadMetadata): UnifiedDownload {
@@ -152,6 +144,7 @@ function mapNew(d: NewDownloadMetadata): UnifiedDownload {
   return {
     source: "new",
     contentId: d.contentId,
+    episodeId: d.episodeId,
     title: d.title,
     thumbnailUrl: (d.poster as string | undefined) ?? undefined,
     duration: d.duration,
@@ -175,7 +168,7 @@ export async function listUnifiedDownloads(): Promise<UnifiedDownload[]> {
   );
   const newOnly = fresh
     .map(mapNew)
-    .filter((d) => !seen.has(`${d.contentId}:`));
+    .filter((d) => !seen.has(`${d.contentId}:${d.episodeId ?? ""}`));
   return [...completedLegacy, ...newOnly].sort(
     (a, b) => b.createdAt - a.createdAt,
   );
