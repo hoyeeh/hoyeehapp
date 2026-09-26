@@ -56,7 +56,11 @@ export function isGoogleCastSupportedRuntime(ua?: string): boolean {
   const w = window as any;
   if (w.Capacitor?.isNativePlatform?.()) return false;
   const agent = ua ?? (typeof navigator !== "undefined" ? navigator.userAgent : "");
-  if (/Android|iPhone|iPad|iPod|Mobile/i.test(agent)) return false;
+  // Google's Web Sender is unsupported on Chrome for iOS (CriOS) and any iOS
+  // browser, including iPadOS "desktop mode" UAs; mobile Android is excluded
+  // because it has no reliable Web Sender (native SDK not packaged here).
+  if (/Android|iPhone|iPad|iPod|Mobile|CriOS|FxiOS|EdgiOS/i.test(agent)) return false;
+  if (/Macintosh/.test(agent) && typeof navigator !== "undefined" && (navigator as any).maxTouchPoints > 1) return false;
   return /Chrome\//.test(agent) && !/Edg\/|OPR\//.test(agent);
 }
 
