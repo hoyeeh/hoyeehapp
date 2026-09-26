@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { castLog } from '@/lib/castLog';
 import { CastAckTracker } from '@/lib/castAckTracker';
+import { castMediaOptions, getReceiverMediaIssue } from '@/lib/castMedia';
 
 // How long the controller waits for the TV receiver to send an ack
 // (success or error) after a LOAD command. After this expires we
@@ -118,10 +119,9 @@ export function useUniversalCast() {
   // Save paired devices
   const savePairedDevice = useCallback((device: CastDevice) => {
     setState(prev => {
-      const exists = prev.pairedDevices.find(d => d.id === device.id);
-      if (exists) return prev;
-
-      const newDevices = [...prev.pairedDevices, device];
+      // Re-pairing the same TV must refresh its sessionId, otherwise
+      // "reconnect" would keep using a dead session.
+      const newDevices = [...prev.pairedDevices.filter(d => d.id !== device.id), device];
       if (devicesKeyRef.current) localStorage.setItem(devicesKeyRef.current, JSON.stringify(newDevices));
       return { ...prev, pairedDevices: newDevices };
     });
@@ -437,6 +437,12 @@ export function useUniversalCast() {
     startTime?: number,
     overrideSessionId?: string
   ): Promise<LoadVideoResult> => {
+    const mediaIssue = getReceiverMediaIssue(videoUrl, castMediaOptions());
+    if (mediaIssue) {
+      castLog.error('LOAD blocked: media not reachable by receiver', { url: videoUrl });
+      toast.error(mediaIssue);
+      return { success: false, error: mediaIssue };
+    }
     castLog.info('LOAD payload prepared', { url: videoUrl, title, startTime: startTime || 0, sessionId: overrideSessionId });
 
     const result = await sendCommand('LOAD', {

@@ -108,6 +108,7 @@ export function CastRemote({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Back 10 seconds"
             onClick={() => onSeek(Math.max(0, localTime - 10))}
             disabled={!hasVideo}
           >
@@ -117,6 +118,7 @@ export function CastRemote({
           <Button
             size="lg"
             className="h-14 w-14 rounded-full"
+            aria-label={session?.isPlaying ? 'Pause' : 'Play'}
             onClick={session?.isPlaying ? onPause : onPlay}
             disabled={!hasVideo}
           >
@@ -130,6 +132,7 @@ export function CastRemote({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Forward 10 seconds"
             onClick={() => onSeek(Math.min(session?.duration || 0, localTime + 10))}
             disabled={!hasVideo}
           >
@@ -142,6 +145,7 @@ export function CastRemote({
           <Button
             variant="ghost"
             size="icon"
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
             onClick={handleVolumeToggle}
             disabled={!hasVideo}
           >
@@ -164,6 +168,7 @@ export function CastRemote({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Stop"
             onClick={onStop}
             disabled={!hasVideo}
             className="text-destructive hover:text-destructive"

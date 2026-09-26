@@ -9,3 +9,11 @@
 Unit/behavior tests: `npx vitest run` (includes owner isolation, mid-download logout, expired/corrupt manifest, resume validation, host allowlist).
 
 Not covered here: physical Chromecast/AirPlay/smart-TV/iOS/Android hardware; H.264 playback in headless Chromium (fixture is WebM for that reason).
+
+## cast_two_window_e2e.py (browser only — not a physical TV)
+Two browser windows: the TV receiver page (desktop size) and a phone-size controller
+signed in via `lovable auth-session --json`. Pairs with the TV code, sends the
+`e2e/fixtures/fixture.webm` fixture (served on http://localhost:8099) and checks the
+phone reports success only after the TV confirms that exact LOAD, then Pause/Play/Seek,
+refusals (no sign-in 401, blob/non-https LOAD, wrong code, commands after disconnect).
+Run against the dev server: `python3 e2e/cast_two_window_e2e.py`.

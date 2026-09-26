@@ -3,8 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 export interface CastDevice {
   id: string;
   name: string;
-  type: 'chromecast' | 'dlna' | 'airplay';
+  type: 'chromecast' | 'dlna' | 'airplay' | 'remote';
   lastUsed: number;
+  /** TV-code sessions only: the cast-signaling session to resume. */
+  sessionId?: string;
   groupId?: string;
   customName?: string;
 }

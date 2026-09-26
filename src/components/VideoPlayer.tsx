@@ -48,18 +48,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { useWatchProgress } from "@/hooks/useWatchProgress";
-import { useGoogleCast } from "@/hooks/useGoogleCast";
 import { usePictureInPicture } from "@/hooks/usePictureInPicture";
-import { useDLNA } from "@/hooks/useDLNA";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
-import { useAirPlay } from "@/hooks/useAirPlay";
-import { useCastHistory } from "@/hooks/useCastHistory";
-import { CastController } from "@/components/CastController";
-import { CastSetupGuide } from "@/components/cast/CastSetupGuide";
-import { DeviceGroupManager } from "@/components/cast/DeviceGroupManager";
-import { NativeCastButton } from "@/components/cast/NativeCastButton";
-import { AirPlayButton } from "@/components/cast/AirPlayButton";
-import { CastPanel } from "@/components/cast/CastPanel";
 import { CastToTVButton } from "@/components/cast/CastToTVButton";
 import { SubtitleDisplay } from "@/components/SubtitleDisplay";
 import { UnifiedCastButton } from "@/components/player/UnifiedCastButton";
@@ -142,8 +132,6 @@ export const VideoPlayer = ({
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const [isHls, setIsHls] = useState(false);
   const [loadedProgress, setLoadedProgress] = useState<number | null>(null);
-  const [isCasting, setIsCasting] = useState(false);
-  const [isDLNACasting, setIsDLNACasting] = useState(false);
   const [mediaError, setMediaError] = useState<{ code: number; message: string } | null>(null);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showSkipRecap, setShowSkipRecap] = useState(false);
@@ -193,105 +181,12 @@ export const VideoPlayer = ({
   const [nativeCastActive, setNativeCastActive] = useState(false);
   const nativeCastActiveRef = useRef(false);
   useEffect(() => { nativeCastActiveRef.current = nativeCastActive; }, [nativeCastActive]);
-  // Google Cast hook
-  const cast = useGoogleCast({
-    mediaUrl: src,
-    mediaTitle: title,
-    onTimeUpdate: (time) => {
-      setCurrentTime(time);
-      saveProgressImmediately(time, cast.duration);
-    },
-  });
-
   // Picture-in-Picture hook
   const pip = usePictureInPicture(videoRef);
-
-  // DLNA hook
-  const dlna = useDLNA();
 
   // Subtitles hook
   const subtitles = useSubtitles(contentId, episodeId);
 
-  // Cast history hook for device memory and auto-reconnect
-  const castHistory = useCastHistory();
-  const [autoReconnectAttempted, setAutoReconnectAttempted] = useState(false);
-
-  // AirPlay hook
-  const airPlay = useAirPlay({
-    onConnect: () => {
-      const video = videoRef.current;
-      if (video) {
-        toast.success('Connected to AirPlay');
-        castHistory.addDevice({
-          id: 'airplay-device',
-          name: airPlay.deviceName || 'AirPlay Device',
-          type: 'airplay',
-        });
-      }
-    },
-    onDisconnect: () => {
-      toast.info('Disconnected from AirPlay');
-    },
-  });
-
-  // Set up AirPlay with video element
-  useEffect(() => {
-    if (videoRef.current) {
-      airPlay.setupVideo(videoRef.current);
-    }
-  }, [airPlay.setupVideo]);
-
-  // Track Chromecast connections in history
-  useEffect(() => {
-    if (cast.isConnected && cast.deviceName) {
-      castHistory.addDevice({
-        id: `chromecast-${cast.deviceName}`,
-        name: cast.deviceName,
-        type: 'chromecast',
-      });
-    }
-  }, [cast.isConnected, cast.deviceName]);
-
-  // Track DLNA connections in history
-  useEffect(() => {
-    if (dlna.connectedDevice) {
-      castHistory.addDevice({
-        id: dlna.connectedDevice.id,
-        name: dlna.connectedDevice.name,
-        type: 'dlna',
-      });
-    }
-  }, [dlna.connectedDevice]);
-
-  // Auto-reconnect to last used device on player load
-  useEffect(() => {
-    if (autoReconnectAttempted || !castHistory.lastUsedDevice) return;
-    
-    const attemptAutoReconnect = async () => {
-      setAutoReconnectAttempted(true);
-      const lastDevice = castHistory.lastUsedDevice;
-      
-      if (!lastDevice) return;
-
-      // Only attempt reconnect if the device was used recently (within 24 hours)
-      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-      if (lastDevice.lastUsed < twentyFourHoursAgo) return;
-
-      if (lastDevice.type === 'chromecast' && cast.isAvailable) {
-        toast.info(`Reconnecting to ${lastDevice.name}...`, { duration: 2000 });
-        // Chromecast will auto-connect if device is available
-        cast.connect();
-      } else if (lastDevice.type === 'dlna') {
-        toast.info('Scanning for your last DLNA device...', { duration: 2000 });
-        dlna.scanForDevices();
-      }
-      // AirPlay doesn't support programmatic reconnection
-    };
-
-    // Delay auto-reconnect slightly to let video load first
-    const timer = setTimeout(attemptAutoReconnect, 2000);
-    return () => clearTimeout(timer);
-  }, [castHistory.lastUsedDevice, autoReconnectAttempted, cast.isAvailable]);
 
   // Network quality for adaptive streaming
   const networkQuality = useNetworkQuality();
@@ -1622,287 +1517,6 @@ export const VideoPlayer = ({
                 </button>
               )}
 
-              {/* Native Cast Buttons */}
-              <NativeCastButton
-                videoUrl={src}
-                videoTitle={title}
-                startTime={currentTime}
-                onConnect={() => {
-                  const video = videoRef.current;
-                  if (video) {
-                    video.pause();
-                    setIsPlaying(false);
-                    setIsCasting(true);
-                  }
-                }}
-                onDisconnect={() => setIsCasting(false)}
-                className="hidden sm:flex"
-              />
-              
-              <AirPlayButton
-                videoRef={videoRef}
-                onConnect={() => {
-                  castHistory.addDevice({
-                    id: 'airplay-device',
-                    name: 'AirPlay Device',
-                    type: 'airplay',
-                  });
-                }}
-                className="hidden sm:flex"
-              />
-
-              {/* Cast Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className={cn(
-                      "p-2 rounded-full transition-colors sm:hidden",
-                      (cast.isConnected || isDLNACasting || airPlay.isConnected)
-                        ? "text-brand bg-brand/20 hover:bg-brand/30" 
-                        : "hover:text-brand hover:bg-muted"
-                    )}
-                    title="Cast to device"
-                  >
-                    <Cast className={cn("h-5 w-5", (cast.isConnected || isDLNACasting || airPlay.isConnected) && "fill-current")} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card min-w-[220px]">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">
-                    Cast to Device
-                  </DropdownMenuLabel>
-                  
-                  {/* Google Chromecast - Always visible */}
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (cast.isConnected) {
-                        const video = videoRef.current;
-                        if (video) {
-                          video.pause();
-                          setIsPlaying(false);
-                          setIsCasting(true);
-                          cast.loadMedia(src, title, undefined, video.currentTime);
-                        }
-                      } else {
-                        cast.connect();
-                      }
-                    }}
-                    className="cursor-pointer"
-                    disabled={!cast.isAvailable && !cast.isConnected}
-                  >
-                    <Cast className={cn(
-                      "mr-2 h-4 w-4",
-                      cast.isConnected && "text-brand"
-                    )} />
-                    <div className="flex flex-col">
-                      <span className={cn(cast.isConnected && "text-brand font-medium")}>
-                        {cast.isConnected 
-                          ? `Casting to ${cast.deviceName}` 
-                          : 'Chromecast'}
-                      </span>
-                      {!cast.isAvailable && !cast.isConnected && (
-                        <span className="text-xs text-muted-foreground">
-                          No devices found
-                        </span>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuSeparator />
-                  
-                  {/* DLNA/UPnP - Always visible */}
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (dlna.connectedDevice) {
-                        const video = videoRef.current;
-                        if (video) {
-                          video.pause();
-                          setIsPlaying(false);
-                          setIsDLNACasting(true);
-                          dlna.playMedia(src, title, video.currentTime);
-                        }
-                      } else {
-                        dlna.scanForDevices();
-                      }
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <Tv className={cn(
-                      "mr-2 h-4 w-4",
-                      dlna.connectedDevice && "text-brand"
-                    )} />
-                    <div className="flex flex-col">
-                      <span className={cn(dlna.connectedDevice && "text-brand font-medium")}>
-                        {dlna.connectedDevice 
-                          ? `Connected: ${dlna.connectedDevice.name}` 
-                          : 'DLNA/UPnP TV'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {dlna.isScanning 
-                          ? 'Scanning for devices...' 
-                          : dlna.devices.length > 0 
-                            ? `${dlna.devices.length} device(s) found`
-                            : 'Tap to scan'}
-                      </span>
-                    </div>
-                    {dlna.isScanning && (
-                      <Loader className="ml-auto h-3 w-3 animate-spin text-muted-foreground" />
-                    )}
-                  </DropdownMenuItem>
-                  
-                  {/* DLNA Device List */}
-                  {dlna.devices.length > 0 && (
-                    <>
-                      {dlna.devices.map((device) => (
-                        <DropdownMenuItem
-                          key={device.id}
-                          onClick={() => dlna.connectToDevice(device)}
-                          className="cursor-pointer pl-8"
-                        >
-                          <Monitor className="mr-2 h-4 w-4" />
-                          {device.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  )}
-                  
-                  <DropdownMenuSeparator />
-                  
-                  {/* AirPlay - Always visible */}
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (airPlay.isAvailable) {
-                        airPlay.showPicker();
-                      } else {
-                        toast.info('AirPlay is only available in Safari on Mac/iOS');
-                      }
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <Airplay className={cn(
-                      "mr-2 h-4 w-4",
-                      airPlay.isConnected && "text-brand"
-                    )} />
-                    <div className="flex flex-col">
-                      <span className={cn(airPlay.isConnected && "text-brand font-medium")}>
-                        {airPlay.isConnected 
-                          ? `AirPlay: ${airPlay.deviceName || 'Connected'}` 
-                          : 'AirPlay'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {airPlay.isAvailable 
-                          ? 'Tap to select device' 
-                          : 'Safari only'}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                  
-                  {/* Device Groups */}
-                  {castHistory.groups.length > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        Device Groups
-                      </DropdownMenuLabel>
-                      {castHistory.groups.map((group) => {
-                        const groupDevices = castHistory.getDevicesByGroup(group.id);
-                        if (groupDevices.length === 0) return null;
-                        
-                        const getGroupIcon = () => {
-                          switch (group.icon) {
-                            case 'home': return Home;
-                            case 'living': return Sofa;
-                            case 'bedroom': return Bed;
-                            case 'kitchen': return UtensilsCrossed;
-                            case 'office': return Monitor;
-                            case 'tv': return Tv;
-                            default: return Folder;
-                          }
-                        };
-                        const GroupIcon = getGroupIcon();
-                        
-                        return (
-                          <DropdownMenuItem
-                            key={group.id}
-                            onClick={() => {
-                              const device = groupDevices[0];
-                              if (device.type === 'chromecast') {
-                                cast.connect();
-                              } else if (device.type === 'dlna') {
-                                dlna.scanForDevices();
-                                toast.info(`Looking for ${castHistory.getDeviceDisplayName(device)}...`);
-                              } else if (device.type === 'airplay' && airPlay.isAvailable) {
-                                airPlay.showPicker();
-                              }
-                            }}
-                            className="cursor-pointer"
-                          >
-                            <GroupIcon className="mr-2 h-4 w-4 text-brand" />
-                            <div className="flex flex-col">
-                              <span>{group.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {groupDevices.length} device{groupDevices.length !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </>
-                  )}
-
-                  {/* Recent Devices (ungrouped) */}
-                  {castHistory.getUngroupedDevices().length > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        Recent Devices
-                      </DropdownMenuLabel>
-                      {castHistory.getUngroupedDevices().slice(0, 3).map((device) => (
-                        <DropdownMenuItem
-                          key={`${device.type}-${device.id}`}
-                          onClick={() => {
-                            if (device.type === 'chromecast') {
-                              cast.connect();
-                            } else if (device.type === 'dlna') {
-                              dlna.scanForDevices();
-                              toast.info(`Looking for ${castHistory.getDeviceDisplayName(device)}...`);
-                            } else if (device.type === 'airplay' && airPlay.isAvailable) {
-                              airPlay.showPicker();
-                            }
-                          }}
-                          className="cursor-pointer"
-                        >
-                          {device.type === 'chromecast' && <Cast className="mr-2 h-4 w-4" />}
-                          {device.type === 'dlna' && <Tv className="mr-2 h-4 w-4" />}
-                          {device.type === 'airplay' && <Airplay className="mr-2 h-4 w-4" />}
-                          <span className="truncate">{castHistory.getDeviceDisplayName(device)}</span>
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  )}
-                  
-                  <DropdownMenuSeparator />
-                  
-                  {/* Management Links */}
-                  <div className="px-2 py-1.5 space-y-1">
-                    <DeviceGroupManager
-                      trigger={
-                        <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
-                          <FolderOpen className="h-3.5 w-3.5" />
-                          Manage device groups
-                        </button>
-                      }
-                    />
-                    <CastSetupGuide
-                      trigger={
-                        <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
-                          <HelpCircle className="h-3.5 w-3.5" />
-                          Need help setting up?
-                        </button>
-                      }
-                    />
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
 
               {/* Cast to TV Button - QR Code Pairing */}
               <CastToTVButton
@@ -1910,7 +1524,7 @@ export const VideoPlayer = ({
                 videoTitle={title}
                 startTime={currentTime}
                 duration={duration}
-                className="hidden sm:flex"
+                className="flex"
               />
 
               {/* Picture-in-Picture Button */}
@@ -2113,49 +1727,6 @@ export const VideoPlayer = ({
         </div>
       )}
 
-      {/* Cast Controller - shown when casting via Chromecast */}
-      {isCasting && cast.isConnected && (
-        <CastController
-          deviceName={cast.deviceName || 'Cast Device'}
-          mediaTitle={title}
-          isPlaying={cast.isPlaying}
-          currentTime={cast.currentTime}
-          duration={cast.duration}
-          volume={cast.volume}
-          isMuted={cast.isMuted}
-          onPlay={cast.play}
-          onPause={cast.pause}
-          onSeek={cast.seek}
-          onVolumeChange={cast.setVolume}
-          onMuteToggle={() => cast.setMuted(!cast.isMuted)}
-          onDisconnect={() => {
-            cast.disconnect();
-            setIsCasting(false);
-          }}
-        />
-      )}
-
-      {/* DLNA Controller - shown when casting via DLNA */}
-      {isDLNACasting && dlna.connectedDevice && (
-        <CastController
-          deviceName={dlna.connectedDevice.name}
-          mediaTitle={title}
-          isPlaying={dlna.isPlaying}
-          currentTime={dlna.currentTime}
-          duration={dlna.duration}
-          volume={1}
-          isMuted={false}
-          onPlay={dlna.play}
-          onPause={dlna.pause}
-          onSeek={dlna.seek}
-          onVolumeChange={() => {}}
-          onMuteToggle={() => {}}
-          onDisconnect={() => {
-            dlna.disconnect();
-            setIsDLNACasting(false);
-          }}
-        />
-      )}
     </div>
     </>
   );
