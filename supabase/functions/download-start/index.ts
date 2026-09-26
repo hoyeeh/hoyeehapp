@@ -197,7 +197,7 @@ serve(async (req) => {
       .from('download_licenses')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('status', 'active');
+      .in('status', ['active', 'pending', 'completed']);
 
     if ((totalLicenses || 0) >= MAX_DOWNLOADS_PER_USER) {
       console.warn(`[download-start] User ${user.id} has reached global download limit: ${totalLicenses}/${MAX_DOWNLOADS_PER_USER}`);
@@ -218,7 +218,7 @@ serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('device_id', deviceId)
-      .eq('status', 'active');
+      .in('status', ['active', 'pending', 'completed']);
 
     if ((deviceLicenses || 0) >= MAX_DOWNLOADS_PER_DEVICE) {
       console.warn(`[download-start] User ${user.id} has reached device download limit: ${deviceLicenses}/${MAX_DOWNLOADS_PER_DEVICE}`);
