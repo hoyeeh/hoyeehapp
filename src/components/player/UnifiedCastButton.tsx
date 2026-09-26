@@ -79,6 +79,13 @@ export function UnifiedCastButton({ videoRef, videoElement, title, poster, class
       toast.error("Casting failed. Please check your network or try again.");
       return;
     }
+    // Streamed (MSE/blob) or on-device sources can't be handed to a TV by the
+    // browser picker — say so instead of opening a picker that silently fails.
+    const current = String(v.currentSrc || v.src || "");
+    if (!current || current.startsWith("blob:") || current.startsWith("data:")) {
+      toast.error("This video can't use the browser cast picker. Use \"Cast to TV\" with the code on your TV.");
+      return;
+    }
     try {
       const r = v.remote.prompt();
       if (r && typeof r.catch === "function") {
