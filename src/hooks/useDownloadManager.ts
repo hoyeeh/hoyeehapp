@@ -406,15 +406,17 @@ export function useDownloadManager() {
         'Authorization': `Bearer ${session?.access_token || ''}`,
         'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       };
+      if (resumeFromByte > 0) headers['Range'] = `bytes=${resumeFromByte}-`;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
         {
           method: 'POST',
           headers,
-          body: JSON.stringify({ 
-            videoUrl,
-            rangeStart: resumeFromByte > 0 ? resumeFromByte : undefined 
+          // Server resolves the file from the ids and re-checks entitlement.
+          body: JSON.stringify({
+            contentId: metadata.contentId,
+            episodeId: metadata.episodeId || undefined,
           }),
           signal,
         }
