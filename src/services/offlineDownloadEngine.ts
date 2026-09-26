@@ -128,6 +128,10 @@ async function runDownloadInner(p: DownloadParams, id: string, owner: string, ep
       await res.body?.cancel();
       throw new OfflineDownloadError("This title is streaming-only and can't be saved for offline viewing yet.", "UNSUPPORTED_SOURCE");
     }
+    if (res.status === 404) {
+      await res.body?.cancel();
+      throw new OfflineDownloadError("This title or episode isn't available for download.", "FORBIDDEN");
+    }
     if (!res.ok) {
       await res.body?.cancel();
       throw new OfflineDownloadError(`Download failed (HTTP ${res.status})`, "HTTP");
