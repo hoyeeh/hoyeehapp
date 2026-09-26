@@ -364,7 +364,7 @@ export function useDownloadManager() {
 
       // Start downloading the video
       await downloadVideo(
-        manifest.videoUrl,
+        "",
         downloadId,
         metadata,
         deviceKeyRef.current,
