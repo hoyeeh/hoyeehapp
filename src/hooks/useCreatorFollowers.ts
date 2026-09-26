@@ -28,13 +28,15 @@ export const useFollowerCount = (creatorId: string) => {
     queryFn: async () => {
       if (!creatorId) return 0;
       
-      const { count, error } = await supabase
-        .from("creator_followers")
-        .select("*", { count: "exact", head: true })
-        .eq("creator_id", creatorId);
+      // Individual follow rows are private; use the public aggregate count.
+      const { data, error } = await supabase
+        .from("creator_profiles_public")
+        .select("follower_count")
+        .eq("id", creatorId)
+        .maybeSingle();
       
       if (error) throw error;
-      return count || 0;
+      return data?.follower_count || 0;
     },
     enabled: !!creatorId,
   });
