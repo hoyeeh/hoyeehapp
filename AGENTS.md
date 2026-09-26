@@ -1,0 +1,4 @@
+- Offline downloads go through `download-video` by contentId/episodeId only (server resolves URL + entitlement); never persist media/signed URLs. Why: prevents URL leaks and cross-title unlocks.
+- Offline bytes live in `offlineStorage` (chunked, owner=user|profile, verified complete); playback via `/offline-play/:id`. Why: works on airplane-mode cold start.
+- PWA uses vite-plugin-pwa `injectManifest` with `public/sw.js` as source. Why: generateSW overwrote the custom offline/push worker.
+- Cast control uses cast-signaling v2 (receiver secret + controller JWT, exact-seq ACKs). Why: prevents session hijack and false "casting" success.
