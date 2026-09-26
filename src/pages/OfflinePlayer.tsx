@@ -25,6 +25,7 @@ const OfflinePlayer = () => {
   const key = downloadKey(contentId, episodeId);
   const ownerRef = useRef<string | null>(null);
   const [ownerTick, setOwnerTick] = useState(0);
+  const { isOffline } = useOfflineStatus();
 
   // Account/profile change (logout, profile switch, other tab): re-resolve.
   useEffect(() => {
@@ -82,7 +83,7 @@ const OfflinePlayer = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <div className="p-3 flex items-center gap-2">
+      <div className={`p-3 flex items-center gap-2 ${isOffline ? "pt-12" : ""}`}>
         <Button variant="ghost" size="icon" onClick={() => navigate("/offline-downloads")} aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
         </Button>
