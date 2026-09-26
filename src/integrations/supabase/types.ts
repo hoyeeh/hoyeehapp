@@ -5247,6 +5247,15 @@ export type Database = {
       }
       check_mobile_exists: { Args: { check_mobile: string }; Returns: boolean }
       clear_session: { Args: never; Returns: undefined }
+      complete_download_license: {
+        Args: {
+          _content_id: string
+          _device_id: string
+          _episode_id: string
+          _total_size: number
+        }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

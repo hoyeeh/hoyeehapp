@@ -1,0 +1,2 @@
+ALTER TABLE public.download_licenses DROP CONSTRAINT download_licenses_status_check;
+ALTER TABLE public.download_licenses ADD CONSTRAINT download_licenses_status_check CHECK (status = ANY (ARRAY['active','pending','completed','expired','revoked']));

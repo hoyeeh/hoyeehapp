@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkDownloadEntitlement, isAllowedMediaUrl } from "../_shared/downloadPolicy.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,23 +61,6 @@ serve(async (req) => {
     }
 
     console.log(`[download-start] User ${user.id} requesting download for content ${contentId}, episode ${episodeId || 'N/A'}`);
-
-    // Check user subscription
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_subscribed, subscription_expiry')
-      .eq('id', user.id)
-      .single();
-
-    const isSubscribed = profile?.is_subscribed && 
-      (!profile.subscription_expiry || new Date(profile.subscription_expiry) > new Date());
-
-    if (!isSubscribed) {
-      return new Response(
-        JSON.stringify({ error: 'Active subscription required for downloads', code: 'NO_SUBSCRIPTION' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Check and register device (limit to MAX_DEVICES_PER_USER devices per user)
     const { count: deviceCount } = await supabase
@@ -140,15 +124,16 @@ serve(async (req) => {
     let duration: number = 0;
     let episodeTitle: string | undefined;
     let contentRating: string | null = null;
+    let premium = false;
 
     if (episodeId) {
       // Get episode details
       const { data: episode, error: episodeError } = await supabase
         .from('episodes')
         .select(`
-          id, title, video_url, thumbnail_url, duration,
+          id, title, video_url, thumbnail_url, duration, is_premium,
           season:seasons!inner(
-            content:content!inner(id, title, thumbnail_url, content_rating)
+            content:content!inner(id, title, thumbnail_url, content_rating, is_premium)
           )
         `)
         .eq('id', episodeId)
@@ -161,6 +146,10 @@ serve(async (req) => {
         );
       }
 
+      if ((episode.season as any)?.content?.id !== contentId) {
+        return new Response(JSON.stringify({ error: 'Episode not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      premium = !!(episode as any).is_premium || !!(episode.season as any)?.content?.is_premium;
       videoUrl = episode.video_url;
       episodeTitle = episode.title;
       title = (episode.season as any)?.content?.title || episode.title;
@@ -171,7 +160,7 @@ serve(async (req) => {
       // Get movie details
       const { data: content, error: contentError } = await supabase
         .from('content')
-        .select('id, title, video_url, thumbnail_url, duration, content_rating')
+        .select('id, title, video_url, thumbnail_url, duration, content_rating, is_premium')
         .eq('id', contentId)
         .single();
 
@@ -182,6 +171,7 @@ serve(async (req) => {
         );
       }
 
+      premium = !!(content as any).is_premium;
       videoUrl = content.video_url;
       title = content.title;
       thumbnailUrl = content.thumbnail_url;
@@ -189,6 +179,12 @@ serve(async (req) => {
       contentRating = content.content_rating;
     }
 
+    if (videoUrl && !isAllowedMediaUrl(videoUrl)) videoUrl = null;
+    const ent = await checkDownloadEntitlement(supabase, user.id, contentId, premium);
+    if (!ent.ok) {
+      return new Response(JSON.stringify({ error: ent.error, code: ent.code }), { status: ent.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const profile = { subscription_expiry: ent.subscriptionExpiry };
     if (!videoUrl) {
       return new Response(
         JSON.stringify({ error: 'Video not available for download' }),
@@ -201,7 +197,7 @@ serve(async (req) => {
       .from('download_licenses')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('status', 'active');
+      .in('status', ['active', 'pending', 'completed']);
 
     if ((totalLicenses || 0) >= MAX_DOWNLOADS_PER_USER) {
       console.warn(`[download-start] User ${user.id} has reached global download limit: ${totalLicenses}/${MAX_DOWNLOADS_PER_USER}`);
@@ -222,7 +218,7 @@ serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('device_id', deviceId)
-      .eq('status', 'active');
+      .in('status', ['active', 'pending', 'completed']);
 
     if ((deviceLicenses || 0) >= MAX_DOWNLOADS_PER_DEVICE) {
       console.warn(`[download-start] User ${user.id} has reached device download limit: ${deviceLicenses}/${MAX_DOWNLOADS_PER_DEVICE}`);
@@ -294,8 +290,7 @@ serve(async (req) => {
       thumbnailUrl,
       duration,
       quality: preferredQuality,
-      videoUrl,
-      estimatedSize,
+      estimatedSize, // media URL is never returned; bytes come from download-video by id
       contentRating, // Include content rating for kids filtering
       license: {
         expiresAt: expiresAt.getTime(),

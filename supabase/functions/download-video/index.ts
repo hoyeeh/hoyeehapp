@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkDownloadEntitlement, fetchAllowed, isAllowedMediaUrl } from "../_shared/downloadPolicy.ts";
 
 // Entitlement-checked offline download proxy.
 // Body: { contentId: uuid, episodeId?: uuid }  Header: Range (optional, passed through)
@@ -54,31 +55,13 @@ Deno.serve(async (req) => {
       premium = premium || !!ep.is_premium;
     }
 
-    // Established download policy (same as before this change):
-    //  - admins: allowed
-    //  - paid titles: only buyers
-    //  - premium titles: active subscribers
-    //  - free titles: any signed-in user
-    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
-    const isAdmin = !!roles?.some((r) => r.role === "admin" || r.role === "super_admin");
-    if (!isAdmin) {
-      const { data: paid, error: paidErr } = await admin.from("paid_content").select("id")
-        .eq("content_id", contentId).eq("is_active", true).eq("is_free", false).limit(1);
-      if (paidErr) return json({ error: "Entitlement check failed" }, 503);
-      if (paid && paid.length > 0) {
-        const { data: bought } = await admin.rpc("has_purchased_content", { _user_id: userId, _content_id: contentId });
-        if (bought !== true) return json({ error: "Purchase required to download" }, 403);
-      } else if (premium) {
-        const { data: prof } = await admin.from("profiles").select("subscription_expiry").eq("id", userId).maybeSingle();
-        const active = prof?.subscription_expiry && new Date(prof.subscription_expiry) > new Date();
-        if (!active) return json({ error: "Active subscription required to download" }, 403);
-      }
-    }
+    const ent = await checkDownloadEntitlement(admin, userId, contentId, premium);
+    if (!ent.ok) return json({ error: ent.error, code: ent.code }, ent.status);
 
     if (!videoUrl) return json({ error: "No downloadable file" }, 404);
     let parsed: URL;
     try { parsed = new URL(videoUrl); } catch { return json({ error: "No downloadable file" }, 404); }
-    if (parsed.protocol !== "https:") return json({ error: "No downloadable file" }, 404);
+    if (!isAllowedMediaUrl(videoUrl)) return json({ error: "No downloadable file" }, 404);
     if (/\.m3u8$/i.test(parsed.pathname)) {
       return json({ error: "This title is streaming-only (HLS). An MP4 version is needed for offline viewing.", code: "HLS_UNSUPPORTED" }, 415);
     }
@@ -86,7 +69,9 @@ Deno.serve(async (req) => {
     const range = req.headers.get("range");
     const upstreamHeaders: Record<string, string> = {};
     if (range && /^bytes=\d+-\d*$/.test(range)) upstreamHeaders["Range"] = range;
-    const upstream = await fetch(videoUrl, { headers: upstreamHeaders });
+    let upstream: Response;
+    try { upstream = await fetchAllowed(videoUrl, upstreamHeaders); }
+    catch { return json({ error: "Source unavailable" }, 502); }
     if (!upstream.ok && upstream.status !== 206) {
       await upstream.body?.cancel();
       return json({ error: "Source unavailable" }, upstream.status === 416 ? 416 : 502);

@@ -343,6 +343,9 @@ export function useDownloadManager() {
       await loadDownloads();
 
       // Save license
+      const { currentOwner } = await import('@/services/offlineStorage');
+      const owner = await currentOwner();
+      if (!owner) throw new Error('Sign in required to download');
       const license: DownloadLicense = {
         id: downloadId,
         contentId: content.id,
@@ -351,6 +354,7 @@ export function useDownloadManager() {
         canPlayOffline: manifest.license.canPlayOffline,
         encryptedContentKey: manifest.license.encryptedContentKey,
         lastVerified: Date.now(),
+        owner,
       };
       await saveLicense(license);
 
@@ -360,7 +364,7 @@ export function useDownloadManager() {
 
       // Start downloading the video
       await downloadVideo(
-        manifest.videoUrl,
+        "",
         downloadId,
         metadata,
         deviceKeyRef.current,
@@ -436,18 +440,23 @@ export function useDownloadManager() {
 
       console.log('[downloadVideo] Video stream started, status:', response.status);
 
-      const contentLength = response.headers.get('content-length');
-      const contentRange = response.headers.get('content-range');
-      
-      // Parse total size from Content-Range header if resuming
-      let totalSize: number;
-      if (contentRange) {
-        // Format: bytes 0-999/1000 or bytes 500-999/1000
-        const match = contentRange.match(/bytes \d+-\d+\/(\d+)/);
-        totalSize = match ? parseInt(match[1], 10) : metadata.totalSize;
-      } else {
-        totalSize = contentLength ? parseInt(contentLength, 10) + resumeFromByte : metadata.totalSize;
+      const { validateRangeResponse } = await import('@/lib/rangeValidation');
+      const check = validateRangeResponse({
+        status: response.status,
+        contentRange: response.headers.get('content-range'),
+        contentLength: response.headers.get('content-length'),
+        etag: response.headers.get('etag'),
+        requestedStart: resumeFromByte,
+        expectedTotal: resumeFromByte > 0 ? metadata.totalSize : undefined,
+        expectedEtag: resumeFromByte > 0 ? (metadata as { etag?: string }).etag : undefined,
+      });
+      if (!check.ok) {
+        await response.body?.cancel();
+        if (resumeFromByte > 0) await deletePartialChunks(downloadId);
+        throw new Error((check as { reason: string }).reason);
       }
+      const totalSize: number = (check as { total: number }).total;
+      (metadata as { etag?: string }).etag = response.headers.get('etag') || undefined;
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
@@ -549,6 +558,11 @@ export function useDownloadManager() {
       if (!videoData) {
         throw new Error('Failed to combine downloaded chunks');
       }
+      if (videoData.byteLength !== totalSize || downloadedSize !== totalSize) {
+        // Never mark complete unless we hold exactly the expected bytes.
+        await deletePartialChunks(downloadId);
+        throw new Error('Download incomplete or corrupted; please retry');
+      }
 
       // Encrypt the video data
       const { iv, ciphertext } = await encryptSegment(videoData, deviceKey);
@@ -575,30 +589,15 @@ export function useDownloadManager() {
       const deviceId = getDeviceId();
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData?.session) {
-        // Build the query - handle episode_id being null for movies
-        let query = supabase
-          .from('download_licenses')
-          .update({ 
-            status: 'completed', 
-            downloaded_at: new Date().toISOString(),
-            total_size: videoData.byteLength,
-          })
-          .eq('content_id', metadata.contentId)
-          .eq('device_id', deviceId)
-          .eq('user_id', sessionData.session.user.id);
-        
-        // Add episode_id filter (handles null for movies)
-        if (metadata.episodeId) {
-          query = query.eq('episode_id', metadata.episodeId);
-        } else {
-          query = query.is('episode_id', null);
-        }
-        
-        const { error: updateError } = await query;
+        // Narrow server-side completion: only own, pending, unexpired license.
+        const { error: updateError } = await (supabase.rpc as any)('complete_download_license', {
+          _content_id: metadata.contentId,
+          _episode_id: metadata.episodeId || null,
+          _device_id: deviceId,
+          _total_size: videoData.byteLength,
+        });
         if (updateError) {
           console.error('[downloadVideo] Failed to update license status:', updateError);
-        } else {
-          console.log('[downloadVideo] License status updated to completed');
         }
       }
 
