@@ -126,6 +126,10 @@ export async function putManifest(m: DownloadManifest): Promise<void> {
   await db.setItem(mKey(m.owner, downloadKey(m.contentId, m.episodeId)), m);
 }
 
+export async function removeManifest(owner: string, id: string): Promise<void> {
+  await db.removeItem(mKey(owner, id));
+}
+
 export async function putChunk(owner: string, id: string, index: number, blob: Blob) {
   await db.setItem(cKey(owner, id, index), blob);
 }

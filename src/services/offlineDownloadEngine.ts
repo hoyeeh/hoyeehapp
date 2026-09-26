@@ -10,6 +10,7 @@ import {
   putManifest,
   readChunk,
   removeChunks,
+  removeManifest,
   type DownloadManifest,
 } from "@/services/offlineStorage";
 
@@ -80,8 +81,7 @@ async function runDownload(p: DownloadParams, id: string, owner: string, epoch: 
     if (getOwnerEpoch() !== epoch || (await currentOwner()) !== owner) {
       // Owner went away mid-download: leave nothing behind for them.
       await removeChunks(owner, id).catch(() => {});
-      const { offlineDB } = await import("@/services/offlineStorage");
-      await offlineDB.removeItem(`m:${owner}:${id}`).catch(() => {});
+      await removeManifest(owner, id).catch(() => {});
       throw new OfflineDownloadError("Signed out or switched profile during download", "AUTH");
     }
     throw e;
