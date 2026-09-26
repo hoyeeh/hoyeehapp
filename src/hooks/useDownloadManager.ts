@@ -440,18 +440,23 @@ export function useDownloadManager() {
 
       console.log('[downloadVideo] Video stream started, status:', response.status);
 
-      const contentLength = response.headers.get('content-length');
-      const contentRange = response.headers.get('content-range');
-      
-      // Parse total size from Content-Range header if resuming
-      let totalSize: number;
-      if (contentRange) {
-        // Format: bytes 0-999/1000 or bytes 500-999/1000
-        const match = contentRange.match(/bytes \d+-\d+\/(\d+)/);
-        totalSize = match ? parseInt(match[1], 10) : metadata.totalSize;
-      } else {
-        totalSize = contentLength ? parseInt(contentLength, 10) + resumeFromByte : metadata.totalSize;
+      const { validateRangeResponse } = await import('@/lib/rangeValidation');
+      const check = validateRangeResponse({
+        status: response.status,
+        contentRange: response.headers.get('content-range'),
+        contentLength: response.headers.get('content-length'),
+        etag: response.headers.get('etag'),
+        requestedStart: resumeFromByte,
+        expectedTotal: resumeFromByte > 0 ? metadata.totalSize : undefined,
+        expectedEtag: resumeFromByte > 0 ? (metadata as { etag?: string }).etag : undefined,
+      });
+      if (!check.ok) {
+        await response.body?.cancel();
+        if (resumeFromByte > 0) await deletePartialChunks(downloadId);
+        throw new Error(check.reason);
       }
+      const totalSize: number = check.total;
+      (metadata as { etag?: string }).etag = response.headers.get('etag') || undefined;
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
