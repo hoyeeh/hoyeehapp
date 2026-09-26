@@ -55,6 +55,21 @@ async function getDeviceKey(): Promise<CryptoKey> {
   return cachedDeviceKey;
 }
 
+/**
+ * A legacy license is usable only by the account+profile that created it and
+ * only until it expires. Licenses from before owner-binding are refused.
+ */
+export function legacyLicenseUsable(
+  license: { owner?: string; expiresAt?: number } | null | undefined,
+  owner: string | null,
+  now = Date.now(),
+): boolean {
+  if (!license || !owner) return false;
+  if (!license.owner || license.owner !== owner) return false;
+  if (!license.expiresAt || license.expiresAt < now) return false;
+  return true;
+}
+
 /** Try the legacy (license-gated) store first. */
 async function resolveLegacy(
   contentId: string,
@@ -63,8 +78,7 @@ async function resolveLegacy(
   try {
     const downloadId = getDownloadId(contentId, episodeId);
     const license = await getLicense(downloadId);
-    if (!license) return null;
-    if (license.expiresAt && license.expiresAt < Date.now()) return null;
+    if (!legacyLicenseUsable(license, await currentOwner())) return null;
 
     const segment = await getSegment(downloadId, 0);
     if (!segment) return null;
@@ -82,7 +96,7 @@ async function resolveLegacy(
   }
 }
 
-/** Fall back to the lightweight new store. */
+/** Fall back to the lightweight store (owner-scoped + verified inside getDownload). */
 async function resolveNew(contentId: string, episodeId?: string): Promise<string | null> {
   try {
     const rec = await getNewDownload(downloadKey(contentId, episodeId));
@@ -115,15 +129,15 @@ export async function hasUnifiedDownload(
   try {
     const downloadId = getDownloadId(contentId, episodeId);
     const license = await getLicense(downloadId);
-    if (license && (!license.expiresAt || license.expiresAt >= Date.now())) {
+    if (legacyLicenseUsable(license, await currentOwner())) {
       const seg = await getSegment(downloadId, 0);
       if (seg) return true;
     }
   } catch {
     /* ignore */
   }
-  const { hasDownload } = await import("@/services/offlineStorage");
-  return hasDownload(downloadKey(contentId, episodeId));
+  const rec = await getNewDownload(downloadKey(contentId, episodeId)).catch(() => null);
+  return !!rec?.blob;
 }
 
 function mapLegacy(d: LegacyDownloadMetadata): UnifiedDownload {

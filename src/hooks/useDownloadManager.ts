@@ -343,6 +343,9 @@ export function useDownloadManager() {
       await loadDownloads();
 
       // Save license
+      const { currentOwner } = await import('@/services/offlineStorage');
+      const owner = await currentOwner();
+      if (!owner) throw new Error('Sign in required to download');
       const license: DownloadLicense = {
         id: downloadId,
         contentId: content.id,
@@ -351,6 +354,7 @@ export function useDownloadManager() {
         canPlayOffline: manifest.license.canPlayOffline,
         encryptedContentKey: manifest.license.encryptedContentKey,
         lastVerified: Date.now(),
+        owner,
       };
       await saveLicense(license);
 

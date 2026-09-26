@@ -43,6 +43,8 @@ export interface DownloadLicense {
   canPlayOffline: boolean;
   encryptedContentKey: string;
   lastVerified: number;
+  /** Account+profile owner key (see offlineStorage.currentOwner). Licenses without it are not playable. */
+  owner?: string;
 }
 
 export interface EncryptedSegment {
