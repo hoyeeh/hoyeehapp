@@ -558,6 +558,11 @@ export function useDownloadManager() {
       if (!videoData) {
         throw new Error('Failed to combine downloaded chunks');
       }
+      if (videoData.byteLength !== totalSize || downloadedSize !== totalSize) {
+        // Never mark complete unless we hold exactly the expected bytes.
+        await deletePartialChunks(downloadId);
+        throw new Error('Download incomplete or corrupted; please retry');
+      }
 
       // Encrypt the video data
       const { iv, ciphertext } = await encryptSegment(videoData, deviceKey);
