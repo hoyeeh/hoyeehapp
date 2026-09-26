@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveOfflineSrc } from "@/services/unifiedOfflineVideo";
 import { OWNER_CHANGE_EVENT, currentOwner, downloadKey } from "@/services/offlineStorage";
+import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 
 const posKey = (owner: string, k: string) => `hoyeeh_offline_pos:${owner}:${k}`;
 
