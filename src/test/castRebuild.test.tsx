@@ -140,6 +140,23 @@ describe("TV-code exact-seq ACK", () => {
   });
 });
 
+// Shared useCast mock for the remaining cast UI tests in this file.
+const castMock: any = {};
+vi.mock("@/contexts/CastContext", () => ({ useCast: () => castMock }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+function resetCastMock() {
+  Object.assign(castMock, {
+    isConnected: false, pairedDevices: [], sessionId: null,
+    pairWithCode: vi.fn(), reconnectToDevice: vi.fn(async () => true),
+    loadVideo: vi.fn(async () => ({ success: true, acked: true, seq: 3 })),
+    getActiveConnection: () => ({ type: null, device: null }),
+    chromecast: { isAvailable: true, isConnected: false, deviceName: null, platformWarning: null,
+      connect: vi.fn(async () => ({ success: false, error: "Couldn't connect" })), loadMedia: vi.fn() },
+    airPlay: { isAvailable: false, showPicker: vi.fn() },
+    dlna: { devices: [], savedDevices: [], isScanning: false, scanForDevices: vi.fn(), connect: vi.fn(), playMedia: vi.fn() },
+  });
+}
+
 describe("single cast path per player", () => {
   it("desktop VideoPlayer no longer mounts competing Cast SDK / DLNA / native plugin buttons", async () => {
     const { readFileSync } = await import("node:fs");
