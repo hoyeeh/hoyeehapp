@@ -243,9 +243,10 @@ Deno.serve(async (req) => {
           videoUrl: live ? session.video_url : null,
           videoTitle: live ? session.video_title : null,
           videoThumbnail: live ? session.video_thumbnail : null,
-          playbackTime: session.receiver_playback_time ?? session.playback_time,
+          // Receiver gets the commanded position; controller gets what the TV reports.
+          playbackTime: role === "receiver" ? session.playback_time : (session.receiver_playback_time ?? session.playback_time),
           duration: session.video_duration,
-          isPlaying: session.receiver_is_playing ?? session.is_playing,
+          isPlaying: role === "receiver" ? session.is_playing : (session.receiver_is_playing ?? session.is_playing),
           volume: session.volume_level,
           queue: live ? session.queue : [],
           deviceName: session.cast_receivers?.device_name,
