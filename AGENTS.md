@@ -1,7 +1,7 @@
 - Offline downloads go through `download-video` by contentId/episodeId only (server resolves URL + entitlement); never persist media/signed URLs. Why: prevents URL leaks and cross-title unlocks.
 - Offline bytes live in `offlineStorage` (chunked, owner=user|profile, verified complete); playback via `/offline-play/:id`. Why: works on airplane-mode cold start.
 - PWA uses vite-plugin-pwa `injectManifest` with `public/sw.js` as source. Why: generateSW overwrote the custom offline/push worker.
-- Cast control uses cast-signaling v2 (receiver secret + controller JWT, exact-seq ACKs). Why: prevents session hijack and false "casting" success.
+- Cast control uses cast-signaling v2 (receiver secret + controller JWT, exact-seq ACKs) through CastContext only (/cast page adapts it); Google Cast Web SDK only via `src/lib/googleCastSender.ts` singleton (desktop Chrome), results returned not swallowed; media checked with `src/lib/castMedia.ts`. Why: prevents session hijack, competing SDK inits and false "casting" success.
 - Download entitlement + media-host allowlist live in `supabase/functions/_shared/downloadPolicy.ts`, used by both download-start and download-video. Why: the two had drifted on subscription checks.
 - `download_licenses` is written only by the server; clients complete via `complete_download_license` RPC. Why: clients could edit expiry/entitlement fields.
 - npm installs use `package-lock.json` + `.npmrc` (legacy-peer-deps). Why: `npm ci` must be reproducible; npm's strict peer resolver crashes on this tree.
