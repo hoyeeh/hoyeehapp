@@ -24,7 +24,7 @@ export const CHUNK_SIZE = 4 * 1024 * 1024;
 
 export class OfflineDownloadError extends Error {
   constructor(message: string, public code:
-    | "UNSUPPORTED_SOURCE" | "QUOTA" | "INCOMPLETE" | "CORRUPT" | "HTTP" | "AUTH" | "RANGE") {
+    | "UNSUPPORTED_SOURCE" | "QUOTA" | "INCOMPLETE" | "CORRUPT" | "HTTP" | "AUTH" | "FORBIDDEN" | "RANGE") {
     super(message);
     this.name = "OfflineDownloadError";
   }
@@ -116,9 +116,13 @@ async function runDownloadInner(p: DownloadParams, id: string, owner: string, ep
   if (res.status === 416 && m.totalBytes !== null && start === m.totalBytes) {
     await res.body?.cancel();
   } else {
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       await res.body?.cancel();
-      throw new OfflineDownloadError("You are not allowed to download this title", "AUTH");
+      throw new OfflineDownloadError("Sign in required to download", "AUTH");
+    }
+    if (res.status === 403) {
+      await res.body?.cancel();
+      throw new OfflineDownloadError("Downloading this title needs an active subscription or a purchase.", "FORBIDDEN");
     }
     if (res.status === 415) {
       await res.body?.cancel();
