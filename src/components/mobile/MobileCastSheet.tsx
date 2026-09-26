@@ -56,42 +56,35 @@ export function MobileCastSheet({
     airplayAvailable: cast.airPlay.isAvailable,
   });
 
-  // Handle Chromecast connection
+  // Handle Chromecast connection — uses the returned result, never stale render state.
   const handleChromecast = async () => {
-    // Check for platform warning first
     if (cast.chromecast.platformWarning) {
       toast.error(cast.chromecast.platformWarning);
       return;
     }
-
     if (!cast.chromecast.isAvailable) {
       toast.error("Chromecast not available on this device");
       return;
     }
-
-    try {
-      await cast.chromecast.connect();
-      if (cast.chromecast.isConnected) {
-        castHistory.addDevice({
-          id: "chromecast-default",
-          name: cast.chromecast.deviceName || "Chromecast",
-          type: "chromecast",
-        });
-        
-        // Only load media if we have a video URL
-        if (videoUrl) {
-          onCastStart?.();
-          await cast.chromecast.loadMedia(videoUrl, videoTitle, thumbnail, currentTime);
-          toast.success(`Casting to ${cast.chromecast.deviceName}`);
-          onClose();
-        } else {
-          toast.success(`Connected to ${cast.chromecast.deviceName}`);
-        }
-      }
-    } catch (error) {
-      console.error("[MobileCastSheet] Chromecast error:", error);
-      toast.error("Failed to connect to Chromecast");
+    const conn = await cast.chromecast.connect();
+    if (!conn.success) {
+      if (!conn.cancelled) toast.error(conn.error || "Failed to connect to Chromecast");
+      return;
     }
+    const name = conn.deviceName || "Chromecast";
+    castHistory.addDevice({ id: "chromecast-default", name, type: "chromecast" });
+    if (!videoUrl) {
+      toast.success(`Connected to ${name}`);
+      return;
+    }
+    const res = await cast.chromecast.loadMedia(videoUrl, videoTitle, thumbnail, currentTime);
+    if (!res.success) {
+      toast.error(res.error || "The Cast device couldn't load this video");
+      return;
+    }
+    onCastStart?.();
+    toast.success(`Casting to ${name}`);
+    onClose();
   };
 
   // Handle AirPlay
@@ -100,34 +93,32 @@ export function MobileCastSheet({
       toast.error("AirPlay only works in Safari on Mac or iOS");
       return;
     }
-    
-    // AirPlay requires a video element to be set up first
     cast.airPlay.showPicker();
+  };
+
+  // Load on the TV and only report success after the receiver ACKs this exact LOAD.
+  const loadOnTv = async (sessionId: string, label: string) => {
+    const result = await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime, sessionId);
+    if (result?.success) {
+      onCastStart?.();
+      toast.success(`Casting to ${label}`);
+      onClose();
+      return true;
+    }
+    toast.error(result?.error || "Connected to TV but failed to launch video");
+    return false;
   };
 
   // Handle TV Code pairing
   const handlePairWithCode = async (code: string): Promise<boolean> => {
     try {
       const sessionId = await cast.pairWithCode(code);
-      if (sessionId) {
-        setShowPairingDialog(false);
-        
-        // Only load video if we have a URL - use sessionId directly to avoid race condition
-        if (videoUrl) {
-          onCastStart?.();
-          const result = await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime, sessionId);
-          if (result?.success) {
-            toast.success(`Connected and casting to TV`);
-            onClose();
-          } else {
-            toast.error(result?.error || 'Connected to TV but failed to launch video');
-          }
-        } else {
-          toast.success(`Connected to TV`);
-        }
-        return true;
-      }
-      return false;
+      if (!sessionId) return false;
+      setShowPairingDialog(false);
+      castHistory.addDevice({ id: `remote:${sessionId}`, name: "Smart TV", type: "remote", sessionId });
+      if (videoUrl) await loadOnTv(sessionId, "TV");
+      else toast.success("Connected to TV");
+      return true;
     } catch (error) {
       console.error("[MobileCastSheet] Pairing error:", error);
       toast.error("Failed to pair with TV");
@@ -135,34 +126,33 @@ export function MobileCastSheet({
     }
   };
 
-  // Handle reconnecting to paired device
+  // Reconnect to a previously used device.
   const handleReconnect = async (device: HistoryDevice) => {
+    if (device.type === "chromecast") return handleChromecast();
+    if (device.type === "airplay") return handleAirPlay();
+    if (device.type === "dlna") {
+      setActiveTab("dlna");
+      return;
+    }
+    const paired = cast.pairedDevices.find((d) => d.sessionId && (d.sessionId === device.sessionId || d.id === device.id));
+    const sessionId = device.sessionId || paired?.sessionId;
+    if (!sessionId) {
+      toast.error("Enter the code shown on your TV to pair again.");
+      setShowPairingDialog(true);
+      return;
+    }
+    const name = device.customName || device.name;
     try {
-      // Convert HistoryDevice type to CastDevice type for useUniversalCast
-      const castDeviceType = device.type === 'airplay' ? 'remote' : device.type;
-      const success = await cast.reconnectToDevice({ 
-        id: device.id, 
-        name: device.customName || device.name,
-        type: castDeviceType as 'remote' | 'dlna' | 'chromecast',
-      });
-        if (success && cast.isConnected) {
-        // Only load video if we have a URL
-        if (videoUrl) {
-          onCastStart?.();
-            const result = await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime);
-            if (result?.success) {
-              toast.success(`Connected to ${device.name}`);
-              onClose();
-            } else {
-              toast.error(result?.error || 'Connected to TV but failed to launch video');
-            }
-        } else {
-          toast.success(`Connected to ${device.name}`);
-        }
+      const ok = await cast.reconnectToDevice({ id: paired?.id || device.id, name, type: "remote", sessionId });
+      if (!ok) {
+        castHistory.removeDevice?.(device.id, device.type);
+        setShowPairingDialog(true);
+        return;
       }
+      if (videoUrl) await loadOnTv(sessionId, name);
     } catch (error) {
       console.error("[MobileCastSheet] Reconnect error:", error);
-      toast.error(`Failed to reconnect to ${device.name}`);
+      toast.error(`Failed to reconnect to ${name}`);
     }
   };
 
