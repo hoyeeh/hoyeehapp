@@ -406,15 +406,17 @@ export function useDownloadManager() {
         'Authorization': `Bearer ${session?.access_token || ''}`,
         'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       };
+      if (resumeFromByte > 0) headers['Range'] = `bytes=${resumeFromByte}-`;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
         {
           method: 'POST',
           headers,
-          body: JSON.stringify({ 
-            videoUrl,
-            rangeStart: resumeFromByte > 0 ? resumeFromByte : undefined 
+          // Server resolves the file from the ids and re-checks entitlement.
+          body: JSON.stringify({
+            contentId: metadata.contentId,
+            episodeId: metadata.episodeId || undefined,
           }),
           signal,
         }
@@ -521,7 +523,7 @@ export function useDownloadManager() {
           startedAt,
           status: 'downloading',
           updatedAt: now,
-          videoUrl, // Store for resume
+          videoUrl: undefined, // never persist media/signed URLs; server resolves by id
         };
         await saveMetadata(updatedMetadata);
         
@@ -727,38 +729,14 @@ export function useDownloadManager() {
       deviceKeyRef.current = await initDeviceKey();
     }
 
-    // Get video URL from metadata or fetch fresh
-    let videoUrl = metadata.videoUrl;
-    if (!videoUrl) {
-      // Fetch content info to get video URL
-      if (episodeId) {
-        const { data: episode } = await supabase
-          .from('episodes')
-          .select('video_url')
-          .eq('id', episodeId)
-          .single();
-        videoUrl = episode?.video_url || '';
-      } else {
-        const { data: content } = await supabase
-          .from('content')
-          .select('video_url')
-          .eq('id', contentId)
-          .single();
-        videoUrl = content?.video_url || '';
-      }
-    }
+    // The download proxy resolves the file from contentId/episodeId.
+    const videoUrl = '';
 
-    if (!videoUrl) {
-      toast.error('Video URL not available');
-      return;
-    }
-
-    // Update metadata to downloading
     await saveMetadata({ 
       ...metadata, 
       status: 'downloading', 
       updatedAt: Date.now(),
-      videoUrl,
+      videoUrl: undefined,
     });
     await loadDownloads();
 

@@ -43,17 +43,37 @@ Deno.serve(async (req) => {
     let videoUrl: string | null = content.video_url;
     let premium = !!content.is_premium;
     if (episodeId) {
-      const { data: ep } = await admin.from("episodes").select("video_url, is_premium").eq("id", episodeId).maybeSingle();
-      if (!ep) return json({ error: "Not found" }, 404);
+      // The episode must belong to THIS title (episode -> season -> content);
+      // otherwise a free title id could unlock an unrelated premium episode.
+      const { data: ep } = await admin.from("episodes")
+        .select("video_url, is_premium, season_id, seasons!inner(content_id)")
+        .eq("id", episodeId).maybeSingle();
+      const parent = (ep as { seasons?: { content_id?: string } } | null)?.seasons?.content_id;
+      if (!ep || parent !== contentId) return json({ error: "Not found" }, 404);
       videoUrl = ep.video_url;
       premium = premium || !!ep.is_premium;
     }
 
-    // Paid titles are never downloadable (fail closed on lookup error).
-    const { data: paid, error: paidErr } = await admin.from("paid_content").select("id").eq("content_id", contentId).eq("is_active", true).eq("is_free", false).limit(1);
-    if (paidErr || (paid && paid.length > 0)) return json({ error: "This title cannot be downloaded" }, 403);
-    // Premium titles would need real DRM for offline use, which a browser PWA cannot provide.
-    if (premium) return json({ error: "This title cannot be downloaded" }, 403);
+    // Established download policy (same as before this change):
+    //  - admins: allowed
+    //  - paid titles: only buyers
+    //  - premium titles: active subscribers
+    //  - free titles: any signed-in user
+    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
+    const isAdmin = !!roles?.some((r) => r.role === "admin" || r.role === "super_admin");
+    if (!isAdmin) {
+      const { data: paid, error: paidErr } = await admin.from("paid_content").select("id")
+        .eq("content_id", contentId).eq("is_active", true).eq("is_free", false).limit(1);
+      if (paidErr) return json({ error: "Entitlement check failed" }, 503);
+      if (paid && paid.length > 0) {
+        const { data: bought } = await admin.rpc("has_purchased_content", { _user_id: userId, _content_id: contentId });
+        if (bought !== true) return json({ error: "Purchase required to download" }, 403);
+      } else if (premium) {
+        const { data: prof } = await admin.from("profiles").select("subscription_expiry").eq("id", userId).maybeSingle();
+        const active = prof?.subscription_expiry && new Date(prof.subscription_expiry) > new Date();
+        if (!active) return json({ error: "Active subscription required to download" }, 403);
+      }
+    }
 
     if (!videoUrl) return json({ error: "No downloadable file" }, 404);
     let parsed: URL;

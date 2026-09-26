@@ -47,13 +47,15 @@ export function validateCommand(command: unknown, payload: unknown): CommandResu
     case "LOAD": {
       const videoUrl = str(p.videoUrl ?? p.url, 4096);
       if (!videoUrl) return { ok: false, error: "LOAD requires videoUrl" };
+      if (!isSafeMediaUrl(videoUrl)) return { ok: false, error: "LOAD requires an https media URL" };
+      const thumb = str(p.thumbnail, 2048);
       const startTime = num(p.startTime ?? 0, 0, 172800) ?? 0;
       const title = str(p.title, 300) ?? "";
       return {
         ok: true, command: "LOAD", bump: true,
         patch: {
           status: "active", video_url: videoUrl, video_title: title,
-          video_thumbnail: str(p.thumbnail, 2048), playback_time: startTime,
+          video_thumbnail: thumb && isSafeMediaUrl(thumb) ? thumb : null, playback_time: startTime,
           video_duration: num(p.duration ?? 0, 0, 172800) ?? 0, is_playing: true,
           command_payload: { videoUrl, title, startTime },
         },
@@ -80,9 +82,13 @@ export function validateCommand(command: unknown, payload: unknown): CommandResu
       };
     case "UPDATE_QUEUE": {
       if (!Array.isArray(p.queue) || p.queue.length > 50) return { ok: false, error: "queue must be ≤50 items" };
-      const queue = p.queue.map((q: any) => ({
-        id: str(q?.id, 100), url: str(q?.url, 4096), title: str(q?.title, 300), thumbnail: str(q?.thumbnail, 2048),
-      }));
+      const queue = [];
+      for (const q of p.queue as any[]) {
+        const url = str(q?.url, 4096);
+        if (!url || !isSafeMediaUrl(url)) return { ok: false, error: "queue items require https media URLs" };
+        const t = str(q?.thumbnail, 2048);
+        queue.push({ id: str(q?.id, 100), url, title: str(q?.title, 300), thumbnail: t && isSafeMediaUrl(t) ? t : null });
+      }
       return { ok: true, command: "UPDATE_QUEUE", bump: true, patch: { queue, command_payload: { queueLength: queue.length } } };
     }
     default:

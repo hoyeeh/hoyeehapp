@@ -1226,7 +1226,12 @@
                 // SAME VIDEO: Sync state only (seek, play/pause, volume) - DO NOT load
                 console.log('[TV] ACTION=SYNC same URL, syncing state only');
                 setDebugAction('SYNC');
-                syncPlaybackState(session);
+                syncPlaybackState(session, true);
+                // ACK the exact control command (PLAY/PAUSE/SEEK/VOLUME) we applied.
+                if (session.commandSeq && session.commandType !== 'UPDATE_QUEUE') {
+                  callSignaling('ack', { sessionId: sessionId, seq: session.commandSeq, status: 'success', commandType: session.commandType })
+                    .catch(function () {});
+                }
               }
             } else {
               // No video URL - go to idle
@@ -1270,7 +1275,7 @@
       }
 
       // Sync playback state without reloading video
-      function syncPlaybackState(session) {
+      function syncPlaybackState(session, force) {
         // Update title if needed
         document.getElementById('videoTitle').textContent = session.videoTitle || 'Now Playing';
         
@@ -1279,6 +1284,7 @@
         console.log('[TV] ACTION=SYNC url=' + (session.videoUrl || '').substring(0, 50) + '... drift=' + drift.toFixed(1) + 's');
         
         // Safe seek - only if metadata ready and delta > 1.5 seconds
+        if (force && session.commandType === 'SEEK') lastSeekTime = 0; // explicit SEEK bypasses rate limit
         safeSeek(session.playbackTime);
 
         // Sync play/pause state
