@@ -15,7 +15,8 @@ import asyncio, json, re
 from pathlib import Path
 from playwright.async_api import async_playwright
 
-BASE = "http://localhost:8080"
+import os
+BASE = os.environ.get("E2E_BASE", "http://localhost:8080")
 FIX = (Path(__file__).parent / "fixtures" / "fixture.webm").read_bytes()
 OUT = Path("/tmp/browser/offline_e2e"); OUT.mkdir(parents=True, exist_ok=True)
 CID = "00000000-0000-4000-8000-00000000e2e1"
