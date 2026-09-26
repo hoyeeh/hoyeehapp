@@ -135,11 +135,14 @@ export function getCastCapabilities(overrides?: {
     },
     dlna: {
       protocol: "dlna",
-      enabled: native || dlnaCount > 0,
+      // Only advertise DLNA when real devices were actually discovered.
+      enabled: dlnaCount > 0,
       reason:
-        native || dlnaCount > 0
+        dlnaCount > 0
           ? undefined
-          : "DLNA discovery is disabled on the web. Use TV pairing or QR code instead.",
+          : native
+            ? "No DLNA devices were found on this network."
+            : "DLNA discovery is disabled on the web. Use TV pairing or QR code instead.",
     },
     nativeCast: {
       protocol: "nativeCast",

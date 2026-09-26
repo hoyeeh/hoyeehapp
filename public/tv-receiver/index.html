@@ -716,6 +716,11 @@
 
       var sessionId = null;
       var receiverId = null;
+      var receiverSecret = null; // in-memory only; never persisted
+      var loadAckSeq = null;     // seq of the LOAD currently being loaded
+      var lastSeenStatus = null;
+      function escapeHtml(v) { return String(v == null ? '' : v).replace(/[&<>"'`]/g, function(c){ return '&#' + c.charCodeAt(0) + ';'; }); }
+      function safeImgUrl(v) { v = String(v || ''); return /^https:\/\//i.test(v) ? escapeHtml(v) : ''; }
       var pairingCode = null;
       var pollInterval = null;
       var heartbeatInterval = null;
@@ -736,7 +741,7 @@
       var lastIsPlaying = null;
       var userHasInteracted = false;
       var playPromisePending = false;
-      var useRealtimeUpdates = true;
+      var useRealtimeUpdates = false; // sessions are not readable anonymously; credentialed polling is the transport
       
       // Command deduplication - NEW: Use command_seq as primary gate
       var lastCommandKey = null;
@@ -830,7 +835,8 @@
       });
 
       // Initialize Supabase
-      var hasRealtime = initSupabase();
+      initSupabase();
+      var hasRealtime = false;
 
 
       function formatTime(seconds) {
@@ -848,7 +854,8 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY
+            'apikey': SUPABASE_ANON_KEY,
+            'x-cast-receiver-secret': receiverSecret || ''
           }
         };
         
@@ -864,7 +871,7 @@
       function checkStatus() {
         var url = SUPABASE_URL + '/functions/v1/cast-signaling?action=status&sessionId=' + sessionId;
         return fetch(url, {
-          headers: { 'apikey': SUPABASE_ANON_KEY }
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'x-cast-receiver-secret': receiverSecret || '' }
         }).then(function(response) {
           return response.json();
         });
@@ -904,11 +911,8 @@
               if (timeout) clearTimeout(timeout);
               
               if (!response.ok && response.status !== 206) {
-                resolve({
-                  success: false,
-                  errorCode: 'HTTP_' + response.status,
-                  errorMessage: 'Server returned status ' + response.status
-                });
+                // Many CDNs/signed URLs reject HEAD but serve GET fine.
+                resolve({ success: true, warnings: ['HEAD returned ' + response.status], preflightFailed: true });
                 return;
               }
 
@@ -987,6 +991,8 @@
           if (result.success) {
             sessionId = result.sessionId;
             receiverId = result.receiverId;
+            receiverSecret = result.receiverSecret;
+            lastProcessedCommandSeq = -1; lastSeenStatus = 'pending';
             pairingCode = result.pairingCode;
 
           document.getElementById('pairingCode').textContent = pairingCode;
@@ -998,10 +1004,6 @@
             updateExpiry(expiresAt);
             
             // Setup realtime subscription IMMEDIATELY to catch first-scan pairing
-            if (supabaseClient && sessionId) {
-              setupRealtimeSubscription(sessionId);
-            }
-            
             startPolling();
           } else {
             throw new Error(result.error || 'Failed to generate code');
@@ -1146,7 +1148,7 @@
         }
 
         // Reduced polling frequency when realtime is active
-        var pollFrequency = useRealtimeUpdates ? 10000 : 2000;
+        var pollFrequency = 1500;
 
         pollInterval = setInterval(function() {
           // Skip polling if currently handling an update or loading
@@ -1158,16 +1160,18 @@
           checkStatus().then(function(result) {
             if (result.success) {
               // Only use polling updates if realtime is not working
-              if (!useRealtimeUpdates) {
-                handleSessionUpdate(result.session);
+              var ss = result.session;
+              if (ss.status === 'expired') ss.status = 'disconnected';
+              var seqChanged = ss.commandSeq !== lastProcessedCommandSeq;
+              var statusChanged = ss.status !== lastSeenStatus;
+              if (seqChanged || statusChanged) {
+                lastProcessedCommandSeq = ss.commandSeq;
+                lastSeenStatus = ss.status;
+                handleSessionUpdate(ss);
               }
-              
-              // Setup realtime if not already done and session is active
-              if (result.session.status === 'paired' || result.session.status === 'active') {
-                if (!realtimeChannel && sessionId) {
-                  setupRealtimeSubscription(sessionId);
-                }
-              }
+            } else if (result.error === 'Invalid receiver credential' || result.error === 'Not authorized') {
+              // Credential revoked/expired: start over.
+              showPairingScreen(); generatePairingCode();
             }
           }).catch(function(error) {
             console.error('Polling error:', error);
@@ -1211,11 +1215,12 @@
 
             if (session.videoUrl) {
               // === KEY CHANGE: Use activeVideoUrl as sole source of truth ===
-              if (session.videoUrl !== activeVideoUrl) {
+              if (session.videoUrl !== activeVideoUrl || session.commandType === 'LOAD') {
                 // NEW VIDEO: Set active URL and trigger load
                 console.log('[TV] ACTION=LOAD new URL detected:', session.videoUrl);
                 setDebugAction('LOAD');
                 activeVideoUrl = session.videoUrl;
+                loadAckSeq = session.commandSeq;
                 showPlayer(session);
               } else {
                 // SAME VIDEO: Sync state only (seek, play/pause, volume) - DO NOT load
@@ -1382,9 +1387,9 @@
           var statusText = isActive ? 'Now Playing' : '#' + (i + 1);
           
           html += '<div class="queue-item' + (isActive ? ' active' : '') + '">' +
-            '<img src="' + (item.thumbnail || '') + '" alt="" onerror="this.style.display=\'none\'">' +
+            '<img src="' + safeImgUrl(item.thumbnail) + '" alt="" onerror="this.style.display=\'none\'">' +
             '<div class="queue-item-info">' +
-            '<div class="queue-item-title">' + (item.title || 'Untitled') + '</div>' +
+            '<div class="queue-item-title">' + escapeHtml(item.title || 'Untitled') + '</div>' +
             '<div class="queue-item-number">' + statusText + '</div>' +
             '</div>' +
             '</div>';
@@ -1821,6 +1826,7 @@
         
         isVideoLoading = false;
         showError(errorTitle, errorDetails, errorCode);
+        sendAck('error', errorTitle + ': ' + errorDetails);
       });
       video.addEventListener('abort', function() { 
         console.log('[TV] Video abort'); 
@@ -1850,8 +1856,8 @@
         for (var i = 0; i < itemsToShow.length; i++) {
           var item = itemsToShow[i];
           html += '<div style="text-align: center; width: 120px;">' +
-            '<img src="' + (item.thumbnail || '') + '" alt="" style="width: 100%; height: 68px; object-fit: cover; border-radius: 8px;" onerror="this.style.display=\'none\'">' +
-            '<div style="font-size: 12px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + (item.title || 'Untitled') + '</div>' +
+            '<img src="' + safeImgUrl(item.thumbnail) + '" alt="" style="width: 100%; height: 68px; object-fit: cover; border-radius: 8px;" onerror="this.style.display=\'none\'">' +
+            '<div style="font-size: 12px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(item.title || 'Untitled') + '</div>' +
             '</div>';
         }
         
@@ -1873,18 +1879,20 @@
       // Send ack back to controller so the app knows the LOAD command
       // was actually received and processed (or failed) on the TV.
       function sendAck(status, errorMessage) {
-        if (!sessionId) return;
+        if (!sessionId || !loadAckSeq) return;
+        var ackSeq = loadAckSeq;
+        loadAckSeq = null; // one ACK per LOAD
         try {
           callSignaling('ack', {
             sessionId: sessionId,
-            seq: lastProcessedCommandSeq,
+            seq: ackSeq,
             status: status,
             error: errorMessage || null,
             commandType: 'LOAD',
           }).catch(function (err) {
             console.error('[TV] Failed to send ack:', err);
           });
-          console.log('[TV] ACK sent', { seq: lastProcessedCommandSeq, status: status, error: errorMessage || null });
+          console.log('[TV] ACK sent', { seq: ackSeq, status: status, error: errorMessage || null });
         } catch (e) {
           console.error('[TV] sendAck threw:', e);
         }
@@ -1902,6 +1910,8 @@
             sessionId: sessionId,
             playbackTime: video.currentTime,
             isPlaying: !video.paused
+          }).then(function(r) {
+            if (r && r.success === false && heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
           }).catch(function(error) {
             console.error('Heartbeat error:', error);
           });
@@ -1918,16 +1928,10 @@
           // Reset loaded URL to allow loading next video
           loadedVideoUrl = null;
           
-          callSignaling('command', {
-            sessionId: sessionId,
-            command: 'LOAD',
-            payload: {
-              videoUrl: nextItem.url,
-              title: nextItem.title,
-              thumbnail: nextItem.thumbnail,
-              startTime: 0
-            }
-          });
+          if (nextItem && nextItem.url && /^https:\/\//i.test(nextItem.url)) {
+            activeVideoUrl = nextItem.url;
+            showPlayer({ videoUrl: nextItem.url, videoTitle: nextItem.title, videoThumbnail: nextItem.thumbnail, playbackTime: 0, isPlaying: true, queue: currentQueue });
+          }
         }
       });
 
@@ -2068,6 +2072,7 @@
         // Show pairing screen and regenerate code
         showPairingScreen();
         sessionId = null;
+        receiverSecret = null;
         receiverId = null;
         pairingCode = null;
         
