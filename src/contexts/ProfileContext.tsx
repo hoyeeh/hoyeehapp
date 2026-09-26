@@ -1,3 +1,4 @@
+import { invalidateOfflineOwner } from "@/services/offlineStorage";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
@@ -56,6 +57,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       if (typedProfiles.length === 0) {
         setCurrentProfileState(null);
         localStorage.removeItem(PROFILE_STORAGE_KEY);
+        invalidateOfflineOwner();
       } else {
         // Try to restore saved profile
         const savedProfileId = localStorage.getItem(PROFILE_STORAGE_KEY);
@@ -80,8 +82,10 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     setCurrentProfileState(profile);
     if (profile) {
       localStorage.setItem(PROFILE_STORAGE_KEY, profile.id);
+      invalidateOfflineOwner();
     } else {
       localStorage.removeItem(PROFILE_STORAGE_KEY);
+      invalidateOfflineOwner();
     }
   };
 
@@ -123,6 +127,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     if (currentProfile?.id === id) {
       setCurrentProfileState(null);
       localStorage.removeItem(PROFILE_STORAGE_KEY);
+      invalidateOfflineOwner();
     }
     
     await refreshProfiles();
