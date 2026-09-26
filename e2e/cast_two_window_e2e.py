@@ -113,7 +113,7 @@ async def main():
         dc = phone.get_by_role("button", name="Disconnect")
         if await dc.count():
             await dc.first.click()
-            await phone.get_by_text("Not connected").first.wait_for(timeout=10000)
+            await phone.get_by_text("Not connected").first.wait_for(state="attached", timeout=10000)
             check("phone disconnect returns to pairing", True)
         else:
             check("phone disconnect returns to pairing", False, "no Disconnect button")
