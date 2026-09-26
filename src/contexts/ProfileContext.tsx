@@ -56,8 +56,10 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       // If no profiles exist, stay on profile picker
       if (typedProfiles.length === 0) {
         setCurrentProfileState(null);
-        localStorage.removeItem(PROFILE_STORAGE_KEY);
-        invalidateOfflineOwner();
+        if (localStorage.getItem(PROFILE_STORAGE_KEY) !== null) {
+          localStorage.removeItem(PROFILE_STORAGE_KEY);
+          invalidateOfflineOwner();
+        }
       } else {
         // Try to restore saved profile
         const savedProfileId = localStorage.getItem(PROFILE_STORAGE_KEY);
@@ -80,13 +82,13 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
   const setCurrentProfile = (profile: UserProfile | null) => {
     setCurrentProfileState(profile);
+    const prev = localStorage.getItem(PROFILE_STORAGE_KEY);
     if (profile) {
       localStorage.setItem(PROFILE_STORAGE_KEY, profile.id);
-      invalidateOfflineOwner();
     } else {
       localStorage.removeItem(PROFILE_STORAGE_KEY);
-      invalidateOfflineOwner();
     }
+    if (prev !== (profile?.id ?? null)) invalidateOfflineOwner();
   };
 
   const createProfile = async (name: string, isKids: boolean, avatarUrl?: string) => {
