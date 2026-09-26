@@ -31,6 +31,7 @@ import {
   getAllDownloads as getAllNewDownloads,
   getDownload as getNewDownload,
   downloadKey,
+  currentOwner,
   type DownloadMetadata as NewDownloadMetadata,
 } from "@/services/offlineStorage";
 
@@ -173,9 +174,13 @@ export async function listUnifiedDownloads(): Promise<UnifiedDownload[]> {
     listLegacyDownloads().catch(() => [] as LegacyDownloadMetadata[]),
     getAllNewDownloads().catch(() => [] as NewDownloadMetadata[]),
   ]);
-  const completedLegacy = legacy
-    .filter((d) => d.status === "completed")
-    .map(mapLegacy);
+  const owner = await currentOwner();
+  const completedLegacy: UnifiedDownload[] = [];
+  for (const d of legacy) {
+    if (d.status !== "completed") continue;
+    const lic = await getLicense(d.id).catch(() => null);
+    if (legacyLicenseUsable(lic, owner)) completedLegacy.push(mapLegacy(d));
+  }
   // De-dupe: legacy wins over new for the same contentId/episodeId pair.
   const seen = new Set(
     completedLegacy.map((d) => `${d.contentId}:${d.episodeId ?? ""}`),
