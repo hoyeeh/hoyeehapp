@@ -261,4 +261,28 @@ describe("independent regressions at 10b9819", () => {
     await expect(p).rejects.toMatchObject({ code: "AUTH" });
     expect([...store.map.keys()].filter((k) => k.includes("user-a|"))).toEqual([]);
   });
+
+  it("(4) concurrent in-flight download of same title under A then B never hands A's manifest to B", async () => {
+    const bytesA = fixture(12_000);
+    const bytesB = fixture(9_000);
+    let releaseA!: () => void;
+    const gateA = new Promise<void>((r) => (releaseA = r));
+    const openA: OpenRange = async () => {
+      await gateA;
+      return new Response(bytesA as unknown as BodyInit, { status: 200, headers: { "content-type": "video/mp4", "content-length": String(bytesA.length) } });
+    };
+    const pa = downloadToDevice({ contentId: "r4", meta, openRange: openA, chunkSize: 4096 });
+    await new Promise((r) => setTimeout(r, 0));
+    owner = "user-b|profile-1";
+    const sb = server(bytesB);
+    const mb = await downloadToDevice({ contentId: "r4", meta, openRange: sb.open, chunkSize: 4096 });
+    expect(sb.calls.length).toBeGreaterThan(0);
+    expect(mb.owner).toBe("user-b|profile-1");
+    releaseA();
+    const ma = await pa.catch(() => null);
+    if (ma) expect(ma.owner).toBe("user-a|profile-1");
+    expect((await getManifest("r4", "user-b|profile-1"))!.owner).toBe("user-b|profile-1");
+    const d = await getDownload("r4");
+    expect(new Uint8Array(await d!.blob.arrayBuffer())).toEqual(bytesB);
+  });
 });
