@@ -249,7 +249,7 @@ describe("independent regressions at 10b9819", () => {
     const gate = new Promise<void>((r) => (release = r));
     const deferred: OpenRange = async () => {
       await gate;
-      return new Response(bytes, { status: 200, headers: { "content-type": "video/mp4", "content-length": String(bytes.length) } });
+      return new Response(bytes as unknown as BodyInit, { status: 200, headers: { "content-type": "video/mp4", "content-length": String(bytes.length) } });
     };
     const p = downloadToDevice({ contentId: "r3", meta, openRange: deferred, chunkSize: 4096 });
     await new Promise((r) => setTimeout(r, 0));
