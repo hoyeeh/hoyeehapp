@@ -1,7 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUniversalCast, CastDevice, PlaybackState, QueueItem } from '@/hooks/useUniversalCast';
-import { useGoogleCast } from '@/hooks/useGoogleCast';
+import { useGoogleCast, type GoogleCastResult } from '@/hooks/useGoogleCast';
 import { useAirPlay } from '@/hooks/useAirPlay';
 import { useDLNA, DLNADevice } from '@/hooks/useDLNA';
 import { CastControlBar } from '@/components/cast/CastControlBar';
@@ -15,9 +15,9 @@ interface ChromecastState {
   isPlaying: boolean;
   currentTime: number;
   duration: number;
-  connect: () => Promise<void>;
+  connect: () => Promise<GoogleCastResult>;
   disconnect: () => void;
-  loadMedia: (url: string, title: string, thumbnail?: string, startTime?: number) => Promise<void>;
+  loadMedia: (url: string, title: string, thumbnail?: string, startTime?: number) => Promise<GoogleCastResult>;
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;
@@ -249,9 +249,7 @@ export function CastProvider({ children }: CastProviderProps) {
     connect: googleCast.connect,
     disconnect: googleCast.disconnect,
     loadMedia: googleCast.loadMedia,
-    play: () => {
-      // Chromecast play is handled by loadMedia
-    },
+    play: googleCast.play,
     pause: googleCast.pause,
     seek: googleCast.seek,
     setVolume: googleCast.setVolume,
