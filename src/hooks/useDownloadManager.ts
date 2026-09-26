@@ -589,30 +589,15 @@ export function useDownloadManager() {
       const deviceId = getDeviceId();
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData?.session) {
-        // Build the query - handle episode_id being null for movies
-        let query = supabase
-          .from('download_licenses')
-          .update({ 
-            status: 'completed', 
-            downloaded_at: new Date().toISOString(),
-            total_size: videoData.byteLength,
-          })
-          .eq('content_id', metadata.contentId)
-          .eq('device_id', deviceId)
-          .eq('user_id', sessionData.session.user.id);
-        
-        // Add episode_id filter (handles null for movies)
-        if (metadata.episodeId) {
-          query = query.eq('episode_id', metadata.episodeId);
-        } else {
-          query = query.is('episode_id', null);
-        }
-        
-        const { error: updateError } = await query;
+        // Narrow server-side completion: only own, pending, unexpired license.
+        const { error: updateError } = await (supabase.rpc as any)('complete_download_license', {
+          _content_id: metadata.contentId,
+          _episode_id: metadata.episodeId || null,
+          _device_id: deviceId,
+          _total_size: videoData.byteLength,
+        });
         if (updateError) {
           console.error('[downloadVideo] Failed to update license status:', updateError);
-        } else {
-          console.log('[downloadVideo] License status updated to completed');
         }
       }
 
