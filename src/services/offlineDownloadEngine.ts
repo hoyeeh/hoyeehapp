@@ -201,12 +201,18 @@ async function streamInto(
       if (signal.aborted) throw Object.assign(new Error("Aborted"), { name: "AbortError" });
       const { done, value } = await reader.read();
       if (done) break;
-      buf.push(value);
-      bufLen += value.byteLength;
-      if (m.totalBytes !== null && m.receivedBytes + bufLen > m.totalBytes) {
+      if (m.totalBytes !== null && m.receivedBytes + bufLen + value.byteLength > m.totalBytes) {
         throw new OfflineDownloadError("Server sent more data than expected", "CORRUPT");
       }
-      if (bufLen >= chunkSize) await flush();
+      // Split large network reads so chunks stay bounded in memory/IndexedDB.
+      let off = 0;
+      while (off < value.byteLength) {
+        const take = Math.min(chunkSize - bufLen, value.byteLength - off);
+        buf.push(value.subarray(off, off + take));
+        bufLen += take;
+        off += take;
+        if (bufLen >= chunkSize) await flush();
+      }
     }
     await flush();
   } catch (e) {
