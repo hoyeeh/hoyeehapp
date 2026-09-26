@@ -131,7 +131,8 @@ export function UnifiedCastButton({ videoRef, videoElement, title, poster, class
       {canRemote && (
         <button
           type="button"
-          aria-label="Cast to device"
+          aria-label="Cast with browser picker"
+          title="Uses your browser's Remote Playback picker"
           onClick={handleChromecast}
           onTouchStart={(e) => e.stopPropagation()}
           className="min-w-[44px] min-h-[44px] w-11 h-11 p-2 inline-flex items-center justify-center rounded-md bg-background/70 hover:bg-background text-foreground backdrop-blur-sm transition-colors touch-manipulation"

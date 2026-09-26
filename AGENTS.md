@@ -5,3 +5,4 @@
 - Download entitlement + media-host allowlist live in `supabase/functions/_shared/downloadPolicy.ts`, used by both download-start and download-video. Why: the two had drifted on subscription checks.
 - `download_licenses` is written only by the server; clients complete via `complete_download_license` RPC. Why: clients could edit expiry/entitlement fields.
 - npm installs use `package-lock.json` + `.npmrc` (legacy-peer-deps). Why: `npm ci` must be reproducible; npm's strict peer resolver crashes on this tree.
+- TV-code reconnect resolves sessions only from CastContext's owner-scoped pairedDevices; useCastHistory never stores sessionIds and no app QR is drawn (TV shows the only real https://hoyeeh.com/cast?code= QR). Why: prevents cross-account session reuse and fake/unscannable QR codes.

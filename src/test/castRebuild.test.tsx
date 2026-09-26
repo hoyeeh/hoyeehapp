@@ -165,9 +165,7 @@ describe("MobileCastSheet", () => {
   beforeEach(() => { resetCastMock(); localStorage.clear(); });
 
   it("reconnect uses the saved sessionId and waits for the LOAD ack before onCastStart", async () => {
-    localStorage.setItem("cast_device_history", JSON.stringify([
-      { id: "remote:sess-1", name: "Bedroom TV", type: "remote", sessionId: "sess-1", lastUsed: Date.now() },
-    ]));
+    castMock.pairedDevices = [{ id: "rcv-sess-1", name: "Bedroom TV", type: "remote", sessionId: "sess-1" }];
     let resolveLoad: (v: any) => void = () => {};
     castMock.loadVideo = vi.fn(() => new Promise((r) => { resolveLoad = r; }));
     const onCastStart = vi.fn();
@@ -176,7 +174,7 @@ describe("MobileCastSheet", () => {
     fireEvent.click(screen.getByText("Recent"));
     fireEvent.click(await screen.findByText("Bedroom TV"));
     await waitFor(() => expect(castMock.loadVideo).toHaveBeenCalled());
-    expect(castMock.reconnectToDevice).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "sess-1", type: "remote" }));
+    expect(castMock.reconnectToDevice).toHaveBeenCalledWith(expect.objectContaining({ id: "rcv-sess-1", sessionId: "sess-1" }));
     expect(castMock.loadVideo).toHaveBeenCalledWith("https://cdn.hoyeeh.com/v.mp4", "Film", undefined, 3600, 120, "sess-1");
     expect(onCastStart).not.toHaveBeenCalled();
     resolveLoad({ success: true, acked: true, seq: 4 });
@@ -184,9 +182,7 @@ describe("MobileCastSheet", () => {
   });
 
   it("failed LOAD after reconnect never calls onCastStart", async () => {
-    localStorage.setItem("cast_device_history", JSON.stringify([
-      { id: "remote:sess-2", name: "Bedroom TV", type: "remote", sessionId: "sess-2", lastUsed: Date.now() },
-    ]));
+    castMock.pairedDevices = [{ id: "rcv-sess-2", name: "Bedroom TV", type: "remote", sessionId: "sess-2" }];
     castMock.loadVideo = vi.fn(async () => ({ success: false, timedOut: true, error: "TV did not confirm playback in time" }));
     const onCastStart = vi.fn();
     const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
@@ -198,9 +194,7 @@ describe("MobileCastSheet", () => {
   });
 
   it("expired reconnect does not try to load", async () => {
-    localStorage.setItem("cast_device_history", JSON.stringify([
-      { id: "remote:old", name: "Bedroom TV", type: "remote", sessionId: "old", lastUsed: Date.now() },
-    ]));
+    castMock.pairedDevices = [{ id: "rcv-old", name: "Bedroom TV", type: "remote", sessionId: "old" }];
     castMock.reconnectToDevice = vi.fn(async () => false);
     const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
     render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" />);
@@ -208,6 +202,19 @@ describe("MobileCastSheet", () => {
     fireEvent.click(await screen.findByText("Bedroom TV"));
     await waitFor(() => expect(castMock.reconnectToDevice).toHaveBeenCalled());
     expect(castMock.loadVideo).not.toHaveBeenCalled();
+  });
+
+  it("history entries never carry TV sessions; unpaired TV asks for a new code", async () => {
+    localStorage.setItem("cast_device_history", JSON.stringify([
+      { id: "chromecast-default", name: "Kitchen Cast", type: "chromecast", lastUsed: Date.now() },
+    ]));
+    const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
+    render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" />);
+    fireEvent.click(screen.getByText("Recent"));
+    expect(screen.queryByText("Paired TVs")).toBeNull();
+    const { readFileSync } = await import("node:fs");
+    expect(readFileSync("src/hooks/useCastHistory.ts", "utf8")).not.toMatch(/sessionId/);
+    expect(castMock.reconnectToDevice).not.toHaveBeenCalled();
   });
 
   it("Chromecast connect failure never loads media or starts casting", async () => {
@@ -238,5 +245,46 @@ describe("single cast path per player", () => {
     expect(hook).toMatch(/useCast\(\)/);
     const page = readFileSync("src/pages/Cast.tsx", "utf8");
     expect(page).toMatch(/const result = await loadVideo\(v\);\s*if \(result\.success\)/);
+  });
+});
+
+describe("UniversalCastButton (title page)", () => {
+  beforeEach(() => resetCastMock());
+  it("does not call onCastStart or say 'Casting' when the TV rejects LOAD", async () => {
+    Object.assign(castMock, {
+      isConnected: true, connectedDevice: { id: "rcv", name: "Den TV", type: "remote", sessionId: "s" },
+      loadVideo: vi.fn(async () => ({ success: false, error: "TV reported playback error" })),
+    });
+    const onCastStart = vi.fn();
+    const { UniversalCastButton } = await import("@/components/cast/UniversalCastButton");
+    render(<UniversalCastButton videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" onCastStart={onCastStart} />);
+    expect(screen.getByRole("button", { name: /Connected to Den TV/ })).toBeTruthy();
+    expect(screen.queryByText(/Casting to Den TV/)).toBeNull();
+    const src = (await import("node:fs")).readFileSync("src/components/cast/UniversalCastButton.tsx", "utf8");
+    expect(src).toMatch(/if \(!result\?\.success\)[\s\S]*return false;[\s\S]*setCastingConfirmed\(true\);\s*onCastStart\?\.\(\)/);
+    expect(src).not.toMatch(/useUniversalCast\(\)/);
+    expect(onCastStart).not.toHaveBeenCalled();
+  });
+});
+
+describe("CastToTVButton", () => {
+  it("draws no fake QR and never encodes a custom-scheme pairing link", async () => {
+    const src = (await import("node:fs")).readFileSync("src/components/cast/CastToTVButton.tsx", "utf8");
+    expect(src).not.toMatch(/generateQRCodeSVG|hoyeeh:\/\/pair|dangerouslySetInnerHTML/);
+    const tv = (await import("node:fs")).readFileSync("public/tv-receiver/index.html", "utf8");
+    expect(tv).toMatch(/'https:\/\/hoyeeh\.com\/cast\?code=' \+ code/);
+  });
+});
+
+describe("browser Remote Playback is not labelled as Chromecast", () => {
+  it("UnifiedCastButton names it the browser picker", async () => {
+    const src = (await import("node:fs")).readFileSync("src/components/player/UnifiedCastButton.tsx", "utf8");
+    expect(src).toMatch(/aria-label="Cast with browser picker"/);
+  });
+  it("no native Cast plugin UI exists without a real bridge", async () => {
+    const fs = await import("node:fs");
+    expect(fs.existsSync("src/components/cast/NativeCastButton.tsx")).toBe(false);
+    expect(fs.existsSync("src/hooks/useNativeCast.ts")).toBe(false);
+    expect(fs.existsSync("src/components/cast/CastPanel.tsx")).toBe(false);
   });
 });
