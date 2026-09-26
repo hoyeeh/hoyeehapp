@@ -45,6 +45,9 @@ async def main():
             if start: headers["content-range"] = f"bytes {start}-{len(FIX)-1}/{len(FIX)}"
             await route.fulfill(status=206 if start else 200, headers=headers, body=body)
         await ctx.route("**/e2e-fixture-proxy", serve)
+        # Backend unreachable for the whole run (fake session can never be refreshed; a network
+        # failure must not sign the user out of their offline library).
+        await ctx.route("**/*.supabase.co/**", lambda r: r.abort("internetdisconnected"))
 
         page = await ctx.new_page()
         await page.goto(BASE, wait_until="domcontentloaded")
@@ -66,7 +69,6 @@ async def main():
 
         # Backend unreachable (airplane mode for the app's API). The dev server itself must stay
         # up to serve modules; true full-offline cold start is covered on the built app + SW.
-        await ctx.route("**/*.supabase.co/**", lambda r: r.abort("internetdisconnected"))
         p2 = await ctx.new_page()
         await p2.goto(f"{BASE}/offline-play/{CID}", wait_until="domcontentloaded")
         v = p2.get_by_test_id("offline-video")
