@@ -575,24 +575,15 @@ export function MobileContentDetail({
             
             {(() => {
               const c = content as unknown as Record<string, unknown>;
-              const priceNum = Number(c.price ?? 0);
-              const restricted =
-                Boolean(c.isPremium) || Boolean(c.premium) ||
-                Boolean(c.requires_drm) || Boolean(c.drm) ||
-                Boolean(c.isPaid) || Boolean(c.paid) ||
-                (Number.isFinite(priceNum) && priceNum > 0);
-              if (restricted || content.contentType === "series") return null;
+              if (content.contentType === "series") return null;
               return (
                 <OfflineDownloadButton
                   contentId={content.id}
-                  videoUrl={content.videoUrl}
                   title={content.title}
                   poster={content.thumbnailUrl}
                   duration={content.duration}
-                  isPremium={Boolean(c.isPremium) || Boolean(c.premium)}
+                  hasSource={Boolean(content.videoUrl)}
                   requiresDrm={Boolean(c.requires_drm) || Boolean(c.drm)}
-                  isPaid={Boolean(c.isPaid) || Boolean(c.paid)}
-                  price={priceNum}
                   className="w-full [&>button]:w-full"
                 />
               );
@@ -839,21 +830,16 @@ export function MobileContentDetail({
                         </div>
                         {ep.video_url && (() => {
                           const c = content as unknown as Record<string, unknown>;
-                          const priceNum = Number(c.price ?? 0);
-                          const restricted =
-                            Boolean(c.isPremium) || Boolean(c.premium) ||
-                            Boolean(c.requires_drm) || Boolean(c.drm) ||
-                            Boolean(c.isPaid) || Boolean(c.paid) ||
-                            (Number.isFinite(priceNum) && priceNum > 0);
-                          if (restricted) return null;
                           return (
                             <div onClick={(e) => e.stopPropagation()}>
                               <OfflineDownloadButton
-                                contentId={`${content.id}_${ep.id}`}
-                                videoUrl={ep.video_url}
+                                contentId={content.id}
+                                episodeId={ep.id}
                                 title={`${content.title} — E${ep.episode_number}`}
                                 poster={ep.thumbnail_url || content.thumbnailUrl}
                                 duration={ep.duration || 0}
+                                hasSource
+                                requiresDrm={Boolean(c.requires_drm) || Boolean(c.drm)}
                               />
                             </div>
                           );

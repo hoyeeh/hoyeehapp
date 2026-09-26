@@ -7,38 +7,33 @@ import { cn } from "@/lib/utils";
 
 interface OfflineDownloadButtonProps {
   contentId: string;
-  videoUrl: string;
+  episodeId?: string;
   title: string;
   poster: string;
   duration: number;
-  isPremium?: boolean;
+  /** Whether the title has a playable file at all (not the file address). */
+  hasSource: boolean;
+  /** Real DRM titles are never saved offline. */
   requiresDrm?: boolean;
-  isPaid?: boolean;
-  price?: number;
   className?: string;
 }
 
 /**
- * Download button for NON-DRM, NON-premium, NON-paid content only.
- * CRITICAL SAFETY GATE: renders nothing for any restricted content.
+ * Single offline download control. Shown for free, premium and paid titles
+ * alike — the server decides eligibility per request (403 if not entitled).
+ * Hidden only for DRM titles or titles with no file.
  */
 export const OfflineDownloadButton = ({
   contentId,
-  videoUrl,
+  episodeId,
   title,
   poster,
   duration,
-  isPremium,
+  hasSource,
   requiresDrm,
-  isPaid,
-  price,
   className,
 }: OfflineDownloadButtonProps) => {
-  const restricted =
-    Boolean(isPremium) ||
-    Boolean(requiresDrm) ||
-    Boolean(isPaid) ||
-    (typeof price === "number" && price > 0);
+  const restricted = Boolean(requiresDrm);
 
   const {
     isDownloading,
@@ -49,24 +44,19 @@ export const OfflineDownloadButton = ({
     download,
     cancelDownload,
     removeDownload,
-  } = useVideoDownloader(
-    contentId,
-    videoUrl,
-    { title, poster, duration },
-    restricted,
-  );
+  } = useVideoDownloader(contentId, { title, poster, duration, episodeId }, restricted);
 
   const lastErrorRef = useRef<string | null>(null);
   useEffect(() => {
     if (error && error !== lastErrorRef.current && !restricted) {
       lastErrorRef.current = error;
-      toast.error(`Download failed: ${error}`);
+      toast.error(error);
     }
     if (!error) lastErrorRef.current = null;
   }, [error, restricted]);
 
   // HARD GATE — never render for protected content.
-  if (restricted || !videoUrl) return null;
+  if (restricted || !hasSource) return null;
 
   // Downloaded
   if (isDownloaded) {
@@ -138,7 +128,7 @@ export const OfflineDownloadButton = ({
       </Button>
       {error && (
         <span className="text-xs text-destructive max-w-[220px]">
-          Download failed. Check your connection.
+          {error}
         </span>
       )}
     </div>

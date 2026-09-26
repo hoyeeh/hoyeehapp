@@ -951,39 +951,18 @@ const ContentDetail = () => {
                 thumbnail={content.thumbnailUrl}
                 duration={content.duration}
               />
-              {/* Single download control for movies: the verified offline engine below. */}
+              {/* Single download control for movies; server enforces entitlement. */}
               {(() => {
                 const c = content as unknown as Record<string, unknown>;
-                const priceNum = Number(c.price ?? 0);
-
-                const isRestricted =
-                  Boolean(c.isPremium) ||
-                  Boolean(c.premium) ||
-                  Boolean(c.requires_drm) ||
-                  Boolean(c.drm) ||
-                  Boolean(c.isPaid) ||
-                  Boolean(c.paid) ||
-                  (Number.isFinite(priceNum) && priceNum > 0);
-                if (isTVShow || isRestricted) return null;
-                // Ensure absolute URL — prepend DigitalOcean Spaces CDN base if relative.
-                const rawUrl = content.videoUrl || "";
-                const doBase = (import.meta.env.VITE_DO_SPACES_CDN_ENDPOINT as string | undefined) || "";
-                const absoluteVideoUrl = /^https?:\/\//i.test(rawUrl)
-                  ? rawUrl
-                  : rawUrl
-                    ? `${doBase.replace(/\/$/, "")}/${rawUrl.replace(/^\//, "")}`
-                    : rawUrl;
+                if (isTVShow) return null;
                 return (
                   <OfflineDownloadButton
                     contentId={content.id}
-                    videoUrl={absoluteVideoUrl}
                     title={content.title}
                     poster={content.thumbnailUrl}
                     duration={content.duration}
-                    isPremium={Boolean(c.isPremium) || Boolean(c.premium)}
+                    hasSource={Boolean(content.videoUrl)}
                     requiresDrm={Boolean(c.requires_drm) || Boolean(c.drm)}
-                    isPaid={Boolean(c.isPaid) || Boolean(c.paid)}
-                    price={priceNum}
                   />
                 );
               })()}

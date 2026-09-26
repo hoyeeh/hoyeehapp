@@ -49,23 +49,22 @@ export interface UseVideoDownloaderResult {
 export type DownloadMetadataInput = Partial<DownloadMetadata> & { title: string };
 
 /**
- * SAFETY: If `isRestricted` is true (DRM / premium / paid) no request is made.
- * `videoUrl` is only used to decide whether the title has a source at all.
+ * Entitlement (free / subscription / purchase) is decided only by the server
+ * at download time; a 403 surfaces as an error. The only client-side block is
+ * real DRM, which can never be saved offline. No media URL is passed or stored.
  */
 export function useVideoDownloader(
   contentId: string,
-  videoUrl: string,
   metadata: DownloadMetadataInput,
-  isRestricted: boolean,
+  requiresDrm = false,
 ): UseVideoDownloaderResult {
+  const isRestricted = requiresDrm;
   const episodeId = typeof metadata.episodeId === "string" ? metadata.episodeId : undefined;
   const key = downloadKey(contentId, episodeId);
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [indeterminate, setIndeterminate] = useState(false);
-  const [error, setError] = useState<string | null>(
-    isRestricted ? "DRM/Paid content cannot be downloaded" : null,
-  );
+  const [error, setError] = useState<string | null>(null);
   const [isDownloaded, setIsDownloaded] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
@@ -94,11 +93,7 @@ export function useVideoDownloader(
 
   const download = useCallback(async () => {
     if (isRestricted) {
-      setError("This content cannot be downloaded.");
-      return;
-    }
-    if (!videoUrl) {
-      setError("No video available");
+      setError("DRM-protected titles can't be saved offline.");
       return;
     }
     if (isDownloading) return;
@@ -134,7 +129,7 @@ export function useVideoDownloader(
       if (mountedRef.current) setIsDownloading(false);
       abortRef.current = null;
     }
-  }, [contentId, episodeId, videoUrl, metadata.title, metadata.poster, metadata.duration, isRestricted, isDownloading]);
+  }, [contentId, episodeId, metadata.title, metadata.poster, metadata.duration, isRestricted, isDownloading]);
 
   const removeDownload = useCallback(async () => {
     abortRef.current?.abort();
