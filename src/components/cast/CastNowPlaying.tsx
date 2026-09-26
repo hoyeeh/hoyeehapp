@@ -42,7 +42,7 @@ export function CastNowPlaying({ session, onDisconnect }: CastNowPlayingProps) {
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={onDisconnect}>
+            <Button variant="ghost" size="icon" aria-label="Disconnect" onClick={onDisconnect}>
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -96,7 +96,7 @@ export function CastNowPlaying({ session, onDisconnect }: CastNowPlayingProps) {
               Casting to {session.deviceName || 'Smart TV'}
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onDisconnect}>
+          <Button variant="ghost" size="icon" aria-label="Disconnect" onClick={onDisconnect}>
             <X className="h-5 w-5" />
           </Button>
         </div>

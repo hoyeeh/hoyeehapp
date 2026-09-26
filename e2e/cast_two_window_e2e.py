@@ -76,7 +76,7 @@ async def main():
 
         # Drive controls through the /cast remote UI buttons
         for label, expect_paused in (("Pause", True), ("Play", False)):
-            btn = phone.get_by_role("button", name=label)
+            btn = phone.get_by_role("button", name=label, exact=True)
             if await btn.count() == 0:
                 btn = phone.locator(f"button[aria-label='{label}']")
             await btn.first.click()
