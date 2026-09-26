@@ -57,15 +57,49 @@ export const offlineDB = db;
 
 type OwnerProvider = () => Promise<string | null>;
 const PROFILE_KEY = "hoyeeh_current_profile";
+/**
+ * Identify the owner from the locally persisted session WITHOUT a network
+ * refresh, so an airplane-mode cold start after access-token expiry still
+ * finds this account's downloads. Signing out removes the stored session.
+ */
+export function readCachedUserId(): string | null {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !/^sb-[a-z0-9]+-auth-token$/.test(k)) continue;
+      const v = JSON.parse(localStorage.getItem(k) || "null");
+      const id = v?.user?.id ?? v?.currentSession?.user?.id;
+      if (typeof id === "string" && id) return id;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 let ownerProvider: OwnerProvider = async () => {
-  const { supabase } = await import("@/integrations/supabase/client");
-  const { data } = await supabase.auth.getSession(); // reads local storage; works offline
-  const uid = data.session?.user?.id;
+  let uid = readCachedUserId();
+  if (!uid) {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data } = await supabase.auth.getSession();
+    uid = data.session?.user?.id ?? null;
+  }
   if (!uid) return null;
   let profile = "default";
   try { profile = localStorage.getItem(PROFILE_KEY) || "default"; } catch { /* ignore */ }
   return `${uid}|${profile}`;
 };
+
+/**
+ * Owner epoch: bumped on logout / profile switch. In-flight downloads capture
+ * the epoch at start and refuse to write once it changes, so a cleared store
+ * can't be repopulated. Players listen for the event and stop playback.
+ */
+let ownerEpoch = 0;
+export const OWNER_CHANGE_EVENT = "hoyeeh-offline-owner-change";
+export function getOwnerEpoch() { return ownerEpoch; }
+export function invalidateOfflineOwner() {
+  ownerEpoch++;
+  try { window.dispatchEvent(new Event(OWNER_CHANGE_EVENT)); } catch { /* non-browser */ }
+}
 
 /** Test hooks. */
 export function __setOfflineStoreForTests(store: KVStore, owner: OwnerProvider) {
