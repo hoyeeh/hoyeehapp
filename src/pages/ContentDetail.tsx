@@ -952,8 +952,7 @@ const ContentDetail = () => {
                 thumbnail={content.thumbnailUrl}
                 duration={content.duration}
               />
-              {/* Download button for movies */}
-              {!isTVShow && <DownloadButton content={content} />}
+              {/* Single download control for movies: the verified offline engine below. */}
               {(() => {
                 const c = content as unknown as Record<string, unknown>;
                 const priceNum = Number(c.price ?? 0);
@@ -975,8 +974,6 @@ const ContentDetail = () => {
                   : rawUrl
                     ? `${doBase.replace(/\/$/, "")}/${rawUrl.replace(/^\//, "")}`
                     : rawUrl;
-                // eslint-disable-next-line no-console
-                console.log("Downloader initialized with URL:", absoluteVideoUrl);
                 return (
                   <OfflineDownloadButton
                     contentId={content.id}
