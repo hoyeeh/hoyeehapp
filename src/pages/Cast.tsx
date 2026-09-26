@@ -77,19 +77,22 @@ export default function Cast() {
     })();
   }, [autoPairAttempted, isConnected, isConnecting, location.search, location.pathname, location.hash, pairWithCode]);
 
+  // Load a title and only announce success after the TV ACKs this exact LOAD.
+  const castVideo = async (v: { url: string; title: string; thumbnail?: string; duration?: number; startTime?: number }) => {
+    const result = await loadVideo(v);
+    if (result.success) toast.success(`Casting "${v.title}" to TV`);
+    return result;
+  };
+
   // Auto-cast pending video when connected
   useEffect(() => {
     if (isConnected && pendingVideo) {
-      loadVideo({
-        url: pendingVideo.url,
-        title: pendingVideo.title,
-        thumbnail: pendingVideo.thumbnail,
-        duration: pendingVideo.duration,
-      });
-      toast.success(`Casting "${pendingVideo.title}" to TV`);
+      const v = pendingVideo;
       setPendingVideo(null);
+      void castVideo(v);
     }
-  }, [isConnected, pendingVideo, loadVideo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, pendingVideo]);
 
   return (
     <div className="min-h-screen bg-background">

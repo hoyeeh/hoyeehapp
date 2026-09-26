@@ -145,7 +145,7 @@ export function MobileCastSheet({
     try {
       const ok = await cast.reconnectToDevice({ id: paired?.id || device.id, name, type: "remote", sessionId });
       if (!ok) {
-        castHistory.removeDevice?.(device.id, device.type);
+        castHistory.removeDevice(device.id, device.type);
         setShowPairingDialog(true);
         return;
       }
