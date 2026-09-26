@@ -22,6 +22,7 @@ import {
   decryptSegment,
   getDownloadId,
   getLicense,
+  getMetadata as getLegacyMetadata,
   getSegment,
   initDeviceKey,
   listDownloads as listLegacyDownloads,
@@ -80,6 +81,8 @@ async function resolveLegacy(
     const downloadId = getDownloadId(contentId, episodeId);
     const license = await getLicense(downloadId);
     if (!legacyLicenseUsable(license, await currentOwner())) return null;
+    const meta = await getLegacyMetadata(downloadId);
+    if (!meta || meta.status !== "completed") return null;
 
     const segment = await getSegment(downloadId, 0);
     if (!segment) return null;
@@ -117,9 +120,11 @@ export async function resolveOfflineSrc(
   contentId: string,
   episodeId?: string,
 ): Promise<string | null> {
-  const legacy = await resolveLegacy(contentId, episodeId);
-  if (legacy) return legacy;
-  return resolveNew(contentId, episodeId);
+  // Owner-scoped, byte-verified store first; legacy only with an owner-bound,
+  // unexpired license AND completed metadata (fails closed otherwise).
+  const fresh = await resolveNew(contentId, episodeId);
+  if (fresh) return fresh;
+  return resolveLegacy(contentId, episodeId);
 }
 
 /** Check whether a given content/episode is available offline in any store. */

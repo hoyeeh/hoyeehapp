@@ -2,12 +2,15 @@ import {
   OFFLINE_EXPIRY_MS,
   currentOwner,
   downloadKey,
+  getDownload,
   getManifest,
+  getOwnerEpoch,
   looksLikeVideo,
   putChunk,
   putManifest,
   readChunk,
   removeChunks,
+  removeManifest,
   type DownloadManifest,
 } from "@/services/offlineStorage";
 
@@ -53,24 +56,51 @@ function parseContentRange(v: string | null): { start: number; total: number | n
   return { start: Number(m[1]), total: m[3] === "*" ? null : Number(m[3]) };
 }
 
-export function downloadToDevice(p: DownloadParams): Promise<DownloadManifest> {
+export async function downloadToDevice(p: DownloadParams): Promise<DownloadManifest> {
+  const owner = await currentOwner();
+  if (!owner) throw new OfflineDownloadError("Sign in required to download", "AUTH");
   const id = downloadKey(p.contentId, p.episodeId);
-  const existing = inFlight.get(id);
-  if (existing) return existing; // de-duplicate concurrent taps / tabs in same page
-  const run = runDownload(p, id).finally(() => inFlight.delete(id));
-  inFlight.set(id, run);
+  const flightKey = `${owner}::${id}`; // never share a download across accounts/profiles
+  const existing = inFlight.get(flightKey);
+  if (existing) return existing; // de-duplicate concurrent taps in same page
+  const run = runDownload(p, id, owner, getOwnerEpoch()).finally(() => inFlight.delete(flightKey));
+  inFlight.set(flightKey, run);
   return run;
 }
 
-async function runDownload(p: DownloadParams, id: string): Promise<DownloadManifest> {
-  const owner = await currentOwner();
-  if (!owner) throw new OfflineDownloadError("Sign in required to download", "AUTH");
+async function assertOwner(owner: string, epoch: number) {
+  if (getOwnerEpoch() !== epoch || (await currentOwner()) !== owner) {
+    throw new OfflineDownloadError("Signed out or switched profile during download", "AUTH");
+  }
+}
+
+async function runDownload(p: DownloadParams, id: string, owner: string, epoch: number): Promise<DownloadManifest> {
+  try {
+    return await runDownloadInner(p, id, owner, epoch);
+  } catch (e) {
+    if (getOwnerEpoch() !== epoch || (await currentOwner()) !== owner) {
+      // Owner went away mid-download: leave nothing behind for them.
+      await removeChunks(owner, id).catch(() => {});
+      await removeManifest(owner, id).catch(() => {});
+      throw new OfflineDownloadError("Signed out or switched profile during download", "AUTH");
+    }
+    throw e;
+  }
+}
+
+async function runDownloadInner(p: DownloadParams, id: string, owner: string, epoch: number): Promise<DownloadManifest> {
   const chunkSize = p.chunkSize ?? CHUNK_SIZE;
   const signal = p.signal ?? new AbortController().signal;
   const now = Date.now();
 
   let m = await getManifest(id, owner);
-  if (m?.status === "complete") return m;
+  if (m?.status === "complete") {
+    // Only reuse a complete download that still verifies (unexpired, all bytes present).
+    const ok = await getDownload(id);
+    if (ok) return m;
+    m = await getManifest(id, owner); // getDownload reset/removed it if invalid
+    if (m?.status === "complete") m = null;
+  }
   if (!m) {
     m = {
       contentId: p.contentId, episodeId: p.episodeId, owner, title: p.meta.title,
@@ -149,7 +179,7 @@ async function runDownload(p: DownloadParams, id: string): Promise<DownloadManif
       if (e instanceof OfflineDownloadError) throw e;
     }
 
-    await streamInto(res, m, owner, id, chunkSize, p.onProgress, signal);
+    await streamInto(res, m, owner, id, chunkSize, p.onProgress, signal, epoch);
   }
 
   // Verify completeness and container.
@@ -165,6 +195,7 @@ async function runDownload(p: DownloadParams, id: string): Promise<DownloadManif
     await putManifest(m);
     throw new OfflineDownloadError("Downloaded file is not a playable video", "CORRUPT");
   }
+  await assertOwner(owner, epoch);
   m = { ...m, status: "complete", size: m.receivedBytes, totalBytes: m.receivedBytes, updatedAt: Date.now(), expiresAt: Date.now() + OFFLINE_EXPIRY_MS };
   await putManifest(m);
   return m;
@@ -172,7 +203,7 @@ async function runDownload(p: DownloadParams, id: string): Promise<DownloadManif
 
 async function streamInto(
   res: Response, m: DownloadManifest, owner: string, id: string, chunkSize: number,
-  onProgress: DownloadParams["onProgress"], signal: AbortSignal,
+  onProgress: DownloadParams["onProgress"], signal: AbortSignal, epoch: number,
 ) {
   if (!res.body) throw new OfflineDownloadError("Empty response", "HTTP");
   const reader = res.body.getReader();
@@ -180,6 +211,7 @@ async function streamInto(
   let bufLen = 0;
   const flush = async () => {
     if (!bufLen) return;
+    await assertOwner(owner, epoch);
     const blob = new Blob(buf as BlobPart[], { type: m.mimeType || "video/mp4" });
     try {
       await putChunk(owner, id, m.chunkCount, blob);
@@ -218,7 +250,7 @@ async function streamInto(
   } catch (e) {
     try { await reader.cancel(); } catch { /* ignore */ }
     // Keep already-flushed chunks for resume; drop the unflushed tail.
-    await putManifest(m).catch(() => {});
+    if (getOwnerEpoch() === epoch) await putManifest(m).catch(() => {});
     throw e;
   }
 }

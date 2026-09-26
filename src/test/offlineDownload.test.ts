@@ -157,3 +157,59 @@ describe("offline download engine", () => {
     expect([...store.map.keys()].filter((k) => k.includes("user-a|"))).toHaveLength(0);
   });
 });
+
+describe("owner isolation and lifecycle (review 10b9819)", () => {
+  const meta = { title: "Fixture" };
+
+  it("does not share an in-flight download across owners", async () => {
+    const bytes = fixture(20_000);
+    const a = server(bytes); const b = server(bytes);
+    const pa = downloadToDevice({ contentId: "c1", meta, openRange: a.open, chunkSize: 4096 });
+    await new Promise((r) => setTimeout(r, 0));
+    owner = "user-b|profile-1";
+    const pb = downloadToDevice({ contentId: "c1", meta, openRange: b.open, chunkSize: 4096 });
+    expect(pb).not.toBe(pa);
+    await pb;
+    expect(b.calls.length).toBeGreaterThan(0);
+    expect(await getManifest("c1", "user-b|profile-1")).toMatchObject({ status: "complete", owner: "user-b|profile-1" });
+    await pa.catch(() => {});
+  });
+
+  it("owner change mid-download stops writes and leaves nothing for the old owner", async () => {
+    const { invalidateOfflineOwner } = await import("@/services/offlineStorage");
+    const bytes = fixture(40_000);
+    let started = false;
+    const slow: OpenRange = async () => {
+      const stream = new ReadableStream<Uint8Array>({
+        async pull(ctrl) {
+          if (!started) { started = true; ctrl.enqueue(bytes.slice(0, 8192)); return; }
+          invalidateOfflineOwner(); // logout happens while bytes are arriving
+          owner = "user-b|profile-1";
+          ctrl.enqueue(bytes.slice(8192)); ctrl.close();
+        },
+      });
+      return new Response(stream, { status: 200, headers: { "content-type": "video/mp4", "content-length": String(bytes.length) } });
+    };
+    await expect(downloadToDevice({ contentId: "c2", meta, openRange: slow, chunkSize: 4096 }))
+      .rejects.toMatchObject({ code: "AUTH" });
+    const leftovers = [...store.map.keys()].filter((k) => k.includes("user-a|profile-1") && k.includes("c2"));
+    expect(leftovers).toEqual([]);
+  });
+
+  it("re-downloads instead of trusting an expired or corrupted complete manifest", async () => {
+    const bytes = fixture(10_000);
+    const s1 = server(bytes);
+    const m = await downloadToDevice({ contentId: "c3", meta, openRange: s1.open });
+    await store.setItem(`m:${owner}:c3`, { ...m, expiresAt: Date.now() - 1 });
+    const s2 = server(bytes);
+    const again = await downloadToDevice({ contentId: "c3", meta, openRange: s2.open });
+    expect(s2.calls).toEqual([0]);
+    expect(again.expiresAt).toBeGreaterThan(Date.now());
+
+    await store.removeItem(`c:${owner}:c3:0`); // evicted bytes
+    const s3 = server(bytes);
+    await downloadToDevice({ contentId: "c3", meta, openRange: s3.open });
+    expect(s3.calls).toEqual([0]);
+    expect(await getDownload("c3")).not.toBeNull();
+  });
+});

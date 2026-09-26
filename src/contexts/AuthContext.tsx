@@ -361,6 +361,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Offline downloads belong to this account: remove them from the device.
     try {
+      const { invalidateOfflineOwner } = await import("@/services/offlineStorage");
+      invalidateOfflineOwner(); // stop in-flight downloads + offline playback first
       const uid = (await supabase.auth.getSession()).data.session?.user?.id;
       if (uid) {
         const { purgeUserDownloads } = await import("@/services/offlineStorage");

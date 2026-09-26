@@ -3,9 +3,9 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveOfflineSrc } from "@/services/unifiedOfflineVideo";
-import { downloadKey } from "@/services/offlineStorage";
+import { OWNER_CHANGE_EVENT, currentOwner, downloadKey } from "@/services/offlineStorage";
 
-const posKey = (k: string) => `hoyeeh_offline_pos:${k}`;
+const posKey = (owner: string, k: string) => `hoyeeh_offline_pos:${owner}:${k}`;
 
 /**
  * Local-only playback of a downloaded title. Never contacts the network,
@@ -22,38 +22,61 @@ const OfflinePlayer = () => {
   const [src, setSrc] = useState<string | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "missing">("loading");
   const key = downloadKey(contentId, episodeId);
+  const ownerRef = useRef<string | null>(null);
+  const [ownerTick, setOwnerTick] = useState(0);
+
+  // Account/profile change (logout, profile switch, other tab): re-resolve.
+  useEffect(() => {
+    const bump = () => setOwnerTick((t) => t + 1);
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === "hoyeeh_current_profile" || /^sb-.*-auth-token$/.test(e.key)) bump();
+    };
+    window.addEventListener(OWNER_CHANGE_EVENT, bump);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(OWNER_CHANGE_EVENT, bump);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   useEffect(() => {
     let url: string | null = null;
     let cancelled = false;
-    resolveOfflineSrc(contentId, episodeId)
-      .then((u) => {
-        if (cancelled) {
-          if (u) URL.revokeObjectURL(u);
-          return;
-        }
-        url = u;
-        setSrc(u);
-        setState(u ? "ready" : "missing");
-      })
-      .catch(() => !cancelled && setState("missing"));
+    setState("loading");
+    (async () => {
+      const owner = await currentOwner();
+      ownerRef.current = owner;
+      const u = owner ? await resolveOfflineSrc(contentId, episodeId) : null;
+      if (cancelled) {
+        if (u) URL.revokeObjectURL(u);
+        return;
+      }
+      url = u;
+      setSrc(u);
+      setState(u ? "ready" : "missing");
+    })().catch(() => !cancelled && setState("missing"));
     return () => {
       cancelled = true;
+      const v = videoRef.current;
+      if (v) { v.pause(); v.removeAttribute("src"); v.load(); }
       if (url) URL.revokeObjectURL(url);
+      setSrc(null);
     };
-  }, [contentId, episodeId]);
+  }, [contentId, episodeId, ownerTick]);
 
   const onLoaded = () => {
     const v = videoRef.current;
     if (!v) return;
-    const saved = Number(localStorage.getItem(posKey(key)) || 0);
+    if (!ownerRef.current) return;
+    const saved = Number(localStorage.getItem(posKey(ownerRef.current, key)) || 0);
     if (saved > 0 && saved < v.duration * 0.95) v.currentTime = saved;
   };
   const onTime = () => {
     const v = videoRef.current;
-    if (!v || !v.duration) return;
-    if (v.currentTime / v.duration >= 0.95) localStorage.removeItem(posKey(key));
-    else localStorage.setItem(posKey(key), String(Math.floor(v.currentTime)));
+    const o = ownerRef.current;
+    if (!v || !v.duration || !o) return;
+    if (v.currentTime / v.duration >= 0.95) localStorage.removeItem(posKey(o, key));
+    else localStorage.setItem(posKey(o, key), String(Math.floor(v.currentTime)));
   };
 
   return (

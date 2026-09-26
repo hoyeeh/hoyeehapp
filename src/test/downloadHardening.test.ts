@@ -51,3 +51,13 @@ describe("media host allowlist", () => {
     expect(isAllowedMediaUrl("javascript:alert(1)")).toBe(false);
   });
 });
+
+describe("cached owner lookup works without network refresh", () => {
+  it("reads user id from the persisted session even if the token is expired", async () => {
+    const { readCachedUserId } = await import("@/services/offlineStorage");
+    localStorage.setItem("sb-abc123-auth-token", JSON.stringify({ access_token: "x", expires_at: 1, user: { id: "u-offline" } }));
+    expect(readCachedUserId()).toBe("u-offline");
+    localStorage.removeItem("sb-abc123-auth-token");
+    expect(readCachedUserId()).toBeNull();
+  });
+});
