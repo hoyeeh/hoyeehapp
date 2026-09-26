@@ -166,7 +166,7 @@ describe("MobileCastSheet", () => {
 
   it("reconnect uses the saved sessionId and waits for the LOAD ack before onCastStart", async () => {
     localStorage.setItem("cast_device_history", JSON.stringify([
-      { id: "remote:sess-1", name: "Smart TV", type: "remote", sessionId: "sess-1", lastUsed: Date.now() },
+      { id: "remote:sess-1", name: "Bedroom TV", type: "remote", sessionId: "sess-1", lastUsed: Date.now() },
     ]));
     let resolveLoad: (v: any) => void = () => {};
     castMock.loadVideo = vi.fn(() => new Promise((r) => { resolveLoad = r; }));
@@ -174,7 +174,7 @@ describe("MobileCastSheet", () => {
     const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
     render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" currentTime={120} duration={3600} onCastStart={onCastStart} />);
     fireEvent.click(screen.getByText("Recent"));
-    fireEvent.click(await screen.findByText("Smart TV"));
+    fireEvent.click(await screen.findByText("Bedroom TV"));
     await waitFor(() => expect(castMock.loadVideo).toHaveBeenCalled());
     expect(castMock.reconnectToDevice).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "sess-1", type: "remote" }));
     expect(castMock.loadVideo).toHaveBeenCalledWith("https://cdn.hoyeeh.com/v.mp4", "Film", undefined, 3600, 120, "sess-1");
@@ -185,27 +185,27 @@ describe("MobileCastSheet", () => {
 
   it("failed LOAD after reconnect never calls onCastStart", async () => {
     localStorage.setItem("cast_device_history", JSON.stringify([
-      { id: "remote:sess-2", name: "Smart TV", type: "remote", sessionId: "sess-2", lastUsed: Date.now() },
+      { id: "remote:sess-2", name: "Bedroom TV", type: "remote", sessionId: "sess-2", lastUsed: Date.now() },
     ]));
     castMock.loadVideo = vi.fn(async () => ({ success: false, timedOut: true, error: "TV did not confirm playback in time" }));
     const onCastStart = vi.fn();
     const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
     render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" onCastStart={onCastStart} />);
     fireEvent.click(screen.getByText("Recent"));
-    fireEvent.click(await screen.findByText("Smart TV"));
+    fireEvent.click(await screen.findByText("Bedroom TV"));
     await waitFor(() => expect(castMock.loadVideo).toHaveBeenCalled());
     expect(onCastStart).not.toHaveBeenCalled();
   });
 
   it("expired reconnect does not try to load", async () => {
     localStorage.setItem("cast_device_history", JSON.stringify([
-      { id: "remote:old", name: "Smart TV", type: "remote", sessionId: "old", lastUsed: Date.now() },
+      { id: "remote:old", name: "Bedroom TV", type: "remote", sessionId: "old", lastUsed: Date.now() },
     ]));
     castMock.reconnectToDevice = vi.fn(async () => false);
     const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
     render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" />);
     fireEvent.click(screen.getByText("Recent"));
-    fireEvent.click(await screen.findByText("Smart TV"));
+    fireEvent.click(await screen.findByText("Bedroom TV"));
     await waitFor(() => expect(castMock.reconnectToDevice).toHaveBeenCalled());
     expect(castMock.loadVideo).not.toHaveBeenCalled();
   });
