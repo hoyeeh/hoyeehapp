@@ -214,7 +214,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
       const success = await Promise.race([
         onCodeScanned(code),
         new Promise<boolean>((_, reject) =>
-          setTimeout(() => reject(new Error("PAIR_TIMEOUT")), 12000)
+          setTimeout(() => reject(new Error("PAIR_TIMEOUT")), 25000)
         ),
       ]);
 
@@ -350,7 +350,7 @@ export function MobileQRScanner({ open, onClose, onCodeScanned }: MobileQRScanne
       const success = await Promise.race([
         onCodeScanned(code),
         new Promise<boolean>((_, reject) =>
-          setTimeout(() => reject(new Error("PAIR_TIMEOUT")), 12000)
+          setTimeout(() => reject(new Error("PAIR_TIMEOUT")), 25000)
         ),
       ]);
 
