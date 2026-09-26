@@ -15,7 +15,6 @@ import { ContentRatingBadge } from "@/components/ContentRatingBadge";
 import { CastQueuePanel } from "@/components/CastQueuePanel";
 import { UniversalCastButton } from "@/components/cast/UniversalCastButton";
 import { TVShowSeasons } from "@/components/TVShowSeasons";
-import { DownloadButton } from "@/components/DownloadButton";
 import { OfflineDownloadButton } from "@/components/OfflineDownloadButton";
 import { OfflinePlayerWrapper } from "@/components/player/OfflinePlayerWrapper";
 
