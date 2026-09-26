@@ -59,3 +59,50 @@ describe("offline download button follows server policy", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 });
+
+describe("mobile episode downloads use parent + episode ids", () => {
+  const PARENT = "11111111-1111-4111-8111-111111111111";
+  const EP = "22222222-2222-4222-8222-222222222222";
+  const mp4 = () => {
+    const b = new Uint8Array(4000);
+    b.set([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d], 0);
+    return b;
+  };
+
+  it("sends both UUIDs, stores under parent__episode, lists it and plays via ?episode=", async () => {
+    const bytes = mp4();
+    fetchMock.mockImplementation(async () => new Response(bytes as unknown as BodyInit, {
+      status: 200, headers: { "content-type": "video/mp4", "content-length": String(bytes.length) },
+    }));
+    render(<OfflineDownloadButton contentId={PARENT} episodeId={EP} title="Show — E1" poster="" duration={60} hasSource />);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /download/i })); });
+    await waitFor(() => expect(screen.getByText(/downloaded/i)).toBeInTheDocument());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ contentId: PARENT, episodeId: EP });
+    expect(store.map.has(`m:u1|p1:${PARENT}__${EP}`)).toBe(true);
+    expect([...store.map.keys()].some((k) => k.includes(`${PARENT}_${EP}`) && !k.includes("__"))).toBe(false);
+
+    const { getAllDownloads } = await import("@/services/offlineStorage");
+    const list = await getAllDownloads();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ contentId: PARENT, episodeId: EP });
+
+    // Offline player resolves the same key from the route + ?episode= query.
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: () => "blob:local", revokeObjectURL: () => {} }));
+    const { MemoryRouter, Routes, Route } = await import("react-router-dom");
+    const { default: OfflinePlayer } = await import("@/pages/OfflinePlayer");
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/offline-play/${PARENT}?episode=${EP}`]}>
+        <Routes><Route path="/offline-play/:contentId" element={<OfflinePlayer />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(container.querySelector("video")?.getAttribute("src")).toBe("blob:local"));
+  });
+
+  it("shows a clear refusal when the server rejects an episode from another title (404)", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }));
+    render(<OfflineDownloadButton contentId={PARENT} episodeId={EP} title="Show — E9" poster="" duration={60} hasSource />);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /download/i })); });
+    await waitFor(() => expect(screen.getByText(/isn't available for download/i)).toBeInTheDocument());
+    expect([...store.map.keys()].some((k) => k.startsWith("c:"))).toBe(false);
+  });
+});
