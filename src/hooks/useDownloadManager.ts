@@ -453,9 +453,9 @@ export function useDownloadManager() {
       if (!check.ok) {
         await response.body?.cancel();
         if (resumeFromByte > 0) await deletePartialChunks(downloadId);
-        throw new Error(check.reason);
+        throw new Error((check as { reason: string }).reason);
       }
-      const totalSize: number = check.total;
+      const totalSize: number = (check as { total: number }).total;
       (metadata as { etag?: string }).etag = response.headers.get('etag') || undefined;
 
       const reader = response.body?.getReader();
