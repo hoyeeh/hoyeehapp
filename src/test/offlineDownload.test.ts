@@ -213,3 +213,52 @@ describe("owner isolation and lifecycle (review 10b9819)", () => {
     expect(await getDownload("c3")).not.toBeNull();
   });
 });
+
+describe("independent regressions at 10b9819", () => {
+  const meta = { title: "Fixture" };
+  const counting = (bytes: Uint8Array) => { const s = server(bytes); return s; };
+
+  it("(1) expired complete manifest triggers a real re-download", async () => {
+    const bytes = fixture(12_000);
+    await downloadToDevice({ contentId: "r1", meta, openRange: counting(bytes).open });
+    const m = await getManifest("r1", owner);
+    await store.setItem(`m:${owner}:r1`, { ...m!, expiresAt: Date.now() - 1000 });
+    const s = counting(bytes);
+    const again = await downloadToDevice({ contentId: "r1", meta, openRange: s.open });
+    expect(s.calls.length).toBeGreaterThan(0);
+    expect(again.expiresAt).toBeGreaterThan(Date.now());
+    const d = await getDownload("r1");
+    expect(new Uint8Array(await d!.blob.arrayBuffer())).toEqual(bytes);
+  });
+
+  it("(2) missing chunks after complete are repaired", async () => {
+    const bytes = fixture(12_000);
+    await downloadToDevice({ contentId: "r2", meta, openRange: counting(bytes).open, chunkSize: 4096 });
+    for (const k of [...store.map.keys()]) if (k.startsWith(`c:${owner}:r2:`)) store.map.delete(k);
+    expect(await getDownload("r2")).toBeNull();
+    const s = counting(bytes);
+    await downloadToDevice({ contentId: "r2", meta, openRange: s.open, chunkSize: 4096 });
+    expect(s.calls).toEqual([0]);
+    const d = await getDownload("r2");
+    expect(new Uint8Array(await d!.blob.arrayBuffer())).toEqual(bytes);
+  });
+
+  it("(3) logout + purge while response is pending leaves the old user's store empty", async () => {
+    const bytes = fixture(12_000);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const deferred: OpenRange = async () => {
+      await gate;
+      return new Response(bytes, { status: 200, headers: { "content-type": "video/mp4", "content-length": String(bytes.length) } });
+    };
+    const p = downloadToDevice({ contentId: "r3", meta, openRange: deferred, chunkSize: 4096 });
+    await new Promise((r) => setTimeout(r, 0));
+    let cur: string | null = owner;
+    __setOfflineStoreForTests(store, async () => cur);
+    cur = null;
+    await purgeUserDownloads("user-a");
+    release();
+    await expect(p).rejects.toMatchObject({ code: "AUTH" });
+    expect([...store.map.keys()].filter((k) => k.includes("user-a|"))).toEqual([]);
+  });
+});
