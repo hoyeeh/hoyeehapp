@@ -359,6 +359,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     clearCachedSessionId();
 
+    // Offline downloads belong to this account: remove them from the device.
+    try {
+      const uid = (await supabase.auth.getSession()).data.session?.user?.id;
+      if (uid) {
+        const { purgeUserDownloads } = await import("@/services/offlineStorage");
+        await purgeUserDownloads(uid);
+      }
+    } catch (error) {
+      console.warn("offline purge warning:", error);
+    }
+
     try {
       await supabase.auth.signOut();
     } catch (error) {

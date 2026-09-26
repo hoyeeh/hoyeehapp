@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { deleteDownload as deleteNewDownload } from "@/services/offlineStorage";
+import { deleteDownload as deleteNewDownload, downloadKey } from "@/services/offlineStorage";
 import {
   listUnifiedDownloads,
   type UnifiedDownload,
@@ -34,8 +34,6 @@ const DownloadsPage = () => {
     let cancelled = false;
     listUnifiedDownloads()
       .then((rows) => {
-        // eslint-disable-next-line no-console
-        console.log("Downloads from DB (unified):", rows);
         if (!cancelled) setItems(rows);
       })
       .catch(() => {
@@ -55,7 +53,7 @@ const DownloadsPage = () => {
       if (item.source === "legacy") {
         await deleteLegacyDownload(getDownloadId(item.contentId, item.episodeId));
       } else {
-        await deleteNewDownload(item.contentId);
+        await deleteNewDownload(downloadKey(item.contentId, item.episodeId));
       }
       setItems((prev) =>
         prev.filter(
@@ -70,8 +68,10 @@ const DownloadsPage = () => {
   };
 
 
-  const handlePlay = (contentId: string) => {
-    navigate(`/watch?contentId=${contentId}&offline=true`);
+  // Local-only player: works in airplane mode, never touches the network.
+  const handlePlay = (item: UnifiedDownload) => {
+    const q = item.episodeId ? `?episode=${encodeURIComponent(item.episodeId)}` : "";
+    navigate(`/offline-play/${encodeURIComponent(item.contentId)}${q}`);
   };
 
   return (
@@ -122,7 +122,7 @@ const DownloadsPage = () => {
                 className="group rounded-lg overflow-hidden bg-card border border-border flex flex-col"
               >
                 <button
-                  onClick={() => handlePlay(item.contentId)}
+                  onClick={() => handlePlay(item)}
                   className="relative aspect-[2/3] bg-muted overflow-hidden"
                   aria-label={`Play ${item.title}`}
                 >
@@ -161,7 +161,7 @@ const DownloadsPage = () => {
                     <Button
                       size="sm"
                       className="flex-1 gap-1.5 min-h-[36px]"
-                      onClick={() => handlePlay(item.contentId)}
+                      onClick={() => handlePlay(item)}
                     >
                       <Play className="h-3.5 w-3.5" /> Play
                     </Button>

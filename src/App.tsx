@@ -48,7 +48,9 @@ const Profile = lazy(() => import("./pages/Profile"));
 const ContentDetail = lazy(() => import("./pages/ContentDetail"));
 const MyList = lazy(() => import("./pages/MyList"));
 const Downloads = lazy(() => import("./pages/Downloads"));
-const DownloadsPage = lazy(() => import("./pages/DownloadsPage"));
+// Eager so they are in the main bundle and open on an offline cold start.
+import DownloadsPage from "./pages/DownloadsPage";
+import OfflinePlayer from "./pages/OfflinePlayer";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Search = lazy(() => import("./pages/Search"));
@@ -279,6 +281,7 @@ const App = () => (
                         <Route path="/my-list" element={<MyList />} />
                         <Route path="/downloads" element={<Downloads />} />
                         <Route path="/offline-downloads" element={<DownloadsPage />} />
+                        <Route path="/offline-play/:contentId" element={<OfflinePlayer />} />
                         <Route path="/watch" element={<WatchRedirect />} />
                         
                         
