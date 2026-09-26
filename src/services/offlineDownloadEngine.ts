@@ -6,6 +6,7 @@ import {
   looksLikeVideo,
   putChunk,
   putManifest,
+  readChunk,
   removeChunks,
   type DownloadManifest,
 } from "@/services/offlineStorage";
@@ -157,9 +158,7 @@ async function runDownload(p: DownloadParams, id: string): Promise<DownloadManif
     throw new OfflineDownloadError("Download was interrupted; tap retry to resume", "INCOMPLETE");
   }
   if (m.receivedBytes === 0) throw new OfflineDownloadError("Empty download", "CORRUPT");
-  const { offlineDB } = await import("@/services/offlineStorage");
-  void offlineDB;
-  const head = await getFirstChunk(owner, id);
+  const head = await readChunk(owner, id, 0);
   if (!head || !(await looksLikeVideo(head))) {
     await removeChunks(owner, id);
     m = { ...m, receivedBytes: 0, chunkCount: 0, chunkSizes: [] };
@@ -169,13 +168,6 @@ async function runDownload(p: DownloadParams, id: string): Promise<DownloadManif
   m = { ...m, status: "complete", size: m.receivedBytes, totalBytes: m.receivedBytes, updatedAt: Date.now(), expiresAt: Date.now() + OFFLINE_EXPIRY_MS };
   await putManifest(m);
   return m;
-
-  async function getFirstChunk(o: string, i: string): Promise<Blob | null> {
-    const mod = await import("@/services/offlineStorage");
-    return (mod as unknown as { __readChunk?: (o: string, i: string, n: number) => Promise<Blob | null> }).__readChunk
-      ? (mod as any).__readChunk(o, i, 0)
-      : null;
-  }
 }
 
 async function streamInto(

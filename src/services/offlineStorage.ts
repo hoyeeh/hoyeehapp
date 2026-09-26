@@ -96,6 +96,10 @@ export async function putChunk(owner: string, id: string, index: number, blob: B
   await db.setItem(cKey(owner, id, index), blob);
 }
 
+export async function readChunk(owner: string, id: string, index: number): Promise<Blob | null> {
+  return db.getItem<Blob>(cKey(owner, id, index));
+}
+
 export async function removeChunks(owner: string, id: string, from = 0, to?: number) {
   const prefix = `c:${owner}:${id}:`;
   for (const k of await db.keys()) {
