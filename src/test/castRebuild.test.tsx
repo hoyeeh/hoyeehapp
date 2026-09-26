@@ -288,3 +288,13 @@ describe("browser Remote Playback is not labelled as Chromecast", () => {
     expect(fs.existsSync("src/components/cast/CastPanel.tsx")).toBe(false);
   });
 });
+
+describe("Google Cast Web Sender runtime gate", () => {
+  it("rejects Chrome on iOS and mobile, accepts desktop Chrome", async () => {
+    const { isGoogleCastSupportedRuntime: ok } = await import("@/lib/googleCastSender");
+    expect(ok("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/120.0 Mobile/15E148 Safari/604.1")).toBe(false);
+    expect(ok("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 CriOS/120.0 Safari/604.1")).toBe(false);
+    expect(ok("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36")).toBe(false);
+    expect(ok("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36")).toBe(true);
+  });
+});
