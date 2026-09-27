@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VideoJSPlayer } from "@/components/VideoJSPlayer";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
-import { useMiniPlayer } from "@/contexts/MiniPlayerContext";
+import { useOptionalMiniPlayer } from "@/contexts/MiniPlayerContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Content } from "@/types";
@@ -54,7 +54,8 @@ export function VideoJSPlayerWithWatchParty({
   useEffect(() => { nativeCastActiveRef.current = nativeCastActive; }, [nativeCastActive]);
 
   const { party, isHost, syncToParty, updatePlayback } = useWatchPartyContext();
-  const { minimize } = useMiniPlayer();
+  // ContentDetail renders this player without MiniPlayerProvider; hand-off is optional.
+  const minimize = useOptionalMiniPlayer()?.minimize;
 
   // Hand off final state to the persistent MiniPlayer just before VJS disposes.
   // Skipped during an active Watch Party (host/guest sync owns that lifecycle)
@@ -66,7 +67,7 @@ export function VideoJSPlayerWithWatchParty({
       if (!snap.src) return;
       if (snap.duration > 0 && snap.currentTime / snap.duration >= 0.95) return; // finished
       if (snap.currentTime < 5) return; // not enough watched to bother
-      minimize(miniPlayerContent, snap.src, snap.currentTime, snap.duration);
+      minimize?.(miniPlayerContent, snap.src, snap.currentTime, snap.duration);
     },
     [miniPlayerContent, party, minimize]
   );

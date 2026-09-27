@@ -77,3 +77,8 @@ export function useMiniPlayer() {
   }
   return context;
 }
+
+/** Non-throwing variant for players that may render outside MiniPlayerProvider (e.g. ContentDetail). */
+export function useOptionalMiniPlayer() {
+  return useContext(MiniPlayerContext);
+}
