@@ -9,6 +9,7 @@ vi.mock("framer-motion", () => {
 });
 vi.mock("@/hooks/useYouTubeVideoProgress", () => ({ useYouTubeVideoProgress: () => ({ saveProgress: vi.fn(), getProgress: () => 0 }) }));
 
+(globalThis as any).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
 import { KidsEnhancedYouTubePlayer } from "@/components/kids/KidsEnhancedYouTubePlayer";
 
 let events: any;
