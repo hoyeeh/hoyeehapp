@@ -58,6 +58,10 @@ describe.each([["main"], ["kids"]])("Desktop VideoPlayer from Index (%s profile)
     await fire("pause");
     expect(overlayOf().className).toContain("opacity-100");
     expect(screen.getByTestId("center-play-toggle").getAttribute("aria-label")).toBe("Play");
+    await fire("playing");
+    await tick(5100);
+    await fire("ended");
+    expect(overlayOf().className).toContain("opacity-100");
   });
 
   it("blocked play shows accessible Tap to play, cleared only by the playing event", async () => {
