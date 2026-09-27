@@ -687,6 +687,7 @@ export function MobileVideoPlayer({
   };
   const handleEnded = () => {
     setIsPlaying(false);
+    setShowControls(true);
     if (hasNextEpisode && onNextEpisode) {
       onNextEpisode();
     }
@@ -904,7 +905,7 @@ export function MobileVideoPlayer({
 
     lastTapTimeRef.current = now;
     lastTapSideRef.current = tapSide;
-  }, [skip, resetControlsTimeout, isLocked]);
+  }, [skip, resetControlsTimeout, hideControls, isLocked]);
 
   // Touch handlers removed - brightness/volume gestures disabled to fix back/close controls
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -1361,6 +1362,13 @@ export function MobileVideoPlayer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 flex items-center justify-center bg-black/50"
+            role="button"
+            tabIndex={0}
+            aria-label="Tap to play"
+            data-testid="tap-to-play"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePlay(); }
+            }}
             onClick={(e) => {
               e.stopPropagation();
               togglePlay();
@@ -1700,7 +1708,15 @@ export function MobileVideoPlayer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60"
-            onClick={(e) => e.stopPropagation()}
+            data-testid="mobile-controls"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Tapping empty overlay space hides controls while playing.
+              if (e.target === e.currentTarget) {
+                if (isPlayingRef.current) hideControls();
+                else resetControlsTimeout();
+              }
+            }}
           >
             {/* Top Bar - Back button and title - Responsive */}
             <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3 sm:p-4 pt-6 sm:pt-8 safe-area-inset-top z-40">
