@@ -372,40 +372,56 @@ export function MobileVideoPlayer({
     attemptPlay();
   }, [videoUrl, selectedQuality]);
 
-  // Hide controls after inactivity
-  const resetControlsTimeout = useCallback(() => {
+  // Refs mirror state so timers never read a stale render.
+  const isPlayingRef = useRef(false);
+  const holdControlsRef = useRef(false);
+  isPlayingRef.current = isPlaying;
+  holdControlsRef.current = showSettings || showCastSheet;
+
+  const clearControlsTimer = useCallback(() => {
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = null;
     }
+  }, []);
+
+  // Show controls and (only while actually playing) schedule auto-hide.
+  const resetControlsTimeout = useCallback(() => {
+    clearControlsTimer();
     setShowControls(true);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying && !showSettings && !showCastSheet) {
+      if (isPlayingRef.current && !holdControlsRef.current) {
         setShowControls(false);
       }
     }, 3000);
-  }, [isPlaying, showSettings, showCastSheet]);
+  }, [clearControlsTimer]);
 
-  useEffect(() => {
-    resetControlsTimeout();
-    return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-    };
-  }, [resetControlsTimeout]);
+  const hideControls = useCallback(() => {
+    clearControlsTimer();
+    if (isPlayingRef.current && !holdControlsRef.current) setShowControls(false);
+  }, [clearControlsTimer]);
 
-  // Auto-hide controls once playback starts; keep visible while paused.
+  useEffect(() => clearControlsTimer, [clearControlsTimer]);
+
+  // Playing -> auto-hide; paused/ended/error -> stay visible.
   useEffect(() => {
     if (isPlaying) {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-      controlsTimeoutRef.current = setTimeout(() => {
-        if (!showSettings && !showCastSheet) setShowControls(false);
-      }, 1500);
+      resetControlsTimeout();
     } else {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      clearControlsTimer();
       setShowControls(true);
     }
-  }, [isPlaying, showSettings, showCastSheet]);
+  }, [isPlaying, showSettings, showCastSheet, resetControlsTimeout, clearControlsTimer]);
+
+  // Real media events are the source of truth for playing state.
+  const handleMediaPlaying = useCallback(() => {
+    setIsPlaying(true);
+    setShowTapToPlay(false);
+    setIsBuffering(false);
+  }, []);
+  const handleMediaPause = useCallback(() => {
+    setIsPlaying(false);
+  }, []);
 
   // Skip intro visibility
   // Handle intro skip (auto or manual)
