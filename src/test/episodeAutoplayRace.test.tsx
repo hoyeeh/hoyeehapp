@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // when allEpisodes was still empty — the episode never opened.
 
 const openPlayer = vi.fn();
+const h = vi.hoisted(() => ({ content: null as any, listDelay: 0 }));
 vi.mock("@/contexts/MobileVideoPlayerContext", () => ({
   useMobileVideoPlayer: () => ({ openPlayer, playerState: { isOpen: false }, closePlayer: vi.fn() }),
   MobileVideoPlayerProvider: ({ children }: any) => children,
@@ -29,14 +30,7 @@ vi.mock("@/contexts/ProfileContext", () => ({
 
 vi.mock("@/hooks/useDatabase", () => ({
   useContent: () => ({
-    data: [{
-      id: "c1",
-      title: "Series",
-      contentType: "series",
-      isPremium: false,
-      videoUrl: "",
-      thumbnailUrl: "",
-    }],
+    data: [h.content],
     isLoading: false,
   }),
   useWatchlist: () => ({ data: [] }),
@@ -69,11 +63,11 @@ vi.mock("@/integrations/supabase/client", () => {
     };
     // await q (seasons / episode list queries resolve via thenable)
     q.then = (resolve: any) =>
-      resolve(
+      setTimeout(() => resolve(
         table === "seasons"
           ? { data: seasonsRows }
           : { data: [episodesRow] }
-      );
+      ), table === "seasons" ? 0 : h.listDelay);
     return q;
   };
   return {
@@ -95,8 +89,47 @@ vi.mock("@/components/cast/UniversalCastButton", () => ({
 
 import ContentDetail from "@/pages/ContentDetail";
 
+const series = { id: "c1", title: "Series", contentType: "series", isPremium: false, videoUrl: "", thumbnailUrl: "" };
+const renderAt = (url: string) =>
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[url]}>
+        <Routes>
+          <Route path="/content/:id" element={<ContentDetail />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+
 describe("episode URL autoplay race", () => {
-  beforeEach(() => openPlayer.mockClear());
+  beforeEach(() => { openPlayer.mockClear(); h.content = series; h.listDelay = 0; });
+
+  it("late episode list: opens exactly once, after the list arrives", async () => {
+    h.listDelay = 300;
+    renderAt("/content/c1?episode=e1&autoplay=true");
+    await new Promise((r) => setTimeout(r, 100));
+    expect(openPlayer).not.toHaveBeenCalled();
+    await waitFor(() => expect(openPlayer).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    await new Promise((r) => setTimeout(r, 500));
+    expect(openPlayer).toHaveBeenCalledTimes(1);
+    expect(openPlayer.mock.calls[0][0].allEpisodes.length).toBe(1);
+  });
+
+  it("movie ?autoplay=true opens the real stream exactly once", async () => {
+    h.content = { id: "c1", title: "Movie", contentType: "movie", isPremium: false, videoUrl: "https://cdn.hoyeeh.com/m.mp4", thumbnailUrl: "" };
+    renderAt("/content/c1?autoplay=true");
+    await waitFor(() => expect(openPlayer).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(openPlayer).toHaveBeenCalledTimes(1);
+    expect(openPlayer.mock.calls[0][0].videoUrl).toBe("https://cdn.hoyeeh.com/m.mp4");
+  });
+
+  it("movie ?autoplay=true without a video never opens a player", async () => {
+    h.content = { id: "c1", title: "Movie", contentType: "movie", isPremium: false, videoUrl: "", thumbnailUrl: "" };
+    renderAt("/content/c1?autoplay=true");
+    await new Promise((r) => setTimeout(r, 400));
+    expect(openPlayer).not.toHaveBeenCalled();
+  });
 
   it("opens the episode once the episode list finishes loading", async () => {
     render(
