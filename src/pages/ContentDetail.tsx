@@ -437,6 +437,41 @@ const ContentDetail = () => {
     fetchAndPlayEpisode();
   }, [episodeIdFromUrl, content, profile, navigate, isMobile, allEpisodes, episodesLoaded, mobilePlayer]);
 
+  // Movie autoplay from `?autoplay=true` (e.g. Kids home movie tap). Runs once
+  // per title; only opens a real stream. Kids limits are applied by the shared
+  // player opener from the selected profile.
+  const movieAutoPlayAttemptedFor = useRef<string | null>(null);
+  const [movieAutoplayUnavailable, setMovieAutoplayUnavailable] = useState(false);
+  const wantsMovieAutoplay = searchParams.get('autoplay') === 'true' && !episodeIdFromUrl;
+  useEffect(() => {
+    if (!wantsMovieAutoplay || !content || content.contentType === 'series') return;
+    if (movieAutoPlayAttemptedFor.current === content.id) return;
+    // Wait for the account profile before judging premium entitlement.
+    if (content.isPremium && user && profile === undefined) return;
+    movieAutoPlayAttemptedFor.current = content.id;
+
+    if (!content.videoUrl) {
+      setMovieAutoplayUnavailable(true);
+      toast.error("This video is not yet available");
+      return;
+    }
+    if (content.isPremium && !profile?.is_subscribed) {
+      toast.error("This content requires a premium subscription");
+      navigate("/subscription");
+      return;
+    }
+    if (isMobile) {
+      mobilePlayer.openPlayer({
+        content,
+        videoUrl: content.videoUrl,
+        title: content.title,
+        thumbnail: content.thumbnailUrl,
+      });
+      return;
+    }
+    setPlaying(true);
+  }, [wantsMovieAutoplay, content, user, profile, isMobile, mobilePlayer, navigate]);
+
   // Fetch all episodes for next episode functionality
   useEffect(() => {
     const fetchAllEpisodes = async () => {
@@ -934,6 +969,11 @@ const ContentDetail = () => {
               ))}
             </div>
 
+            {movieAutoplayUnavailable && (
+              <p role="status" data-testid="video-unavailable" className="mb-3 text-sm text-muted-foreground">
+                This video isn't available to play yet.
+              </p>
+            )}
             {/* Actions */}
             <div className="flex flex-wrap gap-3">
               <Button 
