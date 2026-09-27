@@ -88,6 +88,11 @@ vi.mock("@/components/mobile/MobileContentDetail", () => ({
   default: () => <div data-testid="mobile-detail">detail</div>,
 }));
 
+vi.mock("@/components/cast/UniversalCastButton", () => ({
+  UniversalCastButton: () => null,
+  default: () => null,
+}));
+
 import ContentDetail from "@/pages/ContentDetail";
 
 describe("episode URL autoplay race", () => {
