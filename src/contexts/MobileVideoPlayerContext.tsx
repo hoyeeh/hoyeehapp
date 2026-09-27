@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Content } from "@/types";
 import { Episode } from "@/hooks/useSeasons";
+import { ProfileContext } from "@/contexts/ProfileContext";
 
 interface MobileVideoPlayerState {
   isOpen: boolean;
@@ -60,12 +61,18 @@ const MobileVideoPlayerContext = createContext<MobileVideoPlayerContextType | nu
 export function MobileVideoPlayerProvider({ children }: { children: ReactNode }) {
   const [playerState, setPlayerState] = useState<MobileVideoPlayerState>(initialState);
 
+  // Kids flags are derived from the active profile here (single trusted source), so no
+  // entry point (title page, episode list, home rows) can bypass Kids time/bedtime rules.
+  const currentProfile = useContext(ProfileContext)?.currentProfile ?? null;
   const openPlayer = useCallback((options: Omit<MobileVideoPlayerState, "isOpen">) => {
+    const kids = !!currentProfile?.is_kids || !!options.isKidsMode;
     setPlayerState({
       ...options,
+      isKidsMode: kids,
+      kidsProfileId: currentProfile?.is_kids ? currentProfile.id : kids ? options.kidsProfileId : undefined,
       isOpen: true,
     });
-  }, []);
+  }, [currentProfile?.is_kids, currentProfile?.id]);
 
   const closePlayer = useCallback(() => {
     setPlayerState(initialState);

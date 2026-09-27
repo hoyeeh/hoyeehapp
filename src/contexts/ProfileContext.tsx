@@ -23,7 +23,7 @@ interface ProfileContextType {
   refreshProfiles: () => Promise<void>;
 }
 
-const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
+export const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
 const PROFILE_STORAGE_KEY = "hoyeeh_current_profile";
 
