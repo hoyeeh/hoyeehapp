@@ -359,13 +359,15 @@ export function MobileVideoPlayer({
         video.muted = true;
         setIsMuted(true);
         await video.play();
-        setIsPlaying(true);
-        setShowTapToPlay(false);
+        // isPlaying/showTapToPlay are driven by the real `playing` event.
         setShowUnmutePrompt(true);
       } catch (error) {
+        // Only a genuine NotAllowedError (autoplay policy) needs the
+        // tap-to-play fallback; aborts from src swaps are ignored.
+        const name = (error as DOMException)?.name;
+        if (name === "AbortError") return;
         console.log("[MobileVideoPlayer] Autoplay blocked:", error);
-        setShowTapToPlay(true);
-        setIsPlaying(false);
+        if (video.paused) setShowTapToPlay(true);
       }
     };
 
@@ -375,8 +377,10 @@ export function MobileVideoPlayer({
   // Refs mirror state so timers never read a stale render.
   const isPlayingRef = useRef(false);
   const holdControlsRef = useRef(false);
+  const showControlsRef = useRef(true);
   isPlayingRef.current = isPlaying;
-  holdControlsRef.current = showSettings || showCastSheet;
+  showControlsRef.current = showControls;
+  holdControlsRef.current = showSettings || showCastSheet || !!mediaError;
 
   const clearControlsTimer = useCallback(() => {
     if (controlsTimeoutRef.current) {
@@ -739,10 +743,6 @@ export function MobileVideoPlayer({
     // Reload the video
     video.load();
     video.play()
-      .then(() => {
-        setIsPlaying(true);
-        setShowTapToPlay(false);
-      })
       .catch((error) => {
         console.log("[MobileVideoPlayer] Retry play failed:", error);
         setShowTapToPlay(true);
@@ -1799,6 +1799,8 @@ export function MobileVideoPlayer({
                   "p-5 rounded-full bg-white/20 backdrop-blur-md",
                   isWatchPartyGuest && "opacity-40 cursor-not-allowed"
                 )}
+                aria-label={isPlaying ? "Pause" : "Play"}
+                data-testid="center-play-toggle"
               >
                 {isPlaying ? (
                   <Pause className="h-10 w-10 text-white" fill="white" />
