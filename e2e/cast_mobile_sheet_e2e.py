@@ -40,7 +40,9 @@ async def main():
         # --- 1. Header popup, device-management mode ---
         code = await tv_code(tv); check("TV shows code", True, code)
         await ph.goto(BASE); await ph.wait_for_timeout(4000)
-        await ph.screenshot(path=str(SHOTS / "0_home.png")); print("url", ph.url)
+        if "/profiles" in ph.url:
+            await ph.get_by_text("kob", exact=True).first.click() if await ph.get_by_text("kob", exact=True).count() else ph.locator("img").first.click()
+            await ph.wait_for_timeout(4000)
         await ph.get_by_role("button", name="Cast to device").first.click()
         dlg = ph.get_by_role("dialog", name="Cast to TV")
         await dlg.wait_for(timeout=10000)
