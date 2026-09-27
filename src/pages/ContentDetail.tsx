@@ -435,12 +435,13 @@ const ContentDetail = () => {
     };
 
     fetchAndPlayEpisode();
-  }, [episodeIdFromUrl, episodeAutoPlayAttempted, content, profile, navigate, isMobile, allEpisodes, mobilePlayer]);
+  }, [episodeIdFromUrl, content, profile, navigate, isMobile, allEpisodes, episodesLoaded, mobilePlayer]);
 
   // Fetch all episodes for next episode functionality
   useEffect(() => {
     const fetchAllEpisodes = async () => {
       if (!content || content.contentType !== 'series') return;
+      setEpisodesLoaded(false);
 
       const { data: seasons } = await supabase
         .from('seasons')
