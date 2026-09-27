@@ -83,7 +83,12 @@ async def run(browser, player, label, mobile):
         ok, a, b = await advancing(pg); check(f"{label}: resume advances", ok, f"{a:.1f}->{b:.1f}")
         check(f"{label}: no tap-to-play fallback while playing", await pg.get_by_test_id("tap-to-play").count() == 0)
 
-        if mobile:
+        if player == "mobile-kids":
+            if not await controls_visible():
+                await pg.touchscreen.tap(195, 300); await pg.wait_for_timeout(400)
+            check(f"{label}: Cast to TV hidden in Kids mode (by design)",
+                  await pg.get_by_role("button", name="Cast to TV").count() == 0)
+        elif mobile:
             if not await controls_visible():
                 await pg.touchscreen.tap(195, 300); await pg.wait_for_timeout(400)
             await pg.get_by_role("button", name="Cast to TV").first.click()
