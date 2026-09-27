@@ -29,14 +29,14 @@ vi.mock("@/contexts/ProfileContext", () => ({
 
 vi.mock("@/hooks/useDatabase", () => ({
   useContent: () => ({
-    data: {
+    data: [{
       id: "c1",
       title: "Series",
       contentType: "series",
       isPremium: false,
       videoUrl: "",
       thumbnailUrl: "",
-    },
+    }],
     isLoading: false,
   }),
   useWatchlist: () => ({ data: [] }),
