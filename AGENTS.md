@@ -6,3 +6,4 @@
 - `download_licenses` is written only by the server; clients complete via `complete_download_license` RPC. Why: clients could edit expiry/entitlement fields.
 - npm installs use `package-lock.json` + `.npmrc` (legacy-peer-deps). Why: `npm ci` must be reproducible; npm's strict peer resolver crashes on this tree.
 - TV-code reconnect resolves sessions only from CastContext's owner-scoped pairedDevices; useCastHistory never stores sessionIds and no app QR is drawn (TV shows the only real https://hoyeeh.com/cast?code= QR). Why: prevents cross-account session reuse and fake/unscannable QR codes.
+- Player E2E uses the DEV-ONLY `/__e2e/player` harness (`src/dev/PlayerHarness.tsx`, route gated by `import.meta.env.DEV`) with `e2e/fixtures/player-fixture.webm`; run `e2e/player_harness_e2e.py`. Why: real players get tested with a playable video, and nothing test-only (no auth bypass) reaches production.
