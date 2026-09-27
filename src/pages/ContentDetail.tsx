@@ -449,7 +449,10 @@ const ContentDetail = () => {
         .eq('content_id', content.id)
         .order('season_number');
 
-      if (!seasons?.length) return;
+      if (!seasons?.length) {
+        setEpisodesLoaded(true);
+        return;
+      }
 
       const episodesPromises = seasons.map(async (season) => {
         const { data: eps } = await supabase
