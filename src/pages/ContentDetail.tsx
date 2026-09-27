@@ -395,37 +395,35 @@ const ContentDetail = () => {
           return;
         }
 
-        // Use mobile player on mobile devices
+        // Use mobile player on mobile devices. The episode list is guaranteed
+        // loaded here for series (see the gate above), so always open.
         if (isMobile && content) {
-          // Wait for all episodes to be loaded
-          if (allEpisodes.length > 0) {
-            const epData = episode as any;
-            const currentIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
-            let nextEp: Episode | null = null;
-            for (let i = currentIndex + 1; i < allEpisodes.length; i++) {
-              if (allEpisodes[i].video_url) {
-                nextEp = allEpisodes[i];
-                break;
-              }
+          const epData = episode as any;
+          const currentIndex = allEpisodes.findIndex(ep => ep.id === episode.id);
+          let nextEp: Episode | null = null;
+          for (let i = currentIndex + 1; i < allEpisodes.length; i++) {
+            if (allEpisodes[i].video_url) {
+              nextEp = allEpisodes[i];
+              break;
             }
-
-            mobilePlayer.openPlayer({
-              content,
-              videoUrl: episode.video_url,
-              title: content.title,
-              episodeTitle: `E${episode.episode_number} - ${episode.title}`,
-              episodeId: episode.id,
-              resumeAt: 0,
-              introStartTime: epData.intro_start_time ?? undefined,
-              introEndTime: epData.intro_end_time ?? undefined,
-              recapStartTime: epData.recap_start_time ?? undefined,
-              recapEndTime: epData.recap_end_time ?? undefined,
-              thumbnail: episode.thumbnail_url || content.thumbnailUrl,
-              hasNextEpisode: !!nextEp,
-              nextEpisode: nextEp,
-              allEpisodes,
-            });
           }
+
+          mobilePlayer.openPlayer({
+            content,
+            videoUrl: episode.video_url,
+            title: content.title,
+            episodeTitle: `E${episode.episode_number} - ${episode.title}`,
+            episodeId: episode.id,
+            resumeAt: 0,
+            introStartTime: epData.intro_start_time ?? undefined,
+            introEndTime: epData.intro_end_time ?? undefined,
+            recapStartTime: epData.recap_start_time ?? undefined,
+            recapEndTime: epData.recap_end_time ?? undefined,
+            thumbnail: episode.thumbnail_url || content.thumbnailUrl,
+            hasNextEpisode: !!nextEp,
+            nextEpisode: nextEp,
+            allEpisodes,
+          });
           return;
         }
 
