@@ -421,13 +421,16 @@ export const VideoPlayer = ({
 
   // Controls visibility - 5 second auto-hide
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Mirrors state driven by real media play/playing/pause events.
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
   
   const resetControlsTimeout = useCallback(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     setShowControls(true);
     controlsTimeoutRef.current = setTimeout(() => {
       const video = videoRef.current;
-      if (video && !video.paused && !video.ended) {
+      if (isPlayingRef.current && !video?.ended) {
         setShowControls(false);
       }
     }, 5000);
