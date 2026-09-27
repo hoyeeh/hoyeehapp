@@ -13,7 +13,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.f
 vi.mock("@/components/LogoOpener", () => ({ LogoOpener: () => null }));
 vi.mock("@/hooks/useLogoOpener", () => ({ useLogoOpener: () => ({ showOpener: false, handleOpenerComplete: vi.fn(), shouldShowOpener: false, markOpenerShown: vi.fn() }) }));
 vi.mock("@/contexts/WatchPartyContext", () => ({ useWatchPartyContext: () => ({ party: null, members: [], messages: [], isHost: false, isWatchPartyGuest: false, isSyncing: false, updatePlayback: vi.fn(), syncToParty: vi.fn() }) }));
-vi.mock("@/hooks/useWatchProgress", () => ({ useWatchProgress: () => ({ progress: null, saveProgress: vi.fn(), getProgress: vi.fn(), updateProgress: vi.fn() }) }));
+vi.mock("@/hooks/useWatchProgress", () => ({ useWatchProgress: () => ({ progress: null, saveProgress: vi.fn(), saveProgressImmediately: vi.fn(), getProgress: vi.fn(), updateProgress: vi.fn() }) }));
 vi.mock("@/hooks/usePictureInPicture", () => ({ usePictureInPicture: () => ({ isSupported: false, isActive: false, toggle: vi.fn() }) }));
 vi.mock("@/hooks/useNetworkQuality", () => ({ useNetworkQuality: () => ({ quality: "high", recommendedQuality: "auto" }) }));
 vi.mock("@/components/cast/CastToTVButton", () => ({ CastToTVButton: () => null }));
