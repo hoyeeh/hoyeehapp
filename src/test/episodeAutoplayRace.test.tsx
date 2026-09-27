@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import React from "react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Race regression: the episode URL autoplay effect used to mark the attempt
 // before the episode list finished loading, then silently return on mobile
@@ -94,11 +95,13 @@ describe("episode URL autoplay race", () => {
 
   it("opens the episode once the episode list finishes loading", async () => {
     render(
-      <MemoryRouter initialEntries={["/content/c1?episode=e1&autoplay=true"]}>
-        <Routes>
-          <Route path="/content/:id" element={<ContentDetail />} />
-        </Routes>
-      </MemoryRouter>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/content/c1?episode=e1&autoplay=true"]}>
+          <Routes>
+            <Route path="/content/:id" element={<ContentDetail />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
 
     await waitFor(() => expect(openPlayer).toHaveBeenCalledTimes(1), { timeout: 5000 });
