@@ -356,9 +356,16 @@ const ContentDetail = () => {
   // Auto-play episode from URL parameter
   useEffect(() => {
     const fetchAndPlayEpisode = async () => {
-      if (!episodeIdFromUrl || episodeAutoPlayAttempted || !content) return;
+      if (!episodeIdFromUrl || !content) return;
+      if (episodeAutoPlayAttemptedFor.current === episodeIdFromUrl) return;
 
-      setEpisodeAutoPlayAttempted(true);
+      // On mobile, the player needs the full episode list for next-episode
+      // support. If it hasn't finished loading yet, wait — the effect re-runs
+      // when episodesLoaded flips. Marking the attempt here would silently
+      // drop the autoplay when the episode fetch wins the race.
+      if (isMobile && content.contentType === 'series' && !episodesLoaded) return;
+
+      episodeAutoPlayAttemptedFor.current = episodeIdFromUrl;
 
       try {
         const { data: episode, error } = await supabase
