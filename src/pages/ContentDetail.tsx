@@ -276,8 +276,11 @@ const ContentDetail = () => {
   const [playing, setPlaying] = useState(searchParams.get('offline') === 'true');
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [episodeResumeAt, setEpisodeResumeAt] = useState<number>(0);
-  const [episodeAutoPlayAttempted, setEpisodeAutoPlayAttempted] = useState(false);
+  // Tracks which episode id autoplay was attempted for, so navigating to a
+  // different episode re-triggers and a failed/pending attempt can retry.
+  const episodeAutoPlayAttemptedFor = useRef<string | null>(null);
   const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
+  const [episodesLoaded, setEpisodesLoaded] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
   const [recapEpisode, setRecapEpisode] = useState<Episode | null>(null);
   const [isLoadingPlay, setIsLoadingPlay] = useState(false);
