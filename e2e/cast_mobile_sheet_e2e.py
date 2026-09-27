@@ -73,7 +73,8 @@ async def main():
         # --- 2. Title page popup, media mode: success only after LOAD ACK ---
         code = await tv_code(tv)
         await ph.goto(f"{BASE}/content/{CONTENT}"); await ph.wait_for_timeout(5000)
-        await ph.get_by_text("Cast", exact=True).first.click()
+        await ph.screenshot(path=str(SHOTS / "2b_title.png")); print("url", ph.url)
+        await ph.locator("button", has=ph.get_by_text("Cast", exact=True)).first.click()
         dlg = ph.get_by_role("dialog", name="Cast to TV"); await dlg.wait_for(timeout=10000)
         await dlg.get_by_label("TV code").fill(code)
         await dlg.get_by_role("button", name="Connect & play").click()
