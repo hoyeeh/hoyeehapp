@@ -81,6 +81,8 @@ describe.each([["main", false], ["kids", true]])("MobileVideoPlayer controls (%s
     await flush(5000);
     expect(screen.getByTestId("mobile-controls")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+    // Kids mode hides casting; main shows it.
+    expect(screen.queryAllByRole("button", { name: "Cast to TV" }).length > 0).toBe(!isKidsMode);
   });
 
   it("autoplay blocked: tap-to-play fallback shown, cleared by the real playing event", async () => {
