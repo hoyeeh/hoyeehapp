@@ -26,9 +26,10 @@ describe("cast pairing auto-load regressions", () => {
     expect(src).toMatch(/Connected to TV but failed to launch video/);
   });
 
-  it("MobileVideoPlayer passes duration before currentTime into cast.loadVideo", () => {
+  it("MobileVideoPlayer casts only via the popup with current time/duration and pauses on ACK", () => {
     const src = read("src/components/mobile/MobileVideoPlayer.tsx");
-    expect(src).toMatch(/await cast\.loadVideo\([\s\S]*thumbnail \|\| content\.thumbnailUrl,[\s\S]*duration,[\s\S]*currentVideoTime/);
+    expect(src).not.toMatch(/cast\.loadVideo\(/);
+    expect(src).toMatch(/<MobileCastSheet[\s\S]*currentTime=\{currentTime\}[\s\S]*duration=\{duration\}[\s\S]*onCastStart=/);
   });
 
   it("VideoPlayer passes the resolved playback URL into CastToTVButton", () => {
