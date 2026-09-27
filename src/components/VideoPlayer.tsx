@@ -935,6 +935,13 @@ export const VideoPlayer = ({
         title={title}
         {...({ "webkit-playsinline": "", "x-webkit-airplay": "allow" } as Record<string, string>)}
         onContextMenu={(e) => e.preventDefault()}
+        data-testid="desktop-video"
+        // React state follows real media events (also bound imperatively above;
+        // both are idempotent so a late-mounted <video> can never go stale).
+        onPlay={() => setIsPlaying(true)}
+        onPlaying={() => { setIsBuffering(false); setIsPlaying(true); setIsActivelyPlaying(true); setShowTapToPlay(false); }}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => { setIsPlaying(false); setShowControls(true); }}
         onLoadedData={() => {
           // Attempt to play with proper error handling for mobile
           const video = videoRef.current;
