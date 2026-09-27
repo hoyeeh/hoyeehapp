@@ -461,7 +461,7 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
               <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
 
               {/* Bottom Controls */}
-              <div className={cn("absolute bottom-0 left-0 right-0 p-5", showControls ? "pointer-events-auto" : "pointer-events-none")} data-testid="kids-controls" aria-hidden={!showControls}>
+              <div className={cn("absolute bottom-0 left-0 right-0 p-5", showControls ? "pointer-events-auto" : "pointer-events-none")} data-testid="kids-controls" aria-hidden={!showControls} {...(!showControls ? { inert: "" } : {})}>
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <Slider
@@ -535,7 +535,10 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
           initial={{ opacity: 0 }}
           animate={{ opacity: showControls ? 1 : 0 }}
           transition={{ duration: 0.2 }}
-          className="absolute top-0 left-0 right-0 z-30 p-3 sm:p-4 pt-6 sm:pt-8 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top"
+          className={cn("absolute top-0 left-0 right-0 z-30 p-3 sm:p-4 pt-6 sm:pt-8 bg-gradient-to-b from-black/80 to-transparent safe-area-inset-top", !showControls && "pointer-events-none")}
+          aria-hidden={!showControls}
+          {...(!showControls ? { inert: "" } : {})}
+          data-testid="kids-header"
         >
           <div className="flex items-center justify-between max-w-7xl mx-auto gap-2">
             {/* Back Button */}
