@@ -753,16 +753,14 @@ export function MobileVideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    if (video.paused) {
-      video.play().then(() => {
-        setIsPlaying(true);
-        setShowTapToPlay(false);
-      }).catch(() => {
-        toast.error("Unable to play video");
+    if (video.paused || video.ended) {
+      // State flips on the real `playing` event; only a rejected play()
+      // (autoplay/gesture policy) shows the tap-to-play fallback.
+      video.play().catch(() => {
+        setShowTapToPlay(true);
       });
     } else {
       video.pause();
-      setIsPlaying(false);
     }
     resetControlsTimeout();
   }, [resetControlsTimeout]);
@@ -893,10 +891,14 @@ export function MobileVideoPlayer({
       
       setTimeout(() => setSkipAmount(null), 800);
     } else {
-      // Single tap - schedule controls toggle
+      // Single tap - toggle controls. Hiding only applies while playing;
+      // paused/ended/error keep controls visible.
       doubleTapTimeoutRef.current = setTimeout(() => {
-        setShowControls((prev) => !prev);
-        resetControlsTimeout();
+        if (showControlsRef.current && isPlayingRef.current) {
+          hideControls();
+        } else {
+          resetControlsTimeout();
+        }
       }, 250);
     }
 
@@ -1199,6 +1201,10 @@ export function MobileVideoPlayer({
         onCanPlay={handleCanPlay}
         onEnded={handleEnded}
         onError={handleError}
+        onPlay={() => setShowTapToPlay(false)}
+        onPlaying={handleMediaPlaying}
+        onPause={handleMediaPause}
+        data-testid="mobile-video"
         poster={thumbnail || content.thumbnailUrl}
       />
 
