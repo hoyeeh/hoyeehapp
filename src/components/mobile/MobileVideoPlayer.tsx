@@ -20,7 +20,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { usePictureInPicture } from "@/hooks/usePictureInPicture";
-import { useCastHistory } from "@/hooks/useCastHistory";
 import { toCdnUrl } from "@/utils/cdnUrl";
 
 import { savePlaybackPosition, getPlaybackPosition } from "@/lib/playbackStorage";
@@ -224,7 +223,6 @@ export function MobileVideoPlayer({
   const cast = useCast();
   const networkQuality = useNetworkQuality();
   const pip = usePictureInPicture(videoRef);
-  const castHistory = useCastHistory();
   const { data: isAdmin } = useIsAdmin();
   const skipPrefs = useSkipPreferences();
   const autoSkippedIntroRef = useRef(false);
@@ -332,22 +330,8 @@ export function MobileVideoPlayer({
     return url;
   }, [videoUrl, isHls, selectedQuality]);
 
-  // Auto-reconnect to last cast device
-  useEffect(() => {
-    if (castHistory.lastUsedDevice && !cast.isConnected && !cast.isConnecting) {
-      const timeSinceLastUse = Date.now() - castHistory.lastUsedDevice.lastUsed;
-      const twentyFourHours = 24 * 60 * 60 * 1000;
-      
-      if (timeSinceLastUse < twentyFourHours && castHistory.lastUsedDevice.type !== 'airplay') {
-        // Attempt to reconnect to last device (exclude airplay as it uses different type)
-        const device = {
-          ...castHistory.lastUsedDevice,
-          type: castHistory.lastUsedDevice.type as 'chromecast' | 'dlna' | 'remote',
-        };
-        cast.reconnectToDevice?.(device);
-      }
-    }
-  }, [castHistory.lastUsedDevice, cast.isConnected, cast.isConnecting]);
+  // No auto-reconnect from device history: TV sessions are resolved only from
+  // CastContext's owner-scoped pairedDevices inside MobileCastSheet.
 
   // Auto-play with muted audio
   useEffect(() => {
