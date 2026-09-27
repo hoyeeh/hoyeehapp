@@ -421,13 +421,16 @@ export const VideoPlayer = ({
 
   // Controls visibility - 5 second auto-hide
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Mirrors state driven by real media play/playing/pause events.
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
   
   const resetControlsTimeout = useCallback(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     setShowControls(true);
     controlsTimeoutRef.current = setTimeout(() => {
       const video = videoRef.current;
-      if (video && !video.paused && !video.ended) {
+      if (isPlayingRef.current && !video?.ended) {
         setShowControls(false);
       }
     }, 5000);
@@ -969,11 +972,15 @@ export const VideoPlayer = ({
           className="absolute inset-0 flex items-center justify-center bg-background/70 z-20"
           onClick={(e) => {
             e.stopPropagation();
-            const video = videoRef.current;
-            if (video) {
-              video.play();
-              setShowTapToPlay(false);
-            }
+            // Cleared by the real `playing` event, not optimistically.
+            videoRef.current?.play().catch(() => setShowTapToPlay(true));
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Tap to play"
+          data-testid="tap-to-play"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); videoRef.current?.play().catch(() => setShowTapToPlay(true)); }
           }}
         >
           <div className="flex flex-col items-center gap-4">
@@ -1176,6 +1183,8 @@ export const VideoPlayer = ({
           <button
             onClick={() => !isWatchPartyGuest && togglePlay()}
             disabled={isWatchPartyGuest}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            data-testid="center-play-toggle"
             className={cn(
               "w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-brand flex items-center justify-center hover:bg-brand/90 transition-colors shadow-lg shadow-brand/30",
               isWatchPartyGuest && "opacity-40 cursor-not-allowed hover:bg-brand"
