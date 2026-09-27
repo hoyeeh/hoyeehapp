@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   SkipBack, SkipForward, X, Loader2, RotateCcw, ArrowLeft
