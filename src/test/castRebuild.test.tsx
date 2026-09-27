@@ -140,14 +140,10 @@ describe("TV-code exact-seq ACK", () => {
   });
 });
 
-// ---- MobileCastSheet (mobile reconnect + Chromecast result handling) ----
+// Shared useCast mock for the remaining cast UI tests in this file.
 const castMock: any = {};
 vi.mock("@/contexts/CastContext", () => ({ useCast: () => castMock }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
-vi.mock("@/components/cast/CastPairingDialog", () => ({ CastPairingDialog: () => null }));
-vi.mock("@/components/DLNASetupGuide", () => ({ DLNASetupGuide: () => null }));
-vi.mock("@/components/mobile/MobileQRScanner", () => ({ MobileQRScanner: () => null }));
-
 function resetCastMock() {
   Object.assign(castMock, {
     isConnected: false, pairedDevices: [], sessionId: null,
@@ -160,75 +156,6 @@ function resetCastMock() {
     dlna: { devices: [], savedDevices: [], isScanning: false, scanForDevices: vi.fn(), connect: vi.fn(), playMedia: vi.fn() },
   });
 }
-
-describe("MobileCastSheet", () => {
-  beforeEach(() => { resetCastMock(); localStorage.clear(); });
-
-  it("reconnect uses the saved sessionId and waits for the LOAD ack before onCastStart", async () => {
-    castMock.pairedDevices = [{ id: "rcv-sess-1", name: "Bedroom TV", type: "remote", sessionId: "sess-1" }];
-    let resolveLoad: (v: any) => void = () => {};
-    castMock.loadVideo = vi.fn(() => new Promise((r) => { resolveLoad = r; }));
-    const onCastStart = vi.fn();
-    const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
-    render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" currentTime={120} duration={3600} onCastStart={onCastStart} />);
-    fireEvent.click(screen.getByText("Recent"));
-    fireEvent.click(await screen.findByText("Bedroom TV"));
-    await waitFor(() => expect(castMock.loadVideo).toHaveBeenCalled());
-    expect(castMock.reconnectToDevice).toHaveBeenCalledWith(expect.objectContaining({ id: "rcv-sess-1", sessionId: "sess-1" }));
-    expect(castMock.loadVideo).toHaveBeenCalledWith("https://cdn.hoyeeh.com/v.mp4", "Film", undefined, 3600, 120, "sess-1");
-    expect(onCastStart).not.toHaveBeenCalled();
-    resolveLoad({ success: true, acked: true, seq: 4 });
-    await waitFor(() => expect(onCastStart).toHaveBeenCalledTimes(1));
-  });
-
-  it("failed LOAD after reconnect never calls onCastStart", async () => {
-    castMock.pairedDevices = [{ id: "rcv-sess-2", name: "Bedroom TV", type: "remote", sessionId: "sess-2" }];
-    castMock.loadVideo = vi.fn(async () => ({ success: false, timedOut: true, error: "TV did not confirm playback in time" }));
-    const onCastStart = vi.fn();
-    const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
-    render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" onCastStart={onCastStart} />);
-    fireEvent.click(screen.getByText("Recent"));
-    fireEvent.click(await screen.findByText("Bedroom TV"));
-    await waitFor(() => expect(castMock.loadVideo).toHaveBeenCalled());
-    expect(onCastStart).not.toHaveBeenCalled();
-  });
-
-  it("expired reconnect does not try to load", async () => {
-    castMock.pairedDevices = [{ id: "rcv-old", name: "Bedroom TV", type: "remote", sessionId: "old" }];
-    castMock.reconnectToDevice = vi.fn(async () => false);
-    const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
-    render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" />);
-    fireEvent.click(screen.getByText("Recent"));
-    fireEvent.click(await screen.findByText("Bedroom TV"));
-    await waitFor(() => expect(castMock.reconnectToDevice).toHaveBeenCalled());
-    expect(castMock.loadVideo).not.toHaveBeenCalled();
-  });
-
-  it("history entries never carry TV sessions; unpaired TV asks for a new code", async () => {
-    localStorage.setItem("cast_device_history", JSON.stringify([
-      { id: "chromecast-default", name: "Kitchen Cast", type: "chromecast", lastUsed: Date.now() },
-    ]));
-    const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
-    render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" />);
-    fireEvent.click(screen.getByText("Recent"));
-    expect(screen.queryByText("Paired TVs")).toBeNull();
-    const { readFileSync } = await import("node:fs");
-    expect(readFileSync("src/hooks/useCastHistory.ts", "utf8")).not.toMatch(/sessionId/);
-    expect(castMock.reconnectToDevice).not.toHaveBeenCalled();
-  });
-
-  it("Chromecast connect failure never loads media or starts casting", async () => {
-    (window as any).cast = { framework: {} }; (window as any).chrome = { cast: {} };
-    const onCastStart = vi.fn();
-    const { MobileCastSheet } = await import("@/components/mobile/MobileCastSheet");
-    render(<MobileCastSheet open onClose={() => {}} videoUrl="https://cdn.hoyeeh.com/v.mp4" videoTitle="Film" onCastStart={onCastStart} />);
-    fireEvent.click(screen.getByText("Chromecast"));
-    await waitFor(() => expect(castMock.chromecast.connect).toHaveBeenCalled());
-    expect(castMock.chromecast.loadMedia).not.toHaveBeenCalled();
-    expect(onCastStart).not.toHaveBeenCalled();
-    delete (window as any).cast; delete (window as any).chrome;
-  });
-});
 
 describe("single cast path per player", () => {
   it("desktop VideoPlayer no longer mounts competing Cast SDK / DLNA / native plugin buttons", async () => {

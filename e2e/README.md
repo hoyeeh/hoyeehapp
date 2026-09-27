@@ -17,3 +17,5 @@ signed in via `lovable auth-session --json`. Pairs with the TV code, sends the
 phone reports success only after the TV confirms that exact LOAD, then Pause/Play/Seek,
 refusals (no sign-in 401, blob/non-https LOAD, wrong code, commands after disconnect).
 Run against the dev server: `python3 e2e/cast_two_window_e2e.py`.
+
+- `e2e/cast_mobile_sheet_e2e.py` — phone "Cast to TV" popup vs TV receiver window (10 checks, device-management mode).

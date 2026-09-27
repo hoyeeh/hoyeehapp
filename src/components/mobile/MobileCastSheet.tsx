@@ -1,23 +1,17 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Cast, Wifi, Smartphone, Tv, ChevronRight, 
-  Loader2, Check, Scan, Link2, Settings, X, QrCode, AlertCircle, Info
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Tv, Loader2, QrCode, AlertCircle, Unplug, RotateCcw, Play } from "lucide-react";
 import { toast } from "sonner";
-
-// Hooks
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { useCast } from "@/contexts/CastContext";
-import { useCastHistory, CastDevice as HistoryDevice } from "@/hooks/useCastHistory";
-import type { CastDevice as PairedDevice } from "@/hooks/useUniversalCast";
-import { getCastCapabilities } from "@/player/castCapabilities";
-
-// Components
-import { CastPairingDialog } from "@/components/cast/CastPairingDialog";
-import { DLNASetupGuide } from "@/components/DLNASetupGuide";
+import type { CastDevice } from "@/hooks/useUniversalCast";
 import { MobileQRScanner } from "./MobileQRScanner";
 
+/**
+ * Mobile "Cast to TV" popup. ONE transport only: the Hoyeeh TV-code receiver
+ * (hoyeeh.com/tv) over cast-signaling v2 via useCast(). Success is announced
+ * only after the TV ACKs this exact LOAD. No Chromecast/AirPlay/DLNA/history.
+ */
 interface MobileCastSheetProps {
   open: boolean;
   onClose: () => void;
@@ -29,6 +23,9 @@ interface MobileCastSheetProps {
   onCastStart?: () => void;
 }
 
+const CODE_RE = /^[A-Z0-9]{6}$/;
+const cleanCode = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+
 export function MobileCastSheet({
   open,
   onClose,
@@ -39,575 +36,214 @@ export function MobileCastSheet({
   duration = 0,
   onCastStart,
 }: MobileCastSheetProps) {
-  // Device management mode when no video is provided
-  const isDeviceManagementMode = !videoUrl;
-  const [activeTab, setActiveTab] = useState<"quick" | "dlna" | "history">("quick");
-  const [showPairingDialog, setShowPairingDialog] = useState(false);
-  const [showDLNASetup, setShowDLNASetup] = useState(false);
-  const [showQRScanner, setShowQRScanner] = useState(false);
-
-  // Use unified CastContext
   const cast = useCast();
-  const castHistory = useCastHistory();
+  const hasMedia = !!videoUrl;
 
-  // Capability matrix — hides cast protocols whose underlying SDK / platform
-  // is NOT verified working in this runtime. See src/player/castCapabilities.ts
-  const capabilities = getCastCapabilities({
-    chromecastAvailable: cast.chromecast.isAvailable,
-    airplayAvailable: cast.airPlay.isAvailable,
-  });
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState<null | "pair" | "load" | "reconnect">(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const busyRef = useRef(false);
+  const mountedRef = useRef(true);
+  const openRef = useRef(open);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Handle Chromecast connection — uses the returned result, never stale render state.
-  const handleChromecast = async () => {
-    if (cast.chromecast.platformWarning) {
-      toast.error(cast.chromecast.platformWarning);
-      return;
-    }
-    if (!cast.chromecast.isAvailable) {
-      toast.error("Chromecast not available on this device");
-      return;
-    }
-    const conn = await cast.chromecast.connect();
-    if (!conn.success) {
-      if (!conn.cancelled) toast.error(conn.error || "Failed to connect to Chromecast");
-      return;
-    }
-    const name = conn.deviceName || "Chromecast";
-    castHistory.addDevice({ id: "chromecast-default", name, type: "chromecast" });
-    if (!videoUrl) {
-      toast.success(`Connected to ${name}`);
-      return;
-    }
-    const res = await cast.chromecast.loadMedia(videoUrl, videoTitle, thumbnail, currentTime);
-    if (!res.success) {
-      toast.error(res.error || "The Cast device couldn't load this video");
-      return;
-    }
-    onCastStart?.();
-    toast.success(`Casting to ${name}`);
-    onClose();
-  };
+  useEffect(() => { openRef.current = open; if (!open) setShowScanner(false); }, [open]);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
-  // Handle AirPlay
-  const handleAirPlay = () => {
-    if (!cast.airPlay.isAvailable) {
-      toast.error("AirPlay only works in Safari on Mac or iOS");
-      return;
-    }
-    cast.airPlay.showPicker();
-  };
+  const alive = () => mountedRef.current && openRef.current;
+  const safeSet = (fn: () => void) => { if (mountedRef.current) fn(); };
 
-  // Load on the TV and only report success after the receiver ACKs this exact LOAD.
-  const loadOnTv = async (sessionId: string, label: string) => {
+  const connected = cast.isConnected && !!cast.connectedDevice;
+  const tvName = cast.connectedDevice?.name || "TV";
+  const pairedTv: CastDevice | undefined = cast.pairedDevices.find((d) => d.type === "remote" && !!d.sessionId);
+
+  /** Send LOAD and wait for the exact ACK. Returns true only on confirmed playback. */
+  const loadOnTv = async (sessionId: string, label: string): Promise<boolean> => {
+    safeSet(() => setBusy("load"));
     const result = await cast.loadVideo(videoUrl, videoTitle, thumbnail, duration, currentTime, sessionId);
     if (result?.success) {
-      onCastStart?.();
-      toast.success(`Casting to ${label}`);
-      onClose();
+      if (alive()) {
+        onCastStart?.();
+        toast.success(`Casting to ${label}`);
+        onClose();
+      }
       return true;
     }
-    toast.error(result?.error || "Connected to TV but failed to launch video");
+    safeSet(() => setError(result?.error || "Connected to TV but failed to launch video"));
     return false;
   };
 
-  // Handle TV Code pairing
-  const handlePairWithCode = async (code: string): Promise<boolean> => {
+  const run = async <T,>(kind: "pair" | "load" | "reconnect", fn: () => Promise<T>, fallback: T): Promise<T> => {
+    if (busyRef.current) return fallback;
+    busyRef.current = true;
+    setBusy(kind);
+    setError(null);
     try {
-      const sessionId = await cast.pairWithCode(code);
-      if (!sessionId) return false;
-      setShowPairingDialog(false);
-      if (videoUrl) await loadOnTv(sessionId, "TV");
-      else toast.success("Connected to TV");
-      return true;
-    } catch (error) {
-      console.error("[MobileCastSheet] Pairing error:", error);
-      toast.error("Failed to pair with TV");
-      return false;
+      return await fn();
+    } catch (e: any) {
+      safeSet(() => setError(e?.message || "Something went wrong. Try again."));
+      return fallback;
+    } finally {
+      busyRef.current = false;
+      safeSet(() => setBusy(null));
     }
   };
 
-  // Reconnect to a TV-code device. Sessions are resolved ONLY from the
-  // signed-in account's own paired-device list; otherwise ask for a new code.
-  const handleReconnectPaired = async (device: PairedDevice) => {
-    const paired = cast.pairedDevices.find((d) => d.id === device.id && d.sessionId);
-    if (!paired?.sessionId) {
-      toast.error("Enter the code shown on your TV to pair again.");
-      setShowPairingDialog(true);
-      return;
-    }
-    try {
-      const ok = await cast.reconnectToDevice(paired);
+  const pairAndLoad = (raw: string) =>
+    run("pair", async () => {
+      const c = cleanCode(raw);
+      if (!CODE_RE.test(c)) {
+        setError("Enter the 6-character code shown on your TV.");
+        return false;
+      }
+      const sessionId = await cast.pairWithCode(c);
+      if (!sessionId) {
+        safeSet(() => setError("That code didn't work. Check the code on your TV and try again."));
+        return false;
+      }
+      if (!hasMedia) {
+        if (alive()) toast.success("Connected to TV");
+        return true;
+      }
+      return loadOnTv(sessionId, "TV");
+    }, false);
+
+  const retryLoad = () =>
+    run("load", async () => {
+      const sid = cast.sessionId;
+      if (!sid) { setError("The TV connection ended. Enter the TV code again."); return false; }
+      return loadOnTv(sid, tvName);
+    }, false);
+
+  const reconnect = () =>
+    run("reconnect", async () => {
+      // Resolve only from the owner-scoped paired list at click time.
+      const device = cast.pairedDevices.find((d) => d.id === pairedTv?.id && d.sessionId);
+      if (!device?.sessionId) { setError("Enter the code shown on your TV to pair again."); return false; }
+      const ok = await cast.reconnectToDevice(device);
       if (!ok) {
-        setShowPairingDialog(true);
-        return;
+        safeSet(() => setError("That TV session expired. Enter the code shown on your TV."));
+        setTimeout(() => inputRef.current?.focus(), 0);
+        return false;
       }
-      if (videoUrl) await loadOnTv(paired.sessionId, paired.name);
-    } catch (error) {
-      console.error("[MobileCastSheet] Reconnect error:", error);
-      toast.error(`Failed to reconnect to ${paired.name}`);
-    }
+      if (!hasMedia) { if (alive()) toast.success(`Connected to ${device.name}`); return true; }
+      return loadOnTv(device.sessionId, device.name);
+    }, false);
+
+  const onSubmit = (e: FormEvent) => { e.preventDefault(); void pairAndLoad(code); };
+
+  // Scanner: return true only if pairing AND (when media) the LOAD ACK succeeded.
+  const onScanned = async (scanned: string) => {
+    setCode(cleanCode(scanned));
+    const ok = await pairAndLoad(scanned);
+    // On failure, return to the sheet so the inline reason + retry are visible.
+    if (!ok) safeSet(() => setShowScanner(false));
+    return ok;
   };
 
-  // Reconnect to a Chromecast / AirPlay / DLNA history entry.
-  const handleReconnect = async (device: HistoryDevice) => {
-    if (device.type === "chromecast") return handleChromecast();
-    if (device.type === "airplay") return handleAirPlay();
-    setActiveTab("dlna");
-  };
-
-  // Handle DLNA device selection
-  const handleDLNADevice = async (device: any) => {
-    try {
-      await cast.dlna.connect(device);
-      castHistory.addDevice({
-        id: device.id,
-        name: device.name,
-        type: "dlna",
-      });
-      
-      // Only play media if we have a URL
-      if (videoUrl) {
-        onCastStart?.();
-        await cast.dlna.playMedia(videoUrl, videoTitle, currentTime);
-        toast.success(`Casting to ${device.name}`);
-        onClose();
-      } else {
-        toast.success(`Connected to ${device.name}`);
-      }
-    } catch (error) {
-      console.error("[MobileCastSheet] DLNA error:", error);
-      toast.error("Failed to connect to Smart TV");
-    }
-  };
-
-  // Scan for DLNA devices
-  const handleDLNAScan = () => {
-    cast.dlna.scanForDevices();
-  };
-
-  // Recent devices from history
-  const recentDevices = castHistory.devices.slice(0, 5);
-
-  // Get current active connection
-  const activeConnection = cast.getActiveConnection();
+  const status = cast.playbackState.videoUrl
+    ? `${cast.playbackState.isPlaying ? "Playing" : "Paused"}: ${cast.playbackState.videoTitle || "video"}`
+    : "Connected — nothing playing yet";
 
   return (
     <>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[210] bg-black/60"
-            onClick={onClose}
-          >
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl max-h-[80vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+      <Sheet open={open && !showScanner} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[92dvh] overflow-y-auto rounded-t-2xl px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          onOpenAutoFocus={(e) => { if (connected) return; e.preventDefault(); inputRef.current?.focus(); }}
+        >
+          <SheetHeader className="text-left">
+            <SheetTitle className="flex items-center gap-2 text-xl">
+              <Tv className="h-5 w-5 text-primary" aria-hidden /> Cast to TV
+            </SheetTitle>
+            <SheetDescription>
+              {connected ? `Connected to ${tvName}` : "Play on any TV with a web browser."}
+            </SheetDescription>
+          </SheetHeader>
+
+          {error && (
+            <div role="alert" className="mt-4 flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {connected ? (
+            <div className="mt-5 space-y-4" data-testid="cast-connected">
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <p className="font-semibold">{tvName}</p>
+                <p className="text-sm text-muted-foreground" aria-live="polite">{status}</p>
               </div>
+              {hasMedia && (
+                <Button className="h-12 w-full text-base" onClick={() => void retryLoad()} disabled={!!busy}>
+                  {busy === "load" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : error ? <RotateCcw className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+                  {busy === "load" ? "Waiting for TV…" : error ? "Retry on TV" : "Play this video on TV"}
+                </Button>
+              )}
+              <Button variant="outline" className="h-12 w-full text-base" onClick={() => { cast.disconnect(); setError(null); }} disabled={!!busy}>
+                <Unplug className="mr-2 h-4 w-4" /> Disconnect
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-5 space-y-5">
+              <ol className="space-y-3 text-sm">
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
+                  <span>On your TV, open <span className="block text-2xl font-bold tracking-wide text-foreground">hoyeeh.com/tv</span></span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">2</span>
+                  <span>Enter the code shown on the TV, or scan the TV's QR code.</span>
+                </li>
+              </ol>
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 pb-3 border-b border-border/50">
-                <h2 className="text-lg font-bold">Cast to Device</h2>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-secondary">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <form onSubmit={onSubmit} className="space-y-3">
+                <label htmlFor="tv-code" className="text-sm font-medium">TV code</label>
+                <input
+                  id="tv-code"
+                  ref={inputRef}
+                  value={code}
+                  onChange={(e) => setCode(cleanCode(e.target.value))}
+                  inputMode="text"
+                  autoCapitalize="characters"
+                  autoComplete="one-time-code"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={6}
+                  placeholder="ABC123"
+                  aria-describedby="tv-code-hint"
+                  className="h-16 w-full rounded-xl border border-input bg-background text-center font-mono text-3xl tracking-[0.4em] uppercase focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p id="tv-code-hint" className="sr-only">Six letters or numbers</p>
+                <Button type="submit" className="h-12 w-full text-base" disabled={!!busy || code.length !== 6}>
+                  {busy === "pair" || busy === "load" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {busy === "pair" ? "Connecting…" : busy === "load" ? "Waiting for TV…" : hasMedia ? "Connect & play" : "Connect"}
+                </Button>
+              </form>
 
-              {/* Tabs */}
-              <div className="flex border-b border-border/50">
-                {[
-                  { key: "quick", label: "Quick Cast" },
-                  { key: "dlna", label: "Smart TV" },
-                  { key: "history", label: "Recent" },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key as typeof activeTab)}
-                    className={cn(
-                      "flex-1 py-3 text-sm font-medium transition-colors relative",
-                      activeTab === tab.key
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {tab.label}
-                    {activeTab === tab.key && (
-                      <motion.div
-                        layoutId="tab-indicator"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
+              <Button variant="outline" className="h-12 w-full text-base" onClick={() => setShowScanner(true)} disabled={!!busy}>
+                <QrCode className="mr-2 h-4 w-4" /> Scan TV QR code
+              </Button>
 
-              {/* Content */}
-              <div className="p-4 overflow-y-auto max-h-[50vh] pb-safe">
-                {/* Quick Cast Tab */}
-                {activeTab === "quick" && (
-                  <div className="space-y-3">
-                    {/* Chromecast — only rendered when capability matrix says verified-working */}
-                    {capabilities.chromecast.enabled && (
-                    <>
-                    <button
-                      onClick={handleChromecast}
-                      disabled={!!cast.chromecast.platformWarning}
-                      className={cn(
-                        "w-full flex items-center gap-4 p-4 rounded-xl transition-colors",
-                        cast.chromecast.platformWarning
-                          ? "bg-muted opacity-60"
-                          : cast.chromecast.isAvailable
-                            ? "bg-secondary hover:bg-secondary/80"
-                            : "bg-muted opacity-50"
-                      )}
-                    >
-                      <div className="p-3 rounded-full bg-primary/10">
-                        <Cast className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium">Chromecast</p>
-                        <p className="text-sm text-muted-foreground">
-                          {cast.chromecast.platformWarning
-                            ? "Not available on mobile web"
-                            : cast.chromecast.isAvailable
-                              ? cast.chromecast.isConnected
-                                ? `Connected to ${cast.chromecast.deviceName}`
-                                : "Cast to nearby devices"
-                              : "Not available"}
-                        </p>
-                      </div>
-                      {cast.chromecast.isConnected ? (
-                        <Check className="h-5 w-5 text-primary" />
-                      ) : cast.chromecast.platformWarning ? (
-                        <Info className="h-5 w-5 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </button>
-
-                    {/* Platform warning for Chromecast */}
-                    {cast.chromecast.platformWarning && (
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                        <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
-                          {cast.chromecast.platformWarning}
-                        </p>
-                      </div>
-                    )}
-                    </>
-                    )}
-
-                    {/* AirPlay — gated by capability matrix */}
-                    {capabilities.airplay.enabled && (
-                    <button
-                      onClick={handleAirPlay}
-                      disabled={!cast.airPlay.isAvailable}
-                      className={cn(
-                        "w-full flex items-center gap-4 p-4 rounded-xl transition-colors",
-                        cast.airPlay.isAvailable
-                          ? "bg-secondary hover:bg-secondary/80"
-                          : "bg-muted opacity-50"
-                      )}
-                    >
-                      <div className="p-3 rounded-full bg-blue-500/10">
-                        <Tv className="h-6 w-6 text-blue-500" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium">AirPlay</p>
-                        <p className="text-sm text-muted-foreground">
-                          {cast.airPlay.isAvailable
-                            ? cast.airPlay.isConnected
-                              ? `Connected to ${cast.airPlay.deviceName}`
-                              : "Cast to Apple TV"
-                            : "Only available in Safari"}
-                        </p>
-                      </div>
-                      {cast.airPlay.isConnected && (
-                        <Check className="h-5 w-5 text-blue-500" />
-                      )}
-                    </button>
-                    )}
-
-                    {/* Link with TV Code — always available (capability matrix tvPairing) */}
-                    <button
-                      onClick={() => setShowPairingDialog(true)}
-                      className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors touch-manipulation"
-                    >
-                      <div className="p-3 rounded-full bg-green-500/10">
-                        <Link2 className="h-6 w-6 text-green-500" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium">Link with TV Code</p>
-                        <p className="text-sm text-muted-foreground">
-                          Enter the code shown on your TV
-                        </p>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
-
-                    {/* Scan QR Code */}
-                    <button
-                      onClick={() => setShowQRScanner(true)}
-                      className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors touch-manipulation"
-                    >
-                      <div className="p-3 rounded-full bg-purple-500/10">
-                        <QrCode className="h-6 w-6 text-purple-500" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium">Scan QR Code</p>
-                        <p className="text-sm text-muted-foreground">
-                          Open <span className="font-semibold text-primary">hoyeeh.com/tv</span> on your TV
-                        </p>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
-
-                    {/* Already connected */}
-                    {activeConnection.type && activeConnection.device && (
-                      <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/30">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-full bg-primary">
-                            <Cast className="h-4 w-4 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">Currently casting to</p>
-                            <p className="text-primary font-semibold">{activeConnection.device}</p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              cast.disconnectAll();
-                              toast.info("Disconnected");
-                            }}
-                            className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded-lg"
-                          >
-                            Stop
-                          </button>
-                        </div>
-                      </div>
-                    )}
+              {pairedTv && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Paired TV</p>
+                    <p className="truncate font-medium">{pairedTv.name}</p>
                   </div>
-                )}
+                  <Button variant="secondary" className="h-11 shrink-0" onClick={() => void reconnect()} disabled={!!busy} aria-label={`Reconnect to ${pairedTv.name}`}>
+                    {busy === "reconnect" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reconnect"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
-                {/* DLNA/Smart TV Tab */}
-                {activeTab === "dlna" && (
-                  <div className="space-y-3">
-                    {/* Platform limitation notice */}
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                      <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                      <div className="text-xs text-blue-600 dark:text-blue-400">
-                        <p className="font-medium mb-1">Web Browser Limitation</p>
-                        <p>Automatic device discovery isn't available in browsers. Use "Link with TV Code" for the best experience, or manually add your Smart TV below.</p>
-                      </div>
-                    </div>
-
-                    {/* Saved/Manual devices */}
-                    {cast.dlna.savedDevices.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Saved devices</p>
-                        {cast.dlna.savedDevices.map((device) => (
-                          <button
-                            key={device.id}
-                            onClick={() => handleDLNADevice({
-                              id: device.id,
-                              name: device.name,
-                              type: 'dlna' as const,
-                              location: `http://${device.ipAddress}:${device.port}`,
-                            })}
-                            className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
-                          >
-                            <div className="p-3 rounded-full bg-primary/10">
-                              <Tv className="h-6 w-6 text-primary" />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className="font-medium">{device.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {device.ipAddress}:{device.port}
-                              </p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Scan button (shows limitations) */}
-                    <button
-                      onClick={handleDLNAScan}
-                      disabled={cast.dlna.isScanning}
-                      className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
-                    >
-                      {cast.dlna.isScanning ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <Scan className="h-5 w-5" />
-                      )}
-                      <span className="font-medium">
-                        {cast.dlna.isScanning ? "Scanning..." : "Scan for Smart TVs"}
-                      </span>
-                    </button>
-
-                    {/* Device list from scan */}
-                    {cast.dlna.devices.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Found devices</p>
-                        {cast.dlna.devices.map((device) => (
-                          <button
-                            key={device.id}
-                            onClick={() => handleDLNADevice(device)}
-                            className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
-                          >
-                            <div className="p-3 rounded-full bg-primary/10">
-                              <Tv className="h-6 w-6 text-primary" />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className="font-medium">{device.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {device.manufacturer || "Smart TV"}
-                              </p>
-                            </div>
-                            {cast.dlna.connectedDevice?.id === device.id && (
-                              <Check className="h-5 w-5 text-primary" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Empty state */}
-                    {cast.dlna.devices.length === 0 && cast.dlna.savedDevices.length === 0 && !cast.dlna.isScanning && (
-                      <div className="text-center py-6">
-                        <Wifi className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-                        <p className="text-muted-foreground mb-1">No devices configured</p>
-                        <p className="text-sm text-muted-foreground/70 mb-4">
-                          Add your Smart TV manually or use TV Code linking
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Setup guide link */}
-                    <button
-                      onClick={() => setShowDLNASetup(true)}
-                      className="w-full flex items-center gap-3 p-3 text-sm text-muted-foreground hover:bg-secondary/50 rounded-lg transition-colors"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Add Smart TV manually</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Recent Devices Tab */}
-                {activeTab === "history" && (
-                  <div className="space-y-3">
-                    {cast.pairedDevices.length > 0 && (
-                      <>
-                        <p className="text-sm text-muted-foreground">Paired TVs</p>
-                        {cast.pairedDevices.slice(0, 5).map((device) => (
-                          <button
-                            key={`paired-${device.id}`}
-                            onClick={() => handleReconnectPaired(device)}
-                            className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
-                          >
-                            <div className="p-3 rounded-full bg-primary/10">
-                              <Tv className="h-6 w-6 text-primary" />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className="font-medium">{device.name}</p>
-                              <p className="text-sm text-muted-foreground">TV code</p>
-                            </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          </button>
-                        ))}
-                      </>
-                    )}
-                    {recentDevices.length > 0 ? (
-                      <>
-                        <p className="text-sm text-muted-foreground">Recently used devices</p>
-                        {recentDevices.map((device: HistoryDevice) => (
-                          <button
-                            key={device.id}
-                            onClick={() => handleReconnect(device)}
-                            className="w-full flex items-center gap-4 p-4 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors"
-                          >
-                            <div className="p-3 rounded-full bg-primary/10">
-                              {device.type === "chromecast" ? (
-                                <Cast className="h-6 w-6 text-primary" />
-                              ) : device.type === "airplay" ? (
-                                <Tv className="h-6 w-6 text-blue-500" />
-                              ) : (
-                                <Tv className="h-6 w-6 text-primary" />
-                              )}
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className="font-medium">{device.customName || device.name}</p>
-                              <p className="text-sm text-muted-foreground capitalize">
-                                {device.type === "dlna" ? "Smart TV" : device.type}
-                              </p>
-                            </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          </button>
-                        ))}
-                      </>
-                    ) : cast.pairedDevices.length > 0 ? null : (
-                      <div className="text-center py-8">
-                        <Smartphone className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-                        <p className="text-muted-foreground">No recent devices</p>
-                        <p className="text-sm text-muted-foreground/70">
-                          Cast to a device to see it here
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Dialogs */}
-      <CastPairingDialog
-        open={showPairingDialog}
-        onOpenChange={setShowPairingDialog}
-        onPair={handlePairWithCode}
-        isConnecting={cast.isConnecting}
-      />
-
-      <DLNASetupGuide
-        open={showDLNASetup}
-        onOpenChange={setShowDLNASetup}
-        onDeviceSelect={(device) => {
-          // Add to saved devices using the device info from the guide
-          cast.dlna.addManualDevice({
-            id: device.id,
-            name: device.name,
-            ipAddress: device.ipAddress || '192.168.1.1',
-            port: device.port || 8080,
-          });
-          handleDLNADevice({
-            id: device.id,
-            name: device.name,
-            type: 'dlna' as const,
-            location: `http://${device.ipAddress || '192.168.1.1'}:${device.port || 8080}`,
-          });
-        }}
-      />
-
-      <MobileQRScanner
-        open={showQRScanner}
-        onClose={() => setShowQRScanner(false)}
-        onCodeScanned={async (code) => {
-          return await handlePairWithCode(code);
-        }}
-      />
+      <MobileQRScanner open={open && showScanner} onClose={() => setShowScanner(false)} onCodeScanned={onScanned} />
     </>
   );
 }

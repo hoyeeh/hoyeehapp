@@ -1024,32 +1024,11 @@ export function MobileVideoPlayer({
     };
   }, [handleBack]);
 
-  // Handle casting
-  const handleCastVideo = useCallback(async () => {
-    if (cast.isConnected) {
-      const video = videoRef.current;
-      const currentVideoTime = video?.currentTime || 0;
-      
-      // Pause local video
-      video?.pause();
-      setIsPlaying(false);
-      
-      // Load on cast device
-      const result = await cast.loadVideo(
-        getVideoSource(),
-        episodeTitle || title,
-        thumbnail || content.thumbnailUrl,
-        duration,
-        currentVideoTime
-      );
-
-      if (result?.success) {
-        toast.success(`Casting to ${cast.connectedDevice?.name}`);
-      }
-    } else {
-      setShowCastSheet(true);
-    }
-  }, [cast, getVideoSource, title, episodeTitle, thumbnail, content.thumbnailUrl, duration]);
+  // Casting always goes through the Cast to TV popup, which pauses the local
+  // player (onCastStart) only after the TV confirms this exact LOAD.
+  const handleCastVideo = useCallback(() => {
+    setShowCastSheet(true);
+  }, []);
 
   // Toggle PiP
   const handleTogglePiP = useCallback(async () => {
@@ -1934,6 +1913,7 @@ export function MobileVideoPlayer({
                         cast.isConnected ? "bg-primary" : ""
                       )}
                       style={{ minWidth: 44, minHeight: 44 }}
+                      aria-label="Cast to TV"
                     >
                       <Cast className="h-5 w-5 text-white" />
                     </button>
