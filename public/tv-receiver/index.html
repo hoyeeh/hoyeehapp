@@ -560,8 +560,8 @@
       <div class="preflight-details" id="preflightDetails">Verifying video compatibility</div>
     </div>
     
-    <div class="video-error-overlay hidden" id="errorOverlay">
-      <div class="error-icon">⚠️</div>
+    <div class="video-error-overlay hidden" id="errorOverlay" role="alert" aria-live="assertive">
+      <div class="error-icon" aria-hidden="true">⚠️</div>
       <div class="error-title" id="errorTitle">Video Error</div>
       <div class="error-details" id="errorDetails">Unable to play this video</div>
       <div class="error-code" id="errorCode"></div>
