@@ -56,6 +56,9 @@ export interface VideoJSPlayerHandle {
 
 export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>(
   function VideoJSPlayer({ options, onReady, onVideoElement, resume, onBeforeDispose, enableMobileGestures, poster, title, className }, ref) {
+    const isTouchPointer =
+      typeof window !== "undefined" && typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches;
     const containerRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<Player | null>(null);
     const videoElRef = useRef<HTMLVideoElement | null>(null);
@@ -314,7 +317,9 @@ export const VideoJSPlayer = forwardRef<VideoJSPlayerHandle, VideoJSPlayerProps>
         <UnifiedCastButton videoRef={videoRefObject.current!} title={title} poster={poster} />
 
         {/* Phase 4 — opt-in mobile gestures (main full-length player only) */}
-        {enableMobileGestures && (
+        {/* Touch-only: on mouse devices this surface swallowed mousemove/click, so VJS
+            controls could never wake and clicks couldn't pause. */}
+        {enableMobileGestures && isTouchPointer && (
           <MobileGestureLayer
             getPlayer={() => playerRef.current}
             getVideoElement={() => videoElRef.current}
