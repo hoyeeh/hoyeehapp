@@ -28,8 +28,8 @@ vi.mock("@/hooks/useAdmin", () => ({ useIsAdmin: () => ({ data: false }) }));
 vi.mock("@/hooks/useSubtitles", () => ({ useSubtitles: () => ({ isSubtitlesEnabled: false, currentCue: null, tracks: [], availableLanguages: [], updateTime: vi.fn() }) }));
 
 (globalThis as any).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
-import VideoPlayerMod, * as VP from "@/components/VideoPlayer";
-const VideoPlayer: any = (VP as any).VideoPlayer ?? VideoPlayerMod;
+import { VideoPlayer as VPC } from "@/components/VideoPlayer";
+const VideoPlayer: any = VPC;
 
 let playImpl: () => Promise<void>;
 beforeEach(() => {
