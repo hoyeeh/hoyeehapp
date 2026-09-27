@@ -80,6 +80,8 @@ const KidsYouTube = lazy(() => import("./pages/KidsYouTube"));
 const KidsProfile = lazy(() => import("./pages/KidsProfile"));
 const KidsGamesPage = lazy(() => import("./pages/KidsGamesPage"));
 const Cast = lazy(() => import("./pages/Cast"));
+// DEV-ONLY E2E player harness; the constant-false branch is dropped from production builds.
+const PlayerHarness = import.meta.env.DEV ? lazy(() => import("./dev/PlayerHarness")) : null;
 const WatchParty = lazy(() => import("./pages/WatchParty"));
 const MyPurchases = lazy(() => import("./pages/MyPurchases"));
 const PurchaseReturn = lazy(() => import("./pages/PurchaseReturn"));
@@ -318,6 +320,7 @@ const App = () => (
                         <Route path="/purchase-return" element={<PurchaseReturn />} />
                         <Route path="/free-content" element={<FreeContent />} />
                         <Route path="/video-js-test" element={<VideoJsTest />} />
+                        {PlayerHarness && <Route path="/__e2e/player" element={<PlayerHarness />} />}
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                       </Suspense>
