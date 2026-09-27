@@ -462,6 +462,7 @@ const ContentDetail = () => {
 
       const allEps = (await Promise.all(episodesPromises)).flat();
       setAllEpisodes(allEps as Episode[]);
+      setEpisodesLoaded(true);
     };
 
     fetchAllEpisodes();
