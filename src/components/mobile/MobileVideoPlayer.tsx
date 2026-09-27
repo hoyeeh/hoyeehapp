@@ -1913,6 +1913,7 @@ export function MobileVideoPlayer({
                         cast.isConnected ? "bg-primary" : ""
                       )}
                       style={{ minWidth: 44, minHeight: 44 }}
+                      aria-label="Cast to TV"
                     >
                       <Cast className="h-5 w-5 text-white" />
                     </button>
