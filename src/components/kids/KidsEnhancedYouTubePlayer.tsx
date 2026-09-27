@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   SkipBack, SkipForward, X, Loader2, RotateCcw, ArrowLeft
@@ -326,17 +327,32 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
     onClose();
   };
 
+  // Ref mirrors real YT state so the hide timer never reads a stale render.
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
+
   const handleInteraction = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) {
+      if (isPlayingRef.current) {
         setShowControls(false);
       }
     }, 4000);
   };
+
+  // Playing -> auto-hide; paused/ended -> keep controls visible.
+  useEffect(() => {
+    if (isPlaying) {
+      handleInteraction();
+    } else {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      setShowControls(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -418,6 +434,8 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
               <div className="absolute inset-0 z-30 flex items-center justify-center">
                 <Button
                   size="lg"
+                  aria-label="Play"
+                  data-testid="kids-center-play"
                   onClick={(e) => {
                     e.stopPropagation();
                     togglePlay();
@@ -443,7 +461,7 @@ export const KidsEnhancedYouTubePlayer = ({ videoId, title, onClose }: KidsEnhan
               <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
 
               {/* Bottom Controls */}
-              <div className="absolute bottom-0 left-0 right-0 p-5 pointer-events-auto">
+              <div className={cn("absolute bottom-0 left-0 right-0 p-5", showControls ? "pointer-events-auto" : "pointer-events-none")} data-testid="kids-controls" aria-hidden={!showControls}>
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <Slider

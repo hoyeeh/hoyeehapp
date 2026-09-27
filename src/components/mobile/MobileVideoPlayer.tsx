@@ -359,53 +359,73 @@ export function MobileVideoPlayer({
         video.muted = true;
         setIsMuted(true);
         await video.play();
-        setIsPlaying(true);
-        setShowTapToPlay(false);
+        // isPlaying/showTapToPlay are driven by the real `playing` event.
         setShowUnmutePrompt(true);
       } catch (error) {
+        // Only a genuine NotAllowedError (autoplay policy) needs the
+        // tap-to-play fallback; aborts from src swaps are ignored.
+        const name = (error as DOMException)?.name;
+        if (name === "AbortError") return;
         console.log("[MobileVideoPlayer] Autoplay blocked:", error);
-        setShowTapToPlay(true);
-        setIsPlaying(false);
+        if (video.paused) setShowTapToPlay(true);
       }
     };
 
     attemptPlay();
   }, [videoUrl, selectedQuality]);
 
-  // Hide controls after inactivity
-  const resetControlsTimeout = useCallback(() => {
+  // Refs mirror state so timers never read a stale render.
+  const isPlayingRef = useRef(false);
+  const holdControlsRef = useRef(false);
+  const showControlsRef = useRef(true);
+  isPlayingRef.current = isPlaying;
+  showControlsRef.current = showControls;
+  holdControlsRef.current = showSettings || showCastSheet || !!mediaError;
+
+  const clearControlsTimer = useCallback(() => {
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = null;
     }
+  }, []);
+
+  // Show controls and (only while actually playing) schedule auto-hide.
+  const resetControlsTimeout = useCallback(() => {
+    clearControlsTimer();
     setShowControls(true);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying && !showSettings && !showCastSheet) {
+      if (isPlayingRef.current && !holdControlsRef.current) {
         setShowControls(false);
       }
     }, 3000);
-  }, [isPlaying, showSettings, showCastSheet]);
+  }, [clearControlsTimer]);
 
-  useEffect(() => {
-    resetControlsTimeout();
-    return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-    };
-  }, [resetControlsTimeout]);
+  const hideControls = useCallback(() => {
+    clearControlsTimer();
+    if (isPlayingRef.current && !holdControlsRef.current) setShowControls(false);
+  }, [clearControlsTimer]);
 
-  // Auto-hide controls once playback starts; keep visible while paused.
+  useEffect(() => clearControlsTimer, [clearControlsTimer]);
+
+  // Playing -> auto-hide; paused/ended/error -> stay visible.
   useEffect(() => {
     if (isPlaying) {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-      controlsTimeoutRef.current = setTimeout(() => {
-        if (!showSettings && !showCastSheet) setShowControls(false);
-      }, 1500);
+      resetControlsTimeout();
     } else {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      clearControlsTimer();
       setShowControls(true);
     }
-  }, [isPlaying, showSettings, showCastSheet]);
+  }, [isPlaying, showSettings, showCastSheet, resetControlsTimeout, clearControlsTimer]);
+
+  // Real media events are the source of truth for playing state.
+  const handleMediaPlaying = useCallback(() => {
+    setIsPlaying(true);
+    setShowTapToPlay(false);
+    setIsBuffering(false);
+  }, []);
+  const handleMediaPause = useCallback(() => {
+    setIsPlaying(false);
+  }, []);
 
   // Skip intro visibility
   // Handle intro skip (auto or manual)
@@ -671,6 +691,7 @@ export function MobileVideoPlayer({
   };
   const handleEnded = () => {
     setIsPlaying(false);
+    setShowControls(true);
     if (hasNextEpisode && onNextEpisode) {
       onNextEpisode();
     }
@@ -722,10 +743,6 @@ export function MobileVideoPlayer({
     // Reload the video
     video.load();
     video.play()
-      .then(() => {
-        setIsPlaying(true);
-        setShowTapToPlay(false);
-      })
       .catch((error) => {
         console.log("[MobileVideoPlayer] Retry play failed:", error);
         setShowTapToPlay(true);
@@ -737,16 +754,14 @@ export function MobileVideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    if (video.paused) {
-      video.play().then(() => {
-        setIsPlaying(true);
-        setShowTapToPlay(false);
-      }).catch(() => {
-        toast.error("Unable to play video");
+    if (video.paused || video.ended) {
+      // State flips on the real `playing` event; only a rejected play()
+      // (autoplay/gesture policy) shows the tap-to-play fallback.
+      video.play().catch(() => {
+        setShowTapToPlay(true);
       });
     } else {
       video.pause();
-      setIsPlaying(false);
     }
     resetControlsTimeout();
   }, [resetControlsTimeout]);
@@ -877,16 +892,20 @@ export function MobileVideoPlayer({
       
       setTimeout(() => setSkipAmount(null), 800);
     } else {
-      // Single tap - schedule controls toggle
+      // Single tap - toggle controls. Hiding only applies while playing;
+      // paused/ended/error keep controls visible.
       doubleTapTimeoutRef.current = setTimeout(() => {
-        setShowControls((prev) => !prev);
-        resetControlsTimeout();
+        if (showControlsRef.current && isPlayingRef.current) {
+          hideControls();
+        } else {
+          resetControlsTimeout();
+        }
       }, 250);
     }
 
     lastTapTimeRef.current = now;
     lastTapSideRef.current = tapSide;
-  }, [skip, resetControlsTimeout, isLocked]);
+  }, [skip, resetControlsTimeout, hideControls, isLocked]);
 
   // Touch handlers removed - brightness/volume gestures disabled to fix back/close controls
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -1183,6 +1202,10 @@ export function MobileVideoPlayer({
         onCanPlay={handleCanPlay}
         onEnded={handleEnded}
         onError={handleError}
+        onPlay={() => setShowTapToPlay(false)}
+        onPlaying={handleMediaPlaying}
+        onPause={handleMediaPause}
+        data-testid="mobile-video"
         poster={thumbnail || content.thumbnailUrl}
       />
 
@@ -1339,6 +1362,13 @@ export function MobileVideoPlayer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 flex items-center justify-center bg-black/50"
+            role="button"
+            tabIndex={0}
+            aria-label="Tap to play"
+            data-testid="tap-to-play"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePlay(); }
+            }}
             onClick={(e) => {
               e.stopPropagation();
               togglePlay();
@@ -1678,7 +1708,15 @@ export function MobileVideoPlayer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60"
-            onClick={(e) => e.stopPropagation()}
+            data-testid="mobile-controls"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Tapping empty overlay space hides controls while playing.
+              if (e.target === e.currentTarget) {
+                if (isPlayingRef.current) hideControls();
+                else resetControlsTimeout();
+              }
+            }}
           >
             {/* Top Bar - Back button and title - Responsive */}
             <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3 sm:p-4 pt-6 sm:pt-8 safe-area-inset-top z-40">
@@ -1761,6 +1799,8 @@ export function MobileVideoPlayer({
                   "p-5 rounded-full bg-white/20 backdrop-blur-md",
                   isWatchPartyGuest && "opacity-40 cursor-not-allowed"
                 )}
+                aria-label={isPlaying ? "Pause" : "Play"}
+                data-testid="center-play-toggle"
               >
                 {isPlaying ? (
                   <Pause className="h-10 w-10 text-white" fill="white" />

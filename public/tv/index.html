@@ -527,13 +527,13 @@
       <div class="qr-container" id="qrContainer"></div>
       <p class="qr-label">Scan this QR code with the Hoyeeh app</p>
       <p class="instructions">
-        Open the Hoyeeh app on your phone.<br>
-        Go to Cast → "Scan QR Code" or enter the code above.
+        On your phone, open the Hoyeeh app.<br>
+        Tap <strong>Cast to TV</strong>, then enter the code above or tap <strong>Scan TV QR code</strong>.
       </p>
-      <p class="status" id="status">Waiting for connection...</p>
+      <p class="status" id="status" aria-live="polite">Waiting for connection...</p>
       <p class="expires" id="expires"></p>
       <div class="spinner" id="spinner" style="display: none;"></div>
-      <p class="error-message" id="errorMessage"></p>
+      <p class="error-message" id="errorMessage" role="alert" aria-live="assertive"></p>
     </div>
   </div>
 
@@ -560,8 +560,8 @@
       <div class="preflight-details" id="preflightDetails">Verifying video compatibility</div>
     </div>
     
-    <div class="video-error-overlay hidden" id="errorOverlay">
-      <div class="error-icon">⚠️</div>
+    <div class="video-error-overlay hidden" id="errorOverlay" role="alert" aria-live="assertive">
+      <div class="error-icon" aria-hidden="true">⚠️</div>
       <div class="error-title" id="errorTitle">Video Error</div>
       <div class="error-details" id="errorDetails">Unable to play this video</div>
       <div class="error-code" id="errorCode"></div>

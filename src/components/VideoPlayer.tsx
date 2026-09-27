@@ -117,7 +117,7 @@ export const VideoPlayer = ({
   const progressRef = useRef<HTMLDivElement>(null);
   const lastSaveTimeRef = useRef<number>(0);
 
-  const [isPlaying, setIsPlaying] = useState(true); // Start as true since video has autoPlay
+  const [isPlaying, setIsPlaying] = useState(false); // Driven by real media play/playing/pause events
   const [isMuted, setIsMuted] = useState(true); // Start muted for mobile autoplay support
   const [showTapToPlay, setShowTapToPlay] = useState(false); // Fallback for blocked autoplay
   const [isActivelyPlaying, setIsActivelyPlaying] = useState(false); // Track if user is actively watching
@@ -440,6 +440,16 @@ export const VideoPlayer = ({
     };
   }, [resetControlsTimeout]);
 
+  // Paused/ended -> controls stay visible; playing -> auto-hide timer.
+  useEffect(() => {
+    if (isPlaying) {
+      resetControlsTimeout();
+    } else {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      setShowControls(true);
+    }
+  }, [isPlaying, resetControlsTimeout]);
+
   // Watch Party sync - sync video to party state for non-hosts
   // Force sync on initial join, then use tighter threshold
   useEffect(() => {
@@ -661,18 +671,13 @@ export const VideoPlayer = ({
     if (!video) return;
     if (video.paused) {
       video.play()
-        .then(() => {
-          setIsPlaying(true);
-          setShowTapToPlay(false);
-        })
         .catch((error) => {
+          if ((error as DOMException)?.name === 'AbortError') return;
           console.error('[VideoPlayer] Play failed:', error);
           setShowTapToPlay(true);
-          setIsPlaying(false);
         });
     } else {
       video.pause();
-      setIsPlaying(false);
     }
   };
 
