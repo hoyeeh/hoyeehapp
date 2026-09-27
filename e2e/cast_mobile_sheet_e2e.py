@@ -77,6 +77,7 @@ async def main():
         await ph.get_by_role("button", name="Play", exact=True).first.click()
         await ph.wait_for_timeout(5000)
         await ph.mouse.click(195, 200); await ph.wait_for_timeout(300)
+        await ph.screenshot(path=str(SHOTS / "2b_player.png")); print("url", ph.url)
         await ph.get_by_role("button", name="Cast to TV").first.click(timeout=15000)
         dlg = ph.get_by_role("dialog", name="Cast to TV"); await dlg.wait_for(timeout=10000)
         await dlg.get_by_label("TV code").fill(code)
