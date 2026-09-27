@@ -5,7 +5,7 @@
  * No auth is bypassed: players run with whatever (usually signed-out) session exists.
  */
 import { useSearchParams } from "react-router-dom";
-import fixtureUrl from "../../e2e/fixtures/fixture.webm?url";
+import fixtureUrl from "../../e2e/fixtures/player-fixture.webm?url";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { MobileVideoPlayer } from "@/components/mobile/MobileVideoPlayer";
 import { VideoJSPlayerWithWatchParty } from "@/components/VideoJSPlayerWithWatchParty";
