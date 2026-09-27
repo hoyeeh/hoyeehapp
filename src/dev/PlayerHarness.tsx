@@ -12,7 +12,7 @@ import { VideoJSPlayerWithWatchParty } from "@/components/VideoJSPlayerWithWatch
 import type { Content } from "@/types";
 
 const content: Content = {
-  id: "e2e-fixture",
+  id: "00000000-0000-4000-8000-0000000e2e01",
   title: "E2E Fixture",
   description: "Local playable fixture",
   thumbnailUrl: "",
