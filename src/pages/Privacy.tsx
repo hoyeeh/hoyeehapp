@@ -20,7 +20,7 @@ const Privacy = () => {
         <h1 className="font-display text-4xl md:text-5xl mb-8">Privacy Policy</h1>
         
         <div className="prose prose-invert max-w-none space-y-6 text-muted-foreground">
-          <p className="text-lg">Last updated: December 2024</p>
+          <p className="text-lg">Last updated: September 2026</p>
           <p className="text-lg">
             Hoyeeh Africa Limited ("Hoyeeh," "we," "us," or "our") is committed to protecting your privacy. 
             This Privacy Policy explains how we collect, use, disclose, and safeguard your information when 

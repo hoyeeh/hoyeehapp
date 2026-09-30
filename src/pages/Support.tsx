@@ -321,7 +321,7 @@ const Support = () => {
         </section>
 
         {/* Policies */}
-        <section className="grid md:grid-cols-3 gap-6">
+        <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/terms" className="bg-secondary/30 hover:bg-secondary/50 rounded-lg p-6 transition-colors">
             <FileText className="h-8 w-8 mb-3 text-brand" />
             <h3 className="font-semibold mb-2">Terms of Use</h3>
@@ -336,6 +336,11 @@ const Support = () => {
             <FileText className="h-8 w-8 mb-3 text-brand" />
             <h3 className="font-semibold mb-2">Copyright Policy</h3>
             <p className="text-sm text-muted-foreground">DMCA and infringement</p>
+          </Link>
+          <Link to="/refund-policy" className="bg-secondary/30 hover:bg-secondary/50 rounded-lg p-6 transition-colors">
+            <CreditCard className="h-8 w-8 mb-3 text-brand" />
+            <h3 className="font-semibold mb-2">Refund Policy</h3>
+            <p className="text-sm text-muted-foreground">Eligibility and request terms</p>
           </Link>
         </section>
       </main>
