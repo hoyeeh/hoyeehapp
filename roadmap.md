@@ -1,7 +1,7 @@
 # Roadmap — casting + offline repair
-- [ ] Update legal policy dates to September 2026
-- [ ] Add and link the Refund Policy, with consistent Help Center guidance
-- [ ] Add Investor Relations information for local-network streaming partnerships
+- [x] Update legal policy dates to September 2026
+- [x] Add and link the Refund Policy, with consistent Help Center guidance
+- [x] Add Investor Relations information for local-network streaming partnerships
 - [x] Cast signaling: receiver credential, JWT ownership, atomic pair/command/ACK, durable rate limits
 - [x] Cast command validator rejects non-https LOAD/queue URLs
 - [x] Migrate legacy useDownloadManager to contentId-based download-video
