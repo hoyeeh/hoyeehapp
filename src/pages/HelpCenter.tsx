@@ -76,11 +76,11 @@ const HelpCenter = () => {
         },
         {
           title: "Cancellation",
-          content: "You can cancel your subscription anytime from your Profile Settings > Subscription. Your access continues until the end of your billing period. No refunds are provided for partial months."
+          content: "You can cancel your subscription anytime from your Profile Settings > Subscription. Your access continues until the end of your billing period unless Hoyeeh approves a refund."
         },
         {
           title: "Refund policy",
-          content: "We offer refunds within 7 days of your first subscription if you haven't significantly used the service. Contact support@hoyeeh.com for refund requests."
+          content: "Membership refund requests must be sent to support@hoyeeh.com within 24 hours of payment. Pay-to-view purchases may be considered only if the title has not been viewed. All refunds are at Hoyeeh's discretion, except where required by law. Read the Refund Policy for full terms."
         },
         {
           title: "Updating payment info",

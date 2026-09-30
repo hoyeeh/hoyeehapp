@@ -44,7 +44,7 @@ const Copyright = () => {
         </div>
         
         <div className="prose prose-invert max-w-none space-y-6 text-muted-foreground">
-          <p className="text-lg">Last updated: December 2024</p>
+          <p className="text-lg">Last updated: September 2026</p>
           
           <div className="bg-brand/10 border border-brand/20 rounded-lg p-6 mb-8">
             <div className="flex items-start gap-3">

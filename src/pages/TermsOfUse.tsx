@@ -20,7 +20,7 @@ const TermsOfUse = () => {
         <h1 className="font-display text-4xl md:text-5xl mb-8">Terms of Use</h1>
         
         <div className="prose prose-invert max-w-none space-y-6 text-muted-foreground">
-          <p className="text-lg">Last updated: December 2024</p>
+          <p className="text-lg">Last updated: September 2026</p>
           <p className="text-lg">
             Welcome to Hoyeeh. These Terms of Use ("Terms") govern your access to and use of the Hoyeeh 
             streaming service, website, and applications (collectively, the "Service"). Please read these 
@@ -79,7 +79,7 @@ const TermsOfUse = () => {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">4. Subscription and Billing</h2>
+            <h2 className="text-2xl font-semibold text-foreground">4. Subscriptions, Purchases, and Billing</h2>
             <p>
               Access to Hoyeeh requires a paid subscription. By subscribing, you authorize us to charge your 
               selected payment method on a recurring basis at the then-current subscription rate.
@@ -90,7 +90,7 @@ const TermsOfUse = () => {
               <li>Your subscription will automatically renew unless cancelled before the renewal date</li>
               <li>You may cancel your subscription at any time through your account settings</li>
               <li>Cancellation takes effect at the end of your current billing period</li>
-              <li>No refunds are provided for partial billing periods</li>
+              <li>Refund eligibility is governed by our Refund Policy</li>
             </ul>
             <h3 className="text-xl font-semibold text-foreground mt-4">4.2 Price Changes</h3>
             <p>
@@ -102,6 +102,13 @@ const TermsOfUse = () => {
               We accept various payment methods including credit/debit cards and mobile money. You are responsible 
               for keeping your payment information current. If payment fails, we may suspend or terminate your access 
               to the Service.
+            </p>
+            <h3 className="text-xl font-semibold text-foreground mt-4">4.4 Refunds</h3>
+            <p>
+              Membership refund requests must be submitted within 24 hours of the membership payment. A pay-to-view
+              purchase may be considered for a refund only if the purchased title has not been viewed. All refunds
+              are granted at Hoyeeh's discretion, except where applicable law requires otherwise. Please read our{" "}
+              <a href="/refund-policy" className="text-brand hover:underline">Refund Policy</a> for the complete terms.
             </p>
           </section>
 

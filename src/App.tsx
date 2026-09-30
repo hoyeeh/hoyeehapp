@@ -62,6 +62,8 @@ const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Support = lazy(() => import("./pages/Support"));
 const Copyright = lazy(() => import("./pages/Copyright"));
+const RefundPolicy = lazy(() => import("./pages/RefundPolicy"));
+const InvestorRelations = lazy(() => import("./pages/InvestorRelations"));
 const Install = lazy(() => import("./pages/Install"));
 const NotificationPreferences = lazy(() => import("./pages/NotificationPreferences"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -297,6 +299,8 @@ const App = () => (
                         <Route path="/contact" element={<Contact />} />
                         <Route path="/support" element={<Support />} />
                         <Route path="/copyright" element={<Copyright />} />
+                        <Route path="/refund-policy" element={<RefundPolicy />} />
+                        <Route path="/investor-relations" element={<InvestorRelations />} />
                         <Route path="/install" element={<Install />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/notification-preferences" element={<NotificationPreferences />} />

@@ -136,6 +136,8 @@ export const MobileLandingPage = ({ onSignIn, onGetStarted }: MobileLandingPageP
           <a href="/help" className="hover:underline">Help</a>
           <a href="/terms" className="hover:underline">Terms</a>
           <a href="/privacy" className="hover:underline">Privacy</a>
+          <a href="/refund-policy" className="hover:underline">Refunds</a>
+          <a href="/investor-relations" className="hover:underline">Investors</a>
         </div>
         <p className="text-xs">© {new Date().getFullYear()} Hoyeeh Africa</p>
       </footer>
