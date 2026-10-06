@@ -176,7 +176,7 @@ export async function applyHomepageSuggestion(
     await resetHomepageToDefault(admin, appliedBy);
   }
   if (sug.suggestion_type === "new_section" || sug.suggestion_type === "reorder") {
-    throw new Error("AI structural changes are disabled; edit the manual homepage layout directly");
+    throw new Error("Automated structural changes are disabled; edit the manual homepage layout directly");
   }
   const targetSectionId = sug.target_section_id ?? null;
   sug.target_section_id = targetSectionId;
