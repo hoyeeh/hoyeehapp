@@ -35,6 +35,7 @@ import {
   Users,
   Subtitles,
   Languages,
+  Clock,
 } from "lucide-react";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { cn } from "@/lib/utils";
