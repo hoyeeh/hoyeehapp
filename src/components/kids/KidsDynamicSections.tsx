@@ -18,6 +18,7 @@ interface KidsDynamicSectionsProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
   onPlayVideo?: (videoId: string, title: string) => void;
+  excludedContentIds?: string[];
 }
 
 // Icon mapping for section types
@@ -124,7 +125,7 @@ const SectionHeader = ({
   </div>
 );
 
-export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo }: KidsDynamicSectionsProps) => {
+export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo, excludedContentIds = [] }: KidsDynamicSectionsProps) => {
   const navigate = useNavigate();
 
   // Fetch home sections configured for kids
@@ -134,8 +135,8 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
       const { data, error } = await supabase
         .from("home_sections")
         .select("*, genre:genre_id(name)")
+        .eq("homepage_surface", "kids")
         .eq("is_active", true)
-        .eq("show_on_kids", true)
         .order("display_order");
       if (error) throw error;
       return data || [];
@@ -289,6 +290,8 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
     return null;
   }
 
+  const displayedContentIds = new Set(excludedContentIds);
+
   return (
     <>
       {kidsSections.map((section: any, sectionIndex: number) => {
@@ -323,7 +326,11 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
           return null;
         }
 
-        const sectionContent = getSectionContent(section);
+        const sectionContent = getSectionContent(section).filter((item) => {
+          if (displayedContentIds.has(item.id)) return false;
+          displayedContentIds.add(item.id);
+          return true;
+        });
         if (sectionContent.length === 0) return null;
 
         const cardVariant = getCardVariant(section);
@@ -342,7 +349,7 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-30px" }}
             transition={{ duration: 0.4, ease: "easeOut", delay: sectionIndex * 0.05 }}
-            className={`bg-gradient-to-br ${colors.bg} rounded-xl mx-3 py-4 border ${colors.border}`}
+            className="py-2"
           >
             <SectionHeader 
               icon={Icon} 

@@ -19,6 +19,10 @@ export function useRealtimeHomeSections() {
     queryClient.invalidateQueries({ queryKey: ['mobile-home-sections'] });
     queryClient.invalidateQueries({ queryKey: ['section-content-display'] });
     queryClient.invalidateQueries({ queryKey: ['mobile-section-content'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-home-sections'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-section-content'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-content-desktop'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-content-mobile'] });
     queryClient.invalidateQueries({ queryKey: ['content'] });
     queryClient.invalidateQueries({ queryKey: ['mobile-trending'] });
     queryClient.invalidateQueries({ queryKey: ['mobile-new-releases'] });

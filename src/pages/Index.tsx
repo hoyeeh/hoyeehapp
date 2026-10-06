@@ -136,6 +136,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from("home_sections")
         .select("*, genre:genre_id(name)")
+        .eq("homepage_surface", "main")
         .eq("is_active", true)
         .eq("show_on_desktop", true)
         .order("display_order", { ascending: true })
@@ -645,6 +646,7 @@ const Index = () => {
         title={playingContent.content.title}
         contentId={playingContent.content.id}
         initialProgress={playingContent.progress}
+        isKidsMode={Boolean(currentProfile?.is_kids)}
         onBack={() => setPlayingContent(null)}
       />
     );

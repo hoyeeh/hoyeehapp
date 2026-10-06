@@ -8,18 +8,15 @@ import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { motion } from "framer-motion";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, isKidsContentAllowed } from "@/constants/kidsRatings";
 import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 import { KidsEnhancedYouTubePlayer } from "@/components/kids/KidsEnhancedYouTubePlayer";
 import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
-import { KidsConfetti } from "@/components/kids/KidsConfetti";
-import { KidsMobileContinueWatching } from "@/components/kids/KidsMobileContinueWatching";
-import { KidsMobileAgeGroupSections } from "@/components/kids/KidsMobileAgeGroupSections";
-import { KidsMobilePlayablesRow } from "@/components/kids/KidsMobilePlayablesRow";
 import { KidsDynamicSections } from "@/components/kids/KidsDynamicSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { KidsParentalSetupNotice } from "@/components/kids/KidsParentalSetupNotice";
 import { useState, useEffect, useRef } from "react";
+import { useRealtimeHomeSections } from "@/hooks/useRealtimeHomeSections";
 
 interface KidsMobileHomeProps {
   onPlay: (content: Content) => void;
@@ -33,8 +30,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
   const [youtubePlayer, setYoutubePlayer] = useState<{ videoId: string; title: string } | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const hasShownConfetti = useRef(false);
+  useRealtimeHomeSections();
 
   // Get parental approval settings
   const { isContentApproved } = useKidsApprovedContent(currentProfile?.id);
@@ -57,13 +53,9 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       if (error) throw error;
       
       // Strict client-side filtering for kids compliance
-      let filtered = (data || [])
-        // Age limit filter
-        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
-        // Block specific titles
-        .filter((item: any) => !isBlockedTitle(item.title || ""))
-        // Genre filter - ONLY Animation and Family
-        .filter((item: any) => isKidsAllowedGenre(item.genre));
+      const filtered = (data || []).filter((item: any) =>
+        isKidsContentAllowed(item) && Boolean(item.video_url)
+      );
 
       return filtered.map((item: any) => ({
         id: item.id,
@@ -101,16 +93,6 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   
   // Sort content with animation first for hero
   const sortedContent = [...animationContent, ...nonAnimationContent];
-
-  // Trigger confetti when content loads
-  useEffect(() => {
-    if (!isLoading && displayContent.length > 0 && !hasShownConfetti.current) {
-      hasShownConfetti.current = true;
-      setShowConfetti(true);
-      const timer = setTimeout(() => setShowConfetti(false), 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, displayContent.length]);
 
   // Bedtime screen
   if (isBedtime) {
@@ -192,9 +174,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      {/* Confetti celebration */}
-      <KidsConfetti show={showConfetti} />
+    <div className="space-y-8 pb-10">
 
       {/* Parental Setup Notice */}
       <KidsParentalSetupNotice />
@@ -220,25 +200,14 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
         </motion.div>
       )}
 
-      {/* Continue Watching */}
-      <KidsMobileContinueWatching onPlay={onPlay} onDetails={onDetails} />
-
-      {/* Dynamic Sections from Admin (show_on_kids=true) */}
+      {/* Kids layout is owned entirely by the dedicated admin surface. */}
       <KidsDynamicSections 
         allContent={displayContent} 
+        excludedContentIds={sortedContent[0] ? [sortedContent[0].id] : []}
         onPlay={onPlay} 
         onDetails={onDetails}
         onPlayVideo={handlePlayYouTubeVideo}
       />
-
-      {/* Hoyeeh Playables - Games Section */}
-      <KidsMobilePlayablesRow />
-
-      {/* Age Group Sections */}
-      <KidsMobileAgeGroupSections content={displayContent} onPlay={onPlay} onDetails={onDetails} />
-
-      {/* YouTube Videos */}
-      <KidsMobileYouTubeRow onPlayVideo={handlePlayYouTubeVideo} />
 
       {/* Empty State */}
       {displayContent.length === 0 && (

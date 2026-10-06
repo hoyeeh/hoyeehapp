@@ -17,6 +17,7 @@ interface KidsDesktopDynamicSectionsProps {
   onPlay: (content: Content) => void;
   onDetails: (content: Content) => void;
   onPlayVideo?: (videoId: string, title: string) => void;
+  excludedContentIds?: string[];
 }
 
 // Section header component
@@ -69,6 +70,7 @@ export const KidsDesktopDynamicSections = ({
   onPlay, 
   onDetails, 
   onPlayVideo 
+  , excludedContentIds = []
 }: KidsDesktopDynamicSectionsProps) => {
   const navigate = useNavigate();
 
@@ -79,8 +81,8 @@ export const KidsDesktopDynamicSections = ({
       const { data, error } = await supabase
         .from("home_sections")
         .select("*, genre:genre_id(name)")
+        .eq("homepage_surface", "kids")
         .eq("is_active", true)
-        .eq("show_on_kids", true)
         .order("display_order");
       if (error) throw error;
       return data || [];
@@ -219,6 +221,8 @@ export const KidsDesktopDynamicSections = ({
     return null;
   }
 
+  const displayedContentIds = new Set(excludedContentIds);
+
   return (
     <>
       {kidsSections.map((section: any, sectionIndex: number) => {
@@ -242,7 +246,11 @@ export const KidsDesktopDynamicSections = ({
           return null;
         }
 
-        const sectionContent = getSectionContent(section);
+        const sectionContent = getSectionContent(section).filter((item) => {
+          if (displayedContentIds.has(item.id)) return false;
+          displayedContentIds.add(item.id);
+          return true;
+        });
         if (sectionContent.length === 0) return null;
 
         return (
@@ -252,14 +260,14 @@ export const KidsDesktopDynamicSections = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.5, ease: "easeOut", delay: sectionIndex * 0.05 }}
-            className={`bg-gradient-to-br ${colors.bg} rounded-2xl p-4 md:p-6 border ${colors.border}`}
+            className="py-2"
           >
             <SectionHeader 
               icon={Icon} 
               title={section.title} 
               color={colors.icon}
             />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className={`grid grid-cols-2 gap-5 sm:grid-cols-3 ${section.card_size === "lg" ? "lg:grid-cols-4 xl:grid-cols-5" : section.card_size === "sm" ? "lg:grid-cols-6 xl:grid-cols-7" : "lg:grid-cols-5 xl:grid-cols-6"}`}>
               {sectionContent.map((item, index) => (
                 <KidsContentCard
                   key={item.id}
