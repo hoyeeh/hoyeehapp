@@ -29,6 +29,7 @@ export interface Content {
   isPremium: boolean;
   duration: number;
   year?: number;
+  releaseDate?: string;
   rating?: string;
   contentRating?: string;
   createdAt?: string;

@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
 import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 import { useMemo } from "react";
+import { applyAdminFilters } from "@/lib/homeSectionFilters";
+import { orderHomepageContent } from "@/lib/homeContentOrdering";
 import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 
 interface KidsDynamicSectionsProps {
@@ -172,6 +174,8 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
       isPremium: item.is_premium || false,
       duration: item.duration || 0,
       year: item.year,
+      releaseDate: item.release_date,
+      createdAt: item.created_at,
       contentRating: item.content_rating,
       age_limit: item.age_limit,
     }));
@@ -196,7 +200,7 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
   };
 
   // Get content for a section
-  const getSectionContent = (section: any): Content[] => {
+  const getRawSectionContent = (section: any): Content[] => {
     const movies = allContent.filter(c => c.contentType === "movie");
     const series = allContent.filter(c => c.contentType === "series");
     
@@ -275,6 +279,11 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
     return filterForKids(filtered)
       .sort((a, b) => (b.year || 0) - (a.year || 0))
       .slice(0, section.max_items || 15);
+  };
+
+  const getSectionContent = (section: any): Content[] => {
+    const filtered = applyAdminFilters(getRawSectionContent(section), section);
+    return orderHomepageContent(filtered, section.section_type).slice(0, section.max_items || 15);
   };
 
   // Map card size from admin settings - respect all three sizes

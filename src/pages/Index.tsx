@@ -53,6 +53,7 @@ import { PurchaseModal } from "@/components/creator/PurchaseModal";
 import { PlayablesSection } from "@/components/playables";
 import { useUserPurchases } from "@/hooks/usePaidContent";
 import { applyAdminFilters } from "@/lib/homeSectionFilters";
+import { orderHomepageContent, sortByReleaseDate } from "@/lib/homeContentOrdering";
 
 export type ExtendedViewState = ViewState | 'dashboard' | 'downloads' | 'search' | 'parental';
 
@@ -230,11 +231,8 @@ const Index = () => {
     }));
 
   // Sort helper: most recent year first (persistent ordering)
-  const sortByYearDesc = <T extends { year?: number | null }>(items: T[]): T[] =>
-    [...items].sort((a, b) => (b.year || 0) - (a.year || 0));
-
-  // Transform trending to Content type — re-ordered by most recent year first
-  const trendingContentItems: Content[] = sortByYearDesc(
+  // Automatic rows use exact release date first, then year and catalogue date.
+  const trendingContentItems: Content[] = sortByReleaseDate(
     trendingContent.map((item: any) => ({
       id: item.id,
       title: item.title,
@@ -246,12 +244,14 @@ const Index = () => {
       isPremium: item.is_premium || false,
       duration: item.duration || 0,
       year: item.year,
+      releaseDate: item.release_date,
+      createdAt: item.created_at,
       rating: item.rating,
     }))
   );
 
   // Transform recently added to Content type — re-ordered by most recent year first
-  const recentlyAddedContent: Content[] = sortByYearDesc(
+  const recentlyAddedContent: Content[] = sortByReleaseDate(
     recentlyAdded.map((item: any) => ({
       id: item.id,
       title: item.title,
@@ -263,6 +263,8 @@ const Index = () => {
       isPremium: item.is_premium || false,
       duration: item.duration || 0,
       year: item.year,
+      releaseDate: item.release_date,
+      createdAt: item.created_at,
     }))
   );
 
@@ -485,6 +487,8 @@ const Index = () => {
     isPremium: item.is_premium || false,
     duration: item.duration || 0,
     year: item.year,
+    releaseDate: item.release_date,
+    createdAt: item.created_at,
     rating: item.rating,
   });
 
@@ -510,7 +514,7 @@ const Index = () => {
         const curatedItems = sectionContentData
           .filter((sc: any) => sc.section_id === section.id && sc.content)
           .map((sc: any) => transformRawContent(sc.content))
-          .sort((a: Content, b: Content) => (b.year || 0) - (a.year || 0));
+          ;
         return curatedItems.slice(0, section.max_items || 15);
       case "by_year":
         // Extract year from section title (e.g., "Movies 2024", "2023 Films")
@@ -593,6 +597,7 @@ const Index = () => {
 
       // Universal admin filters — apply to EVERY section type so admins can scope any row
       sectionContent = applyAdminFilters(sectionContent, section);
+      sectionContent = orderHomepageContent(sectionContent, section.section_type);
 
       
       // Check per-section allow_duplicates setting, only apply deduplication if global setting is enabled

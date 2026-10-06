@@ -249,6 +249,7 @@ export const EnhancedHomeSectionManagement = () => {
       const { data, error } = await supabase
         .from("home_sections")
         .select("*")
+        .eq("source", "manual")
         .order("display_order", { ascending: true })
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
@@ -314,6 +315,7 @@ export const EnhancedHomeSectionManagement = () => {
         first_card_style: data.section_type === "new_releases" ? data.first_card_style : null,
         section_banner_url: data.section_banner_url || null,
         featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
+        source: "manual",
       });
       if (error) throw error;
     },
