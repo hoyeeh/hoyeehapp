@@ -39,15 +39,21 @@ export const NewReleasesForYouRow = ({
     queryKey: ["nrfy-top-genres", user?.id],
     queryFn: async () => {
       if (!user?.id) return [] as string[];
-      const { data } = await supabase
+      const { data: history } = await supabase
         .from("watch_history")
-        .select("content:content_id(genre)")
+        .select("content_id")
         .eq("user_id", user.id)
-        .order("watched_at", { ascending: false })
+        .order("last_watched", { ascending: false })
         .limit(50);
+      const ids = [...new Set((history ?? []).map((row) => row.content_id).filter(Boolean))];
+      if (ids.length === 0) return [] as string[];
+      const { data: watchedContent } = await supabase
+        .from("content_public" as any)
+        .select("id, genre")
+        .in("id", ids);
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => {
-        const g = r?.content?.genre;
+      (watchedContent ?? []).forEach((r: any) => {
+        const g = r?.genre;
         if (g) counts[g] = (counts[g] ?? 0) + 1;
       });
       return Object.entries(counts)

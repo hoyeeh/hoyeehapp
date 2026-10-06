@@ -29,7 +29,7 @@ export function MobileTopInCountryRow({
         const { data: prof } = await supabase.from("profiles").select("country").eq("id", user.id).maybeSingle();
         country = (prof?.country as string | null) ?? null;
       }
-      let q = supabase.from("watch_history").select("content_id, user_id").gte("watched_at", since);
+      let q = supabase.from("watch_history").select("content_id, user_id").gte("last_watched", since);
       if (country) {
         const { data: peers } = await supabase.from("profiles").select("id").eq("country", country);
         const peerIds = (peers ?? []).map((p: any) => p.id);

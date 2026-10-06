@@ -13,8 +13,6 @@ import { Bot, Globe, History, Loader2, RotateCcw, TrendingUp } from "lucide-reac
 
 const TYPES = [
   { id: "content_swap", label: "Refresh row content" },
-  { id: "new_section", label: "Create new rows" },
-  { id: "reorder", label: "Reorder rows" },
   { id: "heal", label: "Fix broken rows" },
 ];
 
@@ -163,12 +161,11 @@ export function HomepageAIAutopilot() {
             <div className="flex items-center gap-2">
               <span className="font-medium">Live homepage</span>
               <Badge variant={mode === "ai" ? "default" : "secondary"}>
-                {mode === "ai" ? "AI homepage" : "Manual homepage"}
+                Manual homepage
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Only one layout is ever live — applying an AI suggestion deactivates the manual rows,
-              and resetting restores them exactly as you configured them.
+              Your admin layout is always authoritative. AI may refresh eligible row content, but cannot create or reorder rows automatically.
             </p>
           </div>
           <Button

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { orderHomepageContent, sortByReleaseDate } from "@/lib/homeContentOrdering";
 
 // Mirrors the sortByYearDesc helper used in src/pages/Index.tsx and
 // src/components/mobile/MobileHome.tsx to enforce "most recent year first"
@@ -9,6 +10,23 @@ const sortByYearDesc = <T extends { year?: number | null }>(items: T[]): T[] =>
 type Item = { id: string; year: number | null };
 
 describe("Homepage year ordering (desktop + mobile parity)", () => {
+  it("uses exact release date before year and catalogue date", () => {
+    const sorted = sortByReleaseDate([
+      { id: "older-day", year: 2026, releaseDate: "2026-01-02", createdAt: "2026-09-01" },
+      { id: "newer-day", year: 2026, releaseDate: "2026-09-10", createdAt: "2026-01-01" },
+      { id: "fallback", year: 2025, createdAt: "2026-10-01" },
+    ]);
+    expect(sorted.map((item) => item.id)).toEqual(["newer-day", "older-day", "fallback"]);
+  });
+
+  it("preserves explicit curated and Top 10 ordering", () => {
+    const items = [
+      { id: "admin-first", year: 2020 },
+      { id: "admin-second", year: 2026 },
+    ];
+    expect(orderHomepageContent(items, "curated").map((item) => item.id)).toEqual(["admin-first", "admin-second"]);
+    expect(orderHomepageContent(items, "top10").map((item) => item.id)).toEqual(["admin-first", "admin-second"]);
+  });
   it("orders items from most recent year to oldest", () => {
     const items: Item[] = [
       { id: "a", year: 2019 },

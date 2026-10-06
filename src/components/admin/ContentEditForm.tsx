@@ -43,6 +43,7 @@ interface ContentItem {
   is_premium: boolean | null;
   duration: number | null;
   year: number | null;
+  release_date?: string | null;
   rating: string | null;
   director?: string | null;
   cast_members?: CastMember[] | null;
@@ -76,6 +77,7 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
     is_premium: content.is_premium || false,
     duration: content.duration || 0,
     year: content.year || new Date().getFullYear(),
+    release_date: content.release_date || "",
     rating: content.rating || "",
     director: content.director || "",
   });
@@ -245,6 +247,15 @@ export const ContentEditForm = ({ content, onClose }: ContentEditFormProps) => {
                     className="bg-secondary"
                     min={1900}
                     max={2100}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Release Date</Label>
+                  <Input
+                    type="date"
+                    value={formData.release_date}
+                    onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
+                    className="bg-secondary"
                   />
                 </div>
 

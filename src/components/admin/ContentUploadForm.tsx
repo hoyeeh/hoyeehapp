@@ -27,6 +27,7 @@ interface TMDBResult {
   thumbnail_url: string | null;
   backdrop_url: string | null;
   year: string;
+  release_date?: string;
   rating: string;
   popularity: number;
 }
@@ -68,6 +69,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
     genre: "",
     content_type: "movie",
     year: new Date().getFullYear(),
+    release_date: "",
     rating: "",
     is_premium: true,
     duration: 0,
@@ -201,6 +203,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       title: result.title,
       description: result.description || "",
       year: parseInt(result.year) || new Date().getFullYear(),
+      release_date: result.release_date || "",
       rating: result.rating || "",
       content_type: searchType,
       thumbnail_url: result.thumbnail_url || "",
@@ -270,6 +273,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
         genre: formData.genre,
         content_type: formData.content_type,
         year: formData.year,
+          release_date: formData.release_date || undefined,
         rating: formData.rating,
         is_premium: formData.is_premium,
         duration: formData.duration,
@@ -304,6 +308,7 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
       genre: "",
       content_type: "movie",
       year: new Date().getFullYear(),
+      release_date: "",
       rating: "",
       is_premium: true,
       duration: 0,
@@ -633,6 +638,10 @@ export const ContentUploadForm = ({ onClose }: ContentUploadFormProps) => {
                 <div className="space-y-2">
                   <Label>Year</Label>
                   <Input type="number" value={formData.year} onChange={(e) => setFormData({ ...formData, year: Number(e.target.value) })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Release Date</Label>
+                  <Input type="date" value={formData.release_date} onChange={(e) => setFormData({ ...formData, release_date: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Duration (min)</Label>

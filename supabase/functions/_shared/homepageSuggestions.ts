@@ -99,19 +99,17 @@ export async function activateAiLayout(admin: any, userId: string | null) {
     await admin.from("home_sections").delete().in("id", drop);
   }
 
-  // Order matters: deactivate manual first so unique active-title rules hold.
+  // Order matters: deactivate manual, switch the state, then activate AI rows.
   await admin.from("home_sections").update({ is_active: false }).eq("source", "manual");
-  const { error: actErr } = await admin
-    .from("home_sections").update({ is_active: true }).eq("source", "ai");
-  if (actErr) throw actErr;
-
-
   const { data: updated } = await admin.from("homepage_layout_state").update({
     mode: "ai",
     manual_snapshot: snapshot,
     switched_by: userId,
     switched_at: new Date().toISOString(),
   }).eq("id", state.id).select("*").maybeSingle();
+  const { error: actErr } = await admin
+    .from("home_sections").update({ is_active: true }).eq("source", "ai");
+  if (actErr) throw actErr;
   return updated ?? state;
 }
 
@@ -125,6 +123,12 @@ export async function resetHomepageToDefault(admin: any, userId: string | null) 
 
   await admin.from("home_sections").update({ is_active: false }).eq("source", "ai");
 
+  await admin.from("homepage_layout_state").update({
+    mode: "manual",
+    switched_by: userId,
+    switched_at: new Date().toISOString(),
+  }).eq("id", state.id);
+
   if (snapshot.length > 0) {
     const activeIds = snapshot.filter((s) => s.is_active).map((s) => s.id);
     const inactiveIds = snapshot.filter((s) => !s.is_active).map((s) => s.id);
@@ -137,12 +141,6 @@ export async function resetHomepageToDefault(admin: any, userId: string | null) 
   } else {
     await admin.from("home_sections").update({ is_active: true }).eq("source", "manual");
   }
-
-  await admin.from("homepage_layout_state").update({
-    mode: "manual",
-    switched_by: userId,
-    switched_at: new Date().toISOString(),
-  }).eq("id", state.id);
 
   return { ok: true, mode: "manual" };
 }
@@ -173,9 +171,14 @@ export async function applyHomepageSuggestion(
   if (sugErr || !sug) throw new Error("Suggestion not found");
   if (sug.status === "applied") return { ok: true, already_applied: true };
 
-  // Applying an AI suggestion switches the site to the AI homepage only.
-  await activateAiLayout(admin, appliedBy);
-  const targetSectionId = await resolveAiSectionId(admin, sug.target_section_id ?? null);
+  const mode = await getHomepageMode(admin);
+  if (mode !== "manual") {
+    await resetHomepageToDefault(admin, appliedBy);
+  }
+  if (sug.suggestion_type === "new_section" || sug.suggestion_type === "reorder") {
+    throw new Error("AI structural changes are disabled; edit the manual homepage layout directly");
+  }
+  const targetSectionId = sug.target_section_id ?? null;
   sug.target_section_id = targetSectionId;
 
   const payload = sug.proposed_payload ?? {};
@@ -232,15 +235,16 @@ export async function applyHomepageSuggestion(
     }
     previousState = { created_section_id: created?.id ?? null };
   } else if (sug.suggestion_type === "content_swap") {
-    const sectionId = sug.target_section_id ?? await resolveAiSectionId(admin, payload.section_id ?? null);
+    const sectionId = sug.target_section_id ?? payload.section_id ?? null;
     if (!sectionId) throw new Error("content_swap requires a target section");
 
     const ids: string[] = [...new Set(Array.isArray(payload.content_ids) ? payload.content_ids : [])];
     if (ids.length === 0) throw new Error("content_swap requires content_ids");
 
     const { data: section } = await admin
-      .from("home_sections").select("id,max_items").eq("id", sectionId).maybeSingle();
+      .from("home_sections").select("id,max_items,source").eq("id", sectionId).maybeSingle();
     if (!section) throw new Error("Target section not found");
+    if (section.source !== "manual") throw new Error("AI may only refresh an admin-managed row");
 
     // Respect the admin-configured max_items — the AI never overrides layout limits.
     const max = Math.max(1, Number(section.max_items) || 20);

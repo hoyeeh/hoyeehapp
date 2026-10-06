@@ -52,7 +52,7 @@ export const TopInCountryRow = ({
       let query = supabase
         .from("watch_history")
         .select("content_id, user_id")
-        .gte("watched_at", since);
+        .gte("last_watched", since);
 
       // Country scoping via inner join on profiles
       if (country) {

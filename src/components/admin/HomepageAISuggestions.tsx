@@ -59,7 +59,7 @@ export function HomepageAISuggestions() {
       return data;
     },
     onSuccess: () => {
-      toast.success("Applied — the AI homepage is now the only live layout");
+      toast.success("Applied to the admin homepage without changing its layout");
       qc.invalidateQueries({ queryKey: ["homepage-ai-suggestions"] });
       qc.invalidateQueries({ queryKey: ["home-sections"] });
       qc.invalidateQueries({ queryKey: ["homepage-layout-state"] });

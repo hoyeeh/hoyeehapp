@@ -11,3 +11,7 @@
 - [x] Deploy cast-signaling + download-video; accurate report (app offline licensing ≠ DRM)
 - [ ] Physical Chromecast / AirPlay / smart-TV and real iOS/Android device checks (needs hardware)
 - [ ] Decide: merge the two Download buttons on title pages (older quality picker + new one)
+- [x] Make the admin manual homepage the permanent live layout
+- [x] Restrict AI autopilot to content refreshes and safe healing
+- [x] Unify release ordering and admin filters across web, main PWA, and Kids PWA
+- [x] Run authenticated homepage E2E across desktop, main mobile, and Kids mobile

@@ -45,6 +45,7 @@ export const useContent = () => {
         isPremium: item.is_premium || false,
         duration: item.duration || 0,
         year: item.year || undefined,
+        releaseDate: item.release_date || undefined,
         rating: item.rating || undefined,
         contentRating: item.content_rating || undefined,
         createdAt: item.created_at || undefined,

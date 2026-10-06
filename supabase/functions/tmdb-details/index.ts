@@ -126,6 +126,7 @@ serve(async (req) => {
       thumbnail_url: details.poster_path ? `${TMDB_IMAGE_BASE}${details.poster_path}` : null,
       backdrop_url: details.backdrop_path ? `https://image.tmdb.org/t/p/original${details.backdrop_path}` : null,
       year: (type === 'series' ? details.first_air_date : details.release_date)?.split('-')[0],
+      release_date: type === 'series' ? details.first_air_date : details.release_date,
       rating: details.vote_average?.toFixed(1),
       duration: type === 'series' ? details.episode_run_time?.[0] || 0 : details.runtime || 0,
       genres: details.genres?.map((g: any) => g.name) || [],

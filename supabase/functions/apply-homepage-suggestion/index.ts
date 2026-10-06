@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     }
 
     const result = await applyHomepageSuggestion(admin, String(suggestion_id), user.id, false);
-    result.mode = "ai";
+    result.mode = "manual";
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -140,6 +140,7 @@ export const useCreateContent = () => {
       is_premium?: boolean;
       duration?: number;
       year?: number;
+      release_date?: string;
       rating?: string;
       tmdb_id?: number | null;
       content_rating?: string;

@@ -53,10 +53,12 @@ export function applyAdminFilters<T extends FilterableContent>(
     result = result.filter((c) => c.year === section.year_filter);
   } else {
     if (typeof section.year_min === "number" && section.year_min > 0) {
-      result = result.filter((c) => (c.year ?? -Infinity) >= section.year_min!);
+      const minimum = section.year_min;
+      result = result.filter((c) => minimum !== null && minimum !== undefined && (c.year ?? -Infinity) >= minimum);
     }
     if (typeof section.year_max === "number" && section.year_max > 0) {
-      result = result.filter((c) => (c.year ?? Infinity) <= section.year_max!);
+      const maximum = section.year_max;
+      result = result.filter((c) => maximum !== null && maximum !== undefined && (c.year ?? Infinity) <= maximum);
     }
   }
 
