@@ -523,6 +523,7 @@ export type Database = {
           lifecycle_status: string | null
           lifecycle_updated_at: string | null
           rating: string | null
+          release_date: string | null
           thumbnail_url: string | null
           title: string
           tmdb_id: number | null
@@ -551,6 +552,7 @@ export type Database = {
           lifecycle_status?: string | null
           lifecycle_updated_at?: string | null
           rating?: string | null
+          release_date?: string | null
           thumbnail_url?: string | null
           title: string
           tmdb_id?: number | null
@@ -579,6 +581,7 @@ export type Database = {
           lifecycle_status?: string | null
           lifecycle_updated_at?: string | null
           rating?: string | null
+          release_date?: string | null
           thumbnail_url?: string | null
           title?: string
           tmdb_id?: number | null
