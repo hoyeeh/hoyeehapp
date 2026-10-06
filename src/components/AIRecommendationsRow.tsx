@@ -90,7 +90,7 @@ export const AIRecommendationsRow = ({
     enabled: !!currentProfile,
   });
 
-  // Match AI recommendations with actual content in database
+  // Match personalized recommendations with actual content in database
   const matchedContent = (data as AIRecommendation[] || [])
     .map((rec) => {
       // Find content that matches the recommendation title and type

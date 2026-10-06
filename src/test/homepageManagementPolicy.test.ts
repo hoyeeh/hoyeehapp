@@ -16,7 +16,7 @@ describe("Homepage management policy", () => {
     expect(source).not.toContain('{ id: "reorder"');
   });
 
-  it("rejects AI structural changes in the server applier", () => {
+  it("rejects automated structural changes in the server applier", () => {
     const source = readFileSync("supabase/functions/_shared/homepageSuggestions.ts", "utf8");
     expect(source).toContain('AI structural changes are disabled');
     expect(source).toContain('section.source !== "manual"');

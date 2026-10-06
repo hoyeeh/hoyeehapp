@@ -265,8 +265,8 @@ export function useAIAnalysis() {
       return data;
     },
     onError: (error) => {
-      console.error('AI analysis failed:', error);
-      toast.error('Failed to run AI analysis');
+      console.error('Content analysis failed:', error);
+      toast.error('Failed to run content analysis');
     },
   });
 }

@@ -931,7 +931,7 @@ const Index = () => {
                       return <ComingSoonRow key={section.id} maxItems={section.max_items || 15} />;
                     }
 
-                    // AI Recommendations section
+                    // Personalized recommendations section
                     if (section.section_type === "ai_recommendations") {
                       return (
                         <AIRecommendationsRow

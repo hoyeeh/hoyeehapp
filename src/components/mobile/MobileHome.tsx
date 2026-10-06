@@ -705,7 +705,7 @@ export function MobileHome() {
                 );
               }
 
-              // AI Recommendations section
+              // Personalized recommendations section
               if (section.section_type === "ai_recommendations") {
                 return (
                   <FadeIn key={section.id} delay={50 + index * 25}>

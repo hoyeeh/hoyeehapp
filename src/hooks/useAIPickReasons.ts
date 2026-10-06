@@ -20,7 +20,7 @@ interface TrendRow {
 }
 
 /**
- * Loads real-world trend signals (TMDB) for titles we own, so AI-driven rows can
+ * Loads real-world trend signals (TMDB) for titles we own, so personalized rows can
  * explain *why* a card was suggested with a source + confidence score.
  */
 export function useAIPickReasons() {
@@ -48,7 +48,7 @@ export function useAIPickReasons() {
 
   /**
    * Build the "why this was suggested" line for a card.
-   * `aiReason` is the model's own rationale, used when there is no trend signal.
+   * `aiReason` is the recommendation rationale used when there is no trend signal.
    */
   const getReason = (contentId: string, aiReason?: string): AIPickReason | null => {
     const trend = byContentId.get(contentId);
