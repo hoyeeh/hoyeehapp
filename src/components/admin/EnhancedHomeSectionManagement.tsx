@@ -434,14 +434,15 @@ export const EnhancedHomeSectionManagement = () => {
       if (failed?.error) throw failed.error;
     },
     onMutate: async (updates) => {
-      await queryClient.cancelQueries({ queryKey: ["home-sections"] });
-      const previous = queryClient.getQueryData<HomeSection[]>(["home-sections"]);
+      const surfaceKey = ["home-sections", surface] as const;
+      await queryClient.cancelQueries({ queryKey: surfaceKey });
+      const previous = queryClient.getQueryData<HomeSection[]>(surfaceKey);
       if (previous) {
         const orderMap = new Map(updates.map((u) => [u.id, u.display_order]));
         const next = [...previous]
           .map((s) => ({ ...s, display_order: orderMap.get(s.id) ?? s.display_order }))
           .sort((a, b) => a.display_order - b.display_order);
-        queryClient.setQueryData(["home-sections"], next);
+        queryClient.setQueryData(surfaceKey, next);
       }
       return { previous };
     },
@@ -449,10 +450,11 @@ export const EnhancedHomeSectionManagement = () => {
       queryClient.invalidateQueries({ queryKey: ["home-sections"] });
       queryClient.invalidateQueries({ queryKey: ["home-sections-display"] });
       queryClient.invalidateQueries({ queryKey: ["mobile-home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["kids-home-sections"] });
       toast.success("Section order updated");
     },
     onError: (_err, _vars, ctx: any) => {
-      if (ctx?.previous) queryClient.setQueryData(["home-sections"], ctx.previous);
+      if (ctx?.previous) queryClient.setQueryData(["home-sections", surface], ctx.previous);
       toast.error("Failed to reorder sections");
     },
   });
