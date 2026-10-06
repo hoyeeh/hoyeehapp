@@ -250,6 +250,7 @@ const RecommendationsSection = ({
 };
 
 const ContentDetail = () => {
+  const { currentProfile } = useProfileContext();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const episodeIdFromUrl = searchParams.get('episode') || searchParams.get('episodeId');
@@ -770,7 +771,7 @@ const ContentDetail = () => {
 
     // Phase 2: feature-flagged swap to VideoJSPlayer for non-premium content only.
     // Premium continues to use the legacy DRM-aware VideoPlayer (Phase 3 territory).
-    const useVjs = newPlayerEnabled && !content.isPremium;
+    const useVjs = newPlayerEnabled && !content.isPremium && !currentProfile?.is_kids;
 
     return (
       <SecureVideoWrapper>
@@ -805,6 +806,7 @@ const ContentDetail = () => {
             }}
             nextEpisode={nextEpisodeInfo}
             onPlayNextEpisode={handlePlayNextEpisode}
+              isKidsMode={Boolean(currentProfile?.is_kids)}
           />
         )}
       </SecureVideoWrapper>
@@ -813,7 +815,7 @@ const ContentDetail = () => {
 
   // Playing main content (movie or TV show trailer) - only desktop
   if (playing && content && !isMobile) {
-    const useVjs = newPlayerEnabled && !content.isPremium;
+    const useVjs = newPlayerEnabled && !content.isPremium && !currentProfile?.is_kids;
     const isOffline =
       searchParams.get('offline') === 'true' && !content.isPremium;
     return (
@@ -843,6 +845,7 @@ const ContentDetail = () => {
                 title={content.title}
                 contentId={content.id}
                 initialProgress={0}
+                isKidsMode={Boolean(currentProfile?.is_kids)}
                 onBack={() => setPlaying(false)}
               />
             )
@@ -999,12 +1002,14 @@ const ContentDetail = () => {
                 {isInList ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                 {isInList ? "In My List" : "My List"}
               </Button>
-              <UniversalCastButton
-                videoUrl={content.videoUrl}
-                videoTitle={content.title}
-                thumbnail={content.thumbnailUrl}
-                duration={content.duration}
-              />
+              {!currentProfile?.is_kids && (
+                <UniversalCastButton
+                  videoUrl={content.videoUrl}
+                  videoTitle={content.title}
+                  thumbnail={content.thumbnailUrl}
+                  duration={content.duration}
+                />
+              )}
               {/* Single download control for movies; server enforces entitlement. */}
               {(() => {
                 const c = content as unknown as Record<string, unknown>;

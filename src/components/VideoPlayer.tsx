@@ -1565,13 +1565,15 @@ export const VideoPlayer = ({
 
 
               {/* Cast to TV Button - QR Code Pairing */}
-              <CastToTVButton
-                videoUrl={getVideoSource()}
-                videoTitle={title}
-                startTime={currentTime}
-                duration={duration}
-                className="flex"
-              />
+              {!isKidsMode && (
+                <CastToTVButton
+                  videoUrl={getVideoSource()}
+                  videoTitle={title}
+                  startTime={currentTime}
+                  duration={duration}
+                  className="flex"
+                />
+              )}
 
               {/* Picture-in-Picture Button */}
               {pip.isSupported && (

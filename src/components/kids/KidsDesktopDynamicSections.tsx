@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Film, Tv, TrendingUp, Sparkles, Youtube, Clock, Star, Clapperboard, LucideIcon } from "lucide-react";
 import { KidsContentCard } from "@/components/KidsContentCard";
-import { useNavigate } from "react-router-dom";
 import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 import { isKidsContentAllowed } from "@/constants/kidsRatings";
 import { KidsYouTubeRow } from "./KidsYouTubeRow";
@@ -72,7 +71,6 @@ export const KidsDesktopDynamicSections = ({
   onPlayVideo 
   , excludedContentIds = []
 }: KidsDesktopDynamicSectionsProps) => {
-  const navigate = useNavigate();
 
   // Fetch home sections configured for kids
   const { data: kidsSections = [] } = useQuery({

@@ -1,15 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
-import { KidsContentCard } from "./KidsContentCard";
 import { Clock, Moon, Film, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { KIDS_RATINGS, isKidsContentAllowed } from "@/constants/kidsRatings";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { KidsYouTubeRow } from "./kids/KidsYouTubeRow";
 import { KidsEnhancedYouTubePlayer } from "./kids/KidsEnhancedYouTubePlayer";
 import { KidsLoadingAnimation } from "./kids/KidsLoadingAnimation";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
@@ -180,7 +178,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   useRealtimeHomeSections();
 
   // Get parental approval settings
-  const { approvedContent, isContentApproved } = useKidsApprovedContent(currentProfile?.id);
+  const { isContentApproved } = useKidsApprovedContent(currentProfile?.id);
   const { requiresApproval } = useKidsProfileRequiresApproval(currentProfile?.id);
 
   const handlePlayYouTubeVideo = (videoId: string, title: string) => {

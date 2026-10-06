@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
 import { KidsHeroCarousel } from "./KidsHeroCarousel";
@@ -9,13 +8,12 @@ import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { motion } from "framer-motion";
 import { KIDS_RATINGS, isKidsContentAllowed } from "@/constants/kidsRatings";
-import { KidsMobileYouTubeRow } from "@/components/kids/KidsMobileYouTubeRow";
 import { KidsEnhancedYouTubePlayer } from "@/components/kids/KidsEnhancedYouTubePlayer";
 import { KidsLoadingAnimation } from "@/components/kids/KidsLoadingAnimation";
 import { KidsDynamicSections } from "@/components/kids/KidsDynamicSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { KidsParentalSetupNotice } from "@/components/kids/KidsParentalSetupNotice";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRealtimeHomeSections } from "@/hooks/useRealtimeHomeSections";
 
 interface KidsMobileHomeProps {
@@ -25,7 +23,6 @@ interface KidsMobileHomeProps {
 
 
 export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
-  const navigate = useNavigate();
   const { currentProfile } = useProfileContext();
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
