@@ -59,8 +59,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSkipPreferences } from "@/hooks/useSkipPreferences";
 import { useIsAdmin } from "@/hooks/useAdmin";
 import { useSubtitles } from "@/hooks/useSubtitles";
-import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
-import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 
 interface NextEpisodeInfo {
   id: string;
@@ -89,6 +87,10 @@ interface VideoPlayerProps {
   // Poster art for TV cast metadata (optional)
   poster?: string;
   isKidsMode?: boolean;
+  kidsTimeRemaining?: number | null;
+  kidsTimeLimitReached?: boolean;
+  kidsBedtimeReached?: boolean;
+  kidsBedtimeTime?: string | null;
 }
 
 const QUALITY_OPTIONS = [
@@ -115,6 +117,10 @@ export const VideoPlayer = ({
   onPlayNextEpisode,
   poster,
   isKidsMode = false,
+  kidsTimeRemaining = null,
+  kidsTimeLimitReached = false,
+  kidsBedtimeReached = false,
+  kidsBedtimeTime = null,
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -147,8 +153,6 @@ export const VideoPlayer = ({
   const volumeIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumeFromTime, setResumeFromTime] = useState(0);
-  const { timeRemaining, isTimeLimitReached, incrementWatchedTime } = useKidsTimeLimit();
-  const { isBedtime, bedtimeTime } = useBedtimeMode();
   
   // Admin settings for intro/recap setter
   const { data: isAdmin } = useIsAdmin();
@@ -194,15 +198,9 @@ export const VideoPlayer = ({
   const subtitles = useSubtitles(contentId, episodeId);
 
   useEffect(() => {
-    if (!isKidsMode || !isPlaying || isTimeLimitReached || isBedtime) return;
-    const timer = window.setInterval(() => incrementWatchedTime(1), 60000);
-    return () => window.clearInterval(timer);
-  }, [incrementWatchedTime, isBedtime, isKidsMode, isPlaying, isTimeLimitReached]);
-
-  useEffect(() => {
-    if (!isKidsMode || (!isTimeLimitReached && !isBedtime)) return;
+    if (!isKidsMode || (!kidsTimeLimitReached && !kidsBedtimeReached)) return;
     videoRef.current?.pause();
-  }, [isBedtime, isKidsMode, isTimeLimitReached]);
+  }, [isKidsMode, kidsBedtimeReached, kidsTimeLimitReached]);
 
 
   // Network quality for adaptive streaming
@@ -1012,14 +1010,15 @@ export const VideoPlayer = ({
         </div>
       )}
 
-      {isKidsMode && (isTimeLimitReached || isBedtime) && (
+      {isKidsMode && (kidsTimeLimitReached || kidsBedtimeReached) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 px-6 text-center" data-testid="kids-playback-limit">
           <div className="max-w-md space-y-3">
             <Clock className="mx-auto h-12 w-12 text-brand" />
-            <h2 className="text-3xl font-semibold">{isBedtime ? "Time for Bed" : "All Done for Today"}</h2>
+            <h2 className="text-3xl font-semibold">{kidsBedtimeReached ? "Time for Bed" : "All Done for Today"}</h2>
             <p className="text-muted-foreground">
-              {isBedtime ? `Bedtime is ${bedtimeTime?.slice(0, 5) ?? "set by your parent"}.` : "Come back tomorrow for more family adventures."}
+              {kidsBedtimeReached ? `Bedtime is ${kidsBedtimeTime?.slice(0, 5) ?? "set by your parent"}.` : "Come back tomorrow for more family adventures."}
             </p>
+            {kidsTimeRemaining !== null && !kidsBedtimeReached && <p className="text-sm text-muted-foreground">{kidsTimeRemaining} minutes remaining</p>}
           </div>
         </div>
       )}

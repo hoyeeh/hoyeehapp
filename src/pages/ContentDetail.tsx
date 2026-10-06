@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { KidsDesktopVideoPlayer } from "@/components/kids/KidsDesktopVideoPlayer";
 import { VideoJSPlayerWithWatchParty } from "@/components/VideoJSPlayerWithWatchParty";
 import { useNewPlayerForFree } from "@/hooks/useNewPlayer";
 import { NewPlayerBadge } from "@/components/dev/NewPlayerBadge";
@@ -790,7 +791,7 @@ const ContentDetail = () => {
             <NewPlayerBadge surface="episode" />
           </>
         ) : (
-          <VideoPlayer
+          currentProfile?.is_kids ? <KidsDesktopVideoPlayer
             src={playingEpisode.video_url || ''}
             title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
             contentId={content.id}
@@ -806,7 +807,19 @@ const ContentDetail = () => {
             }}
             nextEpisode={nextEpisodeInfo}
             onPlayNextEpisode={handlePlayNextEpisode}
-              isKidsMode={Boolean(currentProfile?.is_kids)}
+          /> : <VideoPlayer
+            src={playingEpisode.video_url || ''}
+            title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
+            contentId={content.id}
+            episodeId={playingEpisode.id}
+            initialProgress={episodeResumeAt}
+            introStartTime={epData.intro_start_time ?? 0}
+            introEndTime={epData.intro_end_time ?? 90}
+            recapStartTime={epData.recap_start_time ?? undefined}
+            recapEndTime={epData.recap_end_time ?? undefined}
+            onBack={() => { setPlayingEpisode(null); setEpisodeResumeAt(0); }}
+            nextEpisode={nextEpisodeInfo}
+            onPlayNextEpisode={handlePlayNextEpisode}
           />
         )}
       </SecureVideoWrapper>
@@ -840,14 +853,13 @@ const ContentDetail = () => {
                 <NewPlayerBadge surface="movie" />
               </>
             ) : (
-              <VideoPlayer
+              currentProfile?.is_kids ? <KidsDesktopVideoPlayer
                 src={resolvedSrc}
                 title={content.title}
                 contentId={content.id}
                 initialProgress={0}
-                isKidsMode={Boolean(currentProfile?.is_kids)}
                 onBack={() => setPlaying(false)}
-              />
+              /> : <VideoPlayer src={resolvedSrc} title={content.title} contentId={content.id} initialProgress={0} onBack={() => setPlaying(false)} />
             )
           }
         </OfflinePlayerWrapper>
