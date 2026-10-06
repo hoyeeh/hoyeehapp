@@ -1,17 +1,7 @@
-# Roadmap — casting + offline repair
-- [x] Update legal policy dates to September 2026
-- [x] Add and link the Refund Policy, with consistent Help Center guidance
-- [x] Add Investor Relations information for local-network streaming partnerships
-- [x] Cast signaling: receiver credential, JWT ownership, atomic pair/command/ACK, durable rate limits
-- [x] Cast command validator rejects non-https LOAD/queue URLs
-- [x] Migrate legacy useDownloadManager to contentId-based download-video
-- [x] download-video: verify episode→season→content parent + parent entitlement (keep established subscriber download policy)
-- [x] Ship custom SW (vite-plugin-pwa generateSW overwrites public/sw.js); never cache protected requests
-- [x] Browser E2E: controller/receiver two-page, real playable MP4 fixture offline cold start/play/seek/resume/delete, denial cases
-- [x] Deploy cast-signaling + download-video; accurate report (app offline licensing ≠ DRM)
-- [ ] Physical Chromecast / AirPlay / smart-TV and real iOS/Android device checks (needs hardware)
-- [ ] Decide: merge the two Download buttons on title pages (older quality picker + new one)
-- [x] Make the admin manual homepage the permanent live layout
-- [x] Restrict AI autopilot to content refreshes and safe healing
-- [x] Unify release ordering and admin filters across web, main PWA, and Kids PWA
-- [x] Run authenticated homepage E2E across desktop, main mobile, and Kids mobile
+# Roadmap
+
+- [ ] Audit current Kids homepage, admin layout, profile restrictions, and playable catalog data
+- [ ] Implement a distinct admin-controlled Kids layout with deduplication and polished presentation
+- [ ] Add real playable Family/Kids catalog titles through the supported media workflow
+- [ ] Add focused regression tests and run full verification
+- [ ] Run signed-in production E2E for Kids profile, playback restrictions, bedtime, and hidden Cast control
