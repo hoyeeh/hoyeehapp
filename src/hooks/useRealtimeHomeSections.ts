@@ -128,6 +128,19 @@ export function useRealtimeHomeSections() {
       )
       .subscribe();
 
+    const homepageManagementChannel = supabase
+      .channel('homepage-management-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_layout_state' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['homepage-layout-state'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_ai_suggestions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['homepage-ai-suggestions'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ai_homepage_change_log' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ai-homepage-change-log'] });
+      })
+      .subscribe();
+
     return () => {
       console.log('[RealtimeHomeSections] Cleaning up subscriptions...');
       supabase.removeChannel(homeSectionsChannel);
@@ -135,6 +148,7 @@ export function useRealtimeHomeSections() {
       supabase.removeChannel(contentChannel);
       supabase.removeChannel(top10Channel);
       supabase.removeChannel(heroBannersChannel);
+      supabase.removeChannel(homepageManagementChannel);
     };
   }, [invalidateHomeSections, queryClient]);
 

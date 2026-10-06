@@ -195,7 +195,7 @@ ${globalHotGenres.map((t) => `- ${t.genre}: ${t.titles} trending titles`).join("
 Titles trending worldwide THAT WE OWN (use only these content ids):
 ${ownedForPrompt.join("\n") || "- (none matched our catalog)"}
 
-Propose at most 2 content refreshes as a strict JSON array. Each item:
+Propose at most 2 content refreshes inside a JSON object with a "suggestions" array. Each item:
 {
   "suggestion_type": "content_swap",
   "target_section_id": "<uuid of an existing curated row>",
@@ -241,12 +241,6 @@ Only return the JSON array.`;
     // 9. Validate + insert (AI may only reference content ids we own & sections that exist)
     const ownedIds = new Set(ownedList.map((t) => t.content_id));
     const sectionIds = new Set((sections ?? []).map((s: any) => s.id));
-
-    // Layout hygiene: the homepage keeps exactly two Top 10 rows (Movies + Series),
-    // and never two sections with the same name.
-    const norm = (t: unknown) => String(t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-    const existingTitles = new Set((sections ?? []).map((s: any) => norm(s.title)));
-    const proposedTitles = new Set<string>();
 
     const valid: any[] = [];
     for (const s of [...healHints, ...trendSwaps, ...aiSuggestions]) {
