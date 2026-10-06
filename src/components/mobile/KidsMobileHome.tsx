@@ -200,7 +200,7 @@ export const KidsMobileHome = ({ onPlay, onDetails }: KidsMobileHomeProps) => {
       {/* Kids layout is owned entirely by the dedicated admin surface. */}
       <KidsDynamicSections 
         allContent={displayContent} 
-        excludedContentIds={sortedContent[0] ? [sortedContent[0].id] : []}
+        excludedContentIds={sortedContent.slice(0, 5).map((item) => item.id)}
         onPlay={onPlay} 
         onDetails={onDetails}
         onPlayVideo={handlePlayYouTubeVideo}

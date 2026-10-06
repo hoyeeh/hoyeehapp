@@ -336,7 +336,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
       {/* Kids layout is owned entirely by the dedicated admin surface. */}
       <KidsDesktopDynamicSections 
         allContent={displayContent}
-        excludedContentIds={displayContent[0] ? [displayContent[0].id] : []}
+        excludedContentIds={displayContent.slice(0, 5).map((item) => item.id)}
         onPlay={onPlay}
         onDetails={onDetails}
         onPlayVideo={handlePlayYouTubeVideo}
