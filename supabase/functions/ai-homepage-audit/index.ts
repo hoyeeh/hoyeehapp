@@ -80,14 +80,18 @@ Deno.serve(async (req) => {
 
     // 4. Trending genres internally (last 30d)
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
-    const { data: watch } = await supabase
+    const { data: recentWatch } = await supabase
       .from("watch_history")
-      .select("content:content_id(genre)")
-      .gte("watched_at", since)
+      .select("content_id")
+      .gte("last_watched", since)
       .limit(2000);
+    const watchedIds = [...new Set((recentWatch ?? []).map((row: any) => row.content_id).filter(Boolean))];
+    const { data: watchedContent } = watchedIds.length > 0
+      ? await supabase.from("content").select("id,genre").in("id", watchedIds)
+      : { data: [] };
     const genreCounts: Record<string, number> = {};
-    (watch ?? []).forEach((w: any) => {
-      const g = w?.content?.genre;
+    (watchedContent ?? []).forEach((w: any) => {
+      const g = w?.genre;
       if (g) genreCounts[g] = (genreCounts[g] ?? 0) + 1;
     });
     const trendingGenres = Object.entries(genreCounts)

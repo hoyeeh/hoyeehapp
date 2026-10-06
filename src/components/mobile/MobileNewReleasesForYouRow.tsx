@@ -30,7 +30,7 @@ export function MobileNewReleasesForYouRow({
         .from("watch_history")
         .select("content_id")
         .eq("user_id", user.id)
-        .order("watched_at", { ascending: false })
+        .order("last_watched", { ascending: false })
         .limit(50);
       const ids = [...new Set((history ?? []).map((row) => row.content_id).filter(Boolean))];
       if (ids.length === 0) return [] as string[];
