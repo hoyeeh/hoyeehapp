@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 interface CastMember {
   id: number;

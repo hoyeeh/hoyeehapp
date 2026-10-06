@@ -32,6 +32,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isKidsContentAllowed } from "@/constants/kidsRatings";
 
 interface HomeSection {
   id: string;
@@ -54,6 +55,8 @@ interface HomeSection {
   first_card_style?: string;
   section_banner_url?: string;
   featured_content_id?: string;
+  homepage_surface: "main" | "kids";
+  card_size?: "sm" | "md" | "lg";
 }
 
 interface Content {
@@ -62,6 +65,10 @@ interface Content {
   thumbnail_url: string | null;
   content_type: string;
   year: number | null;
+  genre?: string | null;
+  content_rating?: string | null;
+  age_limit?: number | null;
+  video_url?: string | null;
 }
 
 const SECTION_TYPES = [
@@ -218,11 +225,13 @@ export const EnhancedHomeSectionManagement = () => {
   const [managingContentSection, setManagingContentSection] = useState<HomeSection | null>(null);
   const [contentSearch, setContentSearch] = useState("");
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
+  const [surface, setSurface] = useState<"main" | "kids">("main");
   const [formData, setFormData] = useState({
     title: "",
     section_type: "genre",
     genre_id: "",
     card_style: "poster",
+    card_size: "md" as "sm" | "md" | "lg",
     max_items: 15,
     is_active: true,
     content_type_filter: "all" as "all" | "movie" | "series",
@@ -244,12 +253,13 @@ export const EnhancedHomeSectionManagement = () => {
   );
 
   const { data: sections = [], isLoading } = useQuery({
-    queryKey: ["home-sections"],
+    queryKey: ["home-sections", surface],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("home_sections")
         .select("*")
         .eq("source", "manual")
+        .eq("homepage_surface", surface)
         .order("display_order", { ascending: true })
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
@@ -271,7 +281,7 @@ export const EnhancedHomeSectionManagement = () => {
     queryKey: ["all-content"],
     queryFn: async () => {
       return await fetchAllContent<Content & { is_premium: boolean | null }>(
-        "id, title, thumbnail_url, content_type, year, is_premium",
+        "id, title, thumbnail_url, content_type, year, is_premium, genre, content_rating, age_limit, video_url",
         (q) => q.order("title")
       );
     },
@@ -301,13 +311,14 @@ export const EnhancedHomeSectionManagement = () => {
         section_type: data.section_type,
         genre_id: data.genre_id || null,
         card_style: data.card_style,
+        card_size: data.card_size,
         max_items: data.max_items,
         is_active: data.is_active,
         display_order: maxOrder + 1,
         content_type_filter: data.content_type_filter,
         show_on_desktop: data.show_on_desktop,
         show_on_mobile: data.show_on_mobile,
-        show_on_kids: data.show_on_kids,
+        show_on_kids: surface === "kids",
         is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
         year_filter,
         year_min,
@@ -316,6 +327,7 @@ export const EnhancedHomeSectionManagement = () => {
         section_banner_url: data.section_banner_url || null,
         featured_content_id: data.section_type === "new_releases" && data.featured_content_id ? data.featured_content_id : null,
         source: "manual",
+        homepage_surface: surface,
       });
       if (error) throw error;
     },
@@ -339,12 +351,13 @@ export const EnhancedHomeSectionManagement = () => {
           section_type: data.section_type,
           genre_id: data.genre_id || null,
           card_style: data.card_style,
+          card_size: data.card_size,
           max_items: data.max_items,
           is_active: data.is_active,
           content_type_filter: data.content_type_filter,
           show_on_desktop: data.show_on_desktop,
           show_on_mobile: data.show_on_mobile,
-          show_on_kids: data.show_on_kids,
+          show_on_kids: surface === "kids",
           is_curated: data.section_type === "free_content" ? data.is_curated : data.section_type === "curated",
           year_filter,
           year_min,
@@ -480,6 +493,7 @@ export const EnhancedHomeSectionManagement = () => {
       section_type: "genre",
       genre_id: "",
       card_style: "poster",
+      card_size: "md",
       max_items: 15,
       is_active: true,
       content_type_filter: "all",
@@ -503,6 +517,7 @@ export const EnhancedHomeSectionManagement = () => {
       section_type: section.section_type,
       genre_id: section.genre_id || "",
       card_style: section.card_style,
+      card_size: section.card_size || "md",
       max_items: section.max_items || 15,
       is_active: section.is_active,
       content_type_filter: (section.content_type_filter as "all" | "movie" | "series") || "all",
@@ -546,7 +561,8 @@ export const EnhancedHomeSectionManagement = () => {
     // For free_content sections, only show free content (is_premium = false or null)
     const isFreeContentSection = managingContentSection?.section_type === "free_content";
     const matchesFreeContent = !isFreeContentSection || !c.is_premium;
-    return matches && matchesType && notAlreadyAdded && matchesFreeContent;
+    const matchesSurface = surface === "main" || (isKidsContentAllowed(c) && Boolean(c.video_url));
+    return matches && matchesType && notAlreadyAdded && matchesFreeContent && matchesSurface;
   });
 
   return (
@@ -554,13 +570,19 @@ export const EnhancedHomeSectionManagement = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <LayoutGrid className="h-5 w-5 text-brand" />
-          Home Page Sections
+          Homepage Layouts
         </CardTitle>
         <CardDescription>
-          Manage sections on the home page. Use "Curated" type to add specific movies/shows.
+          Main and Kids layouts are independent. Drag rows to set the order shown in each experience.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Tabs value={surface} onValueChange={(value) => setSurface(value as "main" | "kids")}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="main">Main Home</TabsTrigger>
+            <TabsTrigger value="kids">Kids Home</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
           <Plus className="h-4 w-4" />
           Add Section
@@ -602,6 +624,17 @@ export const EnhancedHomeSectionManagement = () => {
                       {CARD_STYLES.map((style) => (
                         <SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Card Size</Label>
+                  <Select value={formData.card_size} onValueChange={(v) => setFormData({ ...formData, card_size: v as "sm" | "md" | "lg" })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sm">Compact</SelectItem>
+                      <SelectItem value="md">Standard</SelectItem>
+                      <SelectItem value="lg">Large</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -799,7 +832,7 @@ export const EnhancedHomeSectionManagement = () => {
               </div>
               
               {/* Display Targets */}
-              <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
+              {surface === "main" && <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
                 <Label className="text-sm font-medium">Display On</Label>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="flex items-center gap-2">
@@ -822,18 +855,8 @@ export const EnhancedHomeSectionManagement = () => {
                       <Smartphone className="h-4 w-4" /> Mobile
                     </Label>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="show_kids"
-                      checked={formData.show_on_kids}
-                      onCheckedChange={(checked) => setFormData({ ...formData, show_on_kids: !!checked })}
-                    />
-                    <Label htmlFor="show_kids" className="flex items-center gap-1 text-sm cursor-pointer">
-                      <Baby className="h-4 w-4" /> Kids
-                    </Label>
-                  </div>
                 </div>
-              </div>
+              </div>}
 
               <div className="flex items-center gap-3">
                 <Switch
