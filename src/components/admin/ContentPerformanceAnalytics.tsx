@@ -204,7 +204,7 @@ export function ContentPerformanceAnalytics({ contentId, contentTitle }: Content
           viewData.totalViews >= 50 ? "border-l-green-500" : "border-l-orange-500"
         )}>
           <CardContent className="pt-4">
-            <h4 className="font-medium mb-2">AI Recommendation</h4>
+            <h4 className="font-medium mb-2">Performance Recommendation</h4>
             <p className="text-sm text-muted-foreground">
               {viewData.totalViews >= 50 ? (
                 <>

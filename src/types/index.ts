@@ -32,6 +32,7 @@ export interface Content {
   releaseDate?: string;
   rating?: string;
   contentRating?: string;
+  age_limit?: number;
   createdAt?: string;
   lifecycleStatus?: 'active' | 'leaving_soon' | 'hidden' | 'kept';
   expiresAt?: string;

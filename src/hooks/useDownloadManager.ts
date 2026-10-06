@@ -337,6 +337,8 @@ export function useDownloadManager() {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         contentRating: manifest.contentRating || content.contentRating, // Store content rating for kids filtering
+        genre: content.genre,
+        ageLimit: content.age_limit,
       };
 
       await saveMetadata(metadata);

@@ -113,7 +113,7 @@ export function SubtitleGenerator({ contentId, episodeId, videoUrl, title, onCom
           <CardTitle className="text-lg">Generate Subtitles</CardTitle>
         </div>
         <CardDescription className="text-sm">
-          Use AI to generate subtitles for "{title}"
+          Generate timed subtitles for "{title}"
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

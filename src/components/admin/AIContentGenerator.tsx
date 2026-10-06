@@ -20,7 +20,7 @@ export function AIContentGenerator({
   isLoading,
   onSelect,
   onRegenerate,
-  buttonText = "Generate with AI",
+  buttonText = "Generate suggestions",
   buttonVariant = "outline",
   buttonSize = "sm",
   className,
@@ -57,7 +57,7 @@ export function AIContentGenerator({
       <PopoverContent className="w-80 p-3" align="start">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-sm">AI Suggestions</h4>
+            <h4 className="font-medium text-sm">Writing Suggestions</h4>
             <Button
               variant="ghost"
               size="sm"

@@ -103,7 +103,7 @@ export function LeavingSoonManagement() {
     updateLifecycle.mutate({
       contentId,
       adminOverride: override,
-      reason: override ? "Admin override enabled - AI will not auto-manage" : "Admin override disabled",
+      reason: override ? "Admin override enabled - automatic management disabled" : "Admin override disabled",
     });
   };
 
@@ -399,7 +399,7 @@ export function LeavingSoonManagement() {
                                   handleRunAIAnalysis(item.id);
                                 }}
                               >
-                                <Sparkles className="h-4 w-4 mr-2" /> AI Analysis
+                                <Sparkles className="h-4 w-4 mr-2" /> Content Analysis
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -449,11 +449,11 @@ export function LeavingSoonManagement() {
                 </div>
               </div>
 
-              {/* AI Analysis */}
+              {/* Content analysis */}
               {detailContent.lifecycle_reason && (
                 <div className="space-y-2">
                   <h4 className="font-medium flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" /> AI Analysis
+                    <Sparkles className="h-4 w-4" /> Content Analysis
                   </h4>
                   <Card>
                     <CardContent className="pt-4">
@@ -565,7 +565,7 @@ export function LeavingSoonManagement() {
                   ) : (
                     <Sparkles className="h-4 w-4 mr-2" />
                   )}
-                  Run AI Analysis
+                  Run Content Analysis
                 </Button>
                 <Button
                   variant="outline"

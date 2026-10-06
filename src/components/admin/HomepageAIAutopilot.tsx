@@ -152,7 +152,7 @@ export function HomepageAIAutopilot() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Bot className="h-5 w-5 text-brand" />
-          AI Autopilot &amp; Global Trends
+          Homepage Automation &amp; Global Trends
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -165,7 +165,7 @@ export function HomepageAIAutopilot() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Your admin layout is always authoritative. AI may refresh eligible row content, but cannot create or reorder rows automatically.
+              Your admin layout is always authoritative. Automation may refresh eligible row content, but cannot create or reorder rows.
             </p>
           </div>
           <Button
@@ -193,7 +193,7 @@ export function HomepageAIAutopilot() {
               <div>
                 <Label className="text-base">Autopilot</Label>
                 <p className="text-sm text-muted-foreground">
-                  Let AI apply high-confidence homepage changes automatically after each audit.
+                   Apply high-confidence homepage content changes automatically after each review.
                 </p>
               </div>
               <Switch
@@ -284,7 +284,7 @@ export function HomepageAIAutopilot() {
           <TabsContent value="log" className="space-y-2 pt-4">
             {changes.length === 0 && (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                No AI changes applied yet.
+                No automated changes applied yet.
               </div>
             )}
             {changes.map((c) => (

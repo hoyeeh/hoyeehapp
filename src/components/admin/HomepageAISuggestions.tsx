@@ -91,12 +91,12 @@ export function HomepageAISuggestions() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-brand" />
-          <h3 className="text-lg font-semibold">AI Homepage Suggestions</h3>
+          <h3 className="text-lg font-semibold">Homepage Suggestions</h3>
           <Badge variant="secondary">{suggestions.length} of 2 pending</Badge>
         </div>
         <Button onClick={() => runAudit.mutate()} disabled={runAudit.isPending} size="sm">
           {runAudit.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
-          Run AI Audit
+          Review Homepage
         </Button>
       </div>
 
@@ -105,7 +105,7 @@ export function HomepageAISuggestions() {
       {!isLoading && suggestions.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            No pending suggestions. Click <strong>Run AI Audit</strong> to scan your homepage now,
+            No pending suggestions. Click <strong>Review Homepage</strong> to scan your homepage now,
             or wait for the daily run. Each audit surfaces only the two strongest ideas.
           </CardContent>
         </Card>

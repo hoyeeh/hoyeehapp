@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Film, Tv, Sparkles, TrendingUp, Star, Heart, Gamepad2, Music, Radio, Gift } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
+import { isKidsContentAllowed } from "@/constants/kidsRatings";
 import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
 import { useMemo } from "react";
 import { applyAdminFilters } from "@/lib/homeSectionFilters";
@@ -183,19 +183,7 @@ export const KidsDynamicSections = ({ allContent, onPlay, onDetails, onPlayVideo
   // Filter content for kids safety
   const filterForKids = (items: Content[]): Content[] => {
     return items.filter(item => {
-      const rating = (item as any).contentRating;
-      const ageLimit = (item as any).age_limit;
-      
-      // Check rating is kids-safe
-      const ratingOk = !rating || KIDS_RATINGS.includes(rating);
-      // Check age limit
-      const ageOk = !ageLimit || ageLimit <= KIDS_MAX_AGE_LIMIT;
-      // Check not blocked
-      const notBlocked = !isBlockedTitle(item.title || "");
-      // Check genre is allowed
-      const genreOk = isKidsAllowedGenre(item.genre);
-      
-      return ratingOk && ageOk && notBlocked && genreOk;
+      return isKidsContentAllowed(item as any);
     });
   };
 
