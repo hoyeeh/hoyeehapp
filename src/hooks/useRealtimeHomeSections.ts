@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import { toast } from 'sonner';
  */
 export function useRealtimeHomeSections() {
   const queryClient = useQueryClient();
+  const channelSuffix = useRef(crypto.randomUUID());
 
   const invalidateHomeSections = useCallback(() => {
     console.log('[RealtimeHomeSections] Invalidating home section caches...');
@@ -19,6 +20,10 @@ export function useRealtimeHomeSections() {
     queryClient.invalidateQueries({ queryKey: ['mobile-home-sections'] });
     queryClient.invalidateQueries({ queryKey: ['section-content-display'] });
     queryClient.invalidateQueries({ queryKey: ['mobile-section-content'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-home-sections'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-section-content'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-content-desktop'] });
+    queryClient.invalidateQueries({ queryKey: ['kids-content-mobile'] });
     queryClient.invalidateQueries({ queryKey: ['content'] });
     queryClient.invalidateQueries({ queryKey: ['mobile-trending'] });
     queryClient.invalidateQueries({ queryKey: ['mobile-new-releases'] });
@@ -41,7 +46,7 @@ export function useRealtimeHomeSections() {
 
     // Subscribe to home_sections table changes
     const homeSectionsChannel = supabase
-      .channel('home-sections-changes')
+      .channel(`home-sections-changes-${channelSuffix.current}`)
       .on(
         'postgres_changes',
         {
@@ -60,7 +65,7 @@ export function useRealtimeHomeSections() {
 
     // Subscribe to section_content table changes (for curated sections)
     const sectionContentChannel = supabase
-      .channel('section-content-changes')
+      .channel(`section-content-changes-${channelSuffix.current}`)
       .on(
         'postgres_changes',
         {
@@ -77,7 +82,7 @@ export function useRealtimeHomeSections() {
 
     // Subscribe to content table changes (for new releases, trending, etc.)
     const contentChannel = supabase
-      .channel('content-changes')
+      .channel(`content-changes-${channelSuffix.current}`)
       .on(
         'postgres_changes',
         {
@@ -95,7 +100,7 @@ export function useRealtimeHomeSections() {
 
     // Subscribe to top_10 table changes
     const top10Channel = supabase
-      .channel('top10-changes')
+      .channel(`top10-changes-${channelSuffix.current}`)
       .on(
         'postgres_changes',
         {
@@ -112,7 +117,7 @@ export function useRealtimeHomeSections() {
 
     // Subscribe to hero_banners table changes
     const heroBannersChannel = supabase
-      .channel('hero-banners-changes')
+      .channel(`hero-banners-changes-${channelSuffix.current}`)
       .on(
         'postgres_changes',
         {
@@ -129,7 +134,7 @@ export function useRealtimeHomeSections() {
       .subscribe();
 
     const homepageManagementChannel = supabase
-      .channel('homepage-management-changes')
+      .channel(`homepage-management-changes-${channelSuffix.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_layout_state' }, () => {
         queryClient.invalidateQueries({ queryKey: ['homepage-layout-state'] });
       })

@@ -2192,6 +2192,7 @@ export type Database = {
           featured_content_id: string | null
           first_card_style: string | null
           genre_id: string | null
+          homepage_surface: string
           id: string
           is_active: boolean
           is_curated: boolean
@@ -2219,6 +2220,7 @@ export type Database = {
           featured_content_id?: string | null
           first_card_style?: string | null
           genre_id?: string | null
+          homepage_surface?: string
           id?: string
           is_active?: boolean
           is_curated?: boolean
@@ -2246,6 +2248,7 @@ export type Database = {
           featured_content_id?: string | null
           first_card_style?: string | null
           genre_id?: string | null
+          homepage_surface?: string
           id?: string
           is_active?: boolean
           is_curated?: boolean

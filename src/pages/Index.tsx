@@ -28,6 +28,7 @@ import { ContentFilter, FilterState } from "@/components/ContentFilter";
 import { ProfilePicker } from "@/components/ProfilePicker";
 import { KidsInterface } from "@/components/KidsInterface";
 import { KidsHomePage } from "@/components/KidsHomePage";
+import { KidsDesktopVideoPlayer } from "@/components/kids/KidsDesktopVideoPlayer";
 import { ParentalDashboard } from "@/components/ParentalDashboard";
 import { ParentalPinModal } from "@/components/ParentalPinModal";
 import { isRestrictedForKids, isRestrictedByParentalControls } from "@/components/ContentRatingBadge";
@@ -136,6 +137,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from("home_sections")
         .select("*, genre:genre_id(name)")
+        .eq("homepage_surface", "main")
         .eq("is_active", true)
         .eq("show_on_desktop", true)
         .order("display_order", { ascending: true })
@@ -639,6 +641,17 @@ const Index = () => {
 
   // Video Player View - Only for desktop (mobile uses PersistentMobileVideoPlayer)
   if (playingContent && !isMobileOrTablet) {
+    if (currentProfile?.is_kids) {
+      return (
+        <KidsDesktopVideoPlayer
+          src={playingContent.content.videoUrl}
+          title={playingContent.content.title}
+          contentId={playingContent.content.id}
+          initialProgress={playingContent.progress}
+          onBack={() => setPlayingContent(null)}
+        />
+      );
+    }
     return (
       <VideoPlayer
         src={playingContent.content.videoUrl}

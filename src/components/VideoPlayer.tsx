@@ -35,6 +35,7 @@ import {
   Users,
   Subtitles,
   Languages,
+  Clock,
 } from "lucide-react";
 import { useWatchPartyContext } from "@/contexts/WatchPartyContext";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,11 @@ interface VideoPlayerProps {
   onPlayNextEpisode?: (episode: NextEpisodeInfo) => void;
   // Poster art for TV cast metadata (optional)
   poster?: string;
+  isKidsMode?: boolean;
+  kidsTimeRemaining?: number | null;
+  kidsTimeLimitReached?: boolean;
+  kidsBedtimeReached?: boolean;
+  kidsBedtimeTime?: string | null;
 }
 
 const QUALITY_OPTIONS = [
@@ -111,6 +117,11 @@ export const VideoPlayer = ({
   nextEpisode,
   onPlayNextEpisode,
   poster,
+  isKidsMode = false,
+  kidsTimeRemaining = null,
+  kidsTimeLimitReached = false,
+  kidsBedtimeReached = false,
+  kidsBedtimeTime = null,
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -186,6 +197,11 @@ export const VideoPlayer = ({
 
   // Subtitles hook
   const subtitles = useSubtitles(contentId, episodeId);
+
+  useEffect(() => {
+    if (!isKidsMode || (!kidsTimeLimitReached && !kidsBedtimeReached)) return;
+    videoRef.current?.pause();
+  }, [isKidsMode, kidsBedtimeReached, kidsTimeLimitReached]);
 
 
   // Network quality for adaptive streaming
@@ -952,7 +968,7 @@ export const VideoPlayer = ({
       />
 
       {/* Unified native cast launcher (Chromecast / AirPlay) */}
-      <UnifiedCastButton videoRef={videoRef} title={title} poster={poster} />
+      {!isKidsMode && <UnifiedCastButton videoRef={videoRef} title={title} poster={poster} />}
 
       {/* Casting to TV badge */}
       {nativeCastActive && (
@@ -991,6 +1007,19 @@ export const VideoPlayer = ({
               <Play className="h-10 w-10 text-white" fill="white" />
             </div>
             <span className="text-lg font-medium">Tap to Play</span>
+          </div>
+        </div>
+      )}
+
+      {isKidsMode && (kidsTimeLimitReached || kidsBedtimeReached) && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 px-6 text-center" data-testid="kids-playback-limit">
+          <div className="max-w-md space-y-3">
+            <Clock className="mx-auto h-12 w-12 text-brand" />
+            <h2 className="text-3xl font-semibold">{kidsBedtimeReached ? "Time for Bed" : "All Done for Today"}</h2>
+            <p className="text-muted-foreground">
+              {kidsBedtimeReached ? `Bedtime is ${kidsBedtimeTime?.slice(0, 5) ?? "set by your parent"}.` : "Come back tomorrow for more family adventures."}
+            </p>
+            {kidsTimeRemaining !== null && !kidsBedtimeReached && <p className="text-sm text-muted-foreground">{kidsTimeRemaining} minutes remaining</p>}
           </div>
         </div>
       )}
@@ -1257,12 +1286,12 @@ export const VideoPlayer = ({
           {/* Controls Row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
+              {!isKidsMode && <button
                 onClick={togglePlay}
                 className="hover:text-brand transition-colors"
               >
                 {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-              </button>
+              </button>}
               
               {/* Volume Control */}
               <div className="flex items-center gap-2 group">
@@ -1498,7 +1527,7 @@ export const VideoPlayer = ({
               </DropdownMenu>
 
               {/* Watch Party Button */}
-              <button
+              {!isKidsMode && <button
                 onClick={() => {
                   // Open watch party panel - dispatch custom event with content info
                   window.dispatchEvent(new CustomEvent('toggleWatchParty', {
@@ -1517,7 +1546,7 @@ export const VideoPlayer = ({
               >
                 <Users className="h-5 w-5" />
                 {party ? "Party" : "Watch Party"}
-              </button>
+              </button>}
 
               {/* Admin Settings Button - only show for admins when episode is selected */}
               {isAdmin && episodeId && (
@@ -1536,13 +1565,15 @@ export const VideoPlayer = ({
 
 
               {/* Cast to TV Button - QR Code Pairing */}
-              <CastToTVButton
-                videoUrl={getVideoSource()}
-                videoTitle={title}
-                startTime={currentTime}
-                duration={duration}
-                className="flex"
-              />
+              {!isKidsMode && (
+                <CastToTVButton
+                  videoUrl={getVideoSource()}
+                  videoTitle={title}
+                  startTime={currentTime}
+                  duration={duration}
+                  className="flex"
+                />
+              )}
 
               {/* Picture-in-Picture Button */}
               {pip.isSupported && (

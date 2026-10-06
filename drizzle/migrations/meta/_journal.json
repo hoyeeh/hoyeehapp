@@ -8,6 +8,13 @@
       "when": 1791264463466,
       "tag": "0000_add_content_release_date_and_homepage_layout_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791266258202,
+      "tag": "0001_add_independent_kids_homepage_surface",
+      "breakpoints": true
     }
   ]
 }

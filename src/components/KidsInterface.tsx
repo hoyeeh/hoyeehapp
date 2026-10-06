@@ -77,23 +77,18 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] relative overflow-hidden">
-      {/* Subtle gradient background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-b from-violet-950/20 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-950/10 via-transparent to-fuchsia-950/10" />
-      </div>
+    <div className="min-h-screen bg-background relative overflow-hidden">
 
       {/* Kids Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-[#0A0A0F]/80 backdrop-blur-xl border-b border-white/[0.06]">
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-background/85 backdrop-blur-xl border-b border-border/50">
         <div className="flex items-center justify-between h-full max-w-7xl mx-auto px-6">
           {/* Logo */}
           <button 
             className="flex items-center gap-3 group"
             onClick={() => navigate("/")}
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-shadow">
-              <span className="text-white font-bold text-lg">K</span>
+            <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center shadow-lg shadow-brand/20">
+              <span className="text-primary-foreground font-bold text-lg">K</span>
             </div>
             <span className="text-lg font-semibold text-white tracking-[-0.02em]">
               Kids
@@ -139,7 +134,7 @@ export const KidsInterface = ({ children }: KidsInterfaceProps) => {
           <div className="flex items-center gap-4">
             {currentProfile?.name && (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
                   <span className="text-white text-sm font-semibold">
                     {currentProfile.name.charAt(0).toUpperCase()}
                   </span>

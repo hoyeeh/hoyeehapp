@@ -1,23 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Content } from "@/types";
-import { KidsContentCard } from "./KidsContentCard";
-import { Clock, Moon, Film, Tv, TrendingUp, Play, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Clock, Moon, Film, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import { useKidsTimeLimit } from "@/hooks/useKidsTimeLimit";
 import { useBedtimeMode } from "@/hooks/useBedtimeMode";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { KIDS_RATINGS, isKidsContentAllowed } from "@/constants/kidsRatings";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { KidsYouTubeRow } from "./kids/KidsYouTubeRow";
 import { KidsEnhancedYouTubePlayer } from "./kids/KidsEnhancedYouTubePlayer";
 import { KidsLoadingAnimation } from "./kids/KidsLoadingAnimation";
-import { KidsConfetti } from "./kids/KidsConfetti";
-import { KidsContinueWatching } from "./kids/KidsContinueWatching";
-import { KidsAgeGroupSections } from "./kids/KidsAgeGroupSections";
 import { useKidsApprovedContent, useKidsProfileRequiresApproval } from "@/hooks/useKidsApprovedContent";
 import { KidsParentalSetupNotice } from "./kids/KidsParentalSetupNotice";
 import { KidsDesktopDynamicSections } from "./kids/KidsDesktopDynamicSections";
+import { useRealtimeHomeSections } from "@/hooks/useRealtimeHomeSections";
 
 interface KidsHomePageProps {
   onPlay: (content: Content) => void;
@@ -179,11 +175,10 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   const { timeRemaining, isTimeLimitReached } = useKidsTimeLimit();
   const { isBedtime, bedtimeTime } = useBedtimeMode();
   const [youtubePlayer, setYoutubePlayer] = useState<{ videoId: string; title: string } | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const hasShownConfetti = useRef(false);
+  useRealtimeHomeSections();
 
   // Get parental approval settings
-  const { approvedContent, isContentApproved } = useKidsApprovedContent(currentProfile?.id);
+  const { isContentApproved } = useKidsApprovedContent(currentProfile?.id);
   const { requiresApproval } = useKidsProfileRequiresApproval(currentProfile?.id);
 
   const handlePlayYouTubeVideo = (videoId: string, title: string) => {
@@ -203,13 +198,9 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
       if (error) throw error;
       
       // Client-side filtering for strict kids content compliance
-      let filtered = (data || [])
-        // Age limit filter
-        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
-        // Block specific titles
-        .filter((item: any) => !isBlockedTitle(item.title || ""))
-        // Genre filter - ONLY Animation and Family
-        .filter((item: any) => isKidsAllowedGenre(item.genre));
+      const filtered = (data || []).filter((item: any) =>
+        isKidsContentAllowed(item) && Boolean(item.video_url)
+      );
 
       // Map to Content type with age_limit included
       return filtered.map((item: any) => ({
@@ -235,17 +226,6 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
     : kidsContent;
 
   // Note: Animation content, movies, shows filtering now handled by KidsDesktopDynamicSections
-
-  // Trigger confetti when content loads - MUST be before any conditional returns
-  useEffect(() => {
-    if (!isLoading && displayContent.length > 0 && !hasShownConfetti.current) {
-      hasShownConfetti.current = true;
-      setShowConfetti(true);
-      // Hide confetti after animation
-      const timer = setTimeout(() => setShowConfetti(false), 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, displayContent.length]);
 
   // Bedtime screen
   if (isBedtime) {
@@ -331,9 +311,7 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 space-y-10 pb-12">
-      {/* Confetti celebration when content loads */}
-      <KidsConfetti show={showConfetti} />
+    <div className="mx-auto max-w-[1440px] space-y-12 px-6 pb-16 lg:px-10">
 
       {/* Parental Setup Notice */}
       <KidsParentalSetupNotice />
@@ -355,15 +333,10 @@ export const KidsHomePage = ({ onPlay, onDetails }: KidsHomePageProps) => {
         </motion.div>
       )}
 
-      {/* Continue Watching */}
-      <KidsContinueWatching onPlay={onPlay} onDetails={onDetails} />
-
-      {/* Age Group Sections */}
-      <KidsAgeGroupSections content={displayContent} onPlay={onPlay} onDetails={onDetails} />
-
-      {/* Dynamic Sections from Admin (show_on_kids=true) */}
+      {/* Kids layout is owned entirely by the dedicated admin surface. */}
       <KidsDesktopDynamicSections 
         allContent={displayContent}
+        excludedContentIds={displayContent.slice(0, 5).map((item) => item.id)}
         onPlay={onPlay}
         onDetails={onDetails}
         onPlayVideo={handlePlayYouTubeVideo}

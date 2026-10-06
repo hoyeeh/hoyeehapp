@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { KidsDesktopVideoPlayer } from "@/components/kids/KidsDesktopVideoPlayer";
 import { VideoJSPlayerWithWatchParty } from "@/components/VideoJSPlayerWithWatchParty";
 import { useNewPlayerForFree } from "@/hooks/useNewPlayer";
 import { NewPlayerBadge } from "@/components/dev/NewPlayerBadge";
@@ -32,6 +33,7 @@ import { toast } from "sonner";
 import { toCdnUrl } from "@/utils/cdnUrl";
 import { useMobileDevice } from "@/hooks/useMobileDevice";
 import { useMobileVideoPlayer } from "@/contexts/MobileVideoPlayerContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 interface CastMember {
   id: number;
@@ -249,6 +251,7 @@ const RecommendationsSection = ({
 };
 
 const ContentDetail = () => {
+  const { currentProfile } = useProfileContext();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const episodeIdFromUrl = searchParams.get('episode') || searchParams.get('episodeId');
@@ -769,7 +772,7 @@ const ContentDetail = () => {
 
     // Phase 2: feature-flagged swap to VideoJSPlayer for non-premium content only.
     // Premium continues to use the legacy DRM-aware VideoPlayer (Phase 3 territory).
-    const useVjs = newPlayerEnabled && !content.isPremium;
+    const useVjs = newPlayerEnabled && !content.isPremium && !currentProfile?.is_kids;
 
     return (
       <SecureVideoWrapper>
@@ -788,7 +791,7 @@ const ContentDetail = () => {
             <NewPlayerBadge surface="episode" />
           </>
         ) : (
-          <VideoPlayer
+          currentProfile?.is_kids ? <KidsDesktopVideoPlayer
             src={playingEpisode.video_url || ''}
             title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
             contentId={content.id}
@@ -804,6 +807,19 @@ const ContentDetail = () => {
             }}
             nextEpisode={nextEpisodeInfo}
             onPlayNextEpisode={handlePlayNextEpisode}
+          /> : <VideoPlayer
+            src={playingEpisode.video_url || ''}
+            title={`${content.title} - E${playingEpisode.episode_number} ${playingEpisode.title}`}
+            contentId={content.id}
+            episodeId={playingEpisode.id}
+            initialProgress={episodeResumeAt}
+            introStartTime={epData.intro_start_time ?? 0}
+            introEndTime={epData.intro_end_time ?? 90}
+            recapStartTime={epData.recap_start_time ?? undefined}
+            recapEndTime={epData.recap_end_time ?? undefined}
+            onBack={() => { setPlayingEpisode(null); setEpisodeResumeAt(0); }}
+            nextEpisode={nextEpisodeInfo}
+            onPlayNextEpisode={handlePlayNextEpisode}
           />
         )}
       </SecureVideoWrapper>
@@ -812,7 +828,7 @@ const ContentDetail = () => {
 
   // Playing main content (movie or TV show trailer) - only desktop
   if (playing && content && !isMobile) {
-    const useVjs = newPlayerEnabled && !content.isPremium;
+    const useVjs = newPlayerEnabled && !content.isPremium && !currentProfile?.is_kids;
     const isOffline =
       searchParams.get('offline') === 'true' && !content.isPremium;
     return (
@@ -837,13 +853,13 @@ const ContentDetail = () => {
                 <NewPlayerBadge surface="movie" />
               </>
             ) : (
-              <VideoPlayer
+              currentProfile?.is_kids ? <KidsDesktopVideoPlayer
                 src={resolvedSrc}
                 title={content.title}
                 contentId={content.id}
                 initialProgress={0}
                 onBack={() => setPlaying(false)}
-              />
+              /> : <VideoPlayer src={resolvedSrc} title={content.title} contentId={content.id} initialProgress={0} onBack={() => setPlaying(false)} />
             )
           }
         </OfflinePlayerWrapper>
@@ -998,12 +1014,14 @@ const ContentDetail = () => {
                 {isInList ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                 {isInList ? "In My List" : "My List"}
               </Button>
-              <UniversalCastButton
-                videoUrl={content.videoUrl}
-                videoTitle={content.title}
-                thumbnail={content.thumbnailUrl}
-                duration={content.duration}
-              />
+              {!currentProfile?.is_kids && (
+                <UniversalCastButton
+                  videoUrl={content.videoUrl}
+                  videoTitle={content.title}
+                  thumbnail={content.thumbnailUrl}
+                  duration={content.duration}
+                />
+              )}
               {/* Single download control for movies; server enforces entitlement. */}
               {(() => {
                 const c = content as unknown as Record<string, unknown>;

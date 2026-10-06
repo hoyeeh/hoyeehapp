@@ -107,6 +107,7 @@ export function MobileHome() {
       const { data, error } = await supabase
         .from("home_sections")
         .select("*, genre:genre_id(name)")
+        .eq("homepage_surface", "main")
         .eq("is_active", true)
         .eq("show_on_mobile", true)
         .order("display_order", { ascending: true })
