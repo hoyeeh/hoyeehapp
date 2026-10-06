@@ -49,13 +49,23 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const bearer = authHeader?.replace(/^Bearer\s+/i, "") ?? "";
+    const isServiceCall = bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!isServiceCall) {
+      if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      if (!(roles ?? []).some((r: any) => r.role === "admin" || r.role === "super_admin")) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
     const tmdbKey = Deno.env.get("TMDB_API_KEY");
     if (!tmdbKey) throw new Error("Missing TMDB_API_KEY");
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
 
     // Genre dictionaries (movie + tv)
     const [movieGenres, tvGenres] = await Promise.all([

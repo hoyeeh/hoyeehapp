@@ -22,10 +22,24 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const bearer = authHeader?.replace(/^Bearer\s+/i, "") ?? "";
+    const isServiceCall = bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!isServiceCall) {
+      if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      if (!(roles ?? []).some((r: any) => r.role === "admin" || r.role === "super_admin")) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) throw new Error("Missing LOVABLE_API_KEY");
 
@@ -48,6 +62,7 @@ Deno.serve(async (req) => {
     const { data: sections, error: secErr } = await supabase
       .from("home_sections")
       .select("*")
+      .eq("source", "manual")
       .order("display_order");
     if (secErr) throw secErr;
 
@@ -159,12 +174,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 8. Ask AI for new sections + reorder, grounded in owned trending titles
+    // 8. Ask AI for content refresh advice only. The admin layout remains authoritative.
     const ownedForPrompt = ownedList.slice(0, 40).map(
       (t) => `- ${t.title} (${t.media_type}, rank ${t.trend_rank} in ${t.trend_window}, score ${t.vote_average}) id=${t.content_id}`,
     );
 
-    const prompt = `You are a homepage curator for a Netflix-style streaming app.
+    const prompt = `You are a homepage content curator for a premium streaming app.
 
 Current sections (title | type | active | max_items | actual_items):
 ${(sections ?? []).map((s: any) => `- ${s.title} | ${s.section_type} | ${s.is_active} | ${s.max_items ?? "?"} | ${countsBySection[s.id] ?? 0}`).join("\n")}
@@ -180,34 +195,31 @@ ${globalHotGenres.map((t) => `- ${t.genre}: ${t.titles} trending titles`).join("
 Titles trending worldwide THAT WE OWN (use only these content ids):
 ${ownedForPrompt.join("\n") || "- (none matched our catalog)"}
 
-Propose at most 3 improvements (only the 2 best will be kept) as a strict JSON array. Each item:
+Propose at most 2 content refreshes as a strict JSON array. Each item:
 {
-  "suggestion_type": "new_section" | "reorder" | "content_swap",
-  "target_section_id": "<uuid, required for content_swap>",
+  "suggestion_type": "content_swap",
+  "target_section_id": "<uuid of an existing curated row>",
   "proposed_payload": { ... },
   "reason": "short admin-facing explanation",
   "priority": 1-10
 }
 
-For "new_section": payload = { title, section_type ('genre'|'trending'|'recently_added'|'top10'|'recommendations'|'continue_watching'|'because_you_watched'|'top_in_country'|'new_releases_for_you'|'ai_recommendations'), genre_name?, max_items (10-20), card_style ('full'|'poster'|'wide'), card_size ('sm'|'md'|'lg'), content_ids? (only ids listed above) }
-For "reorder": payload = { ordered_titles: [exact existing section titles in desired top-to-bottom order] }
 For "content_swap": payload = { section_id, content_ids: [ids from the owned-trending list, best first] }
 
-Rules: never invent content ids. Never propose a section that would be empty. Do not change max_items of existing sections. Never propose a new "top10" section — the homepage already has exactly two (Movies and Series). Never propose a section whose title duplicates an existing section title.
+Rules: never invent content ids. Never change row titles, order, visibility, style, size, filters, max_items, or surface flags. Only target existing curated rows. Preserve the admin layout exactly.
 Only return the JSON array.`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${lovableKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Return only valid JSON arrays." },
-          { role: "user", content: prompt },
-        ],
+        model: "openai/gpt-6-astra",
+        reasoning: { effort: "low" },
+        input: [{ role: "system", content: [{ type: "input_text", text: "Return only content refresh decisions grounded in the supplied catalogue." }] }, { role: "user", content: [{ type: "input_text", text: prompt }] }],
+        text: { format: { type: "json_schema", name: "homepage_content_refreshes", strict: true, schema: { type: "object", properties: { suggestions: { type: "array", maxItems: 2, items: { type: "object", properties: { suggestion_type: { type: "string", enum: ["content_swap"] }, target_section_id: { type: "string" }, proposed_payload: { type: "object", properties: { section_id: { type: "string" }, content_ids: { type: "array", items: { type: "string" } } }, required: ["section_id", "content_ids"], additionalProperties: false }, reason: { type: "string" }, priority: { type: "integer", minimum: 1, maximum: 10 } }, required: ["suggestion_type", "target_section_id", "proposed_payload", "reason", "priority"], additionalProperties: false } } }, required: ["suggestions"], additionalProperties: false } } },
       }),
     });
 
@@ -219,12 +231,9 @@ Only return the JSON array.`;
     let aiSuggestions: Suggestion[] = [];
     try {
       const aiJson = await aiRes.json();
-      const content = aiJson?.choices?.[0]?.message?.content ?? "";
-      const match = content.match(/\[[\s\S]*\]/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        if (Array.isArray(parsed)) aiSuggestions = parsed as Suggestion[];
-      }
+       const content = aiJson?.output?.flatMap((o: any) => o.content ?? []).find((c: any) => c.type === "output_text")?.text ?? "";
+       const parsed = JSON.parse(content);
+       if (Array.isArray(parsed?.suggestions)) aiSuggestions = parsed.suggestions as Suggestion[];
     } catch (e) {
       console.error("Failed to parse AI response", e);
     }
@@ -242,7 +251,7 @@ Only return the JSON array.`;
     const valid: any[] = [];
     for (const s of [...healHints, ...trendSwaps, ...aiSuggestions]) {
       if (!s?.suggestion_type) continue;
-      if (!["heal", "new_section", "reorder", "content_swap"].includes(s.suggestion_type)) continue;
+      if (!["heal", "content_swap"].includes(s.suggestion_type)) continue;
 
       const payload: any = { ...(s.proposed_payload ?? {}) };
 
@@ -255,19 +264,6 @@ Only return the JSON array.`;
         if (!Array.isArray(payload.content_ids) || payload.content_ids.length === 0) continue;
         payload.section_id = sectionId;
         s.target_section_id = sectionId;
-      }
-      if (s.suggestion_type === "new_section") {
-        if (!payload.title) continue;
-        // Never create another Top 10 row — the two curated ones are fixed.
-        if (String(payload.section_type ?? "") === "top10") continue;
-        // Never duplicate an existing (or already-proposed) section title.
-        const key = norm(payload.title);
-        if (existingTitles.has(key) || proposedTitles.has(key)) continue;
-        proposedTitles.add(key);
-        if (Array.isArray(payload.content_ids) && payload.content_ids.length === 0) {
-          delete payload.content_ids;
-
-        }
       }
 
       valid.push({
@@ -320,7 +316,7 @@ Only return the JSON array.`;
 
     if (settings?.autopilot_enabled) {
       const threshold = Number(settings.confidence_threshold ?? 8);
-      const allowed: string[] = settings.allowed_types ?? ["content_swap"];
+      const allowed: string[] = (settings.allowed_types ?? ["content_swap"]).filter((t: string) => t === "content_swap" || t === "heal");
       for (const row of insertedRows) {
         if (!allowed.includes(row.suggestion_type)) continue;
         if (Number(row.priority) < threshold) continue;
