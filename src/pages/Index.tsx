@@ -118,7 +118,7 @@ const Index = () => {
       if (ids.length === 0) return [];
       const { data: items, error: itemsErr } = await supabase
         .from("content_public" as any)
-        .select("id, title, description, thumbnail_url, genre, content_type, is_premium, duration, release_year")
+        .select("id, title, description, thumbnail_url, genre, content_type, is_premium, duration, year")
         .in("id", ids);
       if (itemsErr) throw itemsErr;
       const byId = new Map((items || []).map((c: any) => [c.id, c]));
@@ -225,7 +225,7 @@ const Index = () => {
         contentType: item.content.content_type as "movie" | "series",
         isPremium: item.content.is_premium || false,
         duration: item.content.duration || 0,
-        year: item.content.year ?? item.content.release_year,
+        year: item.content.year,
 
       } as Content,
     }));
