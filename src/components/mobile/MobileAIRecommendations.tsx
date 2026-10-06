@@ -160,10 +160,10 @@ export function MobileAIRecommendations({ onDetails, maxItems = 12 }: MobileAIRe
                   {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
 
-                  {/* AI Badge */}
+                  {/* Personalized badge */}
                   <div className="absolute top-2 right-2 bg-brand/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
                     <Sparkles className="h-3 w-3" />
-                    <span className="text-[10px] font-medium">AI Pick</span>
+                    <span className="text-[10px] font-medium">For You</span>
                   </div>
 
                   {content.isPremium && (

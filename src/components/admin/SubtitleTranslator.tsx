@@ -238,7 +238,7 @@ export function SubtitleTranslator({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Sparkles className="h-5 w-5" />
-          AI Translation
+          Subtitle Translation
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -380,7 +380,7 @@ export function SubtitleTranslator({
         </Button>
 
         <p className="text-xs text-muted-foreground text-center">
-          Uses AI to translate subtitles while preserving timing. No API key required.
+          Translates subtitles while preserving their timing.
         </p>
       </CardContent>
     </Card>

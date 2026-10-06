@@ -6,7 +6,7 @@ import { KidsMobileContentCard } from "./KidsMobileContentCard";
 import { Search, X, Film, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle } from "@/constants/kidsRatings";
+import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isKidsContentAllowed } from "@/constants/kidsRatings";
 
 interface KidsMobileSearchProps {
   onPlay: (content: Content) => void;
@@ -34,8 +34,7 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
       
       // Strict client-side filter for age compliance and blocked titles
       return (data || [])
-        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
-        .filter((item: any) => !isBlockedTitle(item.title || ""))
+        .filter((item: any) => isKidsContentAllowed(item))
         .map((item: any) => ({
           id: item.id,
           title: item.title,
@@ -69,8 +68,7 @@ export const KidsMobileSearch = ({ onPlay, onDetails }: KidsMobileSearchProps) =
       
       // Strict client-side filter for age compliance and blocked titles
       return (data || [])
-        .filter((item: any) => !item.age_limit || item.age_limit <= KIDS_MAX_AGE_LIMIT)
-        .filter((item: any) => !isBlockedTitle(item.title || ""))
+        .filter((item: any) => isKidsContentAllowed(item))
         .map((item: any) => ({
           id: item.id,
           title: item.title,

@@ -146,7 +146,7 @@ export function SubtitleLanguageOverview({
     
     switch (sourceType) {
       case "generated":
-        return <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">AI Generated</Badge>;
+        return <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">Generated</Badge>;
       case "manual":
       default:
         return <Badge variant="outline" className="text-xs">Manual</Badge>;

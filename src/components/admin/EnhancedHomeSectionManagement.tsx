@@ -84,7 +84,7 @@ const SECTION_TYPES = [
   // Personalized sections (auto-populated based on user data)
   { value: "recently_watched", label: "Recently Watched (Completed)" },
   { value: "because_you_watched", label: "Because You Watched" },
-  { value: "ai_recommendations", label: "AI Hoyeeh Picks" },
+  { value: "ai_recommendations", label: "Hoyeeh Picks" },
   { value: "coming_soon", label: "Coming Soon" },
   { value: "recommendations", label: "Recommended For You" },
   { value: "purchases", label: "My Purchases (Mobile)" },

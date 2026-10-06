@@ -7,7 +7,7 @@ import { Film, Tv, TrendingUp, Sparkles, Youtube, Clock, Star, Clapperboard, Luc
 import { KidsContentCard } from "@/components/KidsContentCard";
 import { useNavigate } from "react-router-dom";
 import { useLatestTVShowUpdates } from "@/hooks/useLatestTVShowUpdates";
-import { KIDS_RATINGS, KIDS_MAX_AGE_LIMIT, isBlockedTitle, isKidsAllowedGenre } from "@/constants/kidsRatings";
+import { isKidsContentAllowed } from "@/constants/kidsRatings";
 import { KidsYouTubeRow } from "./KidsYouTubeRow";
 import { applyAdminFilters } from "@/lib/homeSectionFilters";
 import { orderHomepageContent } from "@/lib/homeContentOrdering";
@@ -128,13 +128,7 @@ export const KidsDesktopDynamicSections = ({
   // Filter content for kids safety
   const filterForKids = (items: Content[]): Content[] => {
     return items.filter(item => {
-      const rating = (item as any).contentRating;
-      const ageLimit = (item as any).age_limit;
-      const ratingOk = !rating || KIDS_RATINGS.includes(rating);
-      const ageOk = !ageLimit || ageLimit <= KIDS_MAX_AGE_LIMIT;
-      const notBlocked = !isBlockedTitle(item.title || "");
-      const genreOk = isKidsAllowedGenre(item.genre);
-      return ratingOk && ageOk && notBlocked && genreOk;
+      return isKidsContentAllowed(item as any);
     });
   };
 

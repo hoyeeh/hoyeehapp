@@ -32,6 +32,8 @@ export interface DownloadMetadata {
   eta?: number; // estimated time remaining in seconds
   startedAt?: number; // timestamp when download started
   contentRating?: string; // For filtering kids content
+  genre?: string;
+  ageLimit?: number;
   videoUrl?: string; // Store URL for resume
 }
 

@@ -37,7 +37,7 @@ export function useAIContentGeneration() {
       });
 
       if (error) {
-        console.error("AI generation error:", error);
+        console.error("Content generation error:", error);
         toast.error("Failed to generate content. Please try again.");
         return null;
       }
@@ -47,10 +47,10 @@ export function useAIContentGeneration() {
         return null;
       }
 
-      toast.success(`Content generated using ${data.provider === "gemini" ? "your Gemini API" : "Lovable AI"}`);
+      toast.success("Content generated successfully");
       return data;
     } catch (err) {
-      console.error("AI generation error:", err);
+      console.error("Content generation error:", err);
       toast.error("Failed to generate content. Please try again.");
       return null;
     } finally {

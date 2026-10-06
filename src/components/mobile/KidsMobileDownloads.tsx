@@ -14,10 +14,7 @@ interface KidsMobileDownloadsProps {
   onPlay: (content: Content) => void;
   onBack?: () => void;
 }
-import { KIDS_MAX_AGE_LIMIT } from "@/constants/kidsRatings";
-
-// Kids-appropriate content ratings
-const KIDS_RATINGS_LOCAL = ["G", "PG", "TV-Y", "TV-Y7", "TV-G", "TV-PG"];
+import { isKidsContentAllowed } from "@/constants/kidsRatings";
 
 export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps) {
   const { user } = useAuth();
@@ -41,9 +38,7 @@ export function KidsMobileDownloads({ onPlay, onBack }: KidsMobileDownloadsProps
   const downloads = allDownloads.filter(d => {
     // Show completed, downloading, and paused downloads
     if (!['completed', 'downloading', 'paused'].includes(d.status)) return false;
-    // Filter by content rating if available - only G and PG for kids
-    const rating = d.contentRating;
-    return !rating || KIDS_RATINGS_LOCAL.includes(rating);
+    return isKidsContentAllowed(d);
   });
 
   // Calculate storage usage against actual device quota (unified with main app)
